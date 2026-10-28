@@ -235,7 +235,9 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "the gateway records a payment it collected"
       assert text =~ "When Payment gateway integration actor records Payment collected event"
       assert text =~ "the gateway cannot record a negative amount collected"
-      assert text =~ "refused: breaks not_negative of"
+      # The engineer's panel says the invariant by its name in code, its label beside it for
+      # while "Technical details" are folded (#490).
+      assert text =~ "refused: breaks not_negative An amount is not negative of"
     end
 
     test "the owner reads the invariant by its label" do
@@ -255,7 +257,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       assert text =~ "Scenarios it refuses in · 1"
       assert text =~ "a negative payment is not asked for"
-      assert text =~ "refused: breaks not_negative of"
+      assert text =~ "refused: breaks not_negative An amount is not negative of"
       refute text =~ "nothing is recorded"
     end
 
@@ -1071,6 +1073,23 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       assert folded(html) =~ "One run per"
       refute html |> LazyHTML.query(".ehg-part-title") |> LazyHTML.text() == ""
+    end
+
+    test "a sentence said two ways is folded one way and shown the other" do
+      {:ok, live, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => Fixtures.payments_refused_for_data()}
+        )
+
+      live
+      |> with_target("#graph")
+      |> render_click("select", %{"id" => "value:Billing.Domain:money"})
+
+      html = live |> element(".ehg-panel") |> render() |> LazyHTML.from_fragment()
+
+      assert folded(html) =~ "not_negative"
+      assert plain(html) =~ "An amount is not negative"
+      refute plain(html) =~ "not_negative"
     end
 
     test "the owner's panel has no technical details to unfold, and says it plainly" do

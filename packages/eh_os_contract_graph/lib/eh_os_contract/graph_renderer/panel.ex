@@ -214,7 +214,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@reads != []} title="Reads before deciding">
       <p :for={r <- @reads}>
         <.ref :if={r["entity"]} id={r["entity"]} ctx={@ctx} />
-        <span :if={!r["entity"]}>{r["name"]}</span><span :if={@ctx.code?} class="ehg-code">, the row its <code>{r["field"]}</code> names</span>
+        <span :if={!r["entity"]} class="ehg-code">{r["name"]}</span><span :if={@ctx.code?} class="ehg-code">, the row its <code>{r["field"]}</code> names</span>
       </p>
     </.part>
     <.part :if={@node["scope"]} title="Scope" class="ehg-code">
@@ -336,7 +336,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@timers != []} title="Timers">
       <ul class="ehg-list">
         <li :for={t <- @timers}>
-          <.ref id={t["id"]} ctx={@ctx} /> — {timer_when(t, @ctx)}<span :for={
+          <.ref id={t["id"]} ctx={@ctx} /> — <.said
+            code={timer_when(t, @ctx)}
+            plain={timer_when(t, plain(@ctx))}
+            ctx={@ctx}
+          /><span :for={
             r <- Lookup.out(@ctx.lookup, t["id"], "fires")
           }>, issuing <.ref id={r["to"]} ctx={@ctx} /></span>
         </li>
@@ -374,7 +378,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     ~H"""
     <p>
-      A timer of <.ref id={@node["process_manager"]} ctx={@ctx} />: {timer_when(@node, @ctx)}.
+      A timer of <.ref id={@node["process_manager"]} ctx={@ctx} />: <.said
+        code={timer_when(@node, @ctx)}
+        plain={timer_when(@node, plain(@ctx))}
+        ctx={@ctx}
+      />.
     </p>
     <.part title="Set">
       <ul class="ehg-list">
@@ -451,6 +459,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <p :if={@node["capability"]} class="ehg-code">
         EHOS grants it as <code>{@node["capability"]}</code>.
       </p>
+      <p :if={@node["capability"] && @people == []} class="ehg-plain">
+        Whoever EHOS grants it to.
+      </p>
       <p :if={@people == [] and !@node["capability"]} class="ehg-quiet">No actor may ask it.</p>
     </.part>
     <.part title="Reads">
@@ -483,8 +494,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <p>
       {if @node["unit_kind"] == "dcb", do: "A dynamic consistency boundary", else: "An aggregate"}<span :if={@node["identity"]} class="ehg-code">, identified by
-      <code>{Enum.join(List.wrap(@node["identity"]), ", ")}</code></span>{if @node["generated"],
-        do: ", which the library generates (#{@node["generated"]}) when a command creates one"}.
+      <code>{Enum.join(List.wrap(@node["identity"]), ", ")}</code></span><span :if={@node["generated"]} class="ehg-code">, which the library generates ({@node["generated"]}) when a command creates one</span>.
     </p>
     <p :if={@node["records_only"]}>Records only: no command it takes can be refused.</p>
     <.part :if={@node["state"] not in [nil, []]} title="State">
@@ -905,7 +915,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
     <.part :if={@refers_to != []} title="Keeps the number of">
       <ul class="ehg-list">
         <li :for={r <- @refers_to}>
-          {units_of(r)}<.ref id={r["to"]} ctx={@ctx} />
+          <span :if={units_of(r)} class="ehg-code">{units_of(r)}</span><.ref id={r["to"]} ctx={@ctx} />
         </li>
       </ul>
     </.part>
@@ -1075,11 +1085,15 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp relation_body(assigns) do
     assigns =
       assign(assigns,
-        sentences: relation_sentences(assigns.type, assigns.facts, assigns.ctx)
+        sentences:
+          folded(
+            relation_sentences(assigns.type, assigns.facts, assigns.ctx),
+            relation_sentences(assigns.type, assigns.facts, plain(assigns.ctx))
+          )
       )
 
     ~H"""
-    <p :for={sentence <- @sentences}>{sentence}</p>
+    <p :for={{sentence, class} <- @sentences} class={class}>{sentence}</p>
     <.pairs relation={@facts} />
     """
   end
@@ -1090,27 +1104,28 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
     Enum.reject(
       [
-        type == "handled_by" && facts["via_inbox"] &&
+        ctx.code? && type == "handled_by" && facts["via_inbox"] &&
           "Through the inbox, after the transaction: it was received from another application.",
-        type == "handled_by" && !facts["via_inbox"] && delivery_sentence(reaction["delivery"]),
+        ctx.code? && type == "handled_by" && !facts["via_inbox"] &&
+          delivery_sentence(reaction["delivery"]),
         type == "issues" && sentence(phase(facts, lookup)),
-        type == "issues" && delivery_sentence(issuer["delivery"]),
+        ctx.code? && type == "issues" && delivery_sentence(issuer["delivery"]),
         type in ["sets", "cancels"] && sentence(phase(facts, lookup)),
         type == "calls" && facts["operation"] &&
           "The operation #{operation_title(facts, lookup)}.",
-        type == "consulted_by" && sentence(consulted_words(facts)),
+        type == "consulted_by" && sentence(consulted_words(facts, ctx)),
         type == "refused_on" && facts["outside_from"] &&
           "Refused on it outside the statuses the command is allowed in.",
         type == "refused_on" && facts["actor_is"] &&
           "Refused on it " <> not_the_person(facts, ctx) <> ".",
-        type == "published_as" &&
+        ctx.code? && type == "published_as" &&
           "Published as #{facts["name"]}, with #{Enum.join(facts["fields"] || [], ", ")}.",
         type == "publishes" && facts["event"] && "From #{Lookup.title(lookup, facts["event"])}.",
-        type == "subscribed_by" && "As #{facts["as"]}#{with_grant(facts)}.",
-        type == "refers_to" && facts["units"] not in [nil, []] &&
+        ctx.code? && type == "subscribed_by" && "As #{facts["as"]}#{with_grant(facts)}.",
+        ctx.code? && type == "refers_to" && facts["units"] not in [nil, []] &&
           "It keeps the number of #{Enum.join(facts["units"], ", ")}, which " <>
             "#{Lookup.title(lookup, facts["to"])} decides.",
-        type == "refers_to" && facts["units"] in [nil, []] &&
+        type == "refers_to" && (facts["units"] in [nil, []] or not ctx.code?) &&
           "It keeps the number of a unit #{Lookup.title(lookup, facts["to"])} decides.",
         facts["source"] && "Source: #{facts["source"]}"
       ],
@@ -1126,6 +1141,33 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp not_the_person(relation, %{lookup: lookup}) do
     field = (Lookup.node(lookup, relation["from"]) || %{})["actor_is"]
     "when the one issuing it is not the person its unit's #{field} names"
+  end
+
+  # --- said in code, or in plain words (#490) -----------------------------------------------
+
+  # The context of the same panel read in plain words: what it says without the code.
+  defp plain(ctx), do: %{ctx | code?: false}
+
+  attr :code, :any, required: true, doc: "what is said with the code"
+  attr :plain, :any, required: true, doc: "what is said in plain words, or nil"
+  attr :ctx, :map, required: true
+
+  # Said one way where both are the same, and for the owner; otherwise both, the code folded
+  # under "Technical details" and the plain words shown while it is.
+  defp said(assigns) do
+    ~H"""
+    <%= if @code == @plain or not @ctx.code? do %>{@plain}<% else %><span
+        :if={@code}
+        class="ehg-code"
+      >{@code}</span><span :if={@plain} class="ehg-plain">{@plain}</span><% end %>
+    """
+  end
+
+  # What one list says against another, each sentence with the class that folds it: none where
+  # both say it, `ehg-code` where only the code does, `ehg-plain` where only plain words do.
+  defp folded(code, plain) do
+    for(s <- code, do: {s, if(s in plain, do: nil, else: "ehg-code")}) ++
+      for(s <- plain, s not in code, do: {s, "ehg-plain"})
   end
 
   # --- parts --------------------------------------------------------------------------------
@@ -1177,7 +1219,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
     ~H"""
     <ul :if={@relations != []} class="ehg-list">
       <li :for={r <- @relations}>
-        <.ref id={r[@side]} ctx={@ctx} />{after_ref(@then, r, @ctx)}
+        <.ref id={r[@side]} ctx={@ctx} /><.said
+          code={after_ref(@then, r, @ctx)}
+          plain={after_ref(@then, r, plain(@ctx))}
+          ctx={@ctx}
+        />
       </li>
     </ul>
     """
@@ -1190,7 +1236,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp nodes(assigns) do
     ~H"""
     <ul :if={@list != []} class="ehg-list">
-      <li :for={n <- @list}><.ref id={n["id"]} ctx={@ctx} />{after_ref(@then, n, @ctx)}</li>
+      <li :for={n <- @list}>
+        <.ref id={n["id"]} ctx={@ctx} /><.said
+          code={after_ref(@then, n, @ctx)}
+          plain={after_ref(@then, n, plain(@ctx))}
+          ctx={@ctx}
+        />
+      </li>
     </ul>
     """
   end
@@ -1199,7 +1251,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp after_ref(nil, _relation_or_node, _ctx), do: nil
   defp after_ref(:phase, r, ctx), do: phase(r, ctx.lookup) && ", " <> phase(r, ctx.lookup)
   defp after_ref(:fires, _r, _ctx), do: ", when it fires"
-  defp after_ref(:inbox, r, _ctx), do: if(r["via_inbox"], do: ", through the inbox")
+  defp after_ref(:inbox, r, ctx), do: if(ctx.code? and r["via_inbox"], do: ", through the inbox")
 
   defp after_ref(:outside, r, ctx) do
     cond do
@@ -1212,7 +1264,9 @@ defmodule EhOsContract.GraphRenderer.Panel do
   defp after_ref(:operation, r, ctx),
     do: if(r["operation"], do: ": " <> operation_title(r, ctx.lookup))
 
-  defp after_ref(:consulted, r, _ctx), do: consulted_words(r) && ", " <> consulted_words(r)
+  defp after_ref(:consulted, r, ctx),
+    do: consulted_words(r, ctx) && ", " <> consulted_words(r, ctx)
+
   defp after_ref(:final, node, _ctx), do: if(node["final"], do: " — an end")
 
   attr :relations, :list, required: true
@@ -1243,7 +1297,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <li :for={e <- @relation["events"] || []}>
         <.ref id={e["event"]} ctx={@ctx} /><span
           :if={e["as"] && e["as"] != (Lookup.node(@ctx.lookup, e["event"]) || %{})["name"]}
-          class="ehg-quiet"
+          class="ehg-quiet ehg-code"
         > · as {e["as"]}</span>
       </li>
     </ul>
@@ -1325,7 +1379,7 @@ defmodule EhOsContract.GraphRenderer.Panel do
   # received from another application reaches a policy through the inbox whatever its delivery.
   defp delivery(assigns) do
     ~H"""
-    <.part :if={@node["delivery"] || @node["idempotency"] || @inbox?} title="Delivery">
+    <.part :if={@node["delivery"] || @node["idempotency"] || @inbox?} title="Delivery" class="ehg-code">
       <p :if={@node["delivery"]}>{delivery_sentence(@node["delivery"])}</p>
       <p :if={@inbox?}>
         An event received from another application reaches it through the inbox, after the
@@ -1357,7 +1411,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
         <span :if={field["required"] == false} class={["ehg-field-type", @ctx.code? && "ehg-plain"]}>
           optional
         </span>
-        <span :for={{look, note} <- field_notes(field, @fields, @ctx)} class={look}>
+        <span
+          :for={{look, note, fold} <- notes(field, @fields, @ctx)}
+          class={[look, fold]}
+        >
           {note}
         </span>
       </li>
@@ -1377,6 +1434,13 @@ defmodule EhOsContract.GraphRenderer.Panel do
 
   # What a field says beyond its type, each as `{class, sentence}`. That the host supplies
   # it is the code's.
+  # A field's notes for the engineer and in plain words, each with the class that folds it.
+  defp notes(field, siblings, ctx) do
+    for {{look, note}, fold} <-
+          folded(field_notes(field, siblings, ctx), field_notes(field, siblings, plain(ctx))),
+        do: {look, note, fold}
+  end
+
   defp field_notes(field, siblings, %{lookup: lookup} = ctx) do
     [
       field["personal_of"] &&
@@ -1479,8 +1543,10 @@ defmodule EhOsContract.GraphRenderer.Panel do
       </div>
       <p class="ehg-step">When</p>
       <p :if={@scenario["actor"]}>
-        <.ref id={@scenario["actor"]} ctx={@ctx} />{if @ctx.code? && @scenario["as"],
-          do: " #{@scenario["as"]}"} issues
+        <.ref id={@scenario["actor"]} ctx={@ctx} /><span
+          :if={@ctx.code? && @scenario["as"]}
+          class="ehg-code"
+        > {@scenario["as"]}</span> issues
       </p>
       <.with_data id={@scenario["command"]["command"]} data={@scenario["command"]["data"]} ctx={@ctx} />
       <p class="ehg-step">Then</p>
@@ -1488,7 +1554,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
         refused on <.ref id={@scenario["rejected"]} ctx={@ctx} />
       </p>
       <p :if={@scenario["rejected_on_value"]} class="ehg-refused">
-        refused: breaks {broken(@scenario["rejected_on_value"], @ctx)} of
+        refused: breaks <.said
+          code={broken(@scenario["rejected_on_value"], @ctx)}
+          plain={broken(@scenario["rejected_on_value"], plain(@ctx))}
+          ctx={@ctx}
+        /> of
         <.ref id={@scenario["rejected_on_value"]["value"]} ctx={@ctx} />
       </p>
       <.with_data :for={e <- @scenario["expect"] || []} id={e["event"]} data={e["data"]} ctx={@ctx} />
@@ -1514,7 +1584,11 @@ defmodule EhOsContract.GraphRenderer.Panel do
       <.with_data id={@scenario["record"]["event"]} data={@scenario["record"]["data"]} ctx={@ctx} />
       <p class="ehg-step">Then</p>
       <p :if={@scenario["rejected"]} class="ehg-refused">
-        refused: breaks {broken(@scenario["rejected"], @ctx)} of
+        refused: breaks <.said
+          code={broken(@scenario["rejected"], @ctx)}
+          plain={broken(@scenario["rejected"], plain(@ctx))}
+          ctx={@ctx}
+        /> of
         <.ref id={@scenario["rejected"]["value"]} ctx={@ctx} />
       </p>
       <.with_data :for={e <- @scenario["expect"] || []} id={e["event"]} data={e["data"]} ctx={@ctx} />
@@ -1887,9 +1961,12 @@ defmodule EhOsContract.GraphRenderer.Panel do
     (found && found["label"]) || op
   end
 
-  defp consulted_words(%{"match" => [_ | _] = match}), do: "by #{Enum.join(match, ", ")}"
-  defp consulted_words(%{"where" => where}) when is_binary(where), do: "where #{where}"
-  defp consulted_words(_relation), do: nil
+  # The fields a boundary consults by are code; the prose of `where` is the client's.
+  defp consulted_words(%{"match" => [_ | _] = match}, %{code?: true}),
+    do: "by #{Enum.join(match, ", ")}"
+
+  defp consulted_words(%{"where" => where}, _ctx) when is_binary(where), do: "where #{where}"
+  defp consulted_words(_relation, _ctx), do: nil
 
   defp direction("inbound"), do: "Data flows in from it."
   defp direction("outbound"), do: "Data flows out to it."

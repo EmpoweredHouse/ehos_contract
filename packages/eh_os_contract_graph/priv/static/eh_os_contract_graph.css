@@ -955,7 +955,7 @@
   text-align: left;
   cursor: pointer;
 }
-.ehg-panel .ehg-tech {
+.ehg-tech {
   margin: 4px 0 10px;
   font-size: 12px;
 }
@@ -969,11 +969,11 @@
   color: var(--text-primary);
 }
 .ehg-panel:has(.ehg-tech:not([open])) .ehg-code,
-.ehg-panel:has(.ehg-tech:not([open])) .ehg-part:not(:has(> :not(.ehg-part-title, .ehg-code))),
-.ehg-panel:has(.ehg-tech[open]) .ehg-plain {
+.ehg-panel:has(.ehg-tech[open]) .ehg-plain,
+.ehg-panel:not(:has(.ehg-code)) .ehg-tech {
   display: none;
 }
-.ehg-open {
+.ehg-panel .ehg-open {
   display: inline-block;
   margin: 0 0 10px;
   padding: 3px 9px;
