@@ -422,7 +422,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
       assert offered(drawn({__MODULE__, :to_application}, document), box) ==
                [{"/apps/office", "Open this application →"}]
 
-      # A host whose link builds a domain's page only offers nothing for it.
+      # A host whose link raises for an application offers nothing for it.
       assert offered(drawn({__MODULE__, :raising}, document), box) == []
     end
 

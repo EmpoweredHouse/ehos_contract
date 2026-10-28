@@ -38,7 +38,9 @@ defmodule EhOsContract.GraphRenderer.Canvas do
   of an application the landscape has no domain document of (`{application, :none}` in
   `EhOsContract.GraphRenderer.Landscape.join/1`) offers "Open this application", and
   `link` is called for it with `nil` for the domain too; only a host that joins such
-  applications is ever called so:
+  applications is ever called so, and its `link` answers for a `nil` domain, or `nil`: one
+  that builds a domain's page whatever it is given builds a broken address for the box,
+  which the panel offers like any other:
 
       <.live_component
         module={EhOsContract.GraphRenderer.Canvas}

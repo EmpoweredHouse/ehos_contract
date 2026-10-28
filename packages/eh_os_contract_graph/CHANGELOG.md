@@ -27,7 +27,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `{application, :none}` for an application the host knows is there but has no document of, and the canvas draws
   it as a dashed, see-through box in the place of its entry, titled "no graph described", empty and with no arrow.
   Its panel says what is not known and offers "Open this application", for which the canvas calls the host's
-  `link` with `nil` for the domain; a host that joins no such entry is never called so. The landscape's `nodes`
+  `link` with `nil` for the domain; a host that joins no such entry is never called so, and one that does
+  answers for a `nil` domain, since the panel offers whatever path its `link` builds. The landscape's `nodes`
   gain an `"application"` list, empty without such entries.
 
 ## [0.8.0] - 2026-10-26

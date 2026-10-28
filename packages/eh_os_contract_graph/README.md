@@ -141,7 +141,8 @@ the landscape was not told of its contracts, which is not to say it has none.
 A host with a page per domain gives the canvas a `link`, a function of the application's name, the domain's
 module and a contract's id (`nil` for the domain), and the panel of a box, or of a contract in it, offers a link
 to that page, where the host may render the explorer at that contract. The box of an application with no document
-asks `link` with `nil` for the domain too, and offers "Open this application":
+asks `link` with `nil` for the domain too, and offers "Open this application"; a host that joins such
+applications answers for a `nil` domain, or the link it builds from one is broken:
 
 ```heex
 <.live_component
