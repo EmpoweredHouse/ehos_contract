@@ -1,0 +1,18 @@
+Pre-PR review of origin/main..HEAD (#486), two reviews in parallel.
+
+Correctness:
+1. Struct typespec named Values.integer()/boolean(): fixed (88e95545), test + reverse check.
+2. Invariant examples and pages built values without structs: fixed (88e95545), ValueRig check now matches the struct; reverse check fails 2 example tests.
+3. Rule examples compared structs with ==, decimals inside not by value: fixed (88e95545), test + reverse check.
+4. A state default holding such a value stays a map until evolve: documented (c340af6f); a contract cannot write the struct.
+5. CHANGELOG/docs omitted Entities rows, Supplier, domain services, Form data:, Row writes: fixed (c340af6f).
+6. Stale codec comment: fixed (88e95545).
+7. Codec.values recomputed struct names: fixed (88e95545), __eh_os_contract_values__/0 built once, out of the digest.
+
+Security and performance:
+1. Same as correctness 7: fixed.
+2. Data.cast! drops undeclared keys in scenario data: no change needed; link-time Data.problems/3 still refuses unknown keys, as the correctness review confirmed.
+3. Inspect of a struct shows personal fields: skipped, unchanged from maps; redaction for value structs is a follow-up.
+No security finding.
+
+Gate: OTP 27.2/Elixir 1.18.4, mix check in sandbox, EXIT=0; check counts unchanged (sandbox 0/3/7). Sandbox compile --force --warnings-as-errors on Elixir 1.20.4/OTP 29: EXIT=0.
