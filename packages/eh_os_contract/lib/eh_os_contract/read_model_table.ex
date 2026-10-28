@@ -127,6 +127,18 @@ defmodule EhOsContract.ReadModelTable do
   end
 
   @doc """
+  The tables of `tables` that more than one read model names, with the read models
+  that name each, as `"<Contract>:<read_model>"`. Postgres keeps a quoted name's case,
+  and the links refuse two names that differ only in it, so they are compared without.
+  """
+  @spec shared([t()]) :: [{String.t(), [String.t()]}]
+  def shared(tables) do
+    for {_key, [first, _ | _] = same} <- Enum.group_by(tables, &String.downcase(&1.table)) do
+      {first.table, Enum.map(same, &"#{inspect(&1.contract)}:#{&1.read_model}")}
+    end
+  end
+
+  @doc """
   Whether one of the migration `sources` creates the table `name`: `create table(:t, …)`
   or `(:t)`, the name an atom or a string, `create_if_not_exists` too. An `alter` or a
   `drop` does not count, nor does another table whose name starts with this one.

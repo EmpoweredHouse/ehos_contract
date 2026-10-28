@@ -198,6 +198,17 @@ defmodule EhOsContract.ReadModelTablesTest do
       on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
     end
 
+    test "finds a table two read models name, whatever its case" do
+      [visits] = EhOsContract.ReadModelTable.of([@contract])
+      other = %{visits | contract: Other, read_model: :copies, table: String.upcase(@table)}
+
+      assert EhOsContract.ReadModelTable.shared([visits, other]) == [
+               {@table, ["#{inspect(@contract)}:visits", "Other:copies"]}
+             ]
+
+      assert EhOsContract.ReadModelTable.shared([visits]) == []
+    end
+
     test "a migration creates a table only by its whole name, and only with create" do
       created_by? = &EhOsContract.ReadModelTable.created_by?("visits", [&1])
 

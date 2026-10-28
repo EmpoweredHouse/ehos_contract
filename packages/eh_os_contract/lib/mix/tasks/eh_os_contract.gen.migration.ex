@@ -72,6 +72,15 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
 
     if tables == [], do: Mix.shell().info("every read model with a table has its migration")
 
+    # Before anything is written, so a refusal leaves no part of a set behind. The links
+    # refuse a table two read models share, but only in a project that compiles them.
+    for {table, owners} <- ReadModelTable.shared(tables) do
+      Mix.raise(
+        "table #{inspect(table)} is named by #{Enum.join(owners, " and ")}; each read model " <>
+          "has a table of its own (P6), and nothing was written"
+      )
+    end
+
     File.mkdir_p!(dir)
 
     Enum.reduce(tables, latest(existing), fn table, latest -> write!(table, repo, dir, latest) end)
