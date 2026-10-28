@@ -244,11 +244,13 @@ export const EhOsContractGraph = {
       if (event.type === "pointerdown") {
         if (!control.contains(event.target)) control.open = false
       } else if (event.key === "Escape") {
-        // An open menu is what this Escape closes, and all it closes: the selection stays.
+        // An open menu is what this Escape closes, and all it closes: the selection stays, and so does a dialog
+        // the picture is in.
         event.stopPropagation()
+        event.preventDefault()
         const within = control.contains(document.activeElement)
         control.open = false
-        if (within) control.querySelector("summary").focus()
+        if (within) control.querySelector("summary")?.focus()
       }
     }
     // The capture phase, so it is decided before the selection's own Escape.

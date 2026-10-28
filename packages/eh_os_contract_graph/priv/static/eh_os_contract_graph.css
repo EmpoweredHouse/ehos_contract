@@ -113,12 +113,13 @@
   text-align: left;
   cursor: pointer;
 }
-.ehg-zoom-menu button:hover,
-.ehg-zoom-menu button:focus-visible {
+.ehg-zoom-menu button:hover {
   background: var(--surface-2);
   color: var(--text-primary);
 }
 .ehg-zoom-menu button:focus-visible {
+  background: var(--surface-2);
+  color: var(--text-primary);
   outline: 2px solid var(--text-primary);
   outline-offset: -2px;
 }

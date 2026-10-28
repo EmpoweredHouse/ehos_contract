@@ -4560,9 +4560,10 @@ var EhOsContractGraph = {
         if (!control.contains(event.target)) control.open = false;
       } else if (event.key === "Escape") {
         event.stopPropagation();
+        event.preventDefault();
         const within = control.contains(document.activeElement);
         control.open = false;
-        if (within) control.querySelector("summary").focus();
+        if (within) control.querySelector("summary")?.focus();
       }
     };
     document.addEventListener("pointerdown", this.closeZoom);
