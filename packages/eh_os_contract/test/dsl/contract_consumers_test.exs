@@ -404,5 +404,44 @@ defmodule EhOsContract.ContractConsumersTest do
 
       refute message =~ "read model :closed_visits keeps its rows"
     end
+
+    test "a table longer than Postgres keeps, or the engine's own" do
+      long = String.duplicate("a", 64)
+
+      message =
+        refuse_contract("TableReserved", """
+        #{@unit}
+          read_model :closed_visits, "Closed visits", projects: :visit_closed,
+            table: "#{long}", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :open_visits, "Open visits", projects: :visit_closed,
+            table: "eh_os_contract_events", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :all_visits, "All visits", projects: :visit_closed,
+            table: "oban_jobs", key: :visit_id do
+            field :visit_id, :id
+          end
+
+          read_model :sixty_three, "Sixty-three", projects: :visit_closed,
+            table: "#{String.duplicate("b", 63)}", key: :visit_id do
+            field :visit_id, :id
+          end
+        """)
+
+      assert message =~
+               "P6: read model :closed_visits keeps its rows in table \"#{long}\", " <>
+                 "longer than the 63 bytes Postgres keeps of a name"
+
+      assert message =~
+               "P6: read model :open_visits keeps its rows in table \"eh_os_contract_events\", " <>
+                 "which is the engine's or Oban's; a read model's reset/0 would delete its rows"
+
+      assert message =~ "P6: read model :all_visits keeps its rows in table \"oban_jobs\", which"
+      refute message =~ "read model :sixty_three"
+    end
   end
 end

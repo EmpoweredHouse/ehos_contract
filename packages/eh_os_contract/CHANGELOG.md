@@ -81,9 +81,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **A read model names the table its rows are kept in, and their key** (#472):
   `read_model :member_directory, "…", table: "lending_member_directory", key: :membership_id`.
   The key, one row field or a list of them, is the table's primary key, required with `table:` and
-  refused without it. A new refusal (`P6`) holds both: a table that is not a plain SQL name, or one two
-  read models of a contract share, and a key field that is not a row field, is named twice, or is
-  optional, personal, a list or a domain value made of fields.
+  refused without it. A new refusal (`P6`) holds both: a table that is not a plain SQL name, is longer
+  than the 63 bytes Postgres keeps, is the engine's or Oban's, or is shared by two read models of any
+  contracts, and a key field that is not a row field, is named twice, or is optional, personal, a list,
+  or a domain value made of fields or that is a list.
 
 ### Changed
 

@@ -30,7 +30,8 @@ defmodule EhOsContract.Contract.Rules.Consumers do
   #   writes no second row. The key's fields are row fields, each named once, never
   #   optional, personal or a list: a key a row may lack, one an erasure blanks, or
   #   one that is no single column cannot tell rows apart. A table is a plain SQL
-  #   name, and no two read models of a contract share one. That a key field's domain
+  #   name of at most 63 bytes, not the engine's or Oban's, and no two read models of
+  #   a contract share one; two of different contracts are the links'. That a key field's domain
   #   value is one value, not one made of fields, needs the domain and is the links'.
   @moduledoc false
 
@@ -207,14 +208,37 @@ defmodule EhOsContract.Contract.Rules.Consumers do
 
   defp table(read_model), do: table_name(read_model) ++ key(read_model)
 
+  # Postgres cuts a name longer than 63 bytes short without a word, so two long
+  # names could be one table; and a read model's `reset/0` deletes every row of its
+  # table, so it never names the engine's own, the log among them, or Oban's.
+  @max_table 63
+  @reserved ~w(schema_migrations oban_jobs oban_peers)
+
   defp table_name(%{table: table} = read_model) do
-    if Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*\z/, table),
-      do: [],
-      else: [
-        {"P6: read model #{inspect(read_model.name)} keeps its rows in table " <>
-           "#{inspect(table)}, which is not a table name: letters, digits and _, not starting " <>
-           "with a digit", read_model}
-      ]
+    where = "P6: read model #{inspect(read_model.name)} keeps its rows in table #{inspect(table)}"
+
+    cond do
+      not Regex.match?(~r/\A[A-Za-z_][A-Za-z0-9_]*\z/, table) ->
+        [
+          {"#{where}, which is not a table name: letters, digits and _, not starting with a " <>
+             "digit", read_model}
+        ]
+
+      byte_size(table) > @max_table ->
+        [
+          {"#{where}, longer than the #{@max_table} bytes Postgres keeps of a name", read_model}
+        ]
+
+      String.starts_with?(String.downcase(table), "eh_os_contract_") or
+          String.downcase(table) in @reserved ->
+        [
+          {"#{where}, which is the engine's or Oban's; a read model's reset/0 would delete " <>
+             "its rows", read_model}
+        ]
+
+      true ->
+        []
+    end
   end
 
   defp key(%{key: key} = read_model) do

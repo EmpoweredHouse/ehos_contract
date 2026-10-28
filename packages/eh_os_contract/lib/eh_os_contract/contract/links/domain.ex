@@ -43,7 +43,8 @@ defmodule EhOsContract.Contract.Links.Domain do
   # - **D11.** A `publish` is named under the application's namespace, the domain's
   #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
   # - **P6**, the part that needs the domain (#472): a read model's key field typed by a
-  #   domain value is of one that is one value, not made of fields or a list.
+  #   domain value is of one that is one value, not made of fields or a list; and no two
+  #   contracts keep read models in one table.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
   #   `reads:` is an entity the application keeps, never a unit, whose state is its
   #   events.
@@ -63,7 +64,25 @@ defmodule EhOsContract.Contract.Links.Domain do
   def check(system) do
     # A reference may name a unit of any contract of the domain (plan DD, L3 (#286)).
     models = Enum.map(system.contracts, & &1.model)
-    Enum.flat_map(system.contracts, &contract(&1, models))
+    Enum.flat_map(system.contracts, &contract(&1, models)) ++ shared_tables(system.contracts)
+  end
+
+  # P6 across contracts (#472): one read model's `reset/0` would delete another's rows,
+  # and each query would read the other's. Within one contract, L2 refuses it.
+  defp shared_tables(contracts) do
+    owners =
+      for c <- contracts,
+          r <- c.declarations.read_models,
+          r.table != nil,
+          do: {String.downcase(r.table), c, r}
+
+    for {_table, [{_, first_c, first} | others]} <- Enum.group_by(owners, &elem(&1, 0)),
+        {_, c, r} <- others,
+        c.module != first_c.module do
+      {"P6: read model #{inspect(r.name)} of #{inspect(c.module)} keeps its rows in table " <>
+         "#{inspect(r.table)}, as read model #{inspect(first.name)} of " <>
+         "#{inspect(first_c.module)} does; each read model has a table of its own", Links.at(r)}
+    end
   end
 
   defp contract(%{domain: nil} = c, _models) do

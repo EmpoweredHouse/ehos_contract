@@ -1043,6 +1043,44 @@ defmodule EhOsContract.ContractLinksDomainTest do
       # :period, a :period_id resting on :id, is one value: the control.
       refute Enum.any?(messages, &(&1 =~ "has :period in its key")), inspect(messages)
     end
+
+    # One read model's reset/0 would delete the other's rows.
+    test "two contracts keeping read models in one table" do
+      body = fn unit ->
+        """
+          aggregate :#{unit}, "#{unit}" do
+            identity :#{unit}_id
+            command :open_#{unit}, "Open", by: :reception, emits: :#{unit}_opened
+            event :#{unit}_opened, "Opened"
+          end
+
+          read_model :#{unit}s, "#{unit}s", projects: :#{unit}_opened,
+            table: "clinic_shared", key: :#{unit}_id do
+            field :#{unit}_id, :id
+          end
+        """
+      end
+
+      messages =
+        [
+          {"links_shared_a.ex", source("LinksSharedA", body.("desk"), [])},
+          {"links_shared_b.ex", source("LinksSharedB", body.("room"), [])}
+        ]
+        |> links()
+        |> Enum.map(& &1.message)
+
+      assert Enum.any?(
+               messages,
+               &(&1 =~
+                   "P6: read model :rooms of EhOsContract.Fixtures.LinksSharedB keeps its rows " <>
+                     "in table \"clinic_shared\", as read model :desks of " <>
+                     "EhOsContract.Fixtures.LinksSharedA does")
+             ),
+             inspect(messages)
+
+      # The first to name the table is not refused: one message, about the second.
+      assert length(messages) == 1, inspect(messages)
+    end
   end
 
   defp dashed(body, name),
