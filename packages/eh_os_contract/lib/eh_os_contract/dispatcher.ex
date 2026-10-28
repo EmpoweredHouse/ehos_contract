@@ -188,7 +188,7 @@ defmodule EhOsContract.Dispatcher do
   # (`EhOsContract.Model.capabilities/1`). `{:error, :not_found}` for a name none of
   # them declares as that kind — `<name>.subscribe` among them, which no caller
   # calls.
-  # Called by plug.ex.
+  # Called by plug.ex, and by form.ex for a form a page builds by a capability's name.
   @doc false
   @spec route([module()], :command | :record | :query, String.t()) ::
           {:ok, Model.t(), map()} | {:error, :not_found}

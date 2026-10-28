@@ -11,6 +11,12 @@ what a person typed to the same rules, before it is sent, and say which field is
 `EhOsContract.Form` builds the form's `Ecto.Changeset` from the command's declaration, so the rules are
 written once, in the contract.
 
+The same holds for the two other things a person sends: an event an actor records (`recorded_by:`),
+for `EhOsContract.record/3`, and a query's params, a search or a filter over a read model, for
+`EhOsContract.query/3`. `Form.changeset/4` takes the event's module or the query's as it takes a
+command's, and `Form.to_struct/1` gives the struct each of them takes. "A form" here is any input that
+arrives as text: an HTML page, a CSV import, a console.
+
 ## The rule, from both sides
 
 - **The contract holds the rules.** A required field, a type, an enum's members, a domain value's
@@ -142,7 +148,7 @@ end
 def handle_event("save", %{"issue_invoice" => params}, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
 
-  with {:ok, command} <- EhOsContract.Form.to_command(changeset),
+  with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
        {:ok, _receipt} <-
          EhOsContract.dispatch(Invoicing, command,
            actor: socket.assigns.actor,
@@ -190,17 +196,57 @@ def error_message({_message, opts}) do
 end
 ```
 
+## A form that records, and a form that asks
+
+A form that records a fact is built from the event, and its struct goes to `record/3`; a refusal comes
+back through `refused/3` as a command's does. A search form is built from the query, which has no
+identity: its params are checked as fields, and its struct goes to `query/3`.
+
+```elixir
+# `InvoicesOfPeriod`: a query over a read model of invoices, which a contract declares beside the
+# example's command.
+changeset = EhOsContract.Form.changeset(Invoicing, Invoicing.Queries.InvoicesOfPeriod, params)
+
+with {:ok, query} <- EhOsContract.Form.to_struct(changeset),
+     {:ok, rows} <- EhOsContract.query(Invoicing, query, actor: socket.assigns.actor) do
+  assign(socket, rows: rows, filter: to_form(changeset, action: :validate))
+else
+  {:error, %Ecto.Changeset{} = changeset} -> assign(socket, :filter, to_form(changeset))
+  {:error, reason} -> assign(socket, :filter, to_form(EhOsContract.Form.refused(changeset, reason)))
+end
+```
+
+A page that knows a capability's name rather than its module, as `EhOsContract.call/3` takes it, builds
+the same changeset by the name: `Form.changeset({:command, "forms_example.issue_invoice"}, params)`,
+among the registered contracts or those `contracts:` names. `call/3` itself takes data with the types
+JSON gives it, and a form's text goes through `Form`.
+
+Building a form asks no `EhOsContract.Authorizer`: what it checks is the shape the contract declares,
+its fields, their types, an enum's members and the names of its values' invariants, and whether the
+person may issue it is asked when it is sent. Show a form only to whom the page means to.
+
 ## What a form reads, and what it does not
 
 - **Text, as a form sends it.** Every value arrives as text and is read as its declared type, an
   integer, a boolean, a decimal, a date or a timestamp. A field left blank (`""`, or only spaces) is
   absent: a required one is an error, an optional one is nil. A select's text is found among an enum's
   members, and an unknown one is an error; no atom is created from it.
-- **Rows, as a form sends them.** A list arrives as a map keyed by the rows' indices, and is read in
-  their order; a blank item, which a checkbox group sends when nothing is chosen, is dropped. In this
-  version a domain value with fields, or a list of them, is checked whole: a problem anywhere inside it
-  is an error at the field that holds it. Phoenix's `inputs_for` needs an embedded schema, which this
-  version does not build, so a list's inputs are named by hand (`issue_invoice[lines][0][title]`).
+- **Rows, as `inputs_for` sends them.** A domain value with fields is a row, and a list of them a row
+  each, arriving as a map keyed by the rows' indices and read in their order. Each row is a changeset
+  of its own, which `<.inputs_for>` renders with its own errors: a problem at the row's field, and an
+  invariant of the value as a whole on the row's `:base`. A row the form sends is read whole from it:
+  a field of it the page did not render is absent, not `data:`'s. A blank item, which a checkbox group
+  or a list sends so that choosing nothing still sends the field, is dropped, and a list sent with no
+  rows is an empty list. Phoenix's `items_sort[]` and `items_drop[]` are not read: a page that adds,
+  removes or reorders rows changes the params it passes.
+- **What the params leave out keeps its value from `data:`.** An edit form need not render every
+  field: one absent from the params keeps the value the page gave it, its rows too. One the params
+  carry, even blank, is read from them, so a `<select multiple>` or a bare checkbox that sends nothing
+  when nothing is chosen needs a hidden blank input, as `<.input type="checkbox">` renders one, to
+  clear what `data:` holds. And leaving a field off the page does not protect it: params that carry it
+  set it. A value the page decides, not the person, goes into the struct after `to_struct/1`.
+- **Every change, every row.** A LiveView reads the form on each `phx-change`, every row of it. Bound
+  what a form may send where the host takes it: the socket's `max_frame_size`, the parser's `length`.
 - **Timestamps with their offset.** A `:timestamp` is read from ISO 8601 text with its offset,
   `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends neither seconds nor an offset, which
   is not a timestamp: the page adds them, or the field is a `:date`.
@@ -219,7 +265,7 @@ Each error carries the engine's reason in its keyword list:
 | --- | --- |
 | `{"can't be blank", validation: :required}` | A required field is missing or blank |
 | `{"is invalid", validation: :type}` | A value is not of its declared type, or not one of an enum's members |
-| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name` |
+| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name`; a value with fields as a whole, on its row's `:base` |
 | `{"does not exist", validation: :unknown}` | Dispatch found no entity the field names (`refused/3`) |
 | `{"was refused", validation: :rejected, invariant: name}` | Dispatch refused on the unit's invariant or the command's constraint `name`, at the field `at:` names, or at `:base` (`refused/3`) |
 | `{"is invalid", validation: :generated \| :supplied}` | The command carried a field dispatch generates or the host supplies (`refused/3`): the page's mistake, never the person's |

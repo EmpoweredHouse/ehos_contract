@@ -7,12 +7,18 @@ defmodule EhOsContract.Form do
   they hold. The form is checked while the person types, with the same rules dispatch
   applies, and the application writes none of them a second time.
 
+  A form that records a fact (an event an actor records, `recorded_by:`) or asks a query
+  (a search or a filter over a read model) is built the same way, from the event's fields
+  or the query's params, for `EhOsContract.record/3` or `EhOsContract.query/3`. And
+  "a form" is any input that arrives as text, a CSV import or a console among them, not
+  only an HTML page.
+
       # mount, and phx-change="validate"
       changeset = EhOsContract.Form.changeset(Billing.Contracts.Invoicing, Commands.IssueInvoice, params)
       assign(socket, :form, to_form(changeset, action: :validate))
 
       # phx-submit="save"
-      with {:ok, command} <- EhOsContract.Form.to_command(changeset),
+      with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
            {:ok, _receipt} <- EhOsContract.dispatch(Billing.Contracts.Invoicing, command, actor: actor) do
         ...
       else
@@ -45,10 +51,17 @@ defmodule EhOsContract.Form do
     * a domain value that breaks one of its invariants:
       `{"is invalid", validation: :invariant, invariant: :positive}`.
 
-  A domain value with fields, or a list of them, is checked whole in this version: a
-  problem anywhere inside it is an error at the field that holds it. Phoenix's
-  `inputs_for` needs an embedded schema, which this version does not build, so a list's
-  inputs are named by hand (`issue_invoice[lines][0][title]`).
+  **A domain value with fields, or a list of them, is a row each**, which
+  `Phoenix.Component.inputs_for/1` renders: each row is a changeset of its own, its
+  problems at its fields, and an invariant of the value as a whole, which no single field
+  holds, on the row's `:base`. The form is invalid while any row is; the field that holds
+  the rows carries no error of theirs. A list that is not rows, or a required value left
+  out, is an error at that field.
+
+      <.inputs_for :let={line} field={@form[:items]}>
+        <.input field={line[:title]} label="Line" />
+        <.input field={line[:quantity]} type="number" label="Quantity" />
+      </.inputs_for>
 
   **What it does not take from the params:**
 
@@ -72,7 +85,7 @@ defmodule EhOsContract.Form do
   at the field, and a rejection at the field the application names for its rule, or
   above the fields.
 
-  The changeset's data is the command's struct, so `Phoenix.HTML.FormData` names the form
+  The changeset's data is the command's struct (the event's, the query's), so `Phoenix.HTML.FormData` names the form
   after the command (`issue_invoice[...]`), unless `to_form/2` is given `as:`. An error
   that is the whole form's is at `:base`, which a command with a field named `base` shares.
 
@@ -80,23 +93,73 @@ defmodule EhOsContract.Form do
   [Forms](forms.md) (`docs/concepts/forms.md` in the package).
   """
 
-  alias EhOsContract.{Codec, Model, Rejection, Supplier}
+  alias EhOsContract.{Codec, Dispatcher, Model, Rejection, Supplier}
 
   # The key of an error that is the whole form's, not one field's.
   @form_error :base
 
-  @typedoc "A changeset `changeset/4` built, over the command's struct."
+  @typedoc "A changeset `changeset/4` built, over the struct of a command, a recorded event or a query."
   @type t :: Ecto.Changeset.t()
 
   @doc """
-  The changeset of `command`, a command module of `contract`, for the form's `params`.
+  The changeset of the capability EHOS grants by `capability`'s name, for a page that knows
+  the name rather than the module, as `EhOsContract.call/3` takes it: `{:command, name}`,
+  `{:record, name}` or `{:query, name}`. `opts` are `changeset/4`'s, and `contracts:`, the
+  contracts the name is looked up among, every registered one by default, as for `call/3`.
+
+      EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params, data: %{invoice_id: id})
+
+  Like `changeset/4`, it checks the shape the contract declares, its fields, their types,
+  an enum's members and the names of its values' invariants, and asks no
+  `EhOsContract.Authorizer`: whether the person may issue it is asked when it is sent, by
+  `dispatch/3`, `record/3` or `query/3`. Show the form only to whom the page means to.
+
+  Raises `ArgumentError` when none of the contracts declares a capability of that kind and
+  name.
+  """
+  @spec changeset({:command | :record | :query, String.t()}, map()) :: t()
+  def changeset({_kind, _name} = capability, params), do: changeset(capability, params, [])
+
+  @doc """
+  `changeset/4` without options, or `changeset/2`'s capability with them: the first
+  argument tells which.
+  """
+  @spec changeset(module(), module(), map()) :: t()
+  @spec changeset({:command | :record | :query, String.t()}, map(), keyword()) :: t()
+  def changeset(contract, command, params) when is_atom(contract),
+    do: changeset(contract, command, params, [])
+
+  def changeset({kind, name}, params, opts)
+      when kind in [:command, :record, :query] and is_binary(name) and is_map(params) do
+    {contracts, opts} = Keyword.pop_lazy(opts, :contracts, &EhOsContract.Registry.contracts/0)
+
+    case Dispatcher.route(contracts, kind, name) do
+      {:ok, model, declaration} ->
+        generated = if kind == :record, do: :event, else: kind
+        module = Model.module_for(model, generated, declaration.name)
+        changeset(model.module, module, params, opts)
+
+      {:error, :not_found} ->
+        raise ArgumentError, "no contract among those given declares #{kind} #{inspect(name)}"
+    end
+  end
+
+  @doc """
+  The changeset of `command` for the form's `params`: a command module of `contract`, or
+  the module of an event it lets an actor record, or of one of its queries. An event's
+  fields and a query's params are read and checked as a command's are; a query has no
+  identity.
 
   `opts`:
 
     * `data:`, a map of the command's fields the form starts from, the identity of the
       unit an edit form changes among them. Its values are the command's as the engine
-      holds them (an atom for an enum's member, a `Date`, a `Decimal`), not as a form
-      sends them.
+      holds them (an atom for an enum's member, a `Date`, a `Decimal`, a map for a domain
+      value with fields), not as a form sends them. A field the params leave out keeps
+      the value `data:` gives it, so an edit form need not render every field; one the
+      params carry, even blank, is read from them. Leaving a field off the page does not
+      protect it, since params that carry it set it: a value the page decides goes into
+      the struct after `to_struct/1`.
 
   The changeset is valid when the params hold everything the command needs, in its
   types; it has no `action`, which `Phoenix.Component.to_form/2` is given.
@@ -109,16 +172,16 @@ defmodule EhOsContract.Form do
       changeset.errors
       #=> [amount: {"is invalid", [validation: :invariant, invariant: :positive]}]
 
-  Raises `ArgumentError` when `contract` is not a contract or `command` is not one of its
-  commands, and when `data:` names a field the command does not have, holds a value not of
+  Raises `ArgumentError` when `contract` is not a contract or `command` is none of its
+  commands, recorded events or queries, and when `data:` names a field the command does not have, holds a value not of
   its field's type, holds an identity dispatch generates, or holds part of an identity of
   several fields: the page's mistakes, which dispatch would refuse at a field the person
   never sees.
   """
   @spec changeset(module(), module(), map(), keyword()) :: t()
-  def changeset(contract, command, params, opts \\ []) when is_map(params) do
+  def changeset(contract, command, params, opts) when is_atom(contract) and is_map(params) do
     model = contract!(contract)
-    declaration = command!(model, command)
+    declaration = declaration!(model, command)
     given = Keyword.get(opts, :data, %{})
     data = data!(command, given)
     values = Codec.values(model.domain)
@@ -127,41 +190,176 @@ defmodule EhOsContract.Form do
     fixed = for field <- identity(model, declaration), Map.get(data, field) != nil, do: field
     data_fits!(model, declaration, given, values, excluded, fixed)
     cast = Enum.reject(declaration.fields, &(&1.name in excluded or &1.name in fixed))
-    types = Map.new(declaration.fields, &{&1.name, ecto_type(&1.type, values)})
 
-    {changes, errors} =
-      Enum.reduce(cast, {%{}, []}, fn field, {changes, errors} ->
-        case read(field, params, values, model.domain) do
-          {:ok, value} -> {Map.put(changes, field.name, value), errors}
-          {:error, problem} -> {changes, [{field.name, error(problem)} | errors]}
-        end
-      end)
-
-    {data, types}
-    |> Ecto.Changeset.change(changes)
     # What the form never reads is not kept either: `Phoenix.HTML.FormData` shows a field's
     # params when it has no change, so a tampered identity would be shown for the real one.
-    |> Map.put(:params, Map.drop(stringified(params), Enum.map(excluded ++ fixed, &to_string/1)))
-    |> then(fn changeset ->
-      # `add_error/4` puts each in front, so the last field's goes in first.
-      Enum.reduce(errors, changeset, fn {field, {message, keys}}, changeset ->
-        Ecto.Changeset.add_error(changeset, field, message, keys)
-      end)
+    sent = Map.drop(stringified(params), Enum.map(excluded ++ fixed, &to_string/1))
+
+    build(declaration.fields, cast, sent, data, values, model.domain)
+  end
+
+  # A changeset over `data` for `fields`, reading those of `cast` from `params`: the form's
+  # whole, or one row of a domain value with fields, which is built the same way.
+  defp build(fields, cast, params, data, values, domain) do
+    types = Map.new(fields, &{&1.name, field_type(&1, values)})
+
+    {changes, rows, errors} =
+      Enum.reduce(cast, {%{}, %{}, []}, &read_field(&1, params, data, values, domain, &2))
+
+    changeset = Ecto.Changeset.change({data, types}, changes)
+
+    changeset = %{
+      changeset
+      | changes: Map.merge(changeset.changes, rows),
+        params: params,
+        valid?: changeset.valid? and Enum.all?(rows, fn {_name, row} -> valid_rows?(row) end)
+    }
+
+    # `add_error/4` puts each in front, so the last field's goes in first.
+    Enum.reduce(errors, changeset, fn {field, {message, keys}}, changeset ->
+      Ecto.Changeset.add_error(changeset, field, message, keys)
     end)
   end
 
+  # A field the params leave out keeps what `data:` gave it: an edit form need not render
+  # every field. A domain value with fields becomes a changeset per row, which
+  # `Phoenix.HTML.FormData`'s `inputs_for` shows with its own errors.
+  defp read_field(field, params, data, values, domain, {changes, rows, errors}) do
+    sent? = Map.has_key?(params, Atom.to_string(field.name))
+    held = Map.get(data, field.name)
+
+    case shape(field.type, values) do
+      :flat when not sent? and held != nil ->
+        {changes, rows, errors}
+
+      :flat ->
+        case read(field, params, values, domain) do
+          {:ok, value} -> {Map.put(changes, field.name, value), rows, errors}
+          {:error, problem} -> {changes, rows, [{field.name, error(problem)} | errors]}
+        end
+
+      {cardinality, value} ->
+        raw = if sent?, do: Map.get(params, Atom.to_string(field.name)), else: held
+        # The rows of what `data:` holds. `inputs_for` builds rows from the data when a field
+        # has no change, and cannot from a plain map, so a field always gets rows of its own.
+        kept =
+          cond do
+            held == nil -> nil
+            held == [] -> []
+            true -> rows_of(cardinality, value, held, values, domain)
+          end
+
+        case {nested(cardinality, value, raw, sent?, values, domain), sent?} do
+          {:absent, false} when held != nil ->
+            {changes, Map.put(rows, field.name, kept), errors}
+
+          # Cleared on purpose: the form sent it, blank.
+          {:absent, true} when field.optional ->
+            {changes, Map.put(rows, field.name, if(cardinality == :one, do: nil, else: [])),
+             errors}
+
+          {:absent, false} when field.optional ->
+            {changes, rows, errors}
+
+          {problem, _sent?} when problem in [:absent, :type] ->
+            rows = if kept, do: Map.put(rows, field.name, kept), else: rows
+
+            {changes, rows,
+             [{field.name, error(if problem == :absent, do: :required, else: :type)} | errors]}
+
+          {row_or_rows, _sent?} ->
+            {changes, Map.put(rows, field.name, row_or_rows), errors}
+        end
+    end
+  end
+
+  defp rows_of(cardinality, value, held, values, domain) do
+    case nested(cardinality, value, held, false, values, domain) do
+      problem when problem in [:absent, :type] -> nil
+      row_or_rows -> row_or_rows
+    end
+  end
+
+  # A domain value with fields, one or a list, read from what the form sent or from `data:`.
+  defp nested(_cardinality, _value, raw, _sent?, _values, _domain) when raw in [nil, ""],
+    do: :absent
+
+  # A list the form sent with no rows is an empty list, as dispatch takes one; a value with
+  # no fields sent, or a list `data:` holds empty, is absent.
+  defp nested(:many, _value, raw, true, _values, _domain) when raw == [] or raw == %{}, do: []
+
+  defp nested(_cardinality, _value, raw, _sent?, _values, _domain) when raw == [] or raw == %{},
+    do: :absent
+
+  defp nested(:one, value, raw, sent?, values, domain) when is_map(raw),
+    do: row(value, raw, sent?, values, domain)
+
+  defp nested(:many, value, raw, sent?, values, domain) do
+    case if(sent?, do: Codec.form_rows(raw), else: {:ok, raw}) do
+      {:ok, items} when is_list(items) ->
+        # The blank item a form sends so that a list with nothing chosen is sent at all.
+        items = Enum.reject(items, &(is_binary(&1) and String.trim(&1) == ""))
+
+        if Enum.all?(items, &is_map/1),
+          do: Enum.map(items, &row(value, &1, sent?, values, domain)),
+          else: :type
+
+      _not_rows ->
+        :type
+    end
+  end
+
+  defp nested(_cardinality, _value, _raw, _sent?, _values, _domain), do: :type
+
+  # One row: its fields read as the form's are, and, once they all fit, the value's own
+  # invariants, which no single field holds, on the row's `:base`.
+  defp row(value, raw, sent?, values, domain) do
+    %{fields: fields} = Map.fetch!(values, value)
+    {params, data} = if sent?, do: {stringified(raw), %{}}, else: {%{}, plain(raw)}
+    data = Map.new(fields, &{&1.name, Map.get(data, &1.name)})
+    changeset = build(fields, fields, params, data, values, domain)
+
+    whole = [%{name: :value, type: value}]
+
+    with true <- changeset.valid?,
+         [value: problem] <- Codec.problems(whole, %{value: applied(changeset)}, values, domain) do
+      {message, keys} = error(problem)
+      Ecto.Changeset.add_error(changeset, @form_error, message, keys)
+    else
+      _fits_or_already_refused -> changeset
+    end
+  end
+
+  defp valid_rows?(nil), do: true
+  defp valid_rows?(%Ecto.Changeset{valid?: valid?}), do: valid?
+  defp valid_rows?(rows) when is_list(rows), do: Enum.all?(rows, &valid_rows?/1)
+
+  # What a changeset holds, its rows applied into the maps a command's field carries.
+  defp applied(%Ecto.Changeset{data: data, changes: changes}),
+    do:
+      Enum.reduce(changes, data, fn {name, value}, acc -> Map.put(acc, name, applied(value)) end)
+
+  defp applied(rows) when is_list(rows), do: Enum.map(rows, &applied/1)
+  defp applied(value), do: value
+
+  # A row `data:` holds, as a map: an embedded schema's struct, from a read model, too.
+  defp plain(%_{} = struct), do: Map.from_struct(struct)
+  defp plain(map), do: map
+
   @doc """
-  The command a valid changeset holds, `{:ok, struct}`, for `EhOsContract.dispatch/3`; or
-  `{:error, changeset}` with the action `:insert`, so the form shows its errors.
+  The struct a valid changeset holds, `{:ok, struct}`: the command for
+  `EhOsContract.dispatch/3`, the event for `EhOsContract.record/3`, or the query for
+  `EhOsContract.query/3`. Or `{:error, changeset}` with the action `:insert`, so the form
+  shows its errors.
 
   The fields the changeset does not take from the params are as `data:` gave them, or
   nil: dispatch supplies the host's, and gives a generated identity.
   """
-  @spec to_command(t()) :: {:ok, struct()} | {:error, t()}
-  def to_command(%Ecto.Changeset{valid?: true} = changeset),
-    do: {:ok, Ecto.Changeset.apply_changes(changeset)}
+  @spec to_struct(t()) :: {:ok, struct()} | {:error, t()}
+  def to_struct(%Ecto.Changeset{valid?: true} = changeset),
+    do: {:ok, applied(changeset)}
 
-  def to_command(%Ecto.Changeset{} = changeset),
+  def to_struct(%Ecto.Changeset{} = changeset),
     do: {:error, %{changeset | action: :insert}}
 
   @doc """
@@ -171,8 +369,9 @@ defmodule EhOsContract.Form do
     * `{:invalid, problems}`: each problem at its field, as `changeset/4` puts its own,
       and an entity the host does not have (`:unknown`, a company id that names no
       company) as `{"does not exist", validation: :unknown}`. A problem at a field the
-      form never sent, the identity in `data:` or a field the host supplies, goes on
-      `:base` with `field:` naming it, so it is never shown at an input that is not there;
+      form never sent, the identity in `data:` or a field the host supplies, or at a
+      field of rows, which `inputs_for` shows nothing at, goes on `:base` with `field:`
+      naming it, so it is never shown at an input that is not there;
     * an `EhOsContract.Rejection`, a rule of the unit or a constraint of the command that
       refused it: `{"was refused", validation: :rejected, invariant: name}`, at the field
       `at:` names for the rule, or at `:base`, the whole form's, when it names none. A
@@ -201,10 +400,19 @@ defmodule EhOsContract.Form do
     at = at!(command, Keyword.get(opts, :at, []))
 
     reason
-    |> refusal_errors(at, Map.keys(changeset.params || %{}))
+    |> refusal_errors(at, shown(changeset))
     |> Enum.reduce(%{changeset | action: :insert}, fn {field, {message, keys}}, changeset ->
       Ecto.Changeset.add_error(changeset, field, message, keys)
     end)
+  end
+
+  # The fields a problem can be shown at: those the form sent that are not rows, whose field
+  # `inputs_for` shows nothing at, the rows' own errors being in each row.
+  defp shown(changeset) do
+    for {name, _value} <- changeset.params || %{},
+        field = Enum.find(Map.keys(changeset.types), &(Atom.to_string(&1) == name)),
+        not match?({:embed, _rows}, Map.get(changeset.types, field)),
+        do: name
   end
 
   defp refusal_errors({:invalid, problems}, _at, sent) when is_list(problems) do
@@ -281,10 +489,42 @@ defmodule EhOsContract.Form do
     end
   end
 
-  defp unit(model, declaration), do: Enum.find(model.units, &(&1.name == declaration.unit))
+  # A query addresses no unit, and has no identity.
+  defp unit(model, declaration),
+    do: Enum.find(model.units, &(&1.name == Map.get(declaration, :unit, :none)))
 
-  # The changeset's types, from the declaration's, for the form to show each value. A domain
-  # value with fields is a map until its fields are cast one by one.
+  # Whether a field holds a domain value with fields, one or a list of them, which the form
+  # reads row by row, or anything else, which it reads whole.
+  defp shape({:list, inner}, values) do
+    case shape(inner, values) do
+      {:one, value} -> {:many, value}
+      _other -> :flat
+    end
+  end
+
+  defp shape(type, values) when is_atom(type) and is_map_key(values, type) do
+    case Map.fetch!(values, type) do
+      %{type: nil} -> {:one, type}
+      %{type: inner} -> shape(inner, values)
+    end
+  end
+
+  defp shape(_type, _values), do: :flat
+
+  # A field's type in the changeset: an embed for a domain value with fields, which is what
+  # `inputs_for` asks for, though no schema stands behind it and nothing is cast through it.
+  defp field_type(field, values) do
+    case shape(field.type, values) do
+      {cardinality, _value} ->
+        {:embed,
+         %Ecto.Embedded{cardinality: cardinality, field: field.name, related: __MODULE__.Row}}
+
+      :flat ->
+        ecto_type(field.type, values)
+    end
+  end
+
+  # The changeset's types, from the declaration's, for the form to show each value.
   defp ecto_type(type, _values) when type in [:string, :id], do: :string
   defp ecto_type({:id, _entity}, _values), do: :string
   defp ecto_type(:timestamp, _values), do: :utc_datetime_usec
@@ -361,8 +601,31 @@ defmodule EhOsContract.Form do
     end
   end
 
-  defp command!(model, module) do
+  # The declaration whose struct `module` is: a command, an event an actor records, or a
+  # query, whose params are its fields here.
+  defp declaration!(model, module) do
     Enum.find(model.commands, &(Model.module_for(model, :command, &1.name) == module)) ||
-      raise ArgumentError, "#{inspect(module)} is not a command of #{inspect(model.module)}"
+      Enum.find(model.events, fn event ->
+        event.recorded_by != [] and Model.module_for(model, :event, event.name) == module
+      end) ||
+      Enum.find_value(model.queries, fn query ->
+        if Model.module_for(model, :query, query.name) == module,
+          do: Map.put(query, :fields, query.params)
+      end) ||
+      raise ArgumentError,
+            "#{inspect(module)} is not a command, a recorded event or a query of " <>
+              inspect(model.module)
   end
+end
+
+defmodule EhOsContract.Form.Row do
+  # What `Phoenix.HTML.FormData` builds a row from when a form has none of a value's yet,
+  # through `Ecto.Changeset.change/1`, which asks a schema's types of `__changeset__/0`: a
+  # row with no fields, so every input of it is empty.
+  @moduledoc false
+  defstruct []
+
+  @doc false
+  @spec __changeset__() :: %{}
+  def __changeset__, do: %{}
 end

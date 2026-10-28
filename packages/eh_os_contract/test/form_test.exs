@@ -1,3 +1,8 @@
+defmodule EhOsContract.FormTest.Address do
+  @moduledoc "An embedded schema's struct, as a read model would hold an address."
+  defstruct [:street, :city]
+end
+
 defmodule EhOsContract.FormTest do
   @moduledoc """
   #474: a form's changeset, built from a command's declaration and checked with the rules
@@ -31,7 +36,7 @@ defmodule EhOsContract.FormTest do
       assert changeset.valid?
       assert changeset.errors == []
 
-      assert {:ok, %IssueInvoice{} = command} = Form.to_command(changeset)
+      assert {:ok, %IssueInvoice{} = command} = Form.to_struct(changeset)
 
       assert command == %IssueInvoice{
                invoice_id: "i-1",
@@ -101,13 +106,13 @@ defmodule EhOsContract.FormTest do
     test "comes from data:, and a value the params carry for it is ignored, and not shown" do
       changeset = changeset(Map.put(@sent, "invoice_id", "i-other"))
 
-      assert {:ok, %IssueInvoice{invoice_id: "i-1"}} = Form.to_command(changeset)
+      assert {:ok, %IssueInvoice{invoice_id: "i-1"}} = Form.to_struct(changeset)
       refute Map.has_key?(changeset.params, "invoice_id")
     end
 
     test "is read from the params when data: holds none, as any other field" do
       assert {:ok, %IssueInvoice{invoice_id: "i-9"}} =
-               Form.to_command(changeset(Map.put(@sent, "invoice_id", "i-9"), []))
+               Form.to_struct(changeset(Map.put(@sent, "invoice_id", "i-9"), []))
 
       assert [invoice_id: {"can't be blank", [validation: :required]}] =
                changeset(@sent, []).errors
@@ -122,7 +127,7 @@ defmodule EhOsContract.FormTest do
         )
 
       assert {:ok, %{entry_id: nil, course_id: "c-1", student_id: "s-1"}} =
-               Form.to_command(changeset)
+               Form.to_struct(changeset)
     end
   end
 
@@ -135,7 +140,7 @@ defmodule EhOsContract.FormTest do
         data: %{visit_id: "v-1"}
       )
 
-    assert {:ok, %{visit_id: "v-1", code: "A1", reported: nil}} = Form.to_command(changeset)
+    assert {:ok, %{visit_id: "v-1", code: "A1", reported: nil}} = Form.to_struct(changeset)
   end
 
   test "a domain value's invariant is asked as dispatch asks it, through the domain" do
@@ -147,10 +152,238 @@ defmodule EhOsContract.FormTest do
              ).errors
   end
 
-  describe "to_command/1" do
+  describe "rows: a domain value with fields, one or a list" do
+    @items %{
+      "1" => %{"title" => "VAT", "quantity" => "0", "_persistent_id" => "1"},
+      "0" => %{"title" => "", "quantity" => "two", "_persistent_id" => "0"},
+      "2" => %{"title" => "Payroll", "quantity" => "3", "_persistent_id" => "2"}
+    }
+
+    test "puts each row's problems in that row, in the order of their indices" do
+      changeset = changeset(Map.put(@sent, "items", @items))
+
+      refute changeset.valid?
+      assert changeset.errors == []
+
+      assert [first, second, third] = changeset.changes.items
+
+      assert first.errors == [
+               title: {"can't be blank", [validation: :required]},
+               quantity: {"is invalid", [validation: :type]}
+             ]
+
+      assert second.errors == [
+               base: {"is invalid", [validation: :invariant, invariant: :counted]}
+             ]
+
+      assert third.valid?
+
+      assert Ecto.Changeset.traverse_errors(changeset, fn {message, _keys} -> message end) == %{
+               items: [
+                 %{title: ["can't be blank"], quantity: ["is invalid"]},
+                 %{base: ["is invalid"]},
+                 %{}
+               ]
+             }
+    end
+
+    test "gives the command the rows as the maps its field carries" do
+      items = %{
+        "0" => %{"title" => "VAT", "quantity" => "1"},
+        "1" => %{"title" => "Payroll", "quantity" => "3"}
+      }
+
+      address = %{"street" => "Main 1", "city" => ""}
+
+      assert {:ok, %IssueInvoice{} = command} =
+               Form.to_struct(
+                 changeset(Map.merge(@sent, %{"items" => items, "billing_address" => address}))
+               )
+
+      assert command.items == [%{title: "VAT", quantity: 1}, %{title: "Payroll", quantity: 3}]
+      assert command.billing_address == %{street: "Main 1", city: nil}
+    end
+
+    test "starts an edit form's rows from data:, and keeps them when the params leave the field out" do
+      data = %{invoice_id: "i-1", items: [%{title: "VAT", quantity: 2}], note: "kept"}
+      changeset = changeset(Map.delete(@sent, "note"), data: data)
+
+      assert changeset.valid?
+      assert [%Ecto.Changeset{data: %{title: "VAT", quantity: 2}}] = changeset.changes.items
+
+      assert {:ok, %{items: [%{title: "VAT", quantity: 2}], note: "kept"}} =
+               Form.to_struct(changeset)
+    end
+
+    test "a list that is no rows is the field's error, and an optional one sent blank is cleared" do
+      assert [items: {"is invalid", [validation: :type]}] =
+               changeset(Map.put(@sent, "items", "VAT")).errors
+
+      assert {:ok, %{items: [], billing_address: nil}} =
+               Form.to_struct(
+                 changeset(Map.merge(@sent, %{"items" => "", "billing_address" => ""}))
+               )
+    end
+
+    test "a value data: holds is shown as rows whatever the form sent, and cleared when sent blank" do
+      held = %{
+        invoice_id: "i-1",
+        billing_address: %{street: "Main 1", city: nil},
+        items: [%{title: "VAT", quantity: 2}]
+      }
+
+      for params <- [@sent, Map.merge(@sent, %{"items" => "x", "billing_address" => "y"})] do
+        changeset = changeset(params, data: held)
+        form = Phoenix.HTML.FormData.to_form(changeset, action: :validate)
+
+        assert [_row] = Phoenix.HTML.FormData.to_form(changeset, form, :items, [])
+        assert [_address] = Phoenix.HTML.FormData.to_form(changeset, form, :billing_address, [])
+      end
+
+      cleared = changeset(Map.merge(@sent, %{"items" => "", "billing_address" => ""}), data: held)
+      assert {:ok, %{items: [], billing_address: nil}} = Form.to_struct(cleared)
+    end
+
+    test "an empty list of rows data: holds stays empty when the params leave it out" do
+      changeset = changeset(@sent, data: %{invoice_id: "i-1", items: []})
+
+      assert changeset.valid?
+      assert {:ok, %{items: []}} = Form.to_struct(changeset)
+    end
+
+    test "a row data: holds may be a struct, an embedded schema's from a read model" do
+      address = %EhOsContract.FormTest.Address{street: "Main 1"}
+
+      assert {:ok, %{billing_address: %{street: "Main 1", city: nil}}} =
+               Form.to_struct(
+                 changeset(@sent, data: %{invoice_id: "i-1", billing_address: address})
+               )
+    end
+
+    test "a list sent with no rows is an empty list, and a blank item among rows is dropped" do
+      for items <- [%{}, [""], ["", %{"title" => "VAT", "quantity" => "1"}]] do
+        assert {:ok, %{items: rows}} = Form.to_struct(changeset(Map.put(@sent, "items", items)))
+        assert rows in [[], [%{title: "VAT", quantity: 1}]]
+      end
+    end
+
+    test "a refusal at a field of rows goes on the whole form, which inputs_for shows" do
+      changeset =
+        changeset(Map.put(@sent, "items", %{"0" => %{"title" => "VAT", "quantity" => "1"}}))
+        |> Form.refused({:invalid, [items: :unknown, lines: :type]})
+
+      assert changeset.errors == [
+               base: {"does not exist", [validation: :unknown, field: :items]},
+               lines: {"is invalid", [validation: :type]}
+             ]
+    end
+
+    test "inputs_for shows each row with its own errors, named as the form sends them back" do
+      changeset = changeset(Map.put(@sent, "items", @items))
+      form = Phoenix.HTML.FormData.to_form(changeset, action: :validate)
+
+      assert form.name == "issue_invoice"
+
+      rows = Phoenix.HTML.FormData.to_form(changeset, form, :items, [])
+
+      assert Enum.map(rows, & &1.name) ==
+               ["issue_invoice[items][0]", "issue_invoice[items][1]", "issue_invoice[items][2]"]
+
+      assert [[title: _, quantity: _], [base: _], []] = Enum.map(rows, & &1.errors)
+      assert Phoenix.HTML.FormData.input_value(hd(rows).source, hd(rows), :quantity) == "two"
+
+      [address] = Phoenix.HTML.FormData.to_form(changeset, form, :billing_address, [])
+      assert address.name == "issue_invoice[billing_address]"
+    end
+  end
+
+  describe "a recorded event and a query" do
+    test "an event an actor records is read and checked as a command is, for record/3" do
+      event = ValueRig.Till.Events.Counted
+
+      changeset =
+        Form.changeset(ValueRig.Till, event, %{"amount" => "250"}, data: %{till_id: "till-1"})
+
+      assert {:ok, %ValueRig.Till.Events.Counted{till_id: "till-1", amount: 250}} =
+               Form.to_struct(changeset)
+
+      assert [amount: {"is invalid", [validation: :invariant, invariant: :positive]}] =
+               Form.changeset(ValueRig.Till, event, %{"amount" => "0"},
+                 data: %{till_id: "till-1"}
+               ).errors
+    end
+
+    test "a query's params are its fields, for query/3, with no identity" do
+      query = ValueRig.Till.Queries.PaymentsAbove
+
+      assert {:ok, %ValueRig.Till.Queries.PaymentsAbove{above: 100}} =
+               Form.to_struct(Form.changeset(ValueRig.Till, query, %{"above" => " 100 "}))
+
+      assert [above: {"is invalid", [validation: :invariant, invariant: :positive]}] =
+               Form.changeset(ValueRig.Till, query, %{"above" => "0"}).errors
+
+      assert [above: {"can't be blank", [validation: :required]}] =
+               Form.changeset(ValueRig.Till, query, %{"above" => ""}).errors
+    end
+  end
+
+  describe "by a capability's name" do
+    defp capability(contract, kind, name) do
+      contract
+      |> EhOsContract.Model.fetch()
+      |> EhOsContract.Model.capabilities()
+      |> Enum.find_value(fn
+        {capability, %{kind: ^kind, name: ^name}} -> capability
+        _other -> nil
+      end)
+    end
+
+    @contracts [Invoicing, ValueRig.Till]
+
+    test "builds the same changeset as the module would, for a command, a recording and a query" do
+      issue = capability(Invoicing, :command, :issue_invoice)
+
+      assert Form.changeset({:command, issue}, @sent,
+               contracts: @contracts,
+               data: %{invoice_id: "i-1"}
+             ) ==
+               changeset(@sent)
+
+      # A person's recording: the registrar's; a system actor's, the counter's, has no name.
+      confirmed = capability(BoundaryRig.Waitlist, :record, :place_confirmed)
+
+      assert {:ok, %BoundaryRig.Waitlist.Events.PlaceConfirmed{entry_id: "e-1"}} =
+               Form.changeset({:record, confirmed}, %{},
+                 contracts: [BoundaryRig.Waitlist | @contracts],
+                 data: %{entry_id: "e-1"}
+               )
+               |> Form.to_struct()
+
+      above = capability(ValueRig.Till, :query, :payments_above)
+
+      assert {:ok, %ValueRig.Till.Queries.PaymentsAbove{above: 100}} =
+               Form.to_struct(
+                 Form.changeset({:query, above}, %{"above" => "100"}, contracts: @contracts)
+               )
+    end
+
+    test "raises for a name no contract declares as that kind" do
+      issue = capability(Invoicing, :command, :issue_invoice)
+
+      assert_raise ArgumentError, ~r/declares query/, fn ->
+        Form.changeset({:query, issue}, %{}, contracts: @contracts)
+      end
+
+      assert_raise ArgumentError, ~r/declares command "nobody.nothing"/, fn ->
+        Form.changeset({:command, "nobody.nothing"}, %{}, contracts: @contracts)
+      end
+    end
+  end
+
+  describe "to_struct/1" do
     test "answers an invalid changeset with the action that shows its errors" do
       assert {:error, %Ecto.Changeset{action: :insert, valid?: false}} =
-               Form.to_command(changeset(%{@sent | "amount" => ""}))
+               Form.to_struct(changeset(%{@sent | "amount" => ""}))
     end
   end
 
@@ -232,8 +465,13 @@ defmodule EhOsContract.FormTest do
         Form.changeset(FormRig.Domain, IssueInvoice, %{})
       end
 
-      assert_raise ArgumentError, ~r/is not a command of/, fn ->
+      assert_raise ArgumentError, ~r/is not a command, a recorded event or a query of/, fn ->
         Form.changeset(Invoicing, ValueRig.Till.Commands.PayIn, %{})
+      end
+
+      # An event a command emits is no actor's to record.
+      assert_raise ArgumentError, ~r/is not a command, a recorded event or a query of/, fn ->
+        Form.changeset(ValueRig.Till, ValueRig.Till.Events.PaidIn, %{})
       end
     end
 

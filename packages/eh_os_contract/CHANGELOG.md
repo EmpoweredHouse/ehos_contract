@@ -50,8 +50,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
-- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474).
-  `Form.changeset(contract, command, params, data: ...)` reads what an HTML form sends:
+- **`EhOsContract.Form`, a form's changeset from a command's declaration** (#474), and from an
+  event an actor records or a query's params, for `record/3` and `query/3`.
+  `Form.changeset(contract, module, params, data: ...)` reads what an HTML form, or any input that
+  arrives as text, sends:
   - every value as text, a blank field as absent, a select's text as an enum's member;
   - each field held to the rules dispatch applies: required, of its declared type, and within
     its domain value's invariants, asked of the domain.
@@ -59,12 +61,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   Each problem is an error at its field, with the engine's reason in its keyword list
   (`validation: :required | :type | :invariant`, and `invariant:`), so the application writes
   its own words. The identity of the unit an edit form changes comes from `data:`, never the
-  params; a supplied field and a generated identity are left to dispatch. `Form.to_command/1`
-  turns a valid changeset into the command for `EhOsContract.dispatch/3`. A unit's invariants
+  params; a supplied field and a generated identity are left to dispatch. `Form.to_struct/1`
+  turns a valid changeset into the struct `EhOsContract.dispatch/3`, `record/3` or `query/3` takes.
+  A unit's invariants
   and a command's constraints are not asked: they come back as dispatch's refusal, which
   `Form.refused/3` puts back on the changeset, each field's problem at its field and a rejection
   at the field `at:` names for its rule, or on the whole form (`:base`), where a problem at a field
-  the form never sent goes too. A new concept page,
+  the form never sent goes too. A domain value with fields, or a list of them, is a row each, which
+  `inputs_for` renders with its own errors, and a field the params leave out keeps the value
+  `data:` gives it. `Form.changeset/2,3` builds it by a capability's name too, `{:command, name}`,
+  as `call/3` takes it; `call/3` keeps JSON's types, and `docs/authorization.md` says a form's text
+  goes through `Form` (#132). A new concept page,
   `docs/concepts/forms.md`, states the rule from both sides (the contract holds the rules, the
   changeset checks only the input's shape, a form never copies an invariant) with a LiveView page.
 

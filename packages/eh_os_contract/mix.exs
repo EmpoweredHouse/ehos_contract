@@ -302,7 +302,11 @@ defmodule EhOsContract.MixProject do
       # Every graph document the suite builds is held to `priv/schema/graph.v1.json`
       # (plan E13a), with the validator and the version `eh_os_contract_auth` uses.
       {:jsv, "~> 0.25.0", only: :test},
-      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false}
+      {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
+      # `EhOsContract.Form`'s tests build a form and its `inputs_for` as a LiveView page does.
+      # Never a host's: the host brings its own.
+      {:phoenix_ecto, "~> 4.6", only: :test},
+      {:phoenix_html, "~> 4.1", only: :test}
     ]
   end
 end
