@@ -1185,6 +1185,32 @@
   cursor: pointer;
 }
 
+/* The facts of the code, folded under "Technical details" (#490): the panel says the business first, and what
+   it says in plain words gives way to the same in code once they are unfolded. A part marked as nothing but
+   such facts folds with them, its title too; a panel with nothing to fold offers no fold. */
+
+.ehg-tech {
+  margin: 4px 0 10px;
+  font-size: 12px;
+}
+
+.ehg-tech > summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehg-tech > summary:hover,
+.ehg-tech[open] > summary {
+  color: var(--text-primary);
+}
+
+.ehg-panel:has(.ehg-tech:not([open])) .ehg-code,
+.ehg-panel:has(.ehg-tech[open]) .ehg-plain,
+.ehg-panel:not(:has(.ehg-code)) .ehg-tech {
+  display: none;
+}
+
 /* The panel's way to where the selected card leads: a button, or a link to a host's page. */
 .ehg-panel .ehg-open {
   display: inline-block;

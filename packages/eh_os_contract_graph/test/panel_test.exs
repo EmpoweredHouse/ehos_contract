@@ -235,7 +235,9 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
       assert text =~ "the gateway records a payment it collected"
       assert text =~ "When Payment gateway integration actor records Payment collected event"
       assert text =~ "the gateway cannot record a negative amount collected"
-      assert text =~ "refused: breaks not_negative of"
+      # The engineer's panel says the invariant by its name in code, its label beside it for
+      # while "Technical details" are folded (#490).
+      assert text =~ "refused: breaks not_negative An amount is not negative of"
     end
 
     test "the owner reads the invariant by its label" do
@@ -255,7 +257,7 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
 
       assert text =~ "Scenarios it refuses in · 1"
       assert text =~ "a negative payment is not asked for"
-      assert text =~ "refused: breaks not_negative of"
+      assert text =~ "refused: breaks not_negative An amount is not negative of"
       refute text =~ "nothing is recorded"
     end
 
@@ -1029,6 +1031,76 @@ defmodule EhOsContract.GraphRenderer.PanelTest do
     } do
       assert open(document, promise) =~ "Waits on, through an earlier step Carrier external"
       assert open(document, carrier) =~ "Promises waiting on it"
+    end
+  end
+
+  # #490: one panel for engineer and owner. The business is said first; the facts of the code
+  # stay in the page, folded under "Technical details", which only the engineer's panel has.
+  describe "the technical details" do
+    defp panel_html(name, id, audience \\ :engineering) do
+      {:ok, live, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => Fixtures.document(name), "audience" => audience}
+        )
+
+      live |> with_target("#graph") |> render_click("select", %{"id" => id})
+      live |> element(".ehg-panel") |> render() |> LazyHTML.from_fragment()
+    end
+
+    defp folded(html), do: html |> LazyHTML.query(".ehg-code") |> LazyHTML.text()
+    defp plain(html), do: html |> LazyHTML.query(".ehg-plain") |> LazyHTML.text()
+
+    test "a command's grant, the field it names the person by, and its fields' types fold away" do
+      html = panel_html("fulfilment.warehouse", "command:fulfilment.warehouse:confirm_pick")
+
+      assert html |> LazyHTML.query("details.ehg-tech > summary") |> LazyHTML.text() =~
+               "Technical details"
+
+      assert folded(html) =~ "EHOS grants it as"
+      assert folded(html) =~ "names; anyone else is refused"
+      # Said in plain words while the details are folded.
+      assert plain(html) =~ "Only the person its unit names"
+      # A field without a label of the client's has no other name than its name in code, which
+      # stays; its type folds away.
+      names = LazyHTML.query(html, ".ehg-fields .ehg-field-name")
+      assert Enum.count(names) > 0
+      assert html |> LazyHTML.query(".ehg-fields .ehg-field-name.ehg-code") |> Enum.count() == 0
+      assert html |> LazyHTML.query(".ehg-fields .ehg-field-type.ehg-code") |> Enum.count() > 0
+    end
+
+    test "a process's correlation folds away, and its business stays" do
+      html = panel_html("process.fulfilment.order", "process:fulfilment.order")
+
+      assert folded(html) =~ "One run per"
+      refute html |> LazyHTML.query(".ehg-part-title") |> LazyHTML.text() == ""
+    end
+
+    test "a sentence said two ways is folded one way and shown the other" do
+      {:ok, live, _html} =
+        live_isolated(build_conn(), TestLive,
+          session: %{"document" => Fixtures.payments_refused_for_data()}
+        )
+
+      live
+      |> with_target("#graph")
+      |> render_click("select", %{"id" => "value:Billing.Domain:money"})
+
+      html = live |> element(".ehg-panel") |> render() |> LazyHTML.from_fragment()
+
+      assert folded(html) =~ "not_negative"
+      assert plain(html) =~ "An amount is not negative"
+      refute plain(html) =~ "not_negative"
+      # The value's own type and unit are the code's too.
+      assert folded(html) =~ "in cents"
+    end
+
+    test "the owner's panel has no technical details to unfold, and says it plainly" do
+      html =
+        panel_html("fulfilment.warehouse", "command:fulfilment.warehouse:confirm_pick", :owner)
+
+      assert html |> LazyHTML.query(".ehg-tech") |> Enum.count() == 0
+      assert folded(html) == ""
+      assert LazyHTML.text(html) =~ "Only the person its unit names"
     end
   end
 end
