@@ -203,6 +203,8 @@ back through `refused/3` as a command's does. A search form is built from the qu
 identity: its params are checked as fields, and its struct goes to `query/3`.
 
 ```elixir
+# `InvoicesOfPeriod`: a query over a read model of invoices, which a contract declares beside the
+# example's command.
 changeset = EhOsContract.Form.changeset(Invoicing, Invoicing.Queries.InvoicesOfPeriod, params)
 
 with {:ok, query} <- EhOsContract.Form.to_struct(changeset),
@@ -216,8 +218,12 @@ end
 
 A page that knows a capability's name rather than its module, as `EhOsContract.call/3` takes it, builds
 the same changeset by the name: `Form.changeset({:command, "forms_example.issue_invoice"}, params)`,
-among the registered contracts or those `contracts:` names. `call/3` itself takes data typed as JSON
-types it, and a form's text goes through `Form`.
+among the registered contracts or those `contracts:` names. `call/3` itself takes data with the types
+JSON gives it, and a form's text goes through `Form`.
+
+Building a form asks no `EhOsContract.Authorizer`: what it checks is the shape the contract declares,
+its fields, their types, an enum's members and the names of its values' invariants, and whether the
+person may issue it is asked when it is sent. Show a form only to whom the page means to.
 
 ## What a form reads, and what it does not
 
@@ -228,11 +234,19 @@ types it, and a form's text goes through `Form`.
 - **Rows, as `inputs_for` sends them.** A domain value with fields is a row, and a list of them a row
   each, arriving as a map keyed by the rows' indices and read in their order. Each row is a changeset
   of its own, which `<.inputs_for>` renders with its own errors: a problem at the row's field, and an
-  invariant of the value as a whole on the row's `:base`. A blank item of a plain list, which a
-  checkbox group sends when nothing is chosen, is dropped.
+  invariant of the value as a whole on the row's `:base`. A row the form sends is read whole from it:
+  a field of it the page did not render is absent, not `data:`'s. A blank item, which a checkbox group
+  or a list sends so that choosing nothing still sends the field, is dropped, and a list sent with no
+  rows is an empty list. Phoenix's `items_sort[]` and `items_drop[]` are not read: a page that adds,
+  removes or reorders rows changes the params it passes.
 - **What the params leave out keeps its value from `data:`.** An edit form need not render every
   field: one absent from the params keeps the value the page gave it, its rows too. One the params
-  carry, even blank, is read from them.
+  carry, even blank, is read from them, so a `<select multiple>` or a bare checkbox that sends nothing
+  when nothing is chosen needs a hidden blank input, as `<.input type="checkbox">` renders one, to
+  clear what `data:` holds. And leaving a field off the page does not protect it: params that carry it
+  set it. A value the page decides, not the person, goes into the struct after `to_struct/1`.
+- **Every change, every row.** A LiveView reads the form on each `phx-change`, every row of it. Bound
+  what a form may send where the host takes it: the socket's `max_frame_size`, the parser's `length`.
 - **Timestamps with their offset.** A `:timestamp` is read from ISO 8601 text with its offset,
   `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends neither seconds nor an offset, which
   is not a timestamp: the page adds them, or the field is a `:date`.

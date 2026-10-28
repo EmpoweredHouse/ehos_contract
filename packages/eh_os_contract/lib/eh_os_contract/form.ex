@@ -109,9 +109,10 @@ defmodule EhOsContract.Form do
 
       EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params, data: %{invoice_id: id})
 
-  Like `changeset/4`, it checks the shape of what was typed, which the contract's published
-  documents already state, and asks no `EhOsContract.Authorizer`: whether the person may
-  issue it is asked when it is sent, by `dispatch/3`, `record/3` or `query/3`.
+  Like `changeset/4`, it checks the shape the contract declares, its fields, their types,
+  an enum's members and the names of its values' invariants, and asks no
+  `EhOsContract.Authorizer`: whether the person may issue it is asked when it is sent, by
+  `dispatch/3`, `record/3` or `query/3`. Show the form only to whom the page means to.
 
   Raises `ArgumentError` when none of the contracts declares a capability of that kind and
   name.
@@ -156,7 +157,9 @@ defmodule EhOsContract.Form do
       holds them (an atom for an enum's member, a `Date`, a `Decimal`, a map for a domain
       value with fields), not as a form sends them. A field the params leave out keeps
       the value `data:` gives it, so an edit form need not render every field; one the
-      params carry, even blank, is read from them.
+      params carry, even blank, is read from them. Leaving a field off the page does not
+      protect it, since params that carry it set it: a value the page decides goes into
+      the struct after `to_struct/1`.
 
   The changeset is valid when the params hold everything the command needs, in its
   types; it has no `action`, which `Phoenix.Component.to_form/2` is given.

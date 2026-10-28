@@ -305,13 +305,14 @@ without a credential's actor, and, once the caller may, `{:error, :not_an_object
 `{:error, :correlation_id_is_not_a_uuid}`. A door that builds the structs itself skips that order, which
 is why the plug no longer builds them.
 
-`call/3` takes data typed as JSON types it: a boolean as `true`, an integer as a number. A form sends text,
+`call/3` takes data with the types JSON gives it: a boolean as `true`, an integer as a number. A form sends text,
 `"false"` for a checkbox and `"42"` for an amount, and a page reads it through
 [`EhOsContract.Form`](concepts/forms.md) instead: a changeset that checks what was typed field by field
 while the person types, built from the declaration by the module or by the same capability name
 (`Form.changeset({:command, "fulfilment.assign_pick_list"}, params)`), whose struct the page then
-dispatches with the person's actor. The `Authorizer` is asked then, by `dispatch/3`; until the form is
-sent, what it checks is the shape the contract's published documents already state.
+dispatches with the person's actor. The `Authorizer` is asked then, by `dispatch/3`. Until the form is sent
+it asks none: what it checks is the shape the contract declares, its fields, their types, an enum's members
+and the names of its values' invariants, so a page shows the form only to whom it means to.
 
 ## Calling it from code
 
