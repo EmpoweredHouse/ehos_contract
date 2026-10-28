@@ -22,6 +22,8 @@ defmodule EhOsContract.Domain.Build do
   alias EhOsContract.Digest
   alias Spark.Dsl.Transformer
 
+  @built_in EhOsContract.Domain.Rules.built_in_types()
+
   @kinds [
     subdomains: :subdomain,
     contexts: :context,
@@ -60,6 +62,12 @@ defmodule EhOsContract.Domain.Build do
        quote do
          @doc false
          def __eh_os_contract_model__, do: unquote(Macro.escape(model))
+
+         # The values by name, each made of fields with its struct's module: what
+         # `EhOsContract.Codec.values/1` reads on every dispatch, built once here, and kept
+         # out of the model so that naming the struct moves no digest.
+         @doc false
+         def __eh_os_contract_values__, do: unquote(Macro.escape(values_by_name(model)))
 
          defmodule Values do
            @moduledoc """
@@ -173,6 +181,21 @@ defmodule EhOsContract.Domain.Build do
     end
   end
 
+  defp values_by_name(model) do
+    Map.new(model.values, fn
+      %{type: nil, name: name} = value ->
+        {name,
+         Map.put(
+           value,
+           :struct,
+           Module.concat([model.module, Values, Macro.camelize(Atom.to_string(name))])
+         )}
+
+      value ->
+        {value.name, value}
+    end)
+  end
+
   # `%{service: [parcel: "Parcel", freight: nil]}`: every value that is an enum, or names
   # one, with its members labelled, for the generated `members/1` (#472).
   defp enum_members(values) do
@@ -208,12 +231,8 @@ defmodule EhOsContract.Domain.Build do
   # A field's type outside `Values`, where another value is the remote `Values.x()`.
   defp remote({:list, inner}, values), do: quote(do: [unquote(remote(inner, values))])
 
-  defp remote(value, values) when is_atom(value) do
-    case typespec(value) do
-      {^value, [], []} -> quote(do: unquote(values).unquote(value)())
-      built_in -> built_in
-    end
-  end
+  defp remote(value, values) when is_atom(value) and value not in @built_in,
+    do: quote(do: unquote(values).unquote(value)())
 
   defp remote(type, _values), do: typespec(type)
 

@@ -291,6 +291,65 @@ defmodule EhOsContract.ContractDomainServicesTest do
 
       assert error.message =~ "price(0) returned Decimal.new(\"1\"), and rule :per_minute gives"
     end
+
+    # #486: a value made of fields is its struct, compared field by field, so a decimal in
+    # it is compared as a value there too.
+    test "compares a value made of fields field by field, a decimal in it as a value" do
+      compile(
+        """
+        defmodule EhOsContract.Fixtures.TagDomain do
+          use EhOsContract.Domain, name: :tag_clinic, language: :en
+
+          subdomain :core, "Core", type: :core
+          context :settlement, "Settlement", subdomain: :core
+          actor :reception, :human, "Reception"
+
+          value :tag do
+            field :amount, :decimal
+            field :label, :string
+          end
+        end
+
+        defmodule EhOsContract.Fixtures.TagContract do
+          use EhOsContract.Contract,
+            domain: EhOsContract.Fixtures.TagDomain,
+            context: :settlement,
+            id: "tag_clinic.tags"
+
+          domain_service :tagging, "Tags" do
+            function :tag, "A tag" do
+              argument :minutes, :integer
+              returns :tag
+
+              rule :per_minute, "One unit a minute",
+                examples: [{[3], %{amount: "3", label: "3 min"}}]
+            end
+          end
+
+        #{@unit}
+        end
+
+        defmodule EhOsContract.Fixtures.TagService do
+          use EhOsContract.Fixtures.TagContract, domain_service: :tagging
+
+          @impl true
+          def tag(minutes),
+            do: %EhOsContract.Fixtures.TagDomain.Values.Tag{
+              amount: Decimal.new(minutes) |> Decimal.add(Decimal.new("0.00")),
+              label: Integer.to_string(minutes) <> " min"
+            }
+        end
+        """,
+        "tag_contract.ex"
+      )
+
+      [three] = ScenarioCase.rule_examples(EhOsContract.Fixtures.TagContract)
+
+      # 3.00 is 3, inside the struct as well.
+      assert ScenarioCase.run_rule_example(EhOsContract.Fixtures.TagContract, three, [
+               EhOsContract.Fixtures.TagService
+             ])
+    end
   end
 
   test "a contract without domain services hashes as it did before they existed" do

@@ -11,8 +11,8 @@ defmodule EhOsContract.Codec do
   # rule. `:integer` and `:boolean` what they
   # say, `:decimal` a `Decimal`, `:date` a `Date`, `:timestamp` a `DateTime` in UTC,
   # `{:enum, members}` one of the member atoms, `{:list, type}` a list of them. A
-  # domain value is its own type: an alias of a type (`value :money, :integer`), or a
-  # map of its fields.
+  # domain value is its own type: an alias of a type (`value :money, :integer`), or the
+  # struct of its fields (#486), which decoding builds and a field of the value must hold.
   #
   # **Bounds.** A value that enters the log is bounded where what holds it is: an `:id`
   # is at most 255 bytes, which an index entry keys with room for the rest of a key; an
@@ -101,20 +101,10 @@ defmodule EhOsContract.Codec do
   """
   @spec values(module()) :: values()
   def values(domain) do
-    if Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_model__, 0),
-      do: Map.new(domain.__eh_os_contract_model__().values, &{&1.name, with_struct(&1, domain)}),
+    if Code.ensure_loaded?(domain) and function_exported?(domain, :__eh_os_contract_values__, 0),
+      do: domain.__eh_os_contract_values__(),
       else: %{}
   end
-
-  defp with_struct(%{type: nil, name: name} = value, domain),
-    do:
-      Map.put(
-        value,
-        :struct,
-        Module.concat([domain, Values, Macro.camelize(Atom.to_string(name))])
-      )
-
-  defp with_struct(value, _domain), do: value
 
   @doc """
   A value made of fields as the struct `values` names for it, or as the map it is when

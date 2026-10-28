@@ -58,6 +58,24 @@ defmodule EhOsContract.DomainValuesTest do
       assert t =~ "methods: [EhOsContract.DomainTest.Typed.Values.method()]"
       assert t =~ "paid_on: Date.t() | nil"
 
+      # A built-in type stays itself, never a type of `Values`.
+      compile("""
+      defmodule EhOsContract.DomainTest.Counted do
+        use EhOsContract.Domain, name: :clinic, language: :pl
+
+        value :tally do
+          field :count, :integer
+          field :open, :boolean
+        end
+      end
+      """)
+      |> types_of(".Values.Tally")
+      |> Map.fetch!(:t)
+      |> then(fn t ->
+        assert t =~ "count: integer()"
+        assert t =~ "open: boolean()"
+      end)
+
       assert %{amount: 1, paid_on: nil, methods: []} = struct!(line, amount: 1, methods: [])
 
       assert_raise ArgumentError,

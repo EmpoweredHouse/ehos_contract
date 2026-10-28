@@ -39,6 +39,8 @@ defmodule ValueRig.Window do
 
   use ValueRig.Domain, value: :window
 
+  # The struct, as dispatch hands it (#486), and as the domain's examples must too.
   @impl true
-  def in_order(%{from: from, to: to}), do: Date.compare(from, to) != :gt
+  def in_order(%ValueRig.Domain.Values.Window{from: from, to: to}),
+    do: Date.compare(from, to) != :gt
 end
