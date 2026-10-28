@@ -233,11 +233,13 @@ defmodule EhOsContract.GraphRenderer.Landscape do
     kind =
       case entry do
         {_application, %{} = document} -> inspect(document["kind"])
+        {application, other} when is_binary(application) -> inspect(other, limit: 3)
         other -> inspect(other, limit: 3)
       end
 
     raise ArgumentError,
-          "a landscape joins {application, domain document} pairs, got #{kind}"
+          "a landscape joins {application, domain document} and {application, :none} pairs, " <>
+            "got #{kind}"
   end
 
   defp unnamed(application) do

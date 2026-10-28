@@ -166,9 +166,11 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
     end
 
     test "refuses anything but a document or :none beside an application" do
-      assert_raise ArgumentError, ~r/joins \{application, domain document\} pairs/, fn ->
-        Landscape.join([{"office", nil}])
-      end
+      assert_raise ArgumentError,
+                   ~r/joins \{application, domain document\} and \{application, :none\} pairs, got nil/,
+                   fn ->
+                     Landscape.join([{"office", nil}])
+                   end
 
       assert_raise ArgumentError, ~r/names each application by a string, got :office/, fn ->
         Landscape.join([{:office, :none}])
@@ -313,7 +315,7 @@ defmodule EhOsContract.GraphRenderer.LandscapeTest do
 
   test "refuses a document that is not a domain's" do
     assert_raise ArgumentError,
-                 ~r/joins \{application, domain document\} pairs, got "contract"/,
+                 ~r/joins \{application, domain document\} and \{application, :none\} pairs, got "contract"/,
                  fn ->
                    Landscape.join([{"billing", Fixtures.document("billing.payments")}])
                  end
