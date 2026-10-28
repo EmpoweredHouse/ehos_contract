@@ -21,7 +21,12 @@ defmodule EhOsContract.EffectJobErrorsTest do
           membership_id: "membership-#{System.unique_integer([:positive])}",
           member_id: "member-anna",
           name: name,
-          contacts: [%{member_id: "member-anna", phone: "+48 600 100 200"}],
+          contacts: [
+            %ShreddingRig.Domain.Values.Contact{
+              member_id: "member-anna",
+              phone: "+48 600 100 200"
+            }
+          ],
           plan: :basic
         },
         actor: Actor.credential("u-clerk", ["shredding_rig.join"])

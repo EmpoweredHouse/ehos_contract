@@ -1,8 +1,3 @@
-defmodule EhOsContract.FormTest.Address do
-  @moduledoc "An embedded schema's struct, as a read model would hold an address."
-  defstruct [:street, :city]
-end
-
 defmodule EhOsContract.FormTest do
   @moduledoc """
   #474: a form's changeset, built from a command's declaration and checked with the rules
@@ -12,6 +7,7 @@ defmodule EhOsContract.FormTest do
   use ExUnit.Case, async: true
 
   alias EhOsContract.Form
+  alias FormRig.Domain.Values.{Address, Line}
   alias FormRig.Invoicing
   alias FormRig.Invoicing.Commands.IssueInvoice
 
@@ -187,7 +183,7 @@ defmodule EhOsContract.FormTest do
              }
     end
 
-    test "gives the command the rows as the maps its field carries" do
+    test "gives the command the rows as the structs its field carries" do
       items = %{
         "0" => %{"title" => "VAT", "quantity" => "1"},
         "1" => %{"title" => "Payroll", "quantity" => "3"}
@@ -200,18 +196,22 @@ defmodule EhOsContract.FormTest do
                  changeset(Map.merge(@sent, %{"items" => items, "billing_address" => address}))
                )
 
-      assert command.items == [%{title: "VAT", quantity: 1}, %{title: "Payroll", quantity: 3}]
-      assert command.billing_address == %{street: "Main 1", city: nil}
+      assert command.items == [
+               %Line{title: "VAT", quantity: 1},
+               %Line{title: "Payroll", quantity: 3}
+             ]
+
+      assert command.billing_address == %Address{street: "Main 1", city: nil}
     end
 
     test "starts an edit form's rows from data:, and keeps them when the params leave the field out" do
-      data = %{invoice_id: "i-1", items: [%{title: "VAT", quantity: 2}], note: "kept"}
+      data = %{invoice_id: "i-1", items: [%Line{title: "VAT", quantity: 2}], note: "kept"}
       changeset = changeset(Map.delete(@sent, "note"), data: data)
 
       assert changeset.valid?
       assert [%Ecto.Changeset{data: %{title: "VAT", quantity: 2}}] = changeset.changes.items
 
-      assert {:ok, %{items: [%{title: "VAT", quantity: 2}], note: "kept"}} =
+      assert {:ok, %{items: [%Line{title: "VAT", quantity: 2}], note: "kept"}} =
                Form.to_struct(changeset)
     end
 
@@ -228,8 +228,8 @@ defmodule EhOsContract.FormTest do
     test "a value data: holds is shown as rows whatever the form sent, and cleared when sent blank" do
       held = %{
         invoice_id: "i-1",
-        billing_address: %{street: "Main 1", city: nil},
-        items: [%{title: "VAT", quantity: 2}]
+        billing_address: %Address{street: "Main 1", city: nil},
+        items: [%Line{title: "VAT", quantity: 2}]
       }
 
       for params <- [@sent, Map.merge(@sent, %{"items" => "x", "billing_address" => "y"})] do
@@ -251,19 +251,27 @@ defmodule EhOsContract.FormTest do
       assert {:ok, %{items: []}} = Form.to_struct(changeset)
     end
 
-    test "a row data: holds may be a struct, an embedded schema's from a read model" do
-      address = %EhOsContract.FormTest.Address{street: "Main 1"}
+    # #486: data: holds the value's struct, as a read model's Row loads it; a map with
+    # its keys is refused, as dispatch refuses one.
+    test "a row data: holds is the value's struct, and a map in its place is refused" do
+      address = %Address{street: "Main 1", city: nil}
 
-      assert {:ok, %{billing_address: %{street: "Main 1", city: nil}}} =
+      assert {:ok, %{billing_address: ^address}} =
                Form.to_struct(
                  changeset(@sent, data: %{invoice_id: "i-1", billing_address: address})
                )
+
+      assert_raise ArgumentError, ~r/data: needs a value its field's type/, fn ->
+        changeset(@sent,
+          data: %{invoice_id: "i-1", billing_address: %{street: "Main 1", city: nil}}
+        )
+      end
     end
 
     test "a list sent with no rows is an empty list, and a blank item among rows is dropped" do
       for items <- [%{}, [""], ["", %{"title" => "VAT", "quantity" => "1"}]] do
         assert {:ok, %{items: rows}} = Form.to_struct(changeset(Map.put(@sent, "items", items)))
-        assert rows in [[], [%{title: "VAT", quantity: 1}]]
+        assert rows in [[], [%Line{title: "VAT", quantity: 1}]]
       end
     end
 

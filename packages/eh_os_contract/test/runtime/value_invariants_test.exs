@@ -38,8 +38,8 @@ defmodule EhOsContract.ValueInvariantsTest do
                pay(
                  amount: 250,
                  fees: [1, 1000],
-                 window: %{from: ~D[2026-01-01], to: ~D[2026-01-01]},
-                 payment: %{amount: 1, note: nil}
+                 window: %ValueRig.Domain.Values.Window{from: ~D[2026-01-01], to: ~D[2026-01-01]},
+                 payment: %ValueRig.Domain.Values.Payment{amount: 1, note: nil}
                )
 
       assert [%{type: "value_rig.till.paid_in"}] = log()
@@ -58,11 +58,26 @@ defmodule EhOsContract.ValueInvariantsTest do
       # A fee is an amount: the amount's invariant is asked before the fee's own.
       assert pay(amount: 1, fees: [0]) == {:error, {:invalid, [fees: {:invariant, :positive}]}}
 
-      assert pay(amount: 1, window: %{from: ~D[2026-02-01], to: ~D[2026-01-31]}) ==
+      assert pay(
+               amount: 1,
+               window: %ValueRig.Domain.Values.Window{from: ~D[2026-02-01], to: ~D[2026-01-31]}
+             ) ==
                {:error, {:invalid, [window: {:invariant, :in_order}]}}
 
-      assert pay(amount: 1, payment: %{amount: -5, note: "tip"}) ==
+      assert pay(amount: 1, payment: %ValueRig.Domain.Values.Payment{amount: -5, note: "tip"}) ==
                {:error, {:invalid, [payment: {:invariant, :positive}]}}
+    end
+
+    # #486: a value made of fields is its struct; a map with its keys is not, so a
+    # misspelt key cannot pass for the value.
+    test "carrying a map where a value's struct is declared is refused on the type" do
+      assert pay(amount: 1, window: %{from: ~D[2026-01-01], to: ~D[2026-01-01]}) ==
+               {:error, {:invalid, [window: :type]}}
+
+      assert pay(amount: 1, payment: %{amount: 1, note: nil}) ==
+               {:error, {:invalid, [payment: :type]}}
+
+      assert log() == []
     end
 
     test "that does not fit its types is refused on the type, and no invariant is asked" do

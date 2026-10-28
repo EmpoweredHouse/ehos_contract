@@ -13,6 +13,7 @@ defmodule Billing.MonthTest do
   alias Billing.Contracts.Subscriptions
   alias Billing.Contracts.Subscriptions.Commands.{CancelSubscription, CloseBillingPeriod}
   alias Billing.Contracts.Subscriptions.Commands.{RecordUsage, StartSubscription}
+  alias Billing.Domain.Values.UsageRecord
   alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
 
   @manager Actor.credential("manager-mo", [
@@ -67,7 +68,10 @@ defmodule Billing.MonthTest do
 
     for {usage, units} <- [{"usage-1", 40}, {"usage-2", 10}] do
       send!(
-        %RecordUsage{subscription_id: "sub-1", usage: %{usage_id: usage, units: units}},
+        %RecordUsage{
+          subscription_id: "sub-1",
+          usage: %UsageRecord{usage_id: usage, units: units}
+        },
         ~U[2026-08-20 10:00:00Z]
       )
     end
@@ -163,7 +167,7 @@ defmodule Billing.MonthTest do
     subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
 
     send!(
-      %RecordUsage{subscription_id: "sub-1", usage: %{usage_id: "usage-1", units: 40}},
+      %RecordUsage{subscription_id: "sub-1", usage: %UsageRecord{usage_id: "usage-1", units: 40}},
       ~U[2026-08-20 10:00:00Z]
     )
 
@@ -226,7 +230,10 @@ defmodule Billing.MonthTest do
     assert {:error, {:invalid, [usage: _]}} =
              EhOsContract.dispatch(
                Subscriptions,
-               %RecordUsage{subscription_id: "sub-1", usage: %{usage_id: "usage-1", units: -40}},
+               %RecordUsage{
+                 subscription_id: "sub-1",
+                 usage: %UsageRecord{usage_id: "usage-1", units: -40}
+               },
                actor: @manager
              )
   end

@@ -313,10 +313,13 @@ defmodule EhOsContract.Form do
 
   # One row: its fields read as the form's are, and, once they all fit, the value's own
   # invariants, which no single field holds, on the row's `:base`.
+  #
+  # A row's data is the value's struct (#486), so the command it is applied into holds
+  # the struct dispatch asks of the field.
   defp row(value, raw, sent?, values, domain) do
-    %{fields: fields} = Map.fetch!(values, value)
+    %{fields: fields} = declared = Map.fetch!(values, value)
     {params, data} = if sent?, do: {stringified(raw), %{}}, else: {%{}, plain(raw)}
-    data = Map.new(fields, &{&1.name, Map.get(data, &1.name)})
+    data = Codec.built(declared, Map.new(fields, &{&1.name, Map.get(data, &1.name)}))
     changeset = build(fields, fields, params, data, values, domain)
 
     whole = [%{name: :value, type: value}]
@@ -334,7 +337,7 @@ defmodule EhOsContract.Form do
   defp valid_rows?(%Ecto.Changeset{valid?: valid?}), do: valid?
   defp valid_rows?(rows) when is_list(rows), do: Enum.all?(rows, &valid_rows?/1)
 
-  # What a changeset holds, its rows applied into the maps a command's field carries.
+  # What a changeset holds, its rows applied into the structs a command's field carries.
   defp applied(%Ecto.Changeset{data: data, changes: changes}),
     do:
       Enum.reduce(changes, data, fn {name, value}, acc -> Map.put(acc, name, applied(value)) end)
