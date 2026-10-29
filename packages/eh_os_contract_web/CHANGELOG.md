@@ -34,7 +34,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   or renderer is refused at `mix deps.get`. The dashboard's committed `priv/static/assets/` carry the renderer's
   hook, which needs 0.9.0's markup, so a host moves the two together.
 - **The dashboard's graph has its zoom in one control in the picture's corner, and a box that opens a contract, a
-  unit or a process ends its title in a mark** (#489, #488), as the renderer it draws with now does.
+  unit or a process ends its title in a mark** (#489, #488), as the renderer it draws with now does; a box with
+  no card no longer widens on each update.
 - **The dashboard's panel folds the facts of the code under "Technical details"** (#490), as the renderer it draws
   with now does; `priv/static/assets/app.css` is rebuilt with it.
 - **The dashboard's graph has one path and no switch of who reads** (#490): the explorer it draws with lost its
