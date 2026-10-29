@@ -13,7 +13,8 @@ with the options they beat, its review and its pull requests; this file holds on
   idempotency key), `eh_os_contract_graph` 0.9.0 (a landscape's application nothing describes, a host's
   `select`, boxes that say they lead somewhere, the zoom in one corner, the explorer's one path and the panel's
   folded code) and `eh_os_contract_web` 0.8.0 (the engine at `~> 0.13.0` and the renderer at `~> 0.9.0`); the
-  plugin's skills at 0.10.1. Applications install them from git. `main` is at the next patch's `-dev` of each.
+  plugin's skills at 0.10.1. Applications install them from git. The pull request after the tag moves each
+  released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
