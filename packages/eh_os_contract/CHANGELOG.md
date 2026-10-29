@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-29
+
 ### Added
 
 - **`EhOsContract.Testing.assert_read_model_tables/1`: a read model's table checked against its

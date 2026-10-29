@@ -25,15 +25,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-29
+
 ### Changed
 
+- **Breaking:** **the engine is required at `~> 0.13.0` and the graph renderer at `~> 0.9.0`**, however they are
+  fetched: by version from Hex, and also when this package comes from git or a path. A host with an older engine
+  or renderer is refused at `mix deps.get`. The dashboard's committed `priv/static/assets/` carry the renderer's
+  hook, which needs 0.9.0's markup, so a host moves the two together.
+- **The dashboard's graph has its zoom in one control in the picture's corner, and a box that opens a contract, a
+  unit or a process ends its title in a mark** (#489, #488), as the renderer it draws with now does.
 - **The dashboard's panel folds the facts of the code under "Technical details"** (#490), as the renderer it draws
   with now does; `priv/static/assets/app.css` is rebuilt with it.
-
-- **Breaking:** **the dashboard's graph is drawn by the renderer of `eh_os_contract_graph` 0.8.1** (#489), whose
-  hook its committed `priv/static/assets/` now carry, rebuilt: the zoom is one control in the picture's corner,
-  and a box that opens a contract, a unit or a process ends its title in a mark. The hook needs that version's
-  markup, so the renderer is required at `~> 0.8.1` once both are released, and a host moves the two together.
 - **The dashboard's graph has one path and no switch of who reads** (#490): the explorer it draws with lost its
   "Structure" / "Processes" tabs, the processes being a step of the path, and its "Engineering" / "Owner"
   switch; each place says in a line what it shows. `priv/static/assets/app.css` is rebuilt with it.

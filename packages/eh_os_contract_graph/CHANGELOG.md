@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-29
+
 ### Added
 
 - **A box that leads somewhere says so** (#488): the title of a box whose panel offers to open a host's page or a
