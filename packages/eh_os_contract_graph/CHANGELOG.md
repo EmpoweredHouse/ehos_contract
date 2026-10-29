@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-29
+
 ### Added
 
 - **A box that leads somewhere says so** (#488): the title of a box whose panel offers to open a host's page or a
@@ -56,7 +58,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   of the panel, which stays as the reader left it between selections; while it is open, what the panel says in
   plain words gives way to the same in code. A field with no label keeps its name in code, its only name. With
   `audience={:owner}` the panel has no technical details, as before.
-
 - **The zoom is one control in the picture's corner** (#489): the row of "−", "+", "Readable" and "Whole picture"
   over the canvas is gone; a button over the picture's top right corner opens a menu of "Closer", "Farther",
   "Readable" and "Whole picture", which stays open while it is used and closes on a press elsewhere or Escape.
