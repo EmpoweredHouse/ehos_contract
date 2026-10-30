@@ -12,7 +12,7 @@ The engine reads them twice. At compile time it refuses a model that contradicts
 contradicts the model. At run time it dispatches commands through the model, appends what they decide to
 its own log, and compares what the log holds with what the contracts and process modules declare.
 
-This page is how to start and what will not compile. Every key of both DSLs, with its type, default and
+This page is how to start and what will not compile. Every key of the three DSLs, with its type, default and
 description, is in the generated reference: [the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md)
 and [the process module](dsl/process-dsl.md).
 What `mix eh_os_contract.check` reports about a model that compiles is in [its rules](rules.md).
@@ -167,8 +167,8 @@ end
 
 What reacts to events is declared beside the units: a `policy` issues a command of this contract, an
 `effect` calls an external system, naming one of its `operation`s (`calls: {:p1, :submit_report}`) when
-the domain says what the system does; a `process_manager` steers a run with its own state and timers, and a
-`read_model` projects rows that a `query` reads.
+the domain says what the system does; and a `process_manager` steers a run with its own state and timers.
+A `read_model` is not a reaction: it projects rows that a `query` reads.
 
 A reaction names its rules as a command does, with
 `constraint`, and a process manager its `invariant`s too; a scenario that names one in `illustrates:`
