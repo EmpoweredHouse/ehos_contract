@@ -13,7 +13,7 @@ Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compile
 every contract against it.
 
 An application usually has one domain. It may hold more, each with its own contracts: a contract consumes only
-the events of its own domain ([`X5`](../contract.md#refusals-x)), and the tasks that read one domain then need
+the events of its own domain ([`X5`](../refusals.md#refusals-x)), and the tasks that read one domain then need
 `--domain` to name it. Connected to EHOS through `eh_os_contract_auth`, only the domain whose `name:` equals the application's name
 exactly may publish, since EHOS lets an application publish only under its own name: `:"my-shop"` for
 `my-shop`, never `:my_shop`.
@@ -25,7 +25,7 @@ use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsa
 `name:` is the application's namespace towards EHOS: the first segment of every capability, role, contract id
 and published event name. `language:` is the language labels and terms are written in. `code_language:` is
 the language of identifiers, English unless given, and the glossary below is held to it. `time_zone:` is the
-zone the business's days are in. [Writing a domain and a contract](../contract.md) says what each refuses;
+zone the business's days are in. [The compile refusals](../refusals.md#refusals-d) say what each refuses;
 every key is in [the domain's reference](../dsl/domain-dsl.md).
 
 This page is about the first half of a domain: how the business is divided and how the parts relate. Actors,
@@ -45,7 +45,7 @@ subdomain :cataloguing, "Cataloguing", type: :supporting
 ```
 
 A subdomain holds nothing itself. Contexts name the subdomain they belong to, and a context naming a
-subdomain the domain does not declare does not compile ([`D7`](../contract.md#refusals-d)). The domain's graph
+subdomain the domain does not declare does not compile ([`D7`](../refusals.md#refusals-d)). The domain's graph
 document, `mix eh_os_contract.graph --domain <domain>`, holds each subdomain with its kind, and the dashboard's
 context map draws it as a group of its contexts; nothing at run time reads the kind.
 
@@ -69,8 +69,8 @@ means in this context and, optionally, the `source` the definition comes from.
 
 A term may say which words must not be used for it, `avoid "Borrowing", reason: "…"`, and how it is said in
 another language, `translation :de, "Ausleihe", definition: "…"`, with what it means there; a translation
-may avoid words of its own language. A term defined twice in one context does not compile ([`D1`](../contract.md#refusals-d)), nor 2
-translations of 1 term into the same language, nor a translation into the context's own language ([`D2`](../contract.md#refusals-d)).
+may avoid words of its own language. A term defined twice in one context does not compile ([`D1`](../refusals.md#refusals-d)), nor 2
+translations of 1 term into the same language, nor a translation into the context's own language ([`D2`](../refusals.md#refusals-d)).
 
 The glossary is what `mix eh_os_contract.glossary` prints, per context, with the words to avoid and the
 translations; `--language en` prints each term in English, or notes that it has none.
@@ -135,7 +135,7 @@ One end of a directed relation may be an external system; the other end is then 
 `relation :anticorruption_layer, upstream: :payment_provider, downstream: :loans`. A symmetric relation is
 between contexts only. A relation whose roles do not fit its type, an end the domain does not declare, a
 context related to itself, or a word of `terms:` its context's glossary does not define does not compile
-([`D5`](../contract.md#refusals-d)); a relation declared twice does not either ([`D1`](../contract.md#refusals-d)).
+([`D5`](../refusals.md#refusals-d)); a relation declared twice does not either ([`D1`](../refusals.md#refusals-d)).
 
 ### What a relation lets through
 
@@ -151,19 +151,19 @@ declares (`value …, context:`). Such a reference has to follow the relation be
 | `:separate_ways` | nothing, and nothing else crosses either |
 
 A reference from the upstream context into the downstream one, or any reference across `:separate_ways`,
-does not compile ([`X11`](../contract.md#refusals-x)); nor does a read model, an effect or a process manager
-taking an event, or a boundary consulting one, across an `:anticorruption_layer` ([`X12`](../contract.md#refusals-x)), nor a contract consuming
+does not compile ([`X11`](../refusals.md#refusals-x)); nor does a read model, an effect or a process manager
+taking an event, or a boundary consulting one, across an `:anticorruption_layer` ([`X12`](../refusals.md#refusals-x)), nor a contract consuming
 an event its upstream sibling does not publish across an `:open_host_service` or a `:published_language`
-([`X13`](../contract.md#refusals-x)). In one application the published event is still taken from the log, whole;
+([`X13`](../refusals.md#refusals-x)). In one application the published event is still taken from the log, whole;
 another application takes it by its name on the wire, with only the fields it declares. Including an event in a
 process module is no reference: a process belongs to no context.
 
 ## A contract belongs to one context
 
 Every contract names its context,
-`use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"`, and a context the domain does not declare is refused ([`X1`](../contract.md#refusals-x)). One context, because a
+`use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"`, and a context the domain does not declare is refused ([`X1`](../refusals.md#refusals-x)). One context, because a
 contract is written in one language: its labels are that context's words, its actors are that context's (an
-actor declared with another `context:` is refused in `by:`, [`X2`](../contract.md#refusals-x)), and its glossary is the one its labels are
+actor declared with another `context:` is refused in `by:`, [`X2`](../refusals.md#refusals-x)), and its glossary is the one its labels are
 read against.
 
 A contract reaches into another context in two ways, and each is a dependency between the contexts:
@@ -175,7 +175,7 @@ A contract reaches into another context in two ways, and each is a dependency be
 
 A policy or a read model left without `delivery` runs inside the transaction of the context that decided the
 event it takes (an effect and a process manager run after it). So one taking an event of a sibling of another context has to
-declare its `delivery` ([`X10`](../contract.md#refusals-x)): `:at_least_once` decouples the two, `:in_transaction` couples them on purpose.
+declare its `delivery` ([`X10`](../refusals.md#refusals-x)): `:at_least_once` decouples the two, `:in_transaction` couples them on purpose.
 
 The relations are where these dependencies are written down, and `mix eh_os_contract.check` holds the two
 against each other (below).
@@ -244,20 +244,20 @@ the catalogue is upstream, the desk downstream.
 
 ## What the compiler refuses
 
-The domain's own rules ([`D1`](../contract.md#refusals-d) to [`D7`](../contract.md#refusals-d)) and the rules between a contract and its domain ([`X1`](../contract.md#refusals-x), [`X2`](../contract.md#refusals-x)) are in the
-table of [Writing a domain and a contract](../contract.md). The ones this page is about:
+The domain's own rules ([`D1`](../refusals.md#refusals-d) to [`D7`](../refusals.md#refusals-d)) and the rules between a contract and its domain ([`X1`](../refusals.md#refusals-x), [`X2`](../refusals.md#refusals-x)) are in the
+table of [the compile refusals](../refusals.md). The ones this page is about:
 
-- **[`D1`](../contract.md#refusals-d)**: a name not snake_case, two subdomains or contexts of one name, a term defined twice in a
+- **[`D1`](../refusals.md#refusals-d)**: a name not snake_case, two subdomains or contexts of one name, a term defined twice in a
   context, a relation declared twice, a name that is both a context and an external, a blank label.
-- **[`D2`](../contract.md#refusals-d)**: two translations of one term into one language, or one into the context's own.
-- **[`D5`](../contract.md#refusals-d)**: a relation whose roles do not fit its type, an undeclared end, an external in a symmetric
+- **[`D2`](../refusals.md#refusals-d)**: two translations of one term into one language, or one into the context's own.
+- **[`D5`](../refusals.md#refusals-d)**: a relation whose roles do not fit its type, an undeclared end, an external in a symmetric
   relation, a context related to itself, a word of `terms:` not in its context's glossary.
-- **[`D7`](../contract.md#refusals-d)**: a context in a subdomain the domain does not declare.
-- **[`X1`](../contract.md#refusals-x)**: a contract's `context:` naming none of its domain's contexts.
-- **[`X2`](../contract.md#refusals-x)**: a contract's `by:`, `recorded_by:` or scenario actor naming an actor of another context.
-- **[`X10`](../contract.md#refusals-x)**: a policy or a read model taking an event of a sibling contract of another context without
+- **[`D7`](../refusals.md#refusals-d)**: a context in a subdomain the domain does not declare.
+- **[`X1`](../refusals.md#refusals-x)**: a contract's `context:` naming none of its domain's contexts.
+- **[`X2`](../refusals.md#refusals-x)**: a contract's `by:`, `recorded_by:` or scenario actor naming an actor of another context.
+- **[`X10`](../refusals.md#refusals-x)**: a policy or a read model taking an event of a sibling contract of another context without
   declaring `delivery`.
-- **[`X11`](../contract.md#refusals-x)**, **[`X12`](../contract.md#refusals-x)**, **[`X13`](../contract.md#refusals-x)**: a
+- **[`X11`](../refusals.md#refusals-x)**, **[`X12`](../refusals.md#refusals-x)**, **[`X13`](../refusals.md#refusals-x)**: a
   reference against the relation between two contexts, or more than its pattern lets through (above).
 
 ## What `mix eh_os_contract.check` reports

@@ -47,7 +47,7 @@ application that the contract subscribes to and a policy takes. The published na
 person holds it, and nothing in the engine checks it.
 
 Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
-whole application, which the compiler checks ([`D14`](contract.md#refusals-d)).
+whole application, which the compiler checks ([`D14`](refusals.md#refusals-d)).
 
 ## The flow, end to end
 
@@ -184,7 +184,7 @@ end
 
 ## Scope: narrowing a query to rows
 
-A query may be scoped by one field of its read model ([`D10`](contract.md#refusals-d)):
+A query may be scoped by one field of its read model ([`D10`](refusals.md#refusals-d)):
 
 ```elixir
 # in the domain

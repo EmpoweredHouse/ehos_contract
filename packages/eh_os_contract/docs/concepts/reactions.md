@@ -214,23 +214,23 @@ and a label that repeats it drifts the day someone changes it.
 
 An event the manager takes that lacks its `correlate` fields joins no run and is passed over, and for a
 local event nothing refuses that at compile time: check that each event it names carries them. Its state
-holds no personal data ([`F7`](../contract.md#refusals-f)): it lives outside the log, where erasure cannot reach it.
+holds no personal data ([`F7`](../refusals.md#refusals-f)): it lives outside the log, where erasure cannot reach it.
 
 ## What the compiler refuses
 
 - A policy or an effect taking an event that is neither this contract's nor consumed, or a policy issuing a
-  command of another contract ([`P1`](../contract.md#refusals-p)). Issue a command of this contract; another context's unit is reached
+  command of another contract ([`P1`](../refusals.md#refusals-p)). Issue a command of this contract; another context's unit is reached
   through its own policy.
-- An effect with `calls:` delivered `:in_transaction` ([`P2`](../contract.md#refusals-p)): deliver it `:at_least_once`.
+- An effect with `calls:` delivered `:in_transaction` ([`P2`](../refusals.md#refusals-p)): deliver it `:at_least_once`.
 - A policy or an effect delivered `:at_least_once` without `idempotency`; `owner: :downstream` outside an
-  effect; `owner: :infrastructure` on an effect, or on a key other than `:event_id` ([`P3`](../contract.md#refusals-p)).
+  effect; `owner: :infrastructure` on an effect, or on a key other than `:event_id` ([`P3`](../refusals.md#refusals-p)).
 - A process manager that starts on nothing, has an empty `correlate`, or is delivered `:in_transaction`; a
   trigger that is neither an event it may take nor its own timer; a timer without exactly one of `wait:` and
-  `at:` ([`P4`](../contract.md#refusals-p)).
+  `at:` ([`P4`](../refusals.md#refusals-p)).
 - A timer's `wait:` that is negative, malformed, or longer than 100 years, a year counted as 366 days and a
-  month as a twelfth of that ([`R6`](../contract.md#refusals-r)): a timer longer than a century is a mistake in the contract.
-- A command no actor may issue and no reaction issues ([`C1`](../contract.md#refusals-c)).
-- In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](../contract.md#refusals-i), [`I6`](../contract.md#refusals-i)).
+  month as a twelfth of that ([`R6`](../refusals.md#refusals-r)): a timer longer than a century is a mistake in the contract.
+- A command no actor may issue and no reaction issues ([`C1`](../refusals.md#refusals-c)).
+- In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](../refusals.md#refusals-i), [`I6`](../refusals.md#refusals-i)).
 
 ## What `mix eh_os_contract.check` reports
 

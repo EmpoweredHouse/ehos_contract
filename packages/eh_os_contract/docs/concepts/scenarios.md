@@ -169,7 +169,7 @@ contract without code is legal, a test of one is not.
 
 ## The trigger, and who the scenario is about
 
-A scenario has exactly one trigger ([`S1`](../contract.md#refusals-s)):
+A scenario has exactly one trigger ([`S1`](../refusals.md#refusals-s)):
 
 - **`command`**: a command of the contract, to the unit that declares it.
 - **`on`**: an event delivered to the reaction that handles it: a policy or a process manager; for a process
@@ -180,29 +180,29 @@ A scenario has exactly one trigger ([`S1`](../contract.md#refusals-s)):
   told by an outside system.
 
 When only 1 declaration takes the trigger, the trigger identifies the target. When several take one event, `target` says
-which ([`S1`](../contract.md#refusals-s)): in the example `copy_lent` is handled by the policy and projected by the read model, so the
-policy's scenario names the policy. An effect and a read model are never a target ([`S6`](../contract.md#refusals-s)): an effect's outcome is
+which ([`S1`](../refusals.md#refusals-s)): in the example `copy_lent` is handled by the policy and projected by the read model, so the
+policy's scenario names the policy. An effect and a read model are never a target ([`S6`](../refusals.md#refusals-s)): an effect's outcome is
 outside the log, and a read model is shown by the scenario of a query that reads it.
 
-`actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../contract.md#refusals-s)). A
+`actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../refusals.md#refusals-s)). A
 recording's scenario always names who records the event, among its `recorded_by:`
-([`S7`](../contract.md#refusals-s)): who may write an event into the log is what such a scenario shows.
+([`S7`](../refusals.md#refusals-s)): who may write an event into the log is what such a scenario shows.
 
 ## What follows
 
-Which outcomes a scenario may state depends on its target ([`S6`](../contract.md#refusals-s)):
+Which outcomes a scenario may state depends on its target ([`S6`](../refusals.md#refusals-s)):
 
 | Target | Given | Outcome |
 | --- | --- | --- |
 | a unit's command | the unit's own events, or a boundary's consulted ones | `expect` one or more events, or `rejected` with one rule, or with an invariant of a domain value its data breaks (exactly one of the two) |
-| a policy | none ([`S2`](../contract.md#refusals-s)) | `issues` the commands it issues |
+| a policy | none ([`S2`](../refusals.md#refusals-s)) | `issues` the commands it issues |
 | a process manager | the events it handles | `issues`, `sets` and `cancels` a timer, `ended: true`; `state` its run holds after the step |
 | a query | events its read model projects | `answers` the rows, or for a query that returns one, the row |
 | a unit's event recorded | the unit's own events, or a boundary's consulted ones | `expect` the event recorded, or `rejected` with an invariant of a domain value its data breaks (exactly one of the two) |
 
-What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../contract.md#refusals-s)), `rejected` a
-rule it `rejects:`, or an invariant of a domain value one of its fields holds, its identity included ([`S4`](../contract.md#refusals-s)),
-and an outcome the declaration cannot produce does not compile ([`S6`](../contract.md#refusals-s)). A key typed by a value whose
+What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../refusals.md#refusals-s)), `rejected` a
+rule it `rejects:`, or an invariant of a domain value one of its fields holds, its identity included ([`S4`](../refusals.md#refusals-s)),
+and an outcome the declaration cannot produce does not compile ([`S6`](../refusals.md#refusals-s)). A key typed by a value whose
 invariant refuses "2026-13" shows it so:
 
 ```elixir
@@ -212,13 +212,13 @@ scenario "a payment is not asked for a period that is no month" do
 end
 ```
 
-After a recording, `expect` names only the event recorded ([`S5`](../contract.md#refusals-s)), and `rejected` an invariant of a domain
-value its fields hold ([`S4`](../contract.md#refusals-s)), since nothing decides a recording and nothing else refuses it. Its data
-names declared fields of the right type, with every required one in a `given` or the trigger ([`S3`](../contract.md#refusals-s)), and fits
-the domain's values ([`X9`](../contract.md#refusals-x)). The unit's identity is the exception: when the data leaves it out, the scenario uses its own.
+After a recording, `expect` names only the event recorded ([`S5`](../refusals.md#refusals-s)), and `rejected` an invariant of a domain
+value its fields hold ([`S4`](../refusals.md#refusals-s)), since nothing decides a recording and nothing else refuses it. Its data
+names declared fields of the right type, with every required one in a `given` or the trigger ([`S3`](../refusals.md#refusals-s)), and fits
+the domain's values ([`X9`](../refusals.md#refusals-x)). The unit's identity is the exception: when the data leaves it out, the scenario uses its own.
 
 `illustrates:` names the rules a reaction's or a query's scenario shows: a constraint of the policy, process
-manager or query, or an invariant of the process manager ([`S10`](../contract.md#refusals-s)). A command's scenario shows its rules with
+manager or query, or an invariant of the process manager ([`S10`](../refusals.md#refusals-s)). A command's scenario shows its rules with
 `rejected` instead, and `illustrates:` there does not compile.
 
 ## How a scenario runs
@@ -291,7 +291,7 @@ the process owner: the code decided something the agreed cases do not say.
 
 ## Which declarations need one
 
-The compiler refuses an invariant, or a command's constraint, without a `rejected` scenario ([`S8`](../contract.md#refusals-s)): a rule
+The compiler refuses an invariant, or a command's constraint, without a `rejected` scenario ([`S8`](../refusals.md#refusals-s)): a rule
 of a decision is proved only by a case that refuses on it. For everything else a missing scenario is a
 warning of [the check](../rules.md):
 

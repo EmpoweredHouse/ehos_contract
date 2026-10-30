@@ -77,8 +77,8 @@ end
 
 The domain says where the contract lives and who acts in it; the contract says what is decided (an
 aggregate, identified by `copy_id`), what it refuses (an invariant), and 2 scenarios a librarian can
-read and confirm. [Writing a domain and a contract](contract.md) explains each part and every refusal of
-the compiler; the [concepts](concepts/domain.md) go through each kind of declaration.
+read and confirm. [Write a domain, a contract and a process module](contract.md) explains each part, and
+[the compile refusals](refusals.md) list every refusal of the compiler; the [concepts](concepts/domain.md) go through each kind of declaration.
 
 ## 3. Implement what it decides
 
