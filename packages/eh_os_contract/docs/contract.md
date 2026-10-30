@@ -1,14 +1,16 @@
 # Writing a domain and a contract
 
-A business process is written down twice. First as a **domain**: the words its people use, the
-contexts it is split into, who acts in it and which systems it depends on. Then, once per process, as a
-**contract**: what is decided, what happened, what reacts to it, what is read, and what was promised.
-Both are Elixir modules on [Spark](https://hexdocs.pm/spark), in the manner of
-[ESDM](https://www.esdm.io): the model is code, and there is nothing beside it.
+A business is written down in up to three kinds of module. A **domain** holds the words its people use,
+the contexts it is split into, who acts in it and which systems it depends on. A **contract** belongs to one
+context and holds what its units decide, what happened, what reacts to it and what is read. A
+[**process module**](#process-modules) holds a run of the business, across one or more contracts, and what
+was promised about it; a business with no run, such as a register of rooms, needs none. All are Elixir
+modules on [Spark](https://hexdocs.pm/spark), in the manner of [ESDM](https://www.esdm.io): the model is
+code, and there is nothing beside it. Each word has one meaning, in [the glossary](glossary.md).
 
 The engine reads them twice. At compile time it refuses a model that contradicts itself and code that
 contradicts the model. At run time it dispatches commands through the model, appends what they decide to
-its own log, and compares what the log holds with what the contract promised.
+its own log, and compares what the log holds with what the contracts and process modules declare.
 
 This page is how to start and what will not compile. Every key of both DSLs, with its type, default and
 description, is in the generated reference: [the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md)

@@ -132,6 +132,7 @@ defmodule EhOsContract.MixProject do
           ) ++
           [
             "docs/authorization.md",
+            "docs/glossary.md",
             "docs/configuration.md",
             "docs/cli.md",
             "docs/behaviours.md",
@@ -144,6 +145,7 @@ defmodule EhOsContract.MixProject do
         Introduction: ["README.md", "docs/introduction.md", "docs/getting-started.md"],
         Concepts: [~r{docs/concepts/}, "docs/contract.md", "docs/authorization.md"],
         Reference: [
+          "docs/glossary.md",
           "docs/configuration.md",
           "docs/cli.md",
           "docs/behaviours.md",
