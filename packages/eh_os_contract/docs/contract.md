@@ -278,6 +278,14 @@ defmodule Lending.Processes.Loan do
   end
 
   deadline {60, :day}
+
+  scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :eventually do
+    given :loan_opened, %{loan_id: "l-1", copy_id: "c-1", member_id: "m-1"},
+      at: "2026-09-01T09:00:00Z"
+
+    given :copy_returned, %{loan_id: "l-1"}, at: "2026-09-20T09:00:00Z"
+    promise :returned_within_a_month, at: "2026-10-15T09:00:00Z"
+  end
 end
 ```
 
@@ -290,17 +298,8 @@ end
   the end.
 - A `promise` says that after the event in `from`, the event in `eventually` follows within the time
   in `within`.
-
-Show a promise with a scenario. Give the events, the moment of judgement and the verdict that the
-promise must get:
-
-```elixir
-scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :eventually do
-  given :loan_opened, %{loan_id: "l-1", copy_id: "c-1", member_id: "m-1"}, at: "2026-09-01T09:00:00Z"
-  given :copy_returned, %{loan_id: "l-1"}, at: "2026-09-20T09:00:00Z"
-  promise :returned_within_a_month, at: "2026-10-15T09:00:00Z"
-end
-```
+- A `scenario` in the process module shows a promise. It gives the events, the moment of judgement
+  and the verdict that the promise must get.
 
 Each given holds the required fields that its contract declares ([`X9`](refusals.md#refusals-x)). If the
 domain declares an external system, a scenario can show that it was not available:
