@@ -79,11 +79,11 @@ Everything else the library does reads those modules:
 - **Dispatch** (`EhOsContract.dispatch/3`) runs a command through the contract: may this actor issue it,
   are its fields sound, what does the implementation decide. What the contract declares is appended to
   the engine's own event log, and nothing else is. A unit's state is its events, folded: applied one by one, in order.
-- **Reactions** run from the log: read models that answer queries, policies that issue commands, effects
-  that call other systems, process managers that steer a run over time.
+- **Reactions and read models** take the events: read models answer queries, policies issue commands, effects
+  call other systems, and process managers steer a run over time.
 - **Between applications**, an event leaves only through a `publish`, and one arrives only in an inbox a
   policy takes.
-- **Conformance** compares the log with the contract and answers 4 questions: which declared paths were
+- **Conformance** compares the log with the contracts and process modules and answers 4 questions: which declared paths were
   never taken, what happened that the contract does not declare, which promises are broken, and which
   version of the contract is deployed, and since when.
 
@@ -126,4 +126,4 @@ about one particular customer.
   may not issue, a field of the wrong type: each is refused before anything is written.
 - **No rule of the check can be switched off.** A finding goes away when the model changes.
 
-Next: [Getting started](getting-started.md).
+Next: [Getting started](getting-started.md). The meaning of each word is in [the glossary](glossary.md).

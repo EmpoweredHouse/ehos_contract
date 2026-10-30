@@ -22,7 +22,7 @@ when one differs from what the task would write now:
 | `docs/rules.md` | `mix eh_os_contract.rules` | `EhOsContract.Check.Catalog` |
 
 **Prose** pages are written by hand: `README.md`, `docs/introduction.md`, `docs/getting-started.md`,
-`docs/contract.md`, `docs/concepts/*.md` and `docs/authorization.md`. The list is
+`docs/contract.md`, `docs/concepts/*.md`, `docs/authorization.md` and `docs/glossary.md`. The list is
 `EhOsContract.Docs.prose/0` (in `dev/`). Each of them:
 
 - has at least one example that defines a module, and every `elixir` block that defines one compiles, with the

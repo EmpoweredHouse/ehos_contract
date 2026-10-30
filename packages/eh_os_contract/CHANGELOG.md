@@ -48,8 +48,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A glossary of the contract language** (#511): `docs/glossary.md` gives each word one meaning, from
+  actor to verdict, with the four questions of conformance. The library's word for something that
+  occurred is "event", not "fact"; a read model is a consumer of events, not a reaction.
+
 ### Fixed
 
+- **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
+  now says what the rest of the page says: a contract belongs to one context, and a process module holds
+  a run and its promises. The page no longer counts a read model among what reacts to events (#511).
 - **`docs/concepts/domain.md` and `docs/concepts/between-contracts.md` said an application has one domain.**
   It may hold more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and
   only the domain named after the application publishes.

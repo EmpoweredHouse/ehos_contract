@@ -26,7 +26,7 @@ become a second, worse copy of the screen you already have.
 New here: [the introduction](docs/introduction.md) says what the library is for and what it is not,
 [getting started](docs/getting-started.md) goes from this page to a contract whose scenarios run as tests,
 and the concepts explain each kind of declaration, from [the domain](docs/concepts/domain.md) to
-[processes](docs/concepts/process.md).
+[processes](docs/concepts/process.md). [The glossary](docs/glossary.md) gives the meaning of each word.
 
 ## Installation
 
