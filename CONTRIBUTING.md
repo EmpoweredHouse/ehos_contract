@@ -139,15 +139,15 @@ follows the same procedure in this repository and EHOS's others. In this reposit
 The repository works without any of this: `CLAUDE.md` and the skills in `.claude/skills/` are read by any
 Claude Code session opened here, and nothing the repository configures asks for a plugin or blocks a command.
 
-The maintainers add two things on their own machines, in `.claude/settings.local.json`, which git ignores:
+The maintainers add three things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
 - the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
-  with EHOS's other repositories: `pre-pr-review`, `stage-issue`, `release`, `elixir`, and `voice` and
-  `diagrams` for text a person reads and its diagrams; and `diagram-design`, from the same marketplace at one
-  commit, which `diagrams` lays a diagram out with;
+  with EHOS's other repositories, among them `pre-pr-review`, `stage-issue`, `release`, `elixir`, and `voice` and
+  `diagrams` for text a person reads and its diagrams;
+- the `diagram-design` plugin, from the same marketplace at one commit, which `diagrams` lays a diagram out with;
 - a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
 
-Both are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
+All three are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
 one who has one merges its keys in by hand, since Claude Code keeps its "always allow" rules in that file:
 
 ```bash
