@@ -1,5 +1,5 @@
 <!-- title: What is checked at which time? -->
-<!-- desc: When Elixir compiles a module, the engine checks the schema, the rules of one module and the implementation; after that, the compiler eh_os_contract checks the rules between modules; mix eh_os_contract.check reports and refuses nothing. -->
+<!-- desc: Elixir compiles each module through three layers, the compiler eh_os_contract adds the rules between modules, and the check task reports errors, warnings and notices. -->
 <!-- words: implementation -->
 <!-- technical: Schema, One module, Between modules, The check -->
 <!-- parts: schema = -, module = -, implementation = -, between = -, check = - -->
@@ -47,7 +47,7 @@
   <rect id="contract-checks-check" class="n-shared" x="80" y="468" width="840" height="56" rx="6"/>
   <text class="eyes" x="104" y="500">5</text>
   <text class="name" x="128" y="501">The check</text>
-  <text class="sub" x="896" y="500" text-anchor="end">mix eh_os_contract.check: reports, refuses nothing</text>
+  <text class="sub" x="896" y="500" text-anchor="end">mix eh_os_contract.check: errors, warnings, notices</text>
 
   <!-- Legend strip -->
   <g class="legend">
@@ -57,6 +57,6 @@
   <rect class="n-focal" x="200" y="576" width="14" height="10" rx="2"/>
   <text class="legt" x="220" y="585">Refuses at compile time, when mix.exs adds the compiler</text>
   <rect class="n-shared" x="540" y="576" width="14" height="10" rx="2"/>
-  <text class="legt" x="560" y="585">Reports, refuses nothing</text>
+  <text class="legt" x="560" y="585">A task that you run, which fails on an error</text>
   </g>
 </svg>

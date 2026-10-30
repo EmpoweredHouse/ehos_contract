@@ -168,6 +168,14 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
   from the stream and puts it into the state; a command's `from:` names the statuses it is issued in,
   and dispatch refuses it in any other, on its `or_rejects:` invariant, before the decision runs. The
   rules of the graph are in [the compile refusals](../refusals.md#refusals-t).
+- **What its lifecycle allows at run time.** If a decision emits an event that the graph does not
+  allow from the current status, dispatch raises and appends nothing. An event that no transition
+  names is allowed in each status that is not final, after an initial event. A recorded event that
+  does not fit is appended and does not move the status.
+- **A key with rules of its own.** An identity can name a domain value, for example
+  `identity [:company_id, period_id: :period]`. Dispatch holds the key to the invariants of the value.
+  If the key breaks one, dispatch refuses the command with `{:period_id, {:invariant, name}}`, before
+  it reads a stream. The value rests on `:id` ([`F1`](../refusals.md#refusals-f)).
 - **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
   [process module](process.md)'s to say.
 

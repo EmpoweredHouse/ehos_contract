@@ -59,8 +59,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **`docs/contract.md` is a how-to, and the compile refusals have a page of their own** (#517). The guide
   tells how to write a domain, a contract and a process module, in short sentences, with two diagrams:
   what is checked at which time, and which module names which. Every refusal code, with the layer that
-  refuses it, is now in `docs/refusals.md`; the layers L1 to L5 have names (schema, one module,
-  implementation, between modules, the check). Links change: `contract.md#refusals-<family>` is
+  refuses it, is now in `docs/refusals.md`. The layers have names: L1 is the schema, L2 one module,
+  L3 between modules, L4 the implementation and L5 the check. The pages number them in the order they
+  run, so the implementation is 3 and the rules between modules are 4. Links change: `contract.md#refusals-<family>` is
   `refusals.md#refusals-<family>`, and `contract.md#process-modules` is `contract.md#write-a-process-module`.
   The `eh-os-contract` plugin's skills point at the new page, at 0.14.1.
 

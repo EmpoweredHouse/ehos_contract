@@ -38,10 +38,10 @@ compares the log with the contracts and the process modules.
 
 ## What is checked at which time?
 
-The engine checks a model in five layers. The first four layers refuse a model that breaks a rule. The
-fifth layer only reports.
+The engine checks a model in five layers. The first four layers stop the compile when a model breaks a
+rule. The fifth layer is a task that you run.
 
-![When Elixir compiles a module, the engine checks the schema, the rules of one module and the implementation. After that, the compiler eh_os_contract checks the rules between modules. The check task reports.](img/contract-checks.svg)
+![When Elixir compiles a module, the engine checks the schema, the rules of one module and the implementation. After that, the compiler eh_os_contract checks the rules between modules. The check task reports errors, warnings and notices.](img/contract-checks.svg)
 
 1. **Schema.** Spark checks the keys of each declaration: a key that is not known, a missing key, a
    value of the wrong type.
@@ -50,8 +50,8 @@ fifth layer only reports.
 3. **Implementation.** The macros of an implementation check the code at the line that breaks a rule.
 4. **Between modules.** After Elixir compiles the project, the compiler `:eh_os_contract` checks a
    contract against its domain and its sibling contracts.
-5. **The check.** `mix eh_os_contract.check` reports what a valid model says that a reader must know.
-   It refuses nothing.
+5. **The check.** `mix eh_os_contract.check` reports what the compiler cannot hold: errors, warnings and
+   notices. An error makes the task fail. With `--warnings-as-errors`, a warning makes it fail too.
 
 Each refusal of layers 2 to 4 starts with its code. [The compile refusals](refusals.md) list each
 code. [The rules of the check](rules.md) list what layer 5 reports.
@@ -178,7 +178,8 @@ return is a run. Write it in a [process module](#write-a-process-module).
 ## Implement the unit
 
 The implementation is the module that decides. It points to the contract with `use`. The contract
-generates a struct for each command and event, and a behaviour with one callback for each command.
+generates a struct for each command and event, and a behaviour: one callback for each command, and
+`evolve/2`.
 
 ```elixir
 defmodule Lending.Loan do
@@ -214,6 +215,7 @@ end
 
 Tell the engine where your implementations are: `config :eh_os_contract, applications: [:lending]`.
 A unit whose events are all recorded, and whose state is only its identity, needs no implementation.
+If such a unit keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
 [Units](concepts/units.md) tells more about the code that decides.
 
 <a id="which-module-names-which"></a>
@@ -294,11 +296,16 @@ promise must get:
 
 ```elixir
 scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :eventually do
-  given :loan_opened, %{loan_id: "l-1"}, at: "2026-09-01T09:00:00Z"
+  given :loan_opened, %{loan_id: "l-1", copy_id: "c-1", member_id: "m-1"}, at: "2026-09-01T09:00:00Z"
   given :copy_returned, %{loan_id: "l-1"}, at: "2026-09-20T09:00:00Z"
   promise :returned_within_a_month, at: "2026-10-15T09:00:00Z"
 end
 ```
+
+Each given holds the required fields that its contract declares ([`X9`](refusals.md#refusals-x)). To show
+that an external system was not available, add `outage :catalogue, at: "2026-09-10T08:00:00Z"`. The
+events in `eventually` or `or_else` must depend on that system, or the promise names it in `waits_on`
+([`X4`](refusals.md#refusals-x)).
 
 Run these scenarios with `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan`. The result
 is one test for each scenario, without a database. [Processes](concepts/process.md) tells how the
@@ -314,7 +321,7 @@ engine judges runs, promises and deadlines.
 | React to an event with a policy, an effect or a process manager | [Reactions](concepts/reactions.md) |
 | Keep a read model and answer a query | [Reading](concepts/reading.md) |
 | Take events of another contract, or of another application | [Between contracts](concepts/between-contracts.md) |
-| Issue a command from a form, and take a field from the host | [Forms](concepts/forms.md) |
+| Issue a command from a form | [Forms](concepts/forms.md) |
 
 ### Let only one person issue a command
 
@@ -333,11 +340,36 @@ end
 - An earlier event fills the field. It is a non-personal `:id` of the state
   ([`A9`](refusals.md#refusals-a)).
 - Dispatch compares the field with the subject of the credential, after it folds the state.
-- If they are not equal, dispatch rejects the command on the invariant in `or_rejects:`.
+- If they are not equal, dispatch rejects the command on the invariant in `or_rejects:`. The log gets
+  a rejected command and no event.
 - If the field is empty, dispatch rejects each person.
 - A `:system` actor and a reaction act for the application. Dispatch does not compare them.
+- A role gives no exception. If a person must act on the unit of another person, declare a command
+  for it.
 - In a scenario, name the person with `as "librarian-ola"`, beside its `actor`
   ([`S7`](refusals.md#refusals-s)).
+
+### Take a field from the host
+
+Some fields of a decision are not the caller's to give. Example: the system at the desk knows if a
+copy was scanned. Declare such a field with `supplied_by: :host`:
+
+```elixir
+field :scanned, :boolean, supplied_by: :host
+```
+
+1. Write a module that implements `EhOsContract.Supplier`.
+2. Configure it: `config :eh_os_contract, supplier: MyApp.Supplier`.
+
+- Through `EhOsContract.call/3` and `EhOsContract.Plug`, a request that sends the field is refused
+  with `{:invalid, [scanned: :supplied]}`.
+- After the engine authorizes the caller, the supplier gives the value.
+- If the supplier cannot give it, the result is `{:not_supplied, reason}`, an HTTP 503. The engine
+  writes nothing.
+- A call of `dispatch/3` from your own code is trusted, as each other field of the struct is.
+- Only a field of a command, or of a recorded event, can be supplied
+  ([`F10`](refusals.md#refusals-f)).
+- A node that has such a field and no supplier does not start.
 
 ### Use an entity in a decision
 
@@ -353,6 +385,7 @@ suspended card cannot borrow a copy.
 
 - Dispatch asks `EhOsContract.Entities` for the row before the decision, as the actor of the command.
 - If the row does not exist, dispatch refuses the command with `{:invalid, [card_id: :unknown]}`.
+- The engine keeps the row that it read with the record of the command.
 - Only an actor in `by:` can issue such a command. A policy or a process manager cannot.
 - In a scenario, give the row with `given_entity :card, %{card_id: "c-1", suspended: false}`
   ([`S12`](refusals.md#refusals-s)).
@@ -363,8 +396,9 @@ suspended card cannot borrow a copy.
 - **The compiler refuses the model.** Find the code of the message in
   [the compile refusals](refusals.md).
 - **`mix eh_os_contract.check` gives a warning.** Find its rule in [the rules of the check](rules.md).
-- **A rule between modules is not checked.** Add `:eh_os_contract` to the compilers, as
-  [Before you start](#before-you-start) tells.
+- **The check gives errors for the rules between modules.** The compilers do not include
+  `:eh_os_contract`. Add it, as [Before you start](#before-you-start) tells, so that the compile
+  stops on these errors.
 - **The decision emits an event outside `emits:`.** Dispatch raises an exception and appends nothing.
   This is a defect in the code, not an answer of the business.
 

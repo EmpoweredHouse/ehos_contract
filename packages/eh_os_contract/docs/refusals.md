@@ -9,19 +9,19 @@ compiler message and must find what the message refuses. To write a model that c
 Each refusal starts with its code, for example `A3: …`. The letter of the code gives its family.
 The codes do not change between versions. The sentence after the code can change.
 
-The compiler checks a model at four layers. The column "Checked in" gives the layer that refuses
-the code. The diagram
-["What is checked at which time?"](contract.md#what-is-checked-at-which-time) shows the layers.
+The compiler checks a model at layers 1 to 4 of
+["What is checked at which time?"](contract.md#what-is-checked-at-which-time). The column
+"Checked in" gives the layer that refuses the code.
 
-| Layer | When | What it checks |
-| --- | --- | --- |
-| Schema | when the module compiles | the keys of the DSL: a key that is not known, a required key that is missing, a value of the wrong type. Spark gives these messages. They have no code. |
-| One module | when the module compiles | the rules of one domain, contract or process module. The message gives the file and the line. |
-| Implementation | when the implementation compiles | the macros of an implementation, at the `use` or the call that breaks a rule |
-| Between modules | after Elixir compiles the project | a contract against its domain and its sibling contracts. The `:eh_os_contract` compiler does this check. |
+| # | Layer | When | What it checks |
+| --- | --- | --- | --- |
+| 1 | Schema | when the module compiles | the keys of the DSL: a key that is not known, a required key that is missing, a value of the wrong type. Spark gives these messages. They have no code. |
+| 2 | One module | when the module compiles | the rules of one domain, contract or process module. The message gives the file and the line. |
+| 3 | Implementation | when the implementation compiles | the macros of an implementation, at the `use` or the call that breaks a rule |
+| 4 | Between modules | after Elixir compiles the project | a contract against its domain and its sibling contracts. The `:eh_os_contract` compiler does this check. |
 
-`mix eh_os_contract.check` refuses nothing. It reports what a valid model says that a reader must
-know. [The rules of the check](rules.md) lists them.
+Layer 5, `mix eh_os_contract.check`, is a task that you run. It reports errors, warnings and notices
+by the names of its rules, not by these codes. [The rules of the check](rules.md) lists them.
 
 ## The families
 
