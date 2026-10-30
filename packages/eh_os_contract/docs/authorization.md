@@ -41,6 +41,11 @@ from the code (`EhOsContract.Model.capabilities/1`):
 no credential can be granted it, even by mistake; the application's own `:system` actor reaches it
 without a credential.
 
+**One more capability is the application's: `<published name>.subscribe`**, for each event of another
+application that the contract subscribes to and a policy takes. The published name loses its version:
+`subscribe "billing.invoice.issued.v1"` gives `billing.invoice.issued.subscribe`. It has no role, so no
+person holds it, and nothing in the engine checks it.
+
 Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
 whole application, which the compiler checks ([`D14`](contract.md#refusals-d)).
 
