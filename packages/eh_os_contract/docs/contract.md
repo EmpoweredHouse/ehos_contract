@@ -203,7 +203,7 @@ policy :release_hold, "Release the hold on a lent copy", handles: :copy_lent, is
 The event never enters the subscriber's log: it arrives in an inbox (`EhOsContract.Inbox`), which commits its
 row with what the policy dispatched and only then acknowledges. Since a read model, an effect and a process
 manager read the log, **only a policy takes it** ([`D12`](#refusals-d)); they react to what the policy's command records
-instead. A second delivery finds the inbox row and is dropped, and so does the same fact published again
+instead. A second delivery finds the inbox row and is dropped, and so does the same event published again
 under a new id when the publisher declares `idempotent_on:`, whose values make the message's key. The
 subscriber asks for the capability `lending.loan.opened.subscribe`, the application's, which EHOS grants
 and the transport delivers by.

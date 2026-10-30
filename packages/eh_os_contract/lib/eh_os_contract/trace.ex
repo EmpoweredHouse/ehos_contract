@@ -95,7 +95,7 @@ defmodule EhOsContract.Trace do
   - **An `eventually`/`or_else` occurrence is paired to an item by those same
     identity field values in its own payload** — a hit whose payload does not carry
     them cannot resolve any item. This is the conservative direction to fail in:
-    a fact that cannot be told apart from the item it is supposed to resolve does
+    an event that cannot be told apart from the item it is supposed to resolve does
     not get to resolve it by coincidence.
   - **The run's one reported verdict is the worst of its items':** `:violated` if
     any item's window closed empty, else `:pending` if any is still open, else

@@ -17,7 +17,7 @@ defmodule EhOsContract.Relay do
     `EhOsContract.Bus.publish/1`; the position advances in the same transaction, on
     `:ok`. A relay that stops between the two publishes the batch again, under the
     same ids, so a message can arrive twice at a consumer subscribed when it was
-    published, never zero times, and never without its fact.
+    published, never zero times, and never without its event in the log.
   - **An unreachable transport is not a failure of the event.** `{:error, reason}`
     leaves the position where it was, counts no attempt, and the runner tries again
     later: an outage of the broker must not stop a relay for a person to restart. A
@@ -78,9 +78,9 @@ defmodule EhOsContract.Relay do
   # event's, and its payload the declared `fields` of the event, as stored, and nothing
   # else. A field the event does not carry is `nil`.
   #
-  # Its key is what the subscriber's inbox tells one fact by (`EhOsContract.Bus.Message`):
+  # Its key is what the subscriber's inbox tells one event by (`EhOsContract.Bus.Message`):
   # the SHA-256 of the name and the `idempotent_on:` values, so a second event with the
-  # same values — a fact recorded twice, or a log moved under new ids — has the key of
+  # same values — an event recorded twice, or a log moved under new ids — has the key of
   # the first. Without such fields, or with one of them `nil`, the key is the id.
   #
   # It takes the payload as stored, so the relay holds each event to the version its
@@ -105,7 +105,7 @@ defmodule EhOsContract.Relay do
     }
   end
 
-  # Two facts whose keys collide are one fact to the inbox, and the second is dropped:
+  # Two events whose keys collide are one event to the inbox, and the second is dropped:
   # so the full digest, not twelve characters, of an encoding that prefixes each
   # string with its length, so a delimiter inside a value cannot make two lists of
   # values encode alike.

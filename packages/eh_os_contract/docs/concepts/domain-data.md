@@ -189,7 +189,7 @@ unit of a contract: an aggregate or a consistency boundary.
 
 ## External systems
 
-An external system is one the application exchanges data with, named after the business fact it stands for
+An external system is one the application exchanges data with, named after what it does for the business
 rather than after its vendor: `:card_terminal`, not the terminal's brand.
 
 ```elixir
@@ -209,7 +209,7 @@ A contract uses an external in 4 ways:
 
 - an **effect** `calls:` it, `calls: {:sms_gateway, :send_text}`. Once an external declares an `operation`,
   every call to it names one ([`X4`](../contract.md#refusals-x));
-- an **event** `depends_on:` it, when the fact needs the system's answer;
+- an **event** `depends_on:` it, when the event needs the system's answer;
 - a **field** is `issued_by:` it, when the system gives its value, such as an invoice number or a parcel's
   tracking number;
 - a **system actor** is `backed_by:` it, when the system acts in the application.

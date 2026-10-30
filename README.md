@@ -17,10 +17,10 @@ those modules and nothing else.
 **Events.** `EhOsContract.dispatch/3` runs a command through the contract: it asks whether the actor may
 issue it, checks its fields, reads the unit's history from the log, lets the implementation decide, and
 appends what it decided — nothing the contract does not declare. The log is the engine's own, and the
-state of a unit is its events, folded. What reacts to events is declared beside the units and runs where
-its delivery says:
+state of a unit is its events, folded. What takes events, a reaction or a read model, is declared beside
+the units and runs where its delivery says:
 
-| Reaction | Runs | Use it for |
+| Consumer | Runs | Use it for |
 | --- | --- | --- |
 | a read model or a policy, `:in_transaction` (their default within one context) | inside the dispatch transaction; if it raises, nothing is appended | projections and follow-up commands in the same database |
 | a read model, a policy or a process manager, `:at_least_once` | fed from the log in order, after the commit, by a subscription that resumes where it stopped | whatever may lag the command |
@@ -32,9 +32,9 @@ whatever runs `:in_transaction` holds every other write in the application while
 database, and put anything slow behind `:at_least_once`.
 
 A policy or an effect delivered at least once does not compile unless it names what makes a second
-delivery harmless, because an event may be delivered more than once. A policy or a read model that reacts to an
+delivery harmless, because an event may be delivered more than once. A policy or a read model that takes an
 event of another context does not compile until it says how it is delivered: run `:in_transaction`, a failure in
-one part of the business undoes a fact recorded in another, so that has to be a choice the contract states, and
+one part of the business undoes an event recorded in another, so that has to be a choice the contract states, and
 `mix eh_os_contract.check` warns of it.
 
 **Conformance.** The same contract, compared against the log dispatch has been writing: which declared
@@ -204,13 +204,13 @@ host lets everyone in read-only — nothing here belongs pointed at anything but
 ## Writing a contract
 
 If you know `Ecto.Schema`, you already have the mental model: a schema declares the shape of rows that
-are **stored**, a contract declares the shape of facts that **happened** and of the decisions that produce
+are **stored**, a contract declares the shape of events that **happened** and of the decisions that produce
 them. Both are declarations a machine reads, and both generate code you didn't write — here, a struct for
 every command, event and state, and a behaviour for every piece of code that decides or reacts.
 
 Beyond the example above: invariants, each with a scenario — given events, when a command, then events or
 the refusal — that is also a test of the implementation; policies, effects and process managers; read
-models and the queries that read them; `external` systems, named after the business fact rather than the
+models and the queries that read them; `external` systems, named after what they do for the business rather than the
 vendor, so a report can tell "we broke the rule" from "the system we depend on was down"; and personal
 data, encrypted in the log per subject so that erasing a subject is deleting a key.
 

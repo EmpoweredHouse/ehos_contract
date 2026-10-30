@@ -186,7 +186,7 @@ outside the log, and a read model is shown by the scenario of a query that reads
 
 `actor:` picks who issues a scenario's command, among its `by:` ([`S7`](../contract.md#refusals-s)). A
 recording's scenario always names who records the event, among its `recorded_by:`
-([`S7`](../contract.md#refusals-s)): who may write a fact into the log is what such a scenario shows.
+([`S7`](../contract.md#refusals-s)): who may write an event into the log is what such a scenario shows.
 
 ## What follows
 

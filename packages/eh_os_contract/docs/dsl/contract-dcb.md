@@ -234,20 +234,20 @@ The person who must issue the command: the one a field of the unit's state names
 event name, label
 ```
 
-A fact the unit records.
+Something that occurred in the business, which the unit decides or an actor records.
 
 **Arguments**
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `name` | `atom` | yes |  | The event's name. |
-| `label` | `String.t` | yes |  | The fact, as the business states it. |
+| `label` | `String.t` | yes |  | The event, as the business states it. |
 
 **Options**
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `depends_on` | `atom` |  |  | The external system the fact depends on. |
+| `depends_on` | `atom` |  |  | The external system the event depends on. |
 | `recorded_by` | `atom \| list(atom)` |  | `[]` | The actors who record it as an observation, when no command decides it. |
 | `schema_version` | `pos_integer` |  | `1` | The version of its fields, raised with an `upcast` from each version below it when history exists; written into each row, and a row of a newer version than the code declares is not read. |
 | `source` | `String.t` |  |  | Where the event comes from in the material. |

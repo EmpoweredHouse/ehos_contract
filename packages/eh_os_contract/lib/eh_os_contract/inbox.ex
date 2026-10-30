@@ -1,5 +1,5 @@
 defmodule EhOsContract.Inbox do
-  # The same fact published again under a new id is a failure EHOS's design names, and the
+  # The same event published again under a new id is a failure EHOS's design names, and the
   # inbox takes it once; rows are kept for good by #64; the grant to publish and the
   # `<name>.subscribe` capability are EHOS's.
   @moduledoc """
@@ -15,17 +15,17 @@ defmodule EhOsContract.Inbox do
   appended what one reads. A consumer that stops in
   between gets the message again, and finds either nothing written or the row.
 
-  **One fact, one reaction.** The row is keyed by the inbox and the message's key
-  (`EhOsContract.Bus.Message`), so a second delivery of a message, and the same fact
+  **One event, one reaction.** The row is keyed by the inbox and the message's key
+  (`EhOsContract.Bus.Message`), so a second delivery of a message, and the same event
   published again under a new id, find the row: the inbox acknowledges and writes
   nothing.
 
   **What it keeps, and for how long: every row, for good.** The row is what drops a
-  second delivery and the same fact published again under a new id, so a row removed
-  is a fact that can be taken twice: a window would hold a republished fact off only
+  second delivery and the same event published again under a new id, so a row removed
+  is an event that can be taken twice: a window would hold a republished event off only
   for as long as it lasts. Until the transport says how long it can deliver a message again
   (JetStream's stream retention, EHOS's), nothing is pruned. A row is about 250 bytes
-  with its key's index for a short key, one per fact per inbox; what the table holds is the host's to
+  with its key's index for a short key, one per event per inbox; what the table holds is the host's to
   watch with its database's own measures:
 
       SELECT consumer, count(*), min(received_at)
@@ -38,7 +38,7 @@ defmodule EhOsContract.Inbox do
   publishes under its name is the grant's, on the transport.
 
   **What the policy is told.** The received struct's `__meta__` holds the
-  correlation the message carried, so the subscriber's facts join the publisher's
+  correlation the message carried, so the subscriber's events join the publisher's
   run, and as `id` the row's, which is what the policy's commands name as their
   cause: the row holds the message's id. It holds no position, since the event is in
   no log here, no actor and no time of its own: the publisher's are not sent.

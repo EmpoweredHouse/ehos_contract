@@ -696,7 +696,7 @@ bytes, or one that starts `sha256:` is recorded as `sha256:` and its hex digest,
 refused like any other instead of failing the request.
 
 The row records the authorization, not the command. A command allowed here may still be rejected on
-an invariant, and that is the engine's row in `eh_os_contract_commands`: two facts, two rows. The row
+an invariant, and that is the engine's row in `eh_os_contract_commands`: two records, two rows. The row
 goes through the connection the call is on, so a caller that wraps `EhOsContract.dispatch/3` in a
 transaction of its own and rolls it back rolls the row back too. A row that cannot be written fails
 the call.

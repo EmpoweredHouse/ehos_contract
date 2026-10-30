@@ -134,11 +134,11 @@ process shows. Read models are not counted: they decide nothing.
 
 **warning**
 
-A reaction to another context's event runs inside the transaction that records it.
+A consumer of another context's event runs inside the transaction that records it.
 
 A policy, an effect or a read model declared `delivery: :in_transaction` on an event of a
 sibling contract of another context runs in the transaction that records the event, so the
-two contexts commit together and the reaction's failure rolls the other context's fact back.
+two contexts commit together and a failure of the consumer rolls the other context's event back.
 Contexts usually agree eventually: `:at_least_once` — a policy and an effect with their
 `idempotency` (P3), a read model with none. A policy or a read model left without `delivery`
 there does not compile (X10), so for them this warning is only ever about one declared on
@@ -302,8 +302,8 @@ The context belongs to a subdomain of `type: :core`, where the business's rules 
 live, and the command's `rejects:` is empty, so no rule of its unit refuses a request; only its
 fields' types and values can. A command only a policy or a process manager issues, with no
 `by:`, is not reported, since it follows from an event already decided.
-Either the command has a rule the contract does not declare yet, or it records a fact, which an
-event `recorded_by:` an actor says more plainly. Some core commands legitimately always
+Either the command has a rule the contract does not declare yet, or it only records an event, and
+an event `recorded_by:` an actor says that more plainly. Some core commands legitimately always
 succeed, so this is a notice.
 
 ## `core-unit-records-only`

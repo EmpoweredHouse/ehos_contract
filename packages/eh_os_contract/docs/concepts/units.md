@@ -155,7 +155,7 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
 - **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
   rules they may refuse on (`rejects:`). A command with no `by:` must be issued by a policy or a
   process manager of the contract, or nobody could issue it ([`C1`](../contract.md#refusals-c)).
-- **Its events** are what it decided. An event no command emits is a fact recorded without a
+- **Its events** are what it decided. An event no command emits is an event recorded without a
   decision, and says who records it, `recorded_by: :front_desk`; it enters through
   `EhOsContract.record/3`. An event that is neither is refused ([`A2`](../contract.md#refusals-a)).
 - **Its state** is what it remembers between decisions, folded from its own events. It holds only
@@ -173,7 +173,7 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
 
 ## A dynamic consistency boundary
 
-Some rules span facts that belong to different things. "A workshop never has more attendees than
+Some rules span events that belong to different things. "A workshop never has more attendees than
 places" reads the workshop's offer and every seat taken on it, and each seat is an attendee's. An
 aggregate could hold them (every seat taken on the workshop's own stream) at the price of one
 stream that every attendee's decision goes through. A boundary decides over exactly the events the
@@ -197,8 +197,8 @@ At run time the boundary reads its own events carrying its identity and every ev
 the log's order, folds them through `evolve/2`, and decides. The append is conditional: if anything it
 read was appended in between, the decision is taken again.
 
-**Which one.** Reach for an aggregate when the rule is about one thing and the facts it reads are
-that thing's own. Reach for a boundary when the rule reads facts that belong to several things, and
+**Which one.** Reach for an aggregate when the rule is about one thing and the events it reads are
+that thing's own. Reach for a boundary when the rule reads events that belong to several things, and
 narrow it with `match:` to the ones the decision is about. A boundary that reads more than it needs
 conflicts with every decision that touches what it read.
 
@@ -455,5 +455,5 @@ From [its rules](../rules.md):
 - `core-command-never-refuses` (notice): a command of a core context rejects nothing, so no rule of
   its unit refuses a request; only its fields' types and values can. The check skips a command that only a
   policy or a process manager issues, with no `by:`: it follows from an event already decided. Either the
-  command has a rule not declared yet, or it records a fact, and an event `recorded_by:` an actor says that
+  command has a rule not declared yet, or it records an event, and an event `recorded_by:` an actor says that
   more plainly. Some core commands legitimately always succeed.

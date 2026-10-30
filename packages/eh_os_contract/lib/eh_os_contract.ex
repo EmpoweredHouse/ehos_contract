@@ -358,7 +358,7 @@ defmodule EhOsContract do
 
   @doc """
   Asks a query of a v2 contract, and returns what its implementation answers.
-  Nothing is written: a read is not a fact.
+  Nothing is written: a read is not an event.
 
   A credential's actor is asked of the `EhOsContract.Authorizer` for the query's
   capability, and for a scoped query with the value of the scope parameter, so a

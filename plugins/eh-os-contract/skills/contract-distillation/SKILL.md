@@ -1,6 +1,6 @@
 ---
 name: contract-distillation
-description: Distill process-mapping workshop material (raw transcripts, board exports, or a reviewed process-extraction output) into what a domain and its contracts need — contexts and their glossary, actors, subjects of personal data, values, external systems; and per process the facts that something depends on (with the rejected candidates), who decides or records each, the invariants and their refused cases, the run and its stages, terminal states, reactions, what people read, promises, deadline, whether it recurs on a schedule, and scenarios — each with its source or marked unverified. Produces a document, not code. Use any time after workshop material exists, independent of when the contract is written, which can be weeks later and by someone else.
+description: Distill process-mapping workshop material (raw transcripts, board exports, or a reviewed process-extraction output) into what a domain and its contracts need — contexts and their glossary, actors, subjects of personal data, values, external systems; and per process the events that something depends on (with the rejected candidates), who decides or records each, the invariants and their refused cases, the run and its stages, terminal states, reactions, what people read, promises, deadline, whether it recurs on a schedule, and scenarios — each with its source or marked unverified. Produces a document, not code. Use any time after workshop material exists, independent of when the contract is written, which can be weeks later and by someone else.
 ---
 
 # Contract distillation
@@ -81,7 +81,7 @@ confidence of everything downstream depends on it.
 5. **Values.** Business quantities and codes that are not plain shapes: money and its unit, a
    period and its format, a tax number. For each, what makes a value invalid, with an example that
    is and one that is not.
-6. **External systems**, named as a business fact ("the payer's eligibility system"), never by
+6. **External systems**, named after what each does for the business ("the payer's eligibility system"), never by
    vendor: whether the application only sends to it, only receives, or both; what "unavailable"
    looks like, as a full sentence in the client's words; and whether "no answer" is the same as
    "answered no" (it almost never is). And what the application asks of it, where the material
@@ -91,13 +91,13 @@ confidence of everything downstream depends on it.
 
 ## Each process
 
-1. **Facts, and the candidates that are not.** Every candidate is a past-tense fact in the client's
+1. **Events, and the candidates that are not.** Every candidate is a past-tense event in the client's
    words. Then reject most of them, recording why:
 
    > **Does anything outside this document depend on it having happened?**
 
    A rule refuses something after it, a reaction takes it, an actor waits for it, a promise runs from
-   it, it ends the run. If nothing does, it is **a field being filled in**, not a fact. The trap is
+   it, it ends the run. If nothing does, it is **a field being filled in**, not an event. The trap is
    reading this as "is it stored in a field": ICD codes are a field, yet may still be a precondition
    someone enforces. Ask about the dependency, not the storage.
 
@@ -107,27 +107,27 @@ confidence of everything downstream depends on it.
    who knew the domain said *that is a field the specialist fills in*. Big Picture Event Storming
    produces a sticky for everything that happens; carrying the board across without this filter is
    this skill's default failure.
-2. **Decided or recorded.** For each fact: who asks for it (the command, and which actor may issue
+2. **Decided or recorded.** For each event: who asks for it (the command, and which actor may issue
    it), and can the asking be refused? Or is it simply observed — noted by a person, answered by a
-   system? A fact nobody asks for and nobody observes cannot occur.
+   system? An event nobody asks for and nobody observes cannot occur.
 3. **What must stay true.** The rules under which the asking is refused (invariants), each in the
    client's sentence, and **a case where it was refused**, with real data. Whether a rule is about
    one thing (a visit, a month) or across several (every visit of a payer in a period) — the second
-   is a consistency boundary over many facts. Rules on a command's own data (an amount is positive)
+   is a consistency boundary over many events. Rules on a command's own data (an amount is positive)
    are constraints of that command.
-4. **Fields.** For each fact and each command, what someone would need to know a year from now
+4. **Fields.** For each event and each command, what someone would need to know a year from now
    (not what is in a database), and the closest type: identifier, typed text, number, decimal, yes/no,
    date, point in time, one of a set, a list, or a domain value. Mark which fields are personal data,
    and whose. Say "does not fit" rather than force a type.
 5. **The run.** What is one case, from start to end (the correlation). Can two run in parallel for
-   the same actor, and what tells them apart? Which facts repeat within one case, and what
+   the same actor, and what tells them apart? Which events repeat within one case, and what
    distinguishes the second from the first?
 6. **Terminal states.** Every way a case ends, bad endings included: abandoned, refused, cancelled.
 7. **Stages and gates — the load-bearing category.** What must happen before what is even possible,
    as distinct from what usually comes first. Do not infer a strict sequence the material does not
-   support. A process whose facts are fired by people at screens, in an order that matters, with no
+   support. A process whose events are fired by people at screens, in an order that matters, with no
    promise about how fast, is the **normal** case, and fully verifiable through its stages, terminal
-   states and declared paths: the report shows paths never taken and facts that happened outside the
+   states and declared paths: the report shows paths never taken and events that happened outside the
    declared ones, with no clock. For each process record which orderings are claimed, which are
    merely typical, and which a reader would expect to see taken.
 8. **Reactions.** Every "whenever X, then Y" (an automatic step), every "tell / send / ask system
@@ -135,18 +135,18 @@ confidence of everything downstream depends on it.
    together with X or may follow it — it decides what a failure leaves behind.
 9. **What people read.** The lists and totals someone looks at, who looks, and narrowed to what
    (their clinic, their clients).
-10. **Promises — the timed ones, where they exist.** *After fact A, within N, fact B follows, or else
-    fact C.* This needs a commitment to someone (a patient, a payer, a regulator) **and** a number
+10. **Promises — the timed ones, where they exist.** *After event A, within N, event B follows, or else
+    event C.* This needs a commitment to someone (a patient, a payer, a regulator) **and** a number
     somebody stated. N in real units, never "quickly". Does the time bind the fallback too? Usually
     unstated: flag it. **Zero promises is a finding about the domain, not a verdict on the process.**
     A promise anchored backwards from a scheduled moment (a reminder before an appointment) is not a
-    promise, which runs forward from an observed fact; it is a timer, or the client's own scheduling.
+    promise, which runs forward from an observed event; it is a timer, or the client's own scheduling.
 11. **Deadline, and whether it recurs.** A bound on the whole case, and whether the process recurs on a
     schedule or starts only when triggered. The contract has no key for a schedule since 7 October 2026
     (#195), so the answer is a note for whoever writes the contract, not a declaration.
 12. **Who answers for it.** The role accountable when a promise breaks or a path is never taken.
 13. **Scenarios.** For each rule and each reaction, a case from the material: given what had
-    happened, when this was asked (or this fact arrived), then what followed — or which rule refused
+    happened, when this was asked (or this event arrived), then what followed — or which rule refused
     it. Real numbers, a case that went wrong in real life before an invented edge case. These become
     the contract's scenarios, and every invariant needs its refused case.
 

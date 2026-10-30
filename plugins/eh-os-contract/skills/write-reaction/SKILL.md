@@ -1,9 +1,9 @@
 ---
 name: write-reaction
-description: Before declaring or implementing what reacts to an event of a contract — a `policy` that issues a command, an `effect` that calls an external system, a `process_manager` that steers a run with state and timers, or a `read_model` with the `query` that reads it — choose the kind, choose `delivery` (`:in_transaction` or `:at_least_once`) by what a failure must leave in the log, name `idempotency` so a second delivery is harmless, and know where a new consumer starts in a log that already has history. Use once the event exists; not for deciding whether the reaction belongs in the contract at all (see `module-boundary-check`) and not for the unit that decides the command a policy issues (see `write-decider`).
+description: Before declaring or implementing what takes an event of a contract — a reaction: a `policy` that issues a command, an `effect` that calls an external system, a `process_manager` that steers a run with state and timers, or the consumer that is not a reaction, a `read_model` with the `query` that reads it — choose the kind, choose `delivery` (`:in_transaction` or `:at_least_once`) by what a failure must leave in the log, name `idempotency` for a policy or an effect delivered `:at_least_once` so a second delivery is harmless, and know where a new consumer starts in a log that already has history. Use once the event exists; not for deciding whether the reaction belongs in the contract at all (see `module-boundary-check`) and not for the unit that decides the command a policy issues (see `write-decider`).
 ---
 
-# Writing what reacts to an event
+# Writing what takes an event
 
 Checked on 30 September 2026 (plan E11e) against
 `packages/eh_os_contract/docs/contract.md`, `packages/eh_os_contract/docs/dsl/contract-dsl.md`, `packages/eh_os_contract/docs/rules.md` and the
@@ -22,8 +22,10 @@ from `sandbox/`, run the application's `mix precommit`.
 
 ## Which kind
 
-A reaction is declared in the contract of the context it belongs to, beside the units, and bound
-by a module with `use <Contract>, <kind>: :name`. Pick the kind by what the reaction produces:
+A reaction (a policy, an effect or a process manager) or a read model is declared in the contract of
+the context it belongs to, beside the units, and bound by a module with `use <Contract>, <kind>: :name`.
+A read model is a consumer of events, not a reaction: it decides nothing and issues nothing. Pick
+the kind by what it produces:
 
 | It… | Kind | Callback | Example |
 | --- | --- | --- | --- |
@@ -137,9 +139,9 @@ part of it itself, and the rest is yours:
   added later to the contract and not to the table fails in the tests.
 - **Another application's event is deduplicated by the inbox**, by the message's key: the
   publisher's `idempotent_on:` values, or the message id when it declares none. A redelivery reacts
-  once either way; the same fact published again under a new id reacts once only when the publisher
+  once either way; the same event published again under a new id reacts once only when the publisher
   declares `idempotent_on:`. A publisher whose `idempotent_on:` is too
-  narrow makes two real facts one: when you write the `publish`, name the fields that make one fact,
+  narrow makes two real events one: when you write the `publish`, name the fields that make one event,
   not merely some that identify it.
 
 ## Where a new consumer starts

@@ -7,7 +7,7 @@ defmodule EhOsContract.Form do
   they hold. The form is checked while the person types, with the same rules dispatch
   applies, and the application writes none of them a second time.
 
-  A form that records a fact (an event an actor records, `recorded_by:`) or asks a query
+  A form that records an event (one an actor records, `recorded_by:`) or asks a query
   (a search or a filter over a read model) is built the same way, from the event's fields
   or the query's params, for `EhOsContract.record/3` or `EhOsContract.query/3`. And
   "a form" is any input that arrives as text, a CSV import or a console among them, not

@@ -523,14 +523,15 @@ defmodule EhOsContract.Contract.Dsl do
 
   @event %Spark.Dsl.Entity{
     name: :event,
-    describe: "A fact the unit records.",
+    describe:
+      "Something that occurred in the business, which the unit decides or an actor records.",
     target: Event,
     args: [:name, :label],
     entities: [fields: [@field], upcasts: [@upcast]],
     schema: [
       name: [type: :atom, required: true, doc: "The event's name."],
-      label: [type: :string, required: true, doc: "The fact, as the business states it."],
-      depends_on: [type: :atom, doc: "The external system the fact depends on."],
+      label: [type: :string, required: true, doc: "The event, as the business states it."],
+      depends_on: [type: :atom, doc: "The external system the event depends on."],
       recorded_by: [
         type: {:wrap_list, :atom},
         default: [],
@@ -1036,7 +1037,7 @@ defmodule EhOsContract.Contract.Dsl do
       idempotent_on: [
         type: {:wrap_list, :atom},
         default: [],
-        doc: "The fields that make two deliveries the same fact."
+        doc: "The fields that make two deliveries the same event."
       ]
     ]
   }
