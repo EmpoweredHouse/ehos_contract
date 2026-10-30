@@ -48,6 +48,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Fixed
+
+- **`docs/concepts/domain.md` and `docs/concepts/between-contracts.md` said an application has one domain.**
+  It may hold more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and
+  only the domain named after the application publishes.
+
 ## [0.13.0] - 2026-10-29
 
 ### Added

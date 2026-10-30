@@ -7,10 +7,15 @@ says how the contexts depend on each other, and why every contract belongs to ex
 
 ## A domain module
 
-An application has one domain module. It is the vocabulary its contracts share: the parts the business is
-split into, the words each part uses, who acts, whose personal data is kept, the value types, and the systems
-the application depends on. Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compiler's
-rules between modules check every contract against it.
+A domain module is the vocabulary its contracts share: the parts the business is split into, the words each
+part uses, who acts, whose personal data is kept, the value types, and the systems the application depends on.
+Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compiler's rules between modules check
+every contract against it.
+
+An application usually has one domain. It may hold more, each with its own contracts: a contract consumes only
+the events of its own domain ([`X5`](../contract.md#refusals-x)), and the tasks that read one domain then take
+`--domain`. Connected to EHOS through `eh_os_contract_auth`, only the domain named after the application may
+publish, since EHOS lets an application publish only under its own name.
 
 ```elixir
 use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsaw"

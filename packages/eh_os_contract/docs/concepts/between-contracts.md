@@ -12,8 +12,7 @@ There are 2 distances, and they work differently:
 | the same application, the same domain | `consumes Sibling, [:event]` | in this application's log | any reaction, a read model, a boundary that consults it, a process's stage |
 | another application | `subscribe "<name>.vN"`, with the fields it reads | in the subscriber's inbox, never in its log | a policy only |
 
-An application is one domain. Its contracts share one log, so a sibling's event is a row the consumer can
-read; another application's log is not this one's, and its events leave it only through a `publish`.
+The contracts of an application share one log, so a sibling's event is a row the consumer can read; another application's log is not this one's, and its events leave it only through a `publish`.
 
 ## Consuming a sibling's events
 
