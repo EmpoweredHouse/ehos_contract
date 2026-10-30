@@ -5,8 +5,8 @@ defmodule EhOsContract.Bus.Message do
   - `id` — `<source event id>/<name>`, the same every time the relay publishes it;
   - `key` — what makes two messages one event, so the subscriber's inbox takes only
     the first: the SHA-256, in hex, of the name and the values of the
-    fields the `publish` declares `idempotent_on:`. A second event with the same
-    values is the same event under a new id, and its message has the same key. The id
+    fields the `publish` declares `idempotent_on:`. The first event recorded again
+    under a new id has the same values, and its message has the same key. The id
     stands in for it when the publication declares no such fields, or one of them is
     `nil`, which identifies nothing;
   - `name` — the versioned name the `publish` declares, `"billing.invoice.issued.v1"`;

@@ -64,8 +64,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   only the domain named after the application publishes.
 - **The pages, the DSL reference and the moduledocs called an event a "fact"** (#512). They now say "event",
   as the glossary does: `idempotent_on:` names the fields that make one event, and the inbox takes one event
-  once. The message of a reaction that takes another context's event and declares no delivery (X10) says
-  that its failure rolls the other context's event back.
+  once. The message of a policy or a read model that takes another context's event without declaring its
+  delivery (X10) says that its failure rolls the other context's event back.
 
 ## [0.13.0] - 2026-10-29
 

@@ -102,7 +102,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   that subject's key and reads back as `%EhOsContract.Erased{}` after erasure.
 - **`optional: true` is legal**, except on a field the process correlates on or a boundary matches
   (`F4`); an optional `:id` is simply not a tag. Use it for an
-  attribute that is sometimes absent. When the absence is itself an event something depends on — a
+  attribute that is sometimes absent. When something depends on the absence itself — a
   visit closed without payment — it is a second event, not a `nil`.
 - `issued_by: :external` says which system gives the value (`X4`).
 - `schema_version` stays 1 on a new event.

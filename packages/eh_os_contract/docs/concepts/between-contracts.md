@@ -37,7 +37,7 @@ A sibling may be in the same context or in another one, and that changes what th
 A policy or a read model left without `delivery` runs `:in_transaction`, inside the dispatch that records the
 event. For a
 sibling of the same context that is usually the right choice: one step of the business, committed once. For a sibling
-of **another context** it means the two contexts commit together, and the reaction's failure rolls the other
+of **another context** it means the two contexts commit together, and its failure rolls the other
 context's event back: a person's command in one context fails because something in another one did. So a
 policy or a read model that takes an event of a sibling of another context has to declare its delivery, or
 the contract does not compile ([`X10`](../contract.md#refusals-x)). Usually that delivery is `:at_least_once`: a policy then names its

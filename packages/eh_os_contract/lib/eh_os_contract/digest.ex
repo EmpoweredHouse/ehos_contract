@@ -103,7 +103,7 @@ defmodule EhOsContract.Digest do
 
   @doc """
   The full SHA-256, in hex, of the same length-prefixed encoding `document_hash/1`
-  takes twelve characters of: for what tells two facts apart, where a collision would
+  takes twelve characters of: for what tells two events apart, where a collision would
   make them one (`EhOsContract.Bus.Message`'s key).
   """
   @spec document_digest(term()) :: String.t()
