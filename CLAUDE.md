@@ -98,7 +98,7 @@ and a message (`docs/contract.md`). Everything the library does reads those modu
   `EhOsContract.Supplier`.
 - **Reactions and read models.** Policies, process managers with timers and effects (the reactions), and read
   models, run inside the dispatch's transaction (`:in_transaction`) or after it (`:at_least_once`: an ordered
-  subscription to the log, or an Oban job inserted in the same transaction). A reaction or a read model that
+  subscription to the log, or an Oban job inserted in the same transaction). A policy or a read model that
   takes another context's event has to say which.
 - **Between applications.** An event leaves only through `publish`: a relay reads the log and hands it to an
   `EhOsContract.Bus`. One arrives in an inbox that only a policy takes, never in the receiver's log. The library
