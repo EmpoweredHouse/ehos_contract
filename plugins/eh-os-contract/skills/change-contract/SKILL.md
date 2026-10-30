@@ -63,7 +63,7 @@ below, whose rows a log may hold; of an event no longer declared it drops every 
 
 ## What the compiler already catches
 
-`packages/eh_os_contract/docs/contract.md`, "What will not compile", is the complete list with codes.
+`packages/eh_os_contract/docs/refusals.md` is the complete list with codes.
 The ones a change most often trips, so you know not to reason about them:
 
 - a reference to what the change removed — `emits:`, `rejects:`, `handles:`, `consults`, a promise's
@@ -151,7 +151,7 @@ meets old rows, and write the decision and the data work into the pull request.
 ## Procedure
 
 1. Write the change as a diff against the committed declaration.
-2. Compile. Whatever `packages/eh_os_contract/docs/contract.md`'s codes refuse is answered; fix it or drop that part.
+2. Compile. Whatever `packages/eh_os_contract/docs/refusals.md`'s codes refuse is answered; fix it or drop that part.
 3. Classify every changed key against the table.
 4. For each row that touches history, count the rows of the type (above). For each host-visible
    row, ask the user.

@@ -214,8 +214,9 @@ models and the queries that read them; `external` systems, named after what they
 vendor, so a report can tell "we broke the rule" from "the system we depend on was down"; and personal
 data, encrypted in the log per subject so that erasing a subject is deleting a key.
 
-How to write a domain and a contract, and every refusal of the compiler by its code, is in
-[`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md). Every key of both
+How to write a domain and a contract is in
+[`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md), and every refusal of the
+compiler by its code in [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md). Every key of both
 DSLs is in a reference that is not hand-written: `mix eh_os_contract.docs`, run inside the package,
 generates [`docs/dsl/`](packages/eh_os_contract/docs/dsl) from the DSLs themselves, and the package's gate
 runs it with `--check`, failing the build if the two drift apart. A reference that can go stale is the
@@ -307,7 +308,8 @@ from the first commit, so it's a fact the compiler checks, not a promise in a do
 
 | Question | Read |
 | --- | --- |
-| How do I write a domain and a contract, and what will not compile | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| How do I write a domain and a contract | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| What will not compile, every refusal with its code | [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md) |
 | Every key of both DSLs, generated from the code | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
 | The second DSL, and what it reverses in the first | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
 | Why does the library work this way — eighteen starting decisions (written under its earlier name, `pns`) | [`docs/adr/architecture.md`](docs/adr/architecture.md) |

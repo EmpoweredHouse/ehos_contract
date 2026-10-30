@@ -146,8 +146,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
    `record`s it with an actor from `recorded_by:` and `expect`s it, and one `rejected` on each value
    invariant its data can break that the material names; then use it as a `given` or `on` where
    what follows depends on it.
-7. Compile. Every refusal starts with its code; `packages/eh_os_contract/docs/contract.md`, "What will not compile", says
-   what each means.
+7. Compile. Every refusal starts with its code; `packages/eh_os_contract/docs/refusals.md` says what each
+   means.
 8. Run the gate from `sandbox/` and read any new `check` line naming the event
    (`event-without-consumer`, `free-text-not-personal`, `emits-never-produced` until the code emits
    it).

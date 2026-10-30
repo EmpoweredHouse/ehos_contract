@@ -54,6 +54,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   actor to verdict, with the four questions of conformance. The library's word for something that
   occurred is "event", not "fact"; a read model is a consumer of events, not a reaction.
 
+### Changed
+
+- **`docs/contract.md` is a how-to, and the compile refusals have a page of their own** (#517). The guide
+  tells how to write a domain, a contract and a process module, in short sentences, with two diagrams:
+  what is checked at which time, and which module names which. Every refusal code, with the layer that
+  refuses it, is now in `docs/refusals.md`; the layers L1 to L5 have names (schema, one module,
+  implementation, between modules, the check). Links change: `contract.md#refusals-<family>` is
+  `refusals.md#refusals-<family>`, and `contract.md#process-modules` is `contract.md#write-a-process-module`.
+  The `eh-os-contract` plugin's skills point at the new page, at 0.14.1.
+
 ### Fixed
 
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It

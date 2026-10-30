@@ -30,8 +30,8 @@ August: 24 failures committed behind it). The safe form ends in `echo "EXIT=$rc"
 
 Given a green gate, three things are closed:
 
-- **Every compile refusal** — `packages/eh_os_contract/docs/contract.md`, "What will not compile": `N`, `F`, `A`, `C`, `P`,
-  `R`, `K`, `S`, `D`, `X` and `I` codes, layers L1–L4. Among them: an event outside a command's
+- **Every compile refusal** — `packages/eh_os_contract/docs/refusals.md`: `N`, `F`, `A`, `C`, `P`,
+  `R`, `K`, `S`, `D`, `X` and `I` codes, from the schema to the rules between modules. Among them: an event outside a command's
   `emits:`, a refusal outside its `rejects:` (`I4`, `I5`), an invariant with no `rejected` scenario
   (`S8`), a sibling's field used and removed (`X6`), an `:at_least_once` reaction without
   `idempotency` (`P3`).
@@ -39,7 +39,9 @@ Given a green gate, three things are closed:
   implementation, so "the code does what the scenario says" is closed. Whether the scenario says the
   right thing is not (below).
 - **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
-  `packages/eh_os_contract/docs/contract.md`'s examples and refusal table against the code (`test/docs_test.exs`).
+  `packages/eh_os_contract/docs/contract.md`'s examples and `packages/eh_os_contract/docs/refusals.md`'s table against
+  the code (`test/docs_test.exs`), and the diagrams in `packages/eh_os_contract/docs/img/` against their sources
+  (`mix ehos_diagrams.gen --check`).
 - **The docs are complete and most of their references resolve**: every public function of each package's
   `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
   a `@doc false` function is not held to a `@spec`, though `CLAUDE.md` still asks for one); and no doc
