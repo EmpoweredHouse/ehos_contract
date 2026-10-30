@@ -52,6 +52,7 @@ another page uses a word in a different way, this page is correct.
 | **Reaction** | A policy, an effect or a process manager: a declaration that does something because an event occurred. A read model is not a reaction. | — |
 | **Read model** | Data that the application keeps for reading, written from events, usually in its own table. Queries read it. A read model decides nothing. | `read_model` |
 | **Recording** | An event that an actor writes into the log without a decision: an observation, or the answer of an external system. The event names the actors that can record it. | `recorded_by:`, `EhOsContract.record/3` |
+| **Refusal** | The answer of the engine when a model, an implementation or a request breaks a rule of the engine. The compiler refuses a model with a code. Dispatch refuses a request before the decision. A refusal is not a rejection. | [the compile refusals](refusals.md), `t:EhOsContract.refusal/0` |
 | **Rejection** | The answer of a unit that refuses a command on an invariant or a constraint. The log gets no event. | `reject/1`, `rejects:` |
 | **Relation** | How two contexts depend on each other: one of 8 patterns of context mapping. | `relation`, in the domain |
 | **Relay** | The consumer that reads the published events from the log and gives them to the bus. | `EhOsContract.Relay` |
@@ -175,5 +176,6 @@ end
 ## Next steps
 
 - [Introduction](introduction.md): what the library does, and what it does not do.
-- [Writing a domain and a contract](contract.md): how to start, and what does not compile.
+- [Write a domain, a contract and a process module](contract.md): how to start.
+- [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The concepts, from [the domain](concepts/domain.md) to [processes](concepts/process.md).
