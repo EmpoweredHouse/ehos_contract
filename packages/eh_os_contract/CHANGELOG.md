@@ -59,6 +59,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
   a run and its promises. The page no longer counts a read model among what reacts to events (#511).
+- **`docs/concepts/domain.md` and `docs/concepts/between-contracts.md` said an application has one domain.**
+  It may hold more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and
+  only the domain named after the application publishes.
 
 ## [0.13.0] - 2026-10-29
 
