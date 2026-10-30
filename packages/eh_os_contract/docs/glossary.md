@@ -18,7 +18,7 @@ another page uses a word in a different way, this page is correct.
 | **Command** | A request to a unit to change something. The command names the actors that can issue it, the events that it can emit, and the invariants and constraints that it can reject on. | `command` |
 | **Conformance** | The comparison of the log with what the contracts and the process modules declare. It answers [the four questions](#four-questions), and nothing more. | `mix eh_os_contract.report`, the dashboard |
 | **Constraint** | A rule about the data of one command or one query, or a rule of a reaction. A command can reject on its constraints. | `constraint` |
-| **Consumer** | A declaration that takes events from the log: a reaction, a read model, or the relay of a publication. It is not the `consumes` declaration: see "Consumed event". | — |
+| **Consumer** | A declaration that takes events from the log: a reaction, a read model, or the relay of a publication. A policy can also take events from the inbox. It is not the `consumes` declaration: see "Consumed event". | — |
 | **Consumed event** | An event of another contract of the same application, which this contract takes from the same log. | `consumes` |
 | **Context** | A part of the domain in which each word has one meaning. Each contract belongs to one context. Also called a bounded context. | `context` |
 | **Contract** | A module that describes what the units of one context decide: their commands, events, invariants and lifecycles. It also holds the consumers of their events, the queries and the scenarios. | `use EhOsContract.Contract` |
@@ -36,7 +36,7 @@ another page uses a word in a different way, this page is correct.
 | **External system** | A system that the application exchanges data with. Its name tells what it does for the business, not the name of its vendor. | `external`, in the domain |
 | **Identity** | The fields that tell one unit from another. The engine adds them to the state, the commands and the events of the unit. | `identity` |
 | **Implementation** | The module that holds the code of one declaration of a contract. It points to the contract. The contract does not name it. | `use <Contract>, aggregate: :name` |
-| **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message, and the same event published again. The event does not go into the log. | `EhOsContract.Inbox` |
+| **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message. If the publication declares `idempotent_on:`, it also drops the same event published again with a new id. The event does not go into the log. | `EhOsContract.Inbox` |
 | **Integration event** | An event that leaves the application: a versioned name and the fields that it carries. A publication declares it. | `publish` |
 | **Invariant** | A rule that must stay true, as the business states it: of a unit, of a value, or of a process manager. A command names the invariants that it can reject on. | `invariant` |
 | **Lifecycle** | The statuses of an aggregate, and the transitions that its events make between them. A dynamic consistency boundary has no lifecycle. | `lifecycle` |
