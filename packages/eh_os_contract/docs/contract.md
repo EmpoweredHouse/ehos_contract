@@ -41,7 +41,7 @@ compares the log with the contracts and the process modules.
 The engine checks a model in five layers. The first four layers stop the compile when a model breaks a
 rule. The fifth layer is a task that you run.
 
-![When Elixir compiles a module, the engine checks the schema, the rules of one module and the implementation. After that, the compiler eh_os_contract checks the rules between modules. The check task reports errors, warnings and notices.](img/contract-checks.svg)
+![While Elixir compiles, the engine checks the schema, one module and the implementation; then the compiler eh_os_contract checks between modules; the check task reports.](img/contract-checks.svg)
 
 1. **Schema.** Spark checks the keys of each declaration: a key that is not known, a missing key, a
    value of the wrong type.
@@ -178,8 +178,8 @@ return is a run. Write it in a [process module](#write-a-process-module).
 ## Implement the unit
 
 The implementation is the module that decides. It points to the contract with `use`. The contract
-generates a struct for each command and event, and a behaviour: one callback for each command, and
-`evolve/2`.
+generates a struct for each command and event. It also generates a behaviour: one callback for each
+command, and `evolve/2` when the unit keeps a state.
 
 ```elixir
 defmodule Lending.Loan do
@@ -214,8 +214,8 @@ end
   `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx.
 
 Tell the engine where your implementations are: `config :eh_os_contract, applications: [:lending]`.
-A unit whose events are all recorded, and whose state is only its identity, needs no implementation.
-If such a unit keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
+A unit whose events are all recorded needs no implementation if its state is only its identity. If it
+keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
 [Units](concepts/units.md) tells more about the code that decides.
 
 <a id="which-module-names-which"></a>
@@ -225,7 +225,7 @@ If such a unit keeps more state, its implementation has only `evolve/2`, to fold
 The implementation names its contract, and the contract names its domain. A contract never names its
 implementation. So a change to the code does not compile the contract again.
 
-![The implementation uses the contract. The contract and the process module name the domain. The process module includes events of the contract.](img/contract-modules.svg)
+![The implementation uses the contract, the contract and the process module name the domain, the process module includes events of the contract, and the contract names neither.](img/contract-modules.svg)
 
 1. The implementation uses the contract. This is a compile dependency: the contract compiles first.
 2. The contract names its domain with `domain:`. This makes no compile dependency. The compiler
@@ -302,10 +302,10 @@ scenario "returned on the twentieth day — kept", verdict: :satisfied, via: :ev
 end
 ```
 
-Each given holds the required fields that its contract declares ([`X9`](refusals.md#refusals-x)). To show
-that an external system was not available, add `outage :catalogue, at: "2026-09-10T08:00:00Z"`. The
-events in `eventually` or `or_else` must depend on that system, or the promise names it in `waits_on`
-([`X4`](refusals.md#refusals-x)).
+Each given holds the required fields that its contract declares ([`X9`](refusals.md#refusals-x)). If the
+domain declares an external system, a scenario can show that it was not available:
+`outage :catalogue, at: "2026-09-10T08:00:00Z"`. The events in `eventually` or `or_else` must depend
+on that system, or the promise names it in `waits_on` ([`X4`](refusals.md#refusals-x)).
 
 Run these scenarios with `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan`. The result
 is one test for each scenario, without a database. [Processes](concepts/process.md) tells how the
@@ -366,7 +366,9 @@ field :scanned, :boolean, supplied_by: :host
 - After the engine authorizes the caller, the supplier gives the value.
 - If the supplier cannot give it, the result is `{:not_supplied, reason}`, an HTTP 503. The engine
   writes nothing.
-- A call of `dispatch/3` from your own code is trusted, as each other field of the struct is.
+- A call of `dispatch/3` from your own code is trusted, as each other field of the struct is. The
+  engine asks the supplier only if you pass `supply: true`, as a form does
+  ([Forms](concepts/forms.md)).
 - Only a field of a command, or of a recorded event, can be supplied
   ([`F10`](refusals.md#refusals-f)).
 - A node that has such a field and no supplier does not start.

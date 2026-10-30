@@ -174,8 +174,9 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
   does not fit is appended and does not move the status.
 - **A key with rules of its own.** An identity can name a domain value, for example
   `identity [:company_id, period_id: :period]`. Dispatch holds the key to the invariants of the value.
-  If the key breaks one, dispatch refuses the command with `{:period_id, {:invariant, name}}`, before
-  it reads a stream. The value rests on `:id` ([`F1`](../refusals.md#refusals-f)).
+  If the key of a command or a recorded event breaks one, dispatch refuses it with
+  `{:invalid, [period_id: {:invariant, name}]}`, before it reads a stream. The type of the value must
+  be `:id`, because the key names the stream ([`F1`](../refusals.md#refusals-f)).
 - **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
   [process module](process.md)'s to say.
 

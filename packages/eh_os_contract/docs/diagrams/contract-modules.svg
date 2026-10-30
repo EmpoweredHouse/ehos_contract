@@ -1,5 +1,5 @@
 <!-- title: Which module names which? -->
-<!-- desc: The implementation uses the contract, the contract and the process module name the domain, and the process module includes events of the contract. -->
+<!-- desc: The implementation uses the contract, the contract and the process module name the domain, the process module includes events of the contract, and the contract names neither. -->
 <!-- words: implementation, contract, process module, domain -->
 <!-- technical: Lending.Loan, Lending.Contracts.Loans, Lending.Processes.Loan, Lending.Domain -->
 <!-- verbs: uses, names, includes -->

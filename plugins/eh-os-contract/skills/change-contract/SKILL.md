@@ -63,7 +63,7 @@ below, whose rows a log may hold; of an event no longer declared it drops every 
 
 ## What the compiler already catches
 
-`packages/eh_os_contract/docs/refusals.md` is the complete list with codes (an engine released before that page has the list in `docs/contract.md`, "What will not compile").
+`packages/eh_os_contract/docs/refusals.md` is the complete list with codes (an engine released before that page has the list in `packages/eh_os_contract/docs/contract.md`, "What will not compile").
 The ones a change most often trips, so you know not to reason about them:
 
 - a reference to what the change removed — `emits:`, `rejects:`, `handles:`, `consults`, a promise's

@@ -21,7 +21,8 @@ The compiler checks a model at layers 1 to 4 of
 | 4 | Between modules | after Elixir compiles the project | a contract against its domain and its sibling contracts. The `:eh_os_contract` compiler does this check. |
 
 Layer 5, `mix eh_os_contract.check`, is a task that you run. It reports errors, warnings and notices
-by the names of its rules, not by these codes. [The rules of the check](rules.md) lists them.
+by the names of its rules. Without the compiler `:eh_os_contract`, it also repeats the rules between
+modules as errors, with their codes. [The rules of the check](rules.md) lists them.
 
 ## The families
 

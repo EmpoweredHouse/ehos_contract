@@ -1,5 +1,5 @@
 <!-- title: What is checked at which time? -->
-<!-- desc: Elixir compiles each module through three layers, the compiler eh_os_contract adds the rules between modules, and the check task reports errors, warnings and notices. -->
+<!-- desc: While Elixir compiles, the engine checks the schema, one module and the implementation; then the compiler eh_os_contract checks between modules; the check task reports. -->
 <!-- words: implementation -->
 <!-- technical: Schema, One module, Between modules, The check -->
 <!-- parts: schema = -, module = -, implementation = -, between = -, check = - -->
