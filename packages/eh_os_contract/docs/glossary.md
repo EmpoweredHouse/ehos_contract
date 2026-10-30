@@ -12,7 +12,7 @@ another page uses a word in a different way, this page is correct.
 | --- | --- | --- |
 | **Actor** | A kind of person or a system that issues commands, asks queries or records events. The contract names the actors of each declaration. | `actor`, in the domain; `by:`, `recorded_by:` |
 | **Aggregate** | A unit that decides over one stream. Example: one loan of a copy. | `aggregate` |
-| **Application** | The Elixir application that uses the engine. It holds the domain, the contracts, the process modules and the code that implements them. Its contracts share one log. | — |
+| **Application** | The Elixir application that uses the engine. It holds one or more domains, their contracts and process modules, and the code that implements them. All its contracts share one log. Only the domain with the name of the application publishes. | — |
 | **Authorizer** | The module of the application that decides if the actor of a credential can issue a command, ask a query or record an event. The engine asks it before it checks the fields or gets a decision. | `EhOsContract.Authorizer` |
 | **Bus** | The interface that carries integration events from one application to another. The library supplies only a local bus, for tests and for one node. | `EhOsContract.Bus` |
 | **Capability** | The name of one thing that a person can do: a command, a query or a recorded event that a human actor can use. Its form is `<domain>.<name>`. The engine derives it from the contract. | `EhOsContract.Model.capabilities/1` |
