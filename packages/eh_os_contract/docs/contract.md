@@ -253,8 +253,8 @@ and the log gets no event. [Authorization](authorization.md) tells how a credent
 ## Write a process module
 
 A process module describes one kind of run, with events from one or more contracts. It names the
-fields that tell one run from another, the stages, the events that end a run, the promises and the
-deadline.
+fields that tell one run from another, the stages, the events that end a run and the deadline. It
+also holds the promises and their scenarios.
 
 ```elixir
 defmodule Lending.Processes.Loan do
@@ -298,10 +298,12 @@ end
   the end.
 - A `promise` says that after the event in `from`, the event in `eventually` follows within the time
   in `within`.
-- A `scenario` in the process module shows a promise. It gives the events, the moment of judgement
-  and the verdict that the promise must get.
+- Show each promise with a `scenario`. `given` lists the events, and `promise … at:` gives the moment
+  of judgement.
+- `verdict:` is the verdict that the promise must get. `via:` is the route that kept it.
 
-Each given holds the required fields that its contract declares ([`X9`](refusals.md#refusals-x)). If the
+Each given holds the identity of its unit and the required fields that its contract declares
+([`X9`](refusals.md#refusals-x)). If the
 domain declares an external system, a scenario can show that it was not available:
 `outage :catalogue, at: "2026-09-10T08:00:00Z"`. The events in `eventually` or `or_else` must depend
 on that system, or the promise names it in `waits_on` ([`X4`](refusals.md#refusals-x)).
