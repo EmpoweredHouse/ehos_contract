@@ -13,8 +13,8 @@ Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compile
 every contract against it.
 
 An application usually has one domain. It may hold more, each with its own contracts: a contract consumes only
-the events of its own domain ([`X5`](../contract.md#refusals-x)), and the tasks that read one domain then take
-`--domain`. Connected to EHOS through `eh_os_contract_auth`, only the domain named after the application may
+the events of its own domain ([`X5`](../contract.md#refusals-x)), and the tasks that read one domain then need
+`--domain` to name it. Connected to EHOS through `eh_os_contract_auth`, only the domain named after the application may
 publish, since EHOS lets an application publish only under its own name.
 
 ```elixir
