@@ -20,6 +20,7 @@ when one differs from what the task would write now:
 | `docs/cli.md` | `mix eh_os_contract.docs` | each task's `@moduledoc` and `@shortdoc` |
 | `docs/behaviours.md` | `mix eh_os_contract.docs` | each behaviour's `@callback`s and their `@doc` |
 | `docs/rules.md` | `mix eh_os_contract.rules` | `EhOsContract.Check.Catalog` |
+| `docs/img/<id>.svg` | `mix ehos_diagrams.gen` | the hand-laid source `docs/diagrams/<id>.svg`, and the words of `docs/glossary.md` |
 
 **Prose** pages are written by hand: `README.md`, `docs/introduction.md`, `docs/getting-started.md`,
 `docs/contract.md`, `docs/concepts/*.md`, `docs/authorization.md` and `docs/glossary.md`. The list is
@@ -57,6 +58,7 @@ Run the tasks in this package with `MIX_ENV=dev`, and commit the pages they rewr
 | A new family of refusal codes (a new letter) | a table of its own in `docs/refusals.md`, after `<a id="refusals-<letter>"></a>` and a heading, and a line in its list of families | nothing | `docs_test`: a family without its anchor |
 | A sentence in a prose page that names a code | the code as a link to its family | nothing | `docs_test`: a bare code, a link to another family, or a link to a code no row has |
 | A guide or concept page | see below | `mix eh_os_contract.docs` | `docs_test`, the link and anchor tests |
+| A diagram | its source in `docs/diagrams/<id>.svg`, by the `ehos-dev:diagrams` skill, and a link to `img/<id>.svg` from a page | `mix ehos_diagrams.gen` | `ehos_diagrams.gen --check`: an output not current, a label outside the glossary, a diagram over the budget, an output no page links, a Mermaid block |
 
 What the gate cannot see, a reviewer reads for: whether a page still says what the code does after a change in
 behaviour, not in shape. A behaviour change is the moment to search the prose pages for what it changes

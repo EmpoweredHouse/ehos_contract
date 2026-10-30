@@ -1,0 +1,75 @@
+<!-- title: Which module names which? -->
+<!-- desc: The implementation uses the contract; the contract and the process module name the domain; the process module includes events of the contract; the contract names neither. -->
+<!-- words: implementation, contract, process module, domain -->
+<!-- technical: Lending.Loan, Lending.Contracts.Loans, Lending.Processes.Loan, Lending.Domain -->
+<!-- verbs: uses, names, includes -->
+<!-- parts: implementation = -, process = -, contract = -, domain = - -->
+<svg viewBox="0 0 1000 504" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="contract-modules-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Connectors (behind the parts) -->
+  <polyline class="arr" points="220,136 220,248 399,248" marker-end="url(#contract-modules-arrow)"/>
+  <line class="arr" x1="500" y1="280" x2="500" y2="359" marker-end="url(#contract-modules-arrow)"/>
+  <polyline class="arr" points="800,136 800,392 601,392" marker-end="url(#contract-modules-arrow)"/>
+  <polyline class="arr" points="760,136 760,248 601,248" marker-end="url(#contract-modules-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="236" y="228" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="246" cy="235" r="6"/>
+  <text class="badget" x="246" y="238" text-anchor="middle">1</text>
+  <text class="lbl" x="258" y="238">USES</text>
+
+  <rect class="mask" x="512" y="312" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="522" cy="319" r="6"/>
+  <text class="badget" x="522" y="322" text-anchor="middle">2</text>
+  <text class="lbl" x="534" y="322">NAMES</text>
+
+  <rect class="mask" x="640" y="372" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="650" cy="379" r="6"/>
+  <text class="badget" x="650" y="382" text-anchor="middle">3</text>
+  <text class="lbl" x="662" y="382">NAMES</text>
+
+  <rect class="mask" x="620" y="228" width="88" height="14" rx="2"/>
+  <circle class="badge" cx="630" cy="235" r="6"/>
+  <text class="badget" x="630" y="238" text-anchor="middle">4</text>
+  <text class="lbl" x="642" y="238">INCLUDES</text>
+
+  <!-- The implementation -->
+  <rect class="knock" x="120" y="72" width="200" height="64" rx="6"/>
+  <rect id="contract-modules-implementation" class="n-back" x="120" y="72" width="200" height="64" rx="6"/>
+  <text class="name" x="220" y="98" text-anchor="middle">Implementation</text>
+  <text class="sub" x="220" y="116" text-anchor="middle">Lending.Loan</text>
+
+  <!-- The process module -->
+  <rect class="knock" x="680" y="72" width="200" height="64" rx="6"/>
+  <rect id="contract-modules-process" class="n-back" x="680" y="72" width="200" height="64" rx="6"/>
+  <text class="name" x="780" y="98" text-anchor="middle">Process module</text>
+  <text class="sub" x="780" y="116" text-anchor="middle">Lending.Processes.Loan</text>
+
+  <!-- The contract -->
+  <rect class="knock" x="400" y="216" width="200" height="64" rx="6"/>
+  <rect id="contract-modules-contract" class="n-focal" x="400" y="216" width="200" height="64" rx="6"/>
+  <text class="name" x="500" y="242" text-anchor="middle">Contract</text>
+  <text class="sub" x="500" y="260" text-anchor="middle">Lending.Contracts.Loans</text>
+
+  <!-- The domain -->
+  <rect class="knock" x="400" y="360" width="200" height="64" rx="6"/>
+  <rect id="contract-modules-domain" class="n-back" x="400" y="360" width="200" height="64" rx="6"/>
+  <text class="name" x="500" y="386" text-anchor="middle">Domain</text>
+  <text class="sub" x="500" y="404" text-anchor="middle">Lending.Domain</text>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="456" x2="960" y2="456"/>
+  <rect class="n-focal" x="40" y="472" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="481">The contract, which names no other module of the host</text>
+  <rect class="n-back" x="420" y="472" width="14" height="10" rx="2"/>
+  <text class="legt" x="440" y="481">A module of the host</text>
+  <line class="arr" x1="620" y1="477" x2="647" y2="477" marker-end="url(#contract-modules-arrow)"/>
+  <text class="legt" x="656" y="481">Names another module</text>
+  </g>
+</svg>

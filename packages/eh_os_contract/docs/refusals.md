@@ -17,8 +17,8 @@ the code. The diagram
 | --- | --- | --- |
 | Schema | when the module compiles | the keys of the DSL: a key that is not known, a required key that is missing, a value of the wrong type. Spark gives these messages. They have no code. |
 | One module | when the module compiles | the rules of one domain, contract or process module. The message gives the file and the line. |
-| Between modules | after Elixir compiles the project | a contract against its domain and its sibling contracts. The `:eh_os_contract` compiler does this check. |
 | Implementation | when the implementation compiles | the macros of an implementation, at the `use` or the call that breaks a rule |
+| Between modules | after Elixir compiles the project | a contract against its domain and its sibling contracts. The `:eh_os_contract` compiler does this check. |
 
 `mix eh_os_contract.check` refuses nothing. It reports what a valid model says that a reader must
 know. [The rules of the check](rules.md) lists them.

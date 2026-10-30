@@ -41,15 +41,15 @@ compares the log with the contracts and the process modules.
 The engine checks a model in five layers. The first four layers refuse a model that breaks a rule. The
 fifth layer only reports.
 
-![The engine checks a model in five layers: the schema, one module, between modules and the implementation when the project compiles, then the check task.](img/contract-checks.svg)
+![When Elixir compiles a module, the engine checks the schema, the rules of one module and the implementation. After that, the compiler eh_os_contract checks the rules between modules. The check task reports.](img/contract-checks.svg)
 
 1. **Schema.** Spark checks the keys of each declaration: a key that is not known, a missing key, a
    value of the wrong type.
 2. **One module.** The engine checks the rules of one domain, contract or process module. The message
    gives the file and the line.
-3. **Between modules.** The compiler `:eh_os_contract` checks a contract against its domain and its
-   sibling contracts.
-4. **Implementation.** The macros of an implementation check the code at the line that breaks a rule.
+3. **Implementation.** The macros of an implementation check the code at the line that breaks a rule.
+4. **Between modules.** After Elixir compiles the project, the compiler `:eh_os_contract` checks a
+   contract against its domain and its sibling contracts.
 5. **The check.** `mix eh_os_contract.check` reports what a valid model says that a reader must know.
    It refuses nothing.
 
