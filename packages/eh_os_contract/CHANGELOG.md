@@ -66,6 +66,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   as the glossary does: `idempotent_on:` names the fields that make one event, and the inbox takes one event
   once. The message of a policy or a read model that takes another context's event without declaring its
   delivery (X10) says that its failure rolls the other context's event back.
+- **The glossary and `docs/authorization.md` named only the capabilities of a person** (#515). They now also
+  name `<published name>.subscribe`. The engine derives one for each subscribed event that a policy takes.
+  The application holds it, not a person.
 
 ## [0.13.0] - 2026-10-29
 
