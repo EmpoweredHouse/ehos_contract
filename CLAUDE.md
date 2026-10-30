@@ -233,10 +233,9 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   `ehos-dev:voice` and `ehos-dev:diagrams` skills, from the `ehos-dev` plugin the maintainers enable
   (`CONTRIBUTING.md`, "Working with Claude Code"); without the plugin, say so to the user. Load `diagram-design`
   only through `ehos-dev:diagrams`, and never run its commands.
-- **How code and tests are written here** is this section and `CONTRIBUTING.md`, "Writing". The `ehos-dev:elixir`
-  skill reads them first, and they win where it differs. Code written before one of its rules is not changed in
-  passing: the engine is configured through the application environment, and its tests set it with
-  `Application.put_env`.
+- **How code and tests are written here** is this section. The `ehos-dev:elixir` skill reads it first, and it wins
+  where the skill differs. Code written before one of the skill's rules is not changed in passing: the engine is
+  configured through the application environment, and its tests set it with `Application.put_env`.
 - **A code never stands alone in prose.** In `ROADMAP.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
   (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule
