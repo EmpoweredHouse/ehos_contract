@@ -1,0 +1,1 @@
+Doc-only fix of two CodeRabbit comments on #513 (consumer row: the inbox; inbox row: idempotent_on:), each checked against docs/contract.md and EhOsContract.Inbox. docs_test: 30 tests, 0 failures. No code changed since the gate's EXIT=0.
