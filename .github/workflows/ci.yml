@@ -70,7 +70,11 @@ jobs:
     name: check (${{ matrix.name }})
 
     steps:
+      # No token is left in .git/config: the dependencies' code runs while they compile,
+      # and nothing after the checkout needs git to authenticate.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: erlef/setup-beam@v1
         id: beam
@@ -99,11 +103,15 @@ jobs:
       # `mix check` with `cd: "packages/eh_os_contract"` as a fully separate Mix
       # project — its own deps/ and mix.lock, fetched independently of the
       # host's. Confirmed 21 August 2026: packages/eh_os_contract/deps is
-      # git-ignored, so a fresh checkout starts without it.
+      # git-ignored, so a fresh checkout starts without it. The private ehos-tools'
+      # packages are left out: anyone who can run a workflow here can restore a cache, and
+      # whoever cannot read ehos-tools must not read its code from one.
       - name: Cache engine deps
         uses: actions/cache@v4
         with:
-          path: packages/eh_os_contract/deps
+          path: |
+            packages/eh_os_contract/deps
+            !packages/eh_os_contract/deps/ehos_*
           key: eh-os-contract-core-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
 
       # The dashboard package, same shape
@@ -165,6 +173,7 @@ jobs:
             packages/eh_os_contract_graph/_build
             !sandbox/_build/*/lib/eh_os_contract*
             !packages/*/_build/*/lib/eh_os_contract*
+            !packages/*/_build/*/lib/ehos_*
             !sandbox/_build/*/consolidated
             !packages/*/_build/*/consolidated
             !packages/*/_build/*/doc
