@@ -1,0 +1,8 @@
+Not documentation alone: dev/eh_os_contract/docs.ex and mix.exs change. Both reviews ran as subagents.
+
+Round 1 (b0f8fdc4). Correctness (`code-review` high): rows narrower than the code — Stream, Promise (within optional, or_else), Constraint (queries), Command (constraints), Dispatch (a boundary reads a query), Policy (none or several commands), Consumer/Relay/Subscription disagreeing, `consumes` with no row, Scenario without a trigger, Read model without a table, the four questions "about each contract" and "no run"; contract.md "both DSLs" and read model as a reaction; introduction "run from the log" and "with the contract"; a duplicate anchor id; MAINTAINING-DOCS prose list; no covers comment — all fixed (2nd commit). "fact" on other pages — skipped, filed #512. Subscription read-model nuance — fixed in round 2.
+Security and performance (`engineering:code-review`): none. Missing Authorizer and Personal field rows — fixed; inbox dedup — fixed; "on all pages" claim — softened; no covers — fixed.
+
+Round 2 (the fix commit). Subscription without read models — fixed; changelog naming the wrong file — fixed; Delivery implying a relay can be in-transaction — fixed; Authorizer "before anything else" — fixed; Inbox dedup wording — fixed; covers without nested entities — skipped (low; nested entities are not top-level, docs_test does not require them); README/CLAUDE.md/write-reaction calling read models reactions — skipped, added to #512.
+
+Gate: `mix check` in sandbox, EXIT=0, on the final HEAD.
