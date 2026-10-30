@@ -1,0 +1,1 @@
+Review of c74ccd39..215ea7c7 (CodeRabbit's scenario comment on #523). 7d45abce: correctness (code-review high, ehos-dev:voice) found three wording gaps, fixed in 215ea7c7; security (engineering:code-review) found nothing. Reverse check: givens without copy_id/member_id fail docs_test on X9. CodeRabbit's fork/Dependabot comment: no change, #520. Gate EXIT=0 at 215ea7c7.
