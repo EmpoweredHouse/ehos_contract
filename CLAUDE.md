@@ -228,6 +228,9 @@ Polish text in strings has its own pitfalls, each of which has already cost a br
   them the package has no documentation and `dialyzer` nothing to check. How: the
   [`write-docs`](.claude/skills/write-docs/SKILL.md) skill. Each package's gate holds the mechanics
   (`test/doc_coverage_test.exs`, `docs --warnings-as-errors`).
+- **Text a person reads is technical documentation, not narrative**: a page in `docs/`, a README, a guide, a
+  message a host or a user sees. Its sentences, words and diagrams follow the `ehos-dev:voice` and
+  `ehos-dev:diagrams` skills (`.claude/settings.team.json` enables the plugin).
 - **A code never stands alone in prose.** In `ROADMAP.md`, `docs/adr/`, a pull request or a commit, the meaning
   comes first and the code in parentheses: "a reaction to another context's event that leaves delivery out
   (X10)". An issue's "In short" section carries no codes at all; its technical detail follows the same rule
