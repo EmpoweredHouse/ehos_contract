@@ -1,0 +1,4 @@
+Two reviews, origin/main..HEAD, by hand (code-review and engineering:code-review skills not available to the agents).
+Correctness: 7 findings. 1 "fact" left in change-contract: fixed. 2 same in document_digest/1 and trace docs: fixed. 3 changelog line called X10 subject a reaction: fixed. 4 rule of delivery across contexts said reaction for a read model: fixed (summary says consumer, body says its failure). 5 bus message doc said one event is a second one; add-event absence sentence: rewritten. 6 auth package without changelog line: wording only, No changelog line in the PR. 7 migration comments still say fact: left on purpose, migrations untouched.
+Security and performance: no findings; only strings changed, no guarantee restated differently.
+Gate: mix check in sandbox EXIT=0 on 659dece7 (205, 2013, 79, 482, 236 tests, 0 failures).
