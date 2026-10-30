@@ -1,0 +1,1 @@
+Merge of origin/main (with #513) into #514: CHANGELOG conflict resolved keeping both sides' lines. Fix of CodeRabbit's comment (--domain only with several domains), checked against EhOsContract.Tools.domain!/2. Doc only. Gate: mix check in sandbox, EXIT=0.
