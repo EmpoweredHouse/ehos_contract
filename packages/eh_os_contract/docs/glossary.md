@@ -13,7 +13,7 @@ another page uses a word in a different way, this page is correct.
 | **Actor** | A kind of person or a system that issues commands, asks queries or records events. The contract names the actors of each declaration. | `actor`, in the domain; `by:`, `recorded_by:` |
 | **Aggregate** | A unit that decides over one stream. Example: one loan of a copy. | `aggregate` |
 | **Application** | The Elixir application that uses the engine. It holds the domain, the contracts, the process modules and the code that implements them. Its contracts share one log. | — |
-| **Authorizer** | The module of the application that decides if the actor of a credential can issue a command, ask a query or record an event. The engine asks it before anything else. | `EhOsContract.Authorizer` |
+| **Authorizer** | The module of the application that decides if the actor of a credential can issue a command, ask a query or record an event. The engine asks it before it checks the fields or gets a decision. | `EhOsContract.Authorizer` |
 | **Bus** | The interface that carries integration events from one application to another. The library supplies only a local bus, for tests and for one node. | `EhOsContract.Bus` |
 | **Command** | A request to a unit to change something. The command names the actors that can issue it, the events that it can emit, and the invariants and constraints that it can reject on. | `command` |
 | **Conformance** | The comparison of the log with what the contracts and the process modules declare. It answers [the four questions](#four-questions), and nothing more. | `mix eh_os_contract.report`, the dashboard |
@@ -25,7 +25,7 @@ another page uses a word in a different way, this page is correct.
 | **Correlation** | The fields that tell the runs of one process apart. Each event that the process includes carries them. Example: `loan_id`. | `correlate` |
 | **Deadline** | The longest time that a whole run can take, from its first event to the first event that ends it. | `deadline` |
 | **Decision** | The answer of a unit to a command: events, or a rejection. The implementation of the unit makes the decision. | the callback for each command, `emit/1`, `reject/1` |
-| **Delivery** | When a consumer runs. `:in_transaction` runs it before the event is committed, in the same transaction. `:at_least_once` runs it after the commit, and can run it again. | `delivery:` |
+| **Delivery** | When a reaction or a read model runs. `:in_transaction` runs it before the event is committed, in the same transaction. `:at_least_once` runs it after the commit, and can run it again. A relay always runs after the commit. | `delivery:` |
 | **Dispatch** | What the engine does with a command. It checks the actor and the fields, and reads the events of the unit. Then it gets the decision and appends the declared events. | `EhOsContract.dispatch/3` |
 | **Domain** | The module that holds the words of the business: its subdomains, contexts, actors, subjects, values, entities and external systems. Nothing in it runs. | `use EhOsContract.Domain` |
 | **Domain service** | Pure functions that belong to no unit, such as a price from a tariff. A decision calls them. | `domain_service` |
@@ -36,7 +36,7 @@ another page uses a word in a different way, this page is correct.
 | **External system** | A system that the application exchanges data with. Its name tells what it does for the business, not the name of its vendor. | `external`, in the domain |
 | **Identity** | The fields that tell one unit from another. The engine adds them to the state, the commands and the events of the unit. | `identity` |
 | **Implementation** | The module that holds the code of one declaration of a contract. It points to the contract. The contract does not name it. | `use <Contract>, aggregate: :name` |
-| **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message. The event does not go into the log. | `EhOsContract.Inbox` |
+| **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message, and the same event published again. The event does not go into the log. | `EhOsContract.Inbox` |
 | **Integration event** | An event that leaves the application: a versioned name and the fields that it carries. A publication declares it. | `publish` |
 | **Invariant** | A rule that must stay true, as the business states it: of a unit, of a value, or of a process manager. A command names the invariants that it can reject on. | `invariant` |
 | **Lifecycle** | The statuses of an aggregate, and the transitions that its events make between them. A dynamic consistency boundary has no lifecycle. | `lifecycle` |
@@ -63,7 +63,7 @@ another page uses a word in a different way, this page is correct.
 | **Subdomain** | A part of the business, of one kind: core, supporting or generic. Each context belongs to one subdomain. | `subdomain` |
 | **Subject** | A kind of person whose personal data the application keeps and may have to erase. Example: a customer. | `subject`, in the domain |
 | **Subscribed event** | An event of another application that a contract takes by its published name. It arrives in the inbox. | `subscribe` |
-| **Subscription** | The position in the log of one consumer that reads the log in order, after the commit. Examples: a process manager, a relay, a policy delivered `:at_least_once`. | `mix eh_os_contract.subscriptions` |
+| **Subscription** | The position in the log of one consumer that reads the log in order. Examples: a read model, a process manager, a relay, a policy delivered `:at_least_once`. | `mix eh_os_contract.subscriptions` |
 | **Term** | One word of the glossary of a context, with its definition in that context. A term can name the words not to use for it. | `term` |
 | **Transition** | A move of an aggregate from one status to another, which one event makes. | `transition` |
 | **Unit** | The thing that a command goes to: an aggregate or a dynamic consistency boundary. It keeps its invariants and answers each command with a decision. | `aggregate`, `dcb` |

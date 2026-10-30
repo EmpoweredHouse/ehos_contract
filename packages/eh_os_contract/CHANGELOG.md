@@ -58,7 +58,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
-  a run and its promises. The introduction no longer counts read models among the reactions (#511).
+  a run and its promises. The page no longer counts a read model among what reacts to events (#511).
 
 ## [0.13.0] - 2026-10-29
 
