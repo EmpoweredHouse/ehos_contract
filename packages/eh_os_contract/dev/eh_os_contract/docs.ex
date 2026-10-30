@@ -18,8 +18,8 @@ defmodule EhOsContract.Docs do
   @doc """
   The pages written by hand: they may say what they cover and hold generated regions
   (`EhOsContract.Docs.Prose`). Every page ExDoc builds is generated (here, or
-  `docs/rules.md` by `eh_os_contract.rules`), listed here, or the changelog, which
-  `test/docs_test.exs` holds.
+  `docs/rules.md` by `eh_os_contract.rules`), listed here, the refusals' table, or the
+  changelog, which `test/docs_test.exs` holds.
   """
   @spec prose() :: [String.t()]
   def prose do

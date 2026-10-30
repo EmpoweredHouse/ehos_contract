@@ -7,10 +7,11 @@ defmodule EhOsContract.DocsTest do
   apart:
 
     * every example that defines a module compiles, with the modules the same page
-      defines before it, and passes the rules between modules (L3) — a page is read
+      defines before it, and passes the rules between modules — a page is read
       top to bottom, and so is it compiled;
-    * the table of refusals in `docs/contract.md` names exactly the codes the
-      library refuses with, each of which a test in `test/dsl/` asserts;
+    * the table of refusals in `docs/refusals.md` names exactly the codes the
+      library refuses with, and the layer that refuses each, each code asserted by
+      a test in `test/dsl/`;
     * every section, entity, argument and option of both DSLs says what it is, since
       the generated reference prints nothing else;
     * every relative link between the pages leads to a page, and every anchor it
@@ -72,18 +73,20 @@ defmodule EhOsContract.DocsTest do
     end
   end
 
-  # Where a code is refused decides its layer: the rules of one module (L2), the
-  # rules between modules (L3), the implementation macros (L4). Nothing else in
-  # `lib/` refuses a model, so a code mentioned anywhere else — a docstring's example
-  # — does not count.
+  # Where a code is refused decides its layer, by the name `docs/refusals.md` gives it:
+  # the rules of one module, the rules between modules, the implementation macros.
+  # Nothing else in `lib/` refuses a model, so a code mentioned anywhere else — a
+  # docstring's example — does not count.
+  @refusals "docs/refusals.md"
+
   @layers [
-    {"lib/eh_os_contract/contract/rules.ex", "L2"},
-    {"lib/eh_os_contract/contract/rules/*.ex", "L2"},
-    {"lib/eh_os_contract/domain/rules.ex", "L2"},
-    {"lib/eh_os_contract/process/rules.ex", "L2"},
-    {"lib/eh_os_contract/contract/links.ex", "L3"},
-    {"lib/eh_os_contract/contract/links/*.ex", "L3"},
-    {"lib/eh_os_contract/implementation.ex", "L4"}
+    {"lib/eh_os_contract/contract/rules.ex", "One module"},
+    {"lib/eh_os_contract/contract/rules/*.ex", "One module"},
+    {"lib/eh_os_contract/domain/rules.ex", "One module"},
+    {"lib/eh_os_contract/process/rules.ex", "One module"},
+    {"lib/eh_os_contract/contract/links.ex", "Between modules"},
+    {"lib/eh_os_contract/contract/links/*.ex", "Between modules"},
+    {"lib/eh_os_contract/implementation.ex", "Implementation"}
   ]
 
   # %{code => layers}, for every message that starts with a code.
@@ -99,7 +102,7 @@ defmodule EhOsContract.DocsTest do
   # %{code => layers}, from the table's first two columns.
   defp codes_in_table do
     for [code, layers] <-
-          Regex.scan(~r/^\| `([A-Z]+[0-9]+)` \| ([^|]+) \|/mu, read("docs/contract.md"),
+          Regex.scan(~r/^\| `([A-Z]+[0-9]+)` \| ([^|]+) \|/mu, read(@refusals),
             capture: :all_but_first
           ),
         into: %{},
@@ -159,15 +162,15 @@ defmodule EhOsContract.DocsTest do
     assert problems == []
   end
 
-  # A link whose text is a code goes to that code's family, in contract.md or on it; any
-  # other mention of a code, a link's text taken out, is bare.
+  # A link whose text is a code goes to that code's family, in refusals.md; any other
+  # mention of a code, a link's text taken out, is bare.
   defp code_problems(line, codes) do
     links =
       for [code, family, target] <-
             Regex.scan(~r/\[`?(([A-Z]+)[0-9]+)`?\]\(([^)]*)\)/u, line, capture: :all_but_first),
           Map.has_key?(codes, code) or target =~ "#refusals-",
           not Map.has_key?(codes, code) or
-            not Regex.match?(~r/(\A|contract\.md)#refusals-#{String.downcase(family)}\z/u, target),
+            not Regex.match?(~r/refusals\.md#refusals-#{String.downcase(family)}\z/u, target),
           do: "#{code} links to #{target}"
 
     bare =
@@ -186,7 +189,7 @@ defmodule EhOsContract.DocsTest do
 
     missing =
       for family <- Enum.uniq(families),
-          not (read("docs/contract.md") =~ ~s(<a id="refusals-#{String.downcase(family)}"></a>)),
+          not (read(@refusals) =~ ~s(<a id="refusals-#{String.downcase(family)}"></a>)),
           do: family
 
     assert missing == []
@@ -315,8 +318,11 @@ defmodule EhOsContract.DocsTest do
   # Otherwise a new hand-written page would be held to nothing.
   test "every page ExDoc builds is generated, prose, or the changelog" do
     generated = Enum.map(EhOsContract.Docs.generated(), &elem(&1, 0))
-    # `docs/rules.md` is the rules task's, `mix eh_os_contract.rules`.
-    known = generated ++ EhOsContract.Docs.prose() ++ ["docs/rules.md", "CHANGELOG.md"]
+    # `docs/rules.md` is the rules task's, `mix eh_os_contract.rules`; `docs/refusals.md`
+    # is held to the code by the tests of its table above.
+    known =
+      generated ++
+        EhOsContract.Docs.prose() ++ ["docs/refusals.md", "docs/rules.md", "CHANGELOG.md"]
 
     assert extras() -- known == []
     # And the other way: a page the manifest lists but `mix.exs` leaves out is never built.

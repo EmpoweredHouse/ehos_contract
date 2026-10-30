@@ -136,6 +136,7 @@ defmodule EhOsContract.MixProject do
             "docs/configuration.md",
             "docs/cli.md",
             "docs/behaviours.md",
+            "docs/refusals.md",
             "docs/rules.md"
           ] ++
           dsl_reference("domain") ++
@@ -149,6 +150,7 @@ defmodule EhOsContract.MixProject do
           "docs/configuration.md",
           "docs/cli.md",
           "docs/behaviours.md",
+          "docs/refusals.md",
           "docs/rules.md"
         ],
         "DSL reference": ~r{docs/dsl/}
