@@ -1,0 +1,1 @@
+Fix for CodeRabbit's finding: the bold sentence now limits itself to a person's capabilities, consistent with the paragraph on <published name>.subscribe. docs_test passes.
