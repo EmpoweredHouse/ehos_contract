@@ -1,0 +1,22 @@
+Pre-PR review of docs/517-contract-guide (origin/main..c74ccd39), two rounds.
+
+Round 1, correctness (code-review high, ehos-dev:elixir, ehos-dev:voice):
+- engine gate needs private ehos-tools: skipped, filed #520
+- "check refuses nothing" false: fixed 62dc72ae
+- plugin skills point at a page an older engine lacks: fixed b6d5a794 (path fixed c74ccd39)
+- facts of the old page lost (lifecycle at run time, value-typed identity, supplied_by, outage step, actor_is row, entity row): fixed 62dc72ae
+- promise scenario fails X9: fixed 62dc72ae, reverse-checked (old givens fail X9, new pass)
+- changelog L-number mapping, package README, review.md, glossary Refusal, layer numbering, script encoding: fixed 62dc72ae, cac5d1b1
+- terms used before defined: no change, the scope paragraph links the glossary
+Round 1, security and performance (engineering:code-review, ehos-dev:elixir):
+- private-references check fails: fixed 9773148f (exclusions decided by Emil)
+- ehos-tools code in Actions cache: fixed 2d24f0a1, corrected 7bf3006a
+- checkout left GITHUB_TOKEN in .git/config: fixed 2d24f0a1
+- App private key readable by any writer: skipped, in #520
+- third-party code runs with token in env: no change, short-lived read-only masked token
+- fork/Dependabot PRs fail CI: skipped, #520
+- docs.yml cache never hits: skipped, filed #521
+- ~200 KB SVGs in Hex package: no change, accepted
+Round 2, security: cache `!` exclusions were no-ops: fixed 7bf3006a; older exclusions too (same fix); docs.yml key: #521; whole-file private-references hole: in #520.
+Round 2, correctness: skill fallback path, evolve/2 claim, recorded-unit sentence, check codes, units.md refusal shape, outage X4, supply: true, changelog wording, alt text: fixed c74ccd39. Snippets not compiled: filed #522.
+Gate: sandbox mix check EXIT=0 at c74ccd39 (205 + 2013 + 78 + 482 + 236 tests, 0 failures; diagrams current; check 0/3/7 as pinned).
