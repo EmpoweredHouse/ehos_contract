@@ -13,8 +13,8 @@ name: private-references
 # - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE, and the
 #   comment in ci.yml that explains it), which the Hex readiness stage settles;
 # - the engine's ehos_diagrams and ehos_design dependencies, which draw its pages'
-#   diagrams (mix.exs, mix.lock, and the token step in docs.yml that fetches them),
-#   which the Hex readiness stage settles with the dashboard's (#517);
+#   diagrams (mix.exs, mix.lock, and the token steps in docs.yml and ci.yml that
+#   fetch them), which the Hex readiness stage settles with the dashboard's (#517);
 # - .claude/settings.team.json, which names the maintainers' plugin and is meant to;
 # - this file, which holds the pattern.
 on:

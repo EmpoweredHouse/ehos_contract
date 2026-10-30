@@ -114,16 +114,17 @@ them, not against memory:
 
 Kinds of problems a review here found that neither file names yet:
 
-- A plugin skill that points at an engine page or a code newer than the engine an application pins
-  sends that application's agent to nothing: say where an older engine keeps it. Found in #517.
-- A page that says what the engine does in absolute words ("refuses nothing", "only reports") is
-  read against the code: `mix eh_os_contract.check` fails on an error. Found in #517.
-
 - A guard over shell commands matches the invocation, not the text: a command that only mentions
   `gh pr create`, in a heredoc or a file it writes, is not that command.
 - Trust in something fetched is only as good as the fetch: an HTTP client's defaults (following
   redirects, reading any size, accepting `http`) quietly widen who can answer. Found in stage EA.
 - A process that owns an ETS table takes the table with it when it raises: validate in the caller,
   and treat every exception while handling outside input as a failed attempt, not a crash.
+- A plugin skill that points at an engine page or a code newer than the engine an application pins
+  sends that application's agent to nothing: say where an older engine keeps it. Found in #517.
+- A page that says what the engine does in absolute words ("refuses nothing", "only reports") is
+  read against the code: `mix eh_os_contract.check` fails on an error. Found in #517.
+- `actions/cache` archives a listed directory whole: a `!` pattern drops only an entry the list
+  itself holds, so exclude from a list of children (`deps/*`), never from the directory. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.
