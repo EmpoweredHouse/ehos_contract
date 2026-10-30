@@ -38,7 +38,7 @@ A policy or a read model left without `delivery` runs `:in_transaction`, inside 
 event. For a
 sibling of the same context that is usually the right choice: one step of the business, committed once. For a sibling
 of **another context** it means the two contexts commit together, and the reaction's failure rolls the other
-context's fact back: a person's command in one context fails because something in another one did. So a
+context's event back: a person's command in one context fails because something in another one did. So a
 policy or a read model that takes an event of a sibling of another context has to declare its delivery, or
 the contract does not compile ([`X10`](../contract.md#refusals-x)). Usually that delivery is `:at_least_once`: a policy then names its
 `idempotency`, a read model none. An effect and a process manager are left alone, since undeclared they run
@@ -82,16 +82,16 @@ publish :loan_opened,
 - **`fields:` are some of the event's fields, none of them personal.** A copy on a broker cannot be erased
   with the subject's key. A unit's identity, or an `:id` naming a person, goes out in the clear, as it is
   stored.
-- **`idempotent_on:` names the fields that make one fact**, among `fields:`. Their values are the message's
-  key, which is how a subscriber tells the same fact published again under a new id from a new fact. Name
-  the fields that make one fact, not merely some that identify it: a key too narrow makes two real facts one.
+- **`idempotent_on:` names the fields that make one event**, among `fields:`. Their values are the message's
+  key, which is how a subscriber tells the same event published again under a new id from a new event. Name
+  the fields that make one event, not merely some that identify it: a key too narrow makes two real events one.
   Left out, the message's id is its key.
 
 **The relay** carries it (`EhOsContract.Relay`). It is an ordered subscription over the log, one per
 `publish`: the log is the outbox, and there is no outbox table. A step reads the publication's events, builds
 a message from each, hands the batch to the configured `EhOsContract.Bus`, and moves its position only when
 the bus says it holds the batch. A relay that stops in between publishes the batch again under the same ids,
-so a message may arrive twice, never zero times, and never without its fact in the log.
+so a message may arrive twice, never zero times, and never without its event in the log.
 
 ```elixir
 config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
@@ -132,11 +132,11 @@ them takes a received event does not compile ([`D12`](../contract.md#refusals-d)
 instead. The policy's `delivery` changes nothing for a received event: the inbox runs it in the transaction
 that writes its row.
 
-- **One fact, one reaction.** The inbox's row is keyed by the message's key. A second delivery of a message
-  finds the row and is dropped, and so is the same fact published again under a new id, when the publisher
+- **One event, one reaction.** The inbox's row is keyed by the message's key. A second delivery of a message
+  finds the row and is dropped, and so is the same event published again under a new id, when the publisher
   declares `idempotent_on:`.
 - **A message that does not fit is delivered again.** One whose payload does not fit the fields the
-  subscription declares, or whose policy raises, rolls back and is answered `:nack`, so nothing is lost while
+  subscribed event declares, or whose policy raises, rolls back and is answered `:nack`, so nothing is lost while
   the declaration or the code is put right. A rejection of the policy's command is the unit's answer, and is
   taken.
 - **The policy is told the run.** The received struct's `__meta__` carries the correlation the message

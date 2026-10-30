@@ -5,7 +5,7 @@ defmodule EhOsContract.Supplier do
       config :eh_os_contract, supplier: MyApp.Supplier
 
   Some of what a decision depends on is not the caller's to say. What a late return
-  costs, by the desk's tariff, is a fact of the host's systems; a request that
+  costs, by the desk's tariff, is data of the host's systems; a request that
   carried `late_fee: 0` would decide on what the caller claims. A field
   declared `supplied_by: :host` is therefore refused from a request through
   `EhOsContract.call/3` — sent at all, even as `null`, it is `{field, :supplied}`

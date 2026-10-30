@@ -1,6 +1,6 @@
 ---
 name: add-event
-description: After `module-boundary-check` has decided a fact belongs in a contract — never to decide that question itself — declare a brand-new `event` in its unit: confirm it is a fact a command decides or an actor records (A2), name it from the workshop material, pick field types from the built-in set or the domain's values, keep correlation fields required and non-personal, mark personal data with `personal:` and `subject:`, place it in a stage, and give it the scenario and the reader that stop it being noise. Use when about to write a new `event :name, "label"` in a new or an existing contract. Not for changing an event that already has history in the log (see `change-contract`), and not for the code that emits it or reacts to it (see `write-decider` and `write-reaction`).
+description: After `module-boundary-check` has decided an event belongs in a contract — never to decide that question itself — declare a brand-new `event` in its unit: confirm it is an event a command decides or an actor records (A2), name it from the workshop material, pick field types from the built-in set or the domain's values, keep correlation fields required and non-personal, mark personal data with `personal:` and `subject:`, place it in a stage, and give it the scenario and the reader that stop it being noise. Use when about to write a new `event :name, "label"` in a new or an existing contract. Not for changing an event that already has history in the log (see `change-contract`), and not for the code that emits it or reacts to it (see `write-decider` and `write-reaction`).
 ---
 
 # Adding an event to a contract
@@ -21,7 +21,7 @@ from `sandbox/`, run the application's `mix precommit`.
 ## Where this sits
 
 `contract-distillation` turned workshop material into candidates, and `module-boundary-check`
-decided this one is a fact the contract holds. This skill writes the declaration. A brand-new event
+decided this one is an event the contract holds. This skill writes the declaration. A brand-new event
 is additive: no row of the log has its type yet, so nothing historical can disagree with it. The
 moment the event has rows — any change to its name, fields, types or `personal:` — it is
 `change-contract`'s, because every row is decoded again by today's declaration whenever its
@@ -102,7 +102,7 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
   that subject's key and reads back as `%EhOsContract.Erased{}` after erasure.
 - **`optional: true` is legal**, except on a field the process correlates on or a boundary matches
   (`F4`); an optional `:id` is simply not a tag. Use it for an
-  attribute that is sometimes absent. When the absence is itself a fact something depends on — a
+  attribute that is sometimes absent. When the absence is itself an event something depends on — a
   visit closed without payment — it is a second event, not a `nil`.
 - `issued_by: :external` says which system gives the value (`X4`).
 - `schema_version` stays 1 on a new event.
@@ -111,8 +111,8 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 
 - **When it ends a run**, the process module lists it in `ends_on`; a module's `deadline` does not
   compile without `ends_on` (`R6`).
-- `depends_on: :external` when the fact waits on a system; an outage then suspends a promise
-  instead of breaking it. When the fact only follows a step that calls the system, as a dispatched parcel
+- `depends_on: :external` when the event waits on a system; an outage then suspends a promise
+  instead of breaking it. When the event only follows a step that calls the system, as a dispatched parcel
   follows the carrier's booking, the event does not depend on it: the promise in the process module
   says `waits_on [:external]`.
 - **Someone reads it.** `event-without-consumer` warns of an event nothing takes: no reaction, read
@@ -155,6 +155,6 @@ Each field names a shape, never a thing (`packages/eh_os_contract/docs/dsl/contr
 
 ## Not this skill
 
-Whether the fact belongs in the contract — `module-boundary-check`. An event that already has rows
+Whether the event belongs in the contract — `module-boundary-check`. An event that already has rows
 in the log — `change-contract`. The code that emits it or reacts to it — `write-decider` and
 `write-reaction`.

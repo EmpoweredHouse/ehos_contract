@@ -10,7 +10,7 @@ In [EhOsContract.Domain](domain-dsl.md), section `domain`.
 external name, label
 ```
 
-An external system, named after the business fact rather than the vendor.
+An external system, named after what it does for the business, not after the vendor.
 
 **Arguments**
 

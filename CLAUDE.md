@@ -96,9 +96,10 @@ and a message (`docs/contract.md`). Everything the library does reads those modu
   its events, folded. Personal fields are encrypted per subject, and erasing a subject destroys its key
   (crypto-shredding, `EhOsContract.Vault`). A field the host must supply rather than the caller comes from an
   `EhOsContract.Supplier`.
-- **Reactions.** Read models, policies, process managers with timers, and effects run inside the dispatch's
-  transaction (`:in_transaction`) or after it (`:at_least_once`: an ordered subscription to the log, or an Oban
-  job inserted in the same transaction). A reaction to another context's event has to say which.
+- **Reactions and read models.** Policies, process managers with timers and effects (the reactions), and read
+  models, run inside the dispatch's transaction (`:in_transaction`) or after it (`:at_least_once`: an ordered
+  subscription to the log, or an Oban job inserted in the same transaction). A reaction or a read model that
+  takes another context's event has to say which.
 - **Between applications.** An event leaves only through `publish`: a relay reads the log and hands it to an
   `EhOsContract.Bus`. One arrives in an inbox that only a policy takes, never in the receiver's log. The library
   ships `Bus.Local`, for tests and a single node; transport adapters (JetStream, EHOS's relay) are EHOS's, and

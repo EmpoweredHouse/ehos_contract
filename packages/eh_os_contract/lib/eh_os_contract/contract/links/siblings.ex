@@ -105,7 +105,7 @@ defmodule EhOsContract.Contract.Links.Siblings do
       {"X10: #{kind} #{inspect(reaction.name)} takes #{Enum.join(foreign, " and ")}, not of " <>
          "context #{inspect(c.model.context)}, and declares no delivery; left out, it runs " <>
          "inside the transaction that records the event, so its failure rolls the other " <>
-         "context's fact back. Declare `delivery: :at_least_once`, or " <>
+         "context's event back. Declare `delivery: :at_least_once`, or " <>
          "`delivery: :in_transaction` if the two have to commit together", Links.at(reaction)}
     end
   end

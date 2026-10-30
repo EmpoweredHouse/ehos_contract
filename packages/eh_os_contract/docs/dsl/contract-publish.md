@@ -25,5 +25,5 @@ An integration event: the one way an event leaves the application.
 | `as` | `String.t` | yes |  | The versioned name, under the domain's `name:`, like `"my-shop.entry.recorded.v1"`; only that first segment may hold a dash. |
 | `from` | `atom` | yes |  | The local event it is built from. |
 | `fields` | `atom \| list(atom)` | yes |  | The fields of that event it carries. |
-| `idempotent_on` | `atom \| list(atom)` |  | `[]` | The fields that make two deliveries the same fact. |
+| `idempotent_on` | `atom \| list(atom)` |  | `[]` | The fields that make two deliveries the same event. |
 

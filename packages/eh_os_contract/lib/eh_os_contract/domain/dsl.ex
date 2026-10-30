@@ -386,7 +386,8 @@ defmodule EhOsContract.Domain.Dsl do
 
   @external %Spark.Dsl.Entity{
     name: :external,
-    describe: "An external system, named after the business fact rather than the vendor.",
+    describe:
+      "An external system, named after what it does for the business, not after the vendor.",
     target: External,
     args: [:name, :label],
     entities: [operations: [@operation]],

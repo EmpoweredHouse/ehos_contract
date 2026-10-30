@@ -1,6 +1,6 @@
 {
   "name": "eh-os-contract",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Skills for writing and changing contracts with eh_os_contract, for an application built on EHOS: where a feature lives, distilling a process into a domain and contracts, adding an event, changing a contract that has history, writing a decider and a reaction.",
   "author": {
     "name": "EmpoweredHouse"

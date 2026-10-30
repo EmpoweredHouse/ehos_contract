@@ -41,7 +41,7 @@ defmodule EhOsContract.Contract.Rules.Scenarios do
   #   `expect` or by `rejected`, not both, as a command is.
   # - **S7.** A scenario's `actor` is in the command's `by:`, and only a command and a
   #   recording have one; a recording's is required, and in the event's `recorded_by:`,
-  #   since who may write a fact into the log is what its scenario shows. `as:`, the
+  #   since who may write an event into the log is what its scenario shows. `as:`, the
   #   person issuing a command (plan DD, A1, #247), only beside an `actor`.
   # - **S8.** **Every invariant is named by at least one `rejected` scenario** — the
   #   successor of architecture §18's gate, kept an error although ESDM makes it a

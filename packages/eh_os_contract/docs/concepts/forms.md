@@ -198,7 +198,7 @@ end
 
 ## A form that records, and a form that asks
 
-A form that records a fact is built from the event, and its struct goes to `record/3`; a refusal comes
+A form that records an event is built from the event, and its struct goes to `record/3`; a refusal comes
 back through `refused/3` as a command's does. A search form is built from the query, which has no
 identity: its params are checked as fields, and its struct goes to `query/3`.
 

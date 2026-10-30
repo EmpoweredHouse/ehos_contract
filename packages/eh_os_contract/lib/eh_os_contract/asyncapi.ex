@@ -14,7 +14,7 @@ defmodule EhOsContract.AsyncAPI do
   do in `EhOsContract.OpenAPI`.
 
   **`external` is deliberately absent.** The obvious mapping is to `servers`, and it
-  is wrong: an `external` is named after the business fact it supplies and never
+  is wrong: an `external` is named after what it does for the business and never
   after the vendor, which is a decision the declaration exists to enforce. A `server`
   is a vendor address. Mapping one to the other would break the rule by publishing
   it.

@@ -27,5 +27,5 @@ The vocabulary contracts share.
 | [`subject`](domain-subject.md) | A kind of person whose personal data may be erased. |
 | [`value`](domain-value.md) | A value type: one built-in type with an optional unit, or a set of fields. |
 | [`entity`](domain-entity.md) | A thing with an identity whose lifecycle the application's code or another system keeps, outside this log: a period, an item of a catalogue. |
-| [`external`](domain-external.md) | An external system, named after the business fact rather than the vendor. |
+| [`external`](domain-external.md) | An external system, named after what it does for the business, not after the vendor. |
 | [`relation`](domain-relation.md) | How two contexts relate: one of the eight context-mapping patterns. |

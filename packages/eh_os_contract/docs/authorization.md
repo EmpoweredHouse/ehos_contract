@@ -241,10 +241,10 @@ capability named a recording; the name `<domain>.<event>` was decided on 27 Sept
 | Failed in code | nothing (rolled back) | a `failed` row | an `allowed` row |
 
 A refusal leaves nothing in the engine's tables; the row that records it belongs to the
-`Authorizer`'s implementation. Queries write nothing to the log: a read is not a fact, but a query
+`Authorizer`'s implementation. Queries write nothing to the log: a read is not an event, but a query
 with a credential has its decision row like a command.
 
-The two rows of an accepted command are two facts, not one written twice: the auth package's row
+The two rows of an accepted command are two records, not one written twice: the auth package's row
 records that the credential allowed the call, `eh_os_contract_commands` what became of the command.
 The engine asks the `Authorizer` before its own transaction, so a caller that wraps `dispatch/3` in a
 transaction of its own and rolls it back rolls the decision row back too; `EhOsContract.Plug` never

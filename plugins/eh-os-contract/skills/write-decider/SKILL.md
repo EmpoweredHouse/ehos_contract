@@ -106,7 +106,7 @@ the model, not in the module:
 | What the decision wants | Where it belongs |
 | --- | --- |
 | Something the unit learned earlier | a field of `state`, folded from the event that taught it |
-| Another unit's facts, under one consistency rule | a `dcb` that `consults` them, narrowed with `match:` |
+| Another unit's events, under one consistency rule | a `dcb` that `consults` them, narrowed with `match:` |
 | An external system's answer | an `effect` that asks, and records the answer as an event with `EhOsContract.record/3` (see `write-reaction`) |
 | The current time | `command.__meta__.occurred_at`, set by dispatch |
 | A value the caller looked up | a field of the command; the caller answers for it |

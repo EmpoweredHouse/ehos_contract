@@ -51,7 +51,7 @@ reference) or an explicit `unverified`.
 
 ### External systems
 
-| System (business fact, not vendor) | Sends / receives / both | What "unavailable" looks like, in the client's words | "No answer" = "answered no"? | Evidence |
+| System (what it does for the business, not the vendor) | Sends / receives / both | What "unavailable" looks like, in the client's words | "No answer" = "answered no"? | Evidence |
 |---|---|---|---|---|
 | [...] | [...] | [...] | [...] | [source] |
 
@@ -61,19 +61,19 @@ reference) or an explicit `unverified`.
 
 **Context:** [...] · **Evidence quality:** [observed | stakeholder-stated | inferred | hypothesis | unclear]
 
-### Facts, and the candidates that are not
+### Events, and the candidates that are not
 
 | # | Candidate (client's words, past tense) | Proposed name | **What depends on it having happened** | Verdict | Evidence |
 |---|---|---|---|---|---|
-| 1 | [...] | `snake_case` | [a rule refuses after it, a reaction takes it, an actor waits, a promise runs from it, it ends the run — or **nothing**] | fact / **field** | [source] |
+| 1 | [...] | `snake_case` | [a rule refuses after it, a reaction takes it, an actor waits, a promise runs from it, it ends the run — or **nothing**] | event / **field** | [source] |
 
-*An empty dependency cell means `field`, and a field is not a fact. Keep the rejected rows: they
+*An empty dependency cell means `field`, and a field is not an event. Keep the rejected rows: they
 stop the next reader re-adding them, and the ratio is worth knowing — on the run this column was
-added after, it was 7 facts to 15 fields.*
+added after, it was 7 events to 15 fields.*
 
 ### Decided or recorded
 
-| Fact | Decided by a command (its name, who may issue it) | Or recorded (observed by whom, answered by which system) | Can the asking be refused? | Evidence |
+| Event | Decided by a command (its name, who may issue it) | Or recorded (observed by whom, answered by which system) | Can the asking be refused? | Evidence |
 |---|---|---|---|---|
 | [...] | [...] | [...] | [yes, by which rule / no] | [source] |
 
@@ -87,7 +87,7 @@ added after, it was 7 facts to 15 fields.*
 
 ### Fields
 
-| Fact or command | Field | What it means | Closest type | Personal, and whose | Evidence |
+| Event or command | Field | What it means | Closest type | Personal, and whose | Evidence |
 |---|---|---|---|---|---|
 | [...] | [...] | [...] | [identifier / typed text / number / decimal / yes-no / date / time / one of / list / a domain value / does not fit — why] | [no / yes, the patient's] | [source] |
 
@@ -95,7 +95,7 @@ added after, it was 7 facts to 15 fields.*
 
 - **One case, start to end:** [...]
 - **Two in parallel for one actor:** [yes / no / unclear] — **what tells them apart:** [...]
-- **Facts that repeat within one case**, and what distinguishes the second: [...]
+- **Events that repeat within one case**, and what distinguishes the second: [...]
 - **Evidence:** [source]
 
 ### Terminal states
@@ -114,7 +114,7 @@ added after, it was 7 facts to 15 fields.*
 
 ### Reactions
 
-| When (fact) | Then | Kind (automatic step / tell or ask a system / chase if not in time) | Together with the fact, or may follow it | Evidence |
+| When (event) | Then | Kind (automatic step / tell or ask a system / chase if not in time) | Together with the event, or may follow it | Evidence |
 |---|---|---|---|---|
 | [...] | [...] | [...] | [...] | [source] |
 
@@ -126,7 +126,7 @@ added after, it was 7 facts to 15 fields.*
 
 ### Promises
 
-| # | After (fact) | Within (N, unit) | Then (fact) | Or else (fact) | Does the time bind the fallback? | Promised to whom | Evidence |
+| # | After (event) | Within (N, unit) | Then (event) | Or else (event) | Does the time bind the fallback? | Promised to whom | Evidence |
 |---|---|---|---|---|---|---|---|
 | 1 | [...] | [...] | [...] | [...] | [yes / no / not stated] | [patient / payer / regulator / internal] | [source] |
 
@@ -164,7 +164,7 @@ After all processes:
 ```markdown
 ## Across processes
 
-| Process | Facts / fields rejected | Rules with refused cases | Gates | Terminal states | Promises | Fields not fitting a type |
+| Process | Events / fields rejected | Rules with refused cases | Gates | Terminal states | Promises | Fields not fitting a type |
 |---|---|---|---|---|---|---|
 | [name] | [n / n] | [n of n] | [n] | [n, bad endings included] | [n] | [list, or none] |
 
@@ -179,7 +179,7 @@ promises are the timed half, and it is normal for that column to be small.*
   whether one of its orderings is one nobody enforces today — which is what the report surfaces]
 
 ### Reminders anchored before a scheduled moment
-- [name]: [not a promise, which runs forward from an observed fact; a timer, or the client's own
+- [name]: [not a promise, which runs forward from an observed event; a timer, or the client's own
   scheduling]
 
 ### Readiness

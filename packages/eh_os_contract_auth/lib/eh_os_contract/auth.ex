@@ -75,7 +75,7 @@ defmodule EhOsContract.Auth do
 
   The row records the authorization, not the command. A command allowed here may
   still be rejected on an invariant or fail in code, and what became of it is the
-  engine's row in `eh_os_contract_commands`: two facts, two rows. The engine asks
+  engine's row in `eh_os_contract_commands`: two records, two rows. The engine asks
   before its own transaction, so the row goes through whatever connection the call
   is on. A caller that wraps `EhOsContract.dispatch/3` in a transaction of its own
   and rolls it back rolls the row back with it; `EhOsContract.Plug` never does.

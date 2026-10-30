@@ -1,5 +1,5 @@
 defmodule EhOsContract.InboxRecord do
-  # A row of `eh_os_contract_inbox`: one fact another application published, taken by
+  # A row of `eh_os_contract_inbox`: one event another application published, taken by
   # one inbox (`EhOsContract.Inbox`, D12). `consumer` is the inbox's key, `key` the
   # message's, and `id` what the commands its policies dispatched name as their cause.
   @moduledoc false

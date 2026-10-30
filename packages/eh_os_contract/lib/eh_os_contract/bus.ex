@@ -48,7 +48,7 @@ defmodule EhOsContract.Bus do
 
   ## A message
 
-  `EhOsContract.Bus.Message` carries five things: the id, the key that tells one fact
+  `EhOsContract.Bus.Message` carries five things: the id, the key that tells one event
   from another, the versioned name, the correlation and the payload. **The payload is
   JSON**: string keys, and values a JSON encoder turns into text and back — what
   arrives is what `Jason` decodes, not the Elixir terms that were sent.

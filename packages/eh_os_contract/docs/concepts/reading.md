@@ -238,7 +238,7 @@ end
 ```
 
 The engine checks the answer against the declaration: anything other than rows of the read model, in the number
-`returns:` declares, raises. Nothing is written: a read is not a fact.
+`returns:` declares, raises. Nothing is written: a read is not an event.
 
 **A query's scenario** projects its `given` events through the read model's implementation, asks the
 query, and compares the answer with `answers`: exactly as many rows, each matching a different one on

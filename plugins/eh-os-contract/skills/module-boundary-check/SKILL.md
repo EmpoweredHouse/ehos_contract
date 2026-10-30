@@ -1,6 +1,6 @@
 ---
 name: module-boundary-check
-description: Before adding a new business entity, action, screen or table to an application (its `lib/<app>/`, or, in eh-os-contract's own repository, a case study under `sandbox/lib/`), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, a fact recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
+description: Before adding a new business entity, action, screen or table to an application (its `lib/<app>/`, or, in eh-os-contract's own repository, a case study under `sandbox/lib/`), decide (1) whether it goes through a contract at all or is plain application code, (1a) if not, whether a plain function call or an internal, untracked signal, and (2) if it does, which declaration it is — a command to a unit, an event recorded without a decision, a reaction, a read model with its query — and separately whether the process owes a promise about it; then check what already exists before generating anything. Use when about to add a module, a table or an action; not when editing a contract that already has declarations (see `change-contract`).
 ---
 
 # Deciding where a new feature lives, before writing it
@@ -63,14 +63,14 @@ Pick by what the business says, not by what the code will look like:
 | The business says | Declaration | Next skill |
 | --- | --- | --- |
 | "X may only happen if…", someone asks and can be refused | a `command` to a unit, its `invariant`s, and the event it decides | `add-event`, `write-decider` |
-| the rule spans facts of several units ("every visit of the payer in the period is invoiced or excluded") | a `dcb` that `consults` them | `add-event`, `write-decider` |
+| the rule spans events of several units ("every visit of the payer in the period is invoiced or excluded") | a `dcb` that `consults` them | `add-event`, `write-decider` |
 | "it is noted that…", an observation, an external system's answer | an event with `recorded_by:`, entered with `EhOsContract.record/3` | `add-event` |
 | "whenever X, then Y" | a `policy` issuing a command | `write-reaction` |
 | "tell / send / ask system S" | an `effect` that `calls:` S | `write-reaction` |
 | "if Y has not happened a day after X, chase it" | a `process_manager` with a timer | `write-reaction` |
 | "reception sees the day's totals" | a `read_model` and the `query` that reads it | `write-reaction` |
 
-- A contract belongs to one context and describes what it decides; it has no run of its own. A fact goes into the
+- A contract belongs to one context and describes what it decides; it has no run of its own. An event goes into the
   contract of the context it is born in, and is never declared twice: a sibling contract that
   reacts to it `consumes` it. The run it belongs to — a loan from lending to return, a visit from
   booking to its report — is a process module (`use EhOsContract.Process`), which includes the
@@ -102,7 +102,7 @@ Pick by what the business says, not by what the code will look like:
   (`contract-distillation`, step 7). A promise with no agreed number is written without `within`,
   and `promise-without-within` says so rather than letting it read as kept.
 - A reminder *before* a scheduled moment is not a promise — a promise runs forward from an observed
-  fact. It is a process manager's timer at a `:timestamp` of its state, or the client's own
+  event. It is a process manager's timer at a `:timestamp` of its state, or the client's own
   scheduling.
 
 ## Non-negotiables
