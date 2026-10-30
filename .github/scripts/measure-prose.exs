@@ -20,6 +20,8 @@ defmodule MeasureProse do
   @code ~r/\b[A-Z][0-9]{1,2}\b|§|\bplan [A-Z]|#[0-9]+/u
 
   def main(args) do
+    # Erlang keeps stdout in latin1 when it is not a terminal (CLAUDE.md).
+    :io.setopts(:standard_io, encoding: :unicode)
     {opts, pages} = OptionParser.parse!(args, strict: [long: :boolean])
 
     rows = Enum.map(pages, &measure/1)

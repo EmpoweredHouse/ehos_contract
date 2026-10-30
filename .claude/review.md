@@ -32,8 +32,10 @@ to:
 
 - `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`,
   `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
-  holds the refusal table of the first to the code, and checks the links of every ExDoc extra, the
-  package's `CHANGELOG.md` included;
+  holds the refusal table of `packages/eh_os_contract/docs/refusals.md` to the code, and checks the
+  links of every ExDoc extra, the package's `CHANGELOG.md` included;
+- `mix ehos_diagrams.gen --check` in `packages/eh_os_contract` holds the diagrams in `docs/img/` to
+  their sources in `docs/diagrams/`, their labels to the glossary, and the pages to no Mermaid;
 - `packages/eh_os_contract/test/dsl/contract_examples_test.exs` compiles the examples of
   `docs/adr/contract-v2.md`;
 - `eh_os_contract.docs --check` and `eh_os_contract.rules --check` compare the generated
@@ -111,6 +113,11 @@ them, not against memory:
   its `@doc` still describe it, and does it read for a host rather than the team.
 
 Kinds of problems a review here found that neither file names yet:
+
+- A plugin skill that points at an engine page or a code newer than the engine an application pins
+  sends that application's agent to nothing: say where an older engine keeps it. Found in #517.
+- A page that says what the engine does in absolute words ("refuses nothing", "only reports") is
+  read against the code: `mix eh_os_contract.check` fails on an error. Found in #517.
 
 - A guard over shell commands matches the invocation, not the text: a command that only mentions
   `gh pr create`, in a heredoc or a file it writes, is not that command.
