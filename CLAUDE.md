@@ -54,7 +54,8 @@ means today's `EhOsContract.X`.
 | How work is planned, recorded and reviewed, for a person and an assistant alike: where each thing lives, from an idea to `main`, how to follow a line of code back to its reason | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | The programmes, their stages and **their status** | [`ROADMAP.md`](ROADMAP.md) |
 | A stage's scope, decisions, review and pull requests | its GitHub issue (labels `publication`; `dd`, `wave-<n>` before it); how to run a stage through one: `CONTRIBUTING.md`, "From an idea to `main`", and the maintainers' `ehos-dev:stage-issue` skill |
-| What this repository is, the gate, the structure | [`README.md`](README.md) |
+| What this repository is | [`README.md`](README.md) |
+| The layout, the gate, the development host | [`CONTRIBUTING.md`](CONTRIBUTING.md), "What does each directory hold?", "Run the gate" and "Run the development host and the dashboard" |
 | **How to write a domain and a contract** | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
 | What will not compile: every refusal with its code | [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |

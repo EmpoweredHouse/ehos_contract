@@ -1,16 +1,40 @@
-# Introduction
+# What is eh_os_contract?
 
-What eh_os_contract is, what it is for, and the principles it is built on.
+This page tells what the engine does, which problem it solves, and what it does not do. It is for a
+developer and for a person who owns a business process, who meet the library for the first time.
+[The glossary](glossary.md) defines each word in italics.
 
-## What it is
+## Which problem does it solve?
 
-A business process is written down as Elixir modules. The **domain** holds the words the people in
-the process use, the contexts it is split into, who acts in it and which systems it depends on. A
-**contract** holds what is decided in one of its contexts, what happened, what reacts to it and what is
-read. A **process** holds the run those events make and what was promised about it. All are declarations,
-not code that runs: every key of them is listed in the reference
-([the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md),
-[the process module](dsl/process-dsl.md)).
+Tests show that a module works. Monitoring shows that a server runs. Neither shows if the running
+system still does what the business agreed.
+
+Example: the business agreed that a clerk files each invoice within 3 days. For one case, the code
+that files the invoice does not run. No error occurs, so no person gets an alert.
+
+The engine finds such a case. You describe the process as Elixir modules, in the manner of
+[ESDM](https://www.esdm.io). The application runs on these modules, and the engine records what
+occurs. Then the engine compares what occurred with what the modules declare.
+
+## How do a domain, a contract and a process module fit together?
+
+![A domain holds contexts with their contracts, and a process module of the domain includes events of one or more of these contracts.](img/domain-nesting.svg)
+
+1. A *domain* holds the words of one business: its subdomains, its contexts, and the terms of
+   each context. Nothing in a domain runs.
+2. The domain also declares the *actors*, the *subjects* of personal data, the *values* and the
+   *external systems*. An actor can belong to one context. Then only the contracts of that context
+   can name it.
+3. A *context* is a part of the domain. In a context, each word has one meaning. The same word
+   can mean a different thing in another context.
+4. A *contract* belongs to one context, and a context can have more than one contract. The *units*
+   of a contract decide each *command*, with *events* or a *rejection*. Its *reactions* and *read models* take the events, and its *queries* read the read
+   models.
+5. A *process module* describes one kind of *run*: its *stages*, the events that end it, its
+   *promises* and its *deadline*. It includes events of one or more contracts of its domain. A
+   business with no run, such as a register of rooms, needs no process module.
+
+This example has a domain, a contract with one aggregate, and a process module with one promise:
 
 ```elixir
 defmodule Introduction.Domain do
@@ -68,62 +92,66 @@ defmodule Introduction.Processes.ApplicationReview do
 end
 ```
 
-Read the promise aloud: *after an application is received, within 7 days it is approved.* That
-sentence is what the person who owns the process confirms or corrects, and it is why every declaration
-carries a label in the words of the people in the process.
+The promise reads as a sentence: "After an application is received, it is approved within 7 days."
+The owner of the process reads this sentence and confirms it or corrects it. For this reason, each
+declaration has a label in the words of the business.
 
-Everything else the library does reads those modules:
+## What does the engine do with these modules?
 
-- **The compiler** refuses a model that contradicts itself and code that contradicts the model: an
-  implementation that emits an event its command does not declare does not compile.
-- **Dispatch** (`EhOsContract.dispatch/3`) runs a command through the contract: may this actor issue it,
-  are its fields sound, what does the implementation decide. What the contract declares is appended to
-  the engine's own event log, and nothing else is. A unit's state is its events, folded: applied one by one, in order.
-- **Reactions and read models** take the events: read models answer queries, policies issue commands, effects
-  call other systems, and process managers steer a run over time.
-- **Between applications**, an event leaves only through a `publish`, and one arrives only in an inbox a
-  policy takes.
-- **Conformance** compares the log with the contracts and process modules and answers 4 questions: which declared paths were
-  never taken, what happened that the contract does not declare, which promises are broken, and which
-  version of the contract is deployed, and since when.
+- **It compiles them.** The compiler refuses a model that contradicts itself. It also refuses an
+  implementation that contradicts the model, for example one that emits an event that its command
+  does not declare.
+- **It dispatches commands.** `EhOsContract.dispatch/3` checks the actor and the fields, gets the
+  decision of the implementation, and appends the declared events to the *log* of the engine.
+  [Getting started](getting-started.md#dispatch-a-command) shows each step.
+- **It runs the reactions and the read models.** A policy issues commands, an effect calls an
+  external system, and a process manager steers a run over time.
+- **It connects applications.** An event leaves an application only through a *publication*. An
+  event from another application arrives in the *inbox*, and only a policy takes it.
+- **It checks conformance.** It compares the log with the contracts and the process modules.
 
-## What it is for
+## How does the contract reach the conformance report?
 
-- **Building an event-sourced application (every change stored as an event) from a model the business can read.** The contract is the
-  part of the code a process owner reviews; the implementation decides, the contract holds it to what
-  was agreed.
-- **Knowing whether the deployed code does what the process says**, by comparing what happened, in
-  the log, with what was declared: a path nobody takes, a transition nobody declared, a promise kept
-  late.
-- **Changing a process and seeing what changed.** Each deployment records the version of every
-  contract, and the report says which version is deployed, since when, which declarations changed, and
-  which events were written under an earlier version.
-- **Exchanging events between applications** without a broker in the library: the library defines the
-  bus (`EhOsContract.Bus`) and ships a local one for tests; the transport is the platform's.
+![The application runs on the contracts and appends events, and conformance compares the log with what the contracts and process modules declare.](img/conformance-flow.svg)
 
-## What it is not
+1. The people who do the work describe the process in a workshop. A developer writes the domain,
+   the contracts and the process modules. The owner of the process reviews the labels.
+2. The contract generates a struct for each command, event and state, and a behaviour for each
+   implementation. Its scenarios run as tests.
+3. The application sends each command through dispatch. An event that the contract does not
+   declare never reaches the log. At start, the engine records which version of each contract runs.
+4. The contracts declare the paths of the commands and the transitions of each lifecycle. The
+   process modules declare the stages of each run and its promises.
+5. The log keeps each event in order, with the version of its contract.
+6. `mix eh_os_contract.report` and the dashboard answer
+   [the four questions of conformance](glossary.md#four-questions) for a period.
 
-It answers the 4 questions and nothing more. Performance belongs to your application performance monitoring (APM) tool, errors to your error
-tracker, and the state of your business to your own application, which the library helps you build
-through read models and queries but does not show on the conformance dashboard. It does not know who anybody is: an
-actor is an opaque subject with the capabilities its verified credential grants
-([authorization](authorization.md)). It ships no message broker, no identity provider, no REST or
-GraphQL layer beyond the documents it generates from the contract, and nothing that answers a question
-about one particular customer.
+## What does it not do?
 
-## Principles
+The engine checks conformance. It does not watch the operation of the application. Other tools own
+the rest:
 
-- **The model is code, and there is nothing beside it.** A domain and a contract are Elixir modules on
-  [Spark](https://hexdocs.pm/spark), in the manner of [ESDM](https://www.esdm.io). What is wrong with them
-  fails the compile, with a code and a message ([the compile refusals](refusals.md)); what a model may
-  legally say but a reader should hear about, `mix eh_os_contract.check` reports ([its rules](rules.md)).
-- **The contract names no implementation.** An implementation points at its contract
-  (`use MyContract, aggregate: :application`), never the other way round, so a change to the code never
-  recompiles the contract.
-- **Events and commands are literals.** An implementation emits and issues struct literals, so the
-  graph of a contract, and what each command can produce, is read straight from the code.
-- **Nothing the contract does not declare reaches the log.** An undeclared event, a command an actor
-  may not issue, a field of the wrong type: each is refused before anything is written.
-- **No rule of the check can be switched off.** A finding goes away when the model changes.
+- Your application performance monitoring (APM) tool measures performance.
+- Your error tracker records errors.
+- Your monitoring tools send alerts and keep metrics.
+- Your application shows the state of the business. The engine helps you build that state with
+  read models and queries, but the dashboard does not show it.
 
-Next: [Getting started](getting-started.md). The meaning of each word is in [the glossary](glossary.md).
+The engine also does not supply these things:
+
+- **An identity.** An actor is an opaque subject with the capabilities that its verified
+  credential grants. [Authorization](authorization.md) tells how a credential becomes an actor.
+- **A message broker.** The library defines the bus, `EhOsContract.Bus`, and supplies only a local
+  bus for tests and one node.
+- **An API layer.** The engine generates OpenAPI and AsyncAPI documents from the contract. It has no
+  REST or GraphQL layer of its own.
+- **An answer about one customer.** A question such as "Which order has not shipped?" belongs
+  to your application.
+
+## Next steps
+
+- [Getting started](getting-started.md): install the engine and dispatch a first command.
+- [Write a domain, a contract and a process module](contract.md): the full task.
+- [The glossary](glossary.md): the meaning of each word.
+- The reference of each key: [the domain](dsl/domain-dsl.md), [the contract](dsl/contract-dsl.md)
+  and [the process module](dsl/process-dsl.md).

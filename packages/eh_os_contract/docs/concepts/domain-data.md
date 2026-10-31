@@ -63,6 +63,8 @@ actor itself, and rules never lead back to an actor, since `a` granting `b` whil
 of `a` grant `a` through another ([`D4`](../refusals.md#refusals-d)). An actor named in a rule, and one that has a
 rule, has to hold a capability, or it is no role in the manifest; the manifest's generator says so.
 
+<a id="subjects-and-personal-data"></a>
+
 ## Subjects and personal data
 
 A subject is a kind of person whose personal data the application keeps and may have to erase: a customer, a
@@ -113,6 +115,31 @@ appends nothing. From then on:
   `{:error, :subject_erased}`.
 
 The host decides who may erase: `erase/3` asks no `Authorizer`.
+
+**Rotating a master key.** The first master key wraps each new data key. A data key is unwrapped by the
+master key that it names. Rotate in 3 deploys:
+
+1. Add the new key after the current key, and deploy. Then each node can unwrap what the new key wraps.
+2. Move the new key to the first place, and deploy.
+3. Rewrap each data key with the new key: `mix eh_os_contract.rewrap`, or
+   `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has no `mix`. Then remove the old key,
+   and deploy.
+
+If you put the new key first in one deploy, the nodes that still run the old configuration cannot read
+what the new nodes write until the rollout ends. A KMS goes behind the `EhOsContract.Vault` behaviour:
+`config :eh_os_contract, vault: MyApp.KmsVault`.
+
+**What an erasure does not reach.** An erasure deletes the data key from the database, not from your
+backups. A backup, a WAL archive or a replica still holds the wrapped key. A person who also has the
+master key can then read the data of the subject. So rotate and destroy the master keys at an interval
+that is not longer than the time that you keep backups. Or keep the key store out of the backups of the
+log. Each choice has a cost: a backup older than a destroyed master key, or restored without the key
+store, cannot unwrap the data of any subject. A read model keeps its copy of personal data as plain text
+in your tables. `forget/2` reaches the live table, and only your backup policy reaches its backups.
+
+**An erasure holds the append lock.** A read model delivered `:in_transaction` that projects personal
+data forgets inside the transaction of the erasure. This transaction holds the lock that each append
+takes. While the read model forgets, each other append to the log waits. Index the column that its `forget/2` finds the subject by.
 
 Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
 personal ([`F4`](../refusals.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../refusals.md#refusals-f)), and a publication carries none
