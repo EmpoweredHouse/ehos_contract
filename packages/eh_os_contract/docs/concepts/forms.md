@@ -2,14 +2,14 @@
 
 <!-- covers: entities contract.aggregate.command -->
 
-This page tells how to build a form that checks what a person types against the contract. The form
-also shows the refusal of dispatch. It is for a developer who writes the pages of an
+This page tells how to check the input of a form against the contract. It also tells how to show
+the refusal of dispatch on the form. It is for a developer who writes the pages of an
 application. [The glossary](../glossary.md) defines each word in italics.
 
 A command declares its fields: which fields are required, their types, the enums and values of the
 domain, and the invariants of those values. Dispatch holds each command to this declaration. A
-*form* is input that a person sends as text: an HTML form, a CSV import, a console. It must keep
-the same rules before the application sends the command, and tell which field is wrong.
+*form* is input that a person sends as text: an HTML form, a CSV import, a console. The application
+must hold it to the same rules before it sends the command, and tell which field is wrong.
 `EhOsContract.Form` builds an `Ecto.Changeset` from the declaration of the command. So you write the
 rules one time, in the contract.
 
@@ -147,14 +147,15 @@ Keep these things in the application:
 
 The steps below write this code.
 
-## Build the form
+## Build the changeset of the form
 
 Build the changeset in `mount/3`. Put the identity of the invoice in `data:`. The page decides the
 identity, not the person: when `data:` holds the identity, the changeset ignores a value of the
 identity in the params.
 
 Before you show the form, check that the person can act on this invoice. The
-`EhOsContract.Authorizer` checks only the capability and its scope, not the unit.
+`EhOsContract.Authorizer` checks the capability and its scope. It does not check the unit, unless
+the scope of the command is the identity of the unit.
 
 <!-- not compiled: functions of the host's LiveView -->
 ```elixir
@@ -162,7 +163,7 @@ alias Concepts.Forms.Contracts.Invoicing
 alias Concepts.Forms.Contracts.Invoicing.Commands.IssueInvoice
 
 def mount(%{"id" => id}, _session, socket) do
-  # The page checks that this person may act on this invoice: the Authorizer does not.
+  # Check here that this person may act on this invoice: the Authorizer does not.
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, %{}, data: %{invoice_id: id})
   # One key per form shown, so a second submit of the same form is the same command.
   {:ok, assign(socket, invoice_id: id, form_key: Ecto.UUID.generate(), form: to_form(changeset))}
@@ -197,7 +198,7 @@ def handle_event("validate", %{"issue_invoice" => params}, socket) do
 end
 ```
 
-**Result:** if the person types `July` as the period, the form shows an error at the period.
+**Result:** if the person types `July` as the period, the page shows an error at the period.
 
 ## Send the command, and put the refusal on the form
 
@@ -231,7 +232,7 @@ A rule of a unit names no field. So `refused/3` puts a rejection on `:base`, the
 form. To show it at a field, name the field:
 `refused(changeset, reason, at: [issued_once: :period])`.
 
-**Result:** if the invoice was issued before, the form shows the rejection `issued_once`.
+**Result:** if the invoice was issued before, the page shows the rejection `issued_once`.
 
 ## Write the messages from the reasons
 
@@ -263,14 +264,14 @@ end
 
 **Result:** the person reads each error in the language of the application.
 
-## Build a form that records an event, or that asks a query
+## Record an event, or ask a query, from a form
 
 `Form.changeset/4` also takes the module of an event that an actor records, or of a query.
 `Form.to_struct/1` gives the struct that each of them takes.
 
-- A form that records an event is built from the event. Its struct goes to `EhOsContract.record/3`.
+- To record an event, build the changeset from the event. Its struct goes to `EhOsContract.record/3`.
   A refusal comes back through `refused/3`, as for a command.
-- A search form, or a filter over a read model, is built from the query. A query has no identity:
+- For a search form, or a filter over a read model, build the changeset from the query. A query has no identity:
   the changeset checks its params as fields. Its struct goes to `EhOsContract.query/3`.
 
 <!-- not compiled: code of the host's LiveView -->
@@ -288,7 +289,7 @@ else
 end
 ```
 
-## Build a form from the name of a capability
+## Build the changeset from the name of a capability
 
 A page can know the name of a capability and not its module, as `EhOsContract.call/3` takes it.
 Then build the changeset by the name:
@@ -301,10 +302,11 @@ the registered contracts, or in the contracts that `contracts:` names.
 
 **The changeset does not check who can act.** `Form` does not ask the `EhOsContract.Authorizer`. It
 checks only the shape that the contract declares. Examples: the fields, their types, the members of
-an enum, and the names of the invariants of its values. Dispatch asks if the person can issue the command,
-when the page sends it. Show a form only to the people that the page is for. Holding a form to its
-unit does not give access: the `EhOsContract.Authorizer` and the host decide who can act on which
-unit.
+an enum, and the names of the invariants of its values. Dispatch asks if the person can issue the
+command, when the page sends it. Show a form only to the people that the page is for.
+
+Holding the changeset to its unit does not give access. The host decides who can act on which unit.
+The `EhOsContract.Authorizer` checks the capability and its scope.
 
 **Text, as a form sends it.**
 
@@ -358,8 +360,8 @@ so its text is not a timestamp. Add them in the page, or make the field a `:date
 
 **Some errors are not at an input.** A problem at a field that the form did not send goes on
 `:base`. Its `field:` names the field. Examples: the identity in `data:`, a field that the host
-supplies, or a field of rows, at which `inputs_for` shows nothing. So the page never shows it at an input that is not there. If a command has a field
-with the name `base`, the field shares that key with the errors of the whole form.
+supplies, or a field of rows, at which `inputs_for` shows nothing. So the page never shows it at an
+input that is not there. If a command has a field with the name `base`, the field shares that key with the errors of the whole form.
 
 **Some refusals put no error on the changeset.** These refusals belong to no field:
 
@@ -375,4 +377,4 @@ The page tells the person about them from the reason that `dispatch/3` returned.
 - [Units](units.md): the invariants of a unit, and the rejections.
 - [Reading](reading.md): the queries that a search form asks.
 - [What are actors, values, entities and external systems?](domain-data.md): the values whose
-  invariants a form checks.
+  invariants the changeset checks.
