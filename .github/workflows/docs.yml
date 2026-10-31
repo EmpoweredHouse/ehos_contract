@@ -92,30 +92,36 @@ jobs:
       # Restored, never saved. A run by hand executes this file from one branch and
       # fetches the dependencies of another ref; saving them would put that ref's
       # dependencies into the branch's cache, `main`'s included, where ci.yml's gate
-      # would restore them. ci.yml saves these keys; this only reads them.
+      # would restore them. ci.yml saves these keys; this only reads them. Each key and
+      # `path` is copied from ci.yml's entry for the `oldest` pair, which this job runs:
+      # actions/cache finds an entry by its key and by its `path` text, so a key or a
+      # path that differs by a character never restores anything. The engine's entry
+      # holds no code of the private ehos-tools (`ehos_*`), as ci.yml saves it.
       - name: Restore engine deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract/deps
-          key: eh-os-contract-core-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+          path: |
+            packages/eh_os_contract/deps/*
+            !packages/eh_os_contract/deps/ehos_*
+          key: eh-os-contract-core-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
 
       - name: Restore dashboard foundation deps
         uses: actions/cache/restore@v4
         with:
           path: packages/eh_os_contract_web/deps
-          key: eh-os-contract-web-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+          key: eh-os-contract-web-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
       - name: Restore credential verifier deps
         uses: actions/cache/restore@v4
         with:
           path: packages/eh_os_contract_auth/deps
-          key: eh-os-contract-auth-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+          key: eh-os-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       - name: Restore graph renderer deps
         uses: actions/cache/restore@v4
         with:
           path: packages/eh_os_contract_graph/deps
-          key: eh-os-contract-graph-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+          key: eh-os-contract-graph-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
       # The engine's `:dev`/`:test` dependencies `ehos_diagrams` and `ehos_design`, which `mix docs`
       # does not need but `mix deps.get` fetches, live in the private EmpoweredHouse/ehos-tools.
