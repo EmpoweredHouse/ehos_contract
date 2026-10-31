@@ -4,6 +4,85 @@ How work is planned, recorded and reviewed in this repository, for a person join
 here follows the same scheme; `CLAUDE.md` and the skills in `.claude/skills/` give it the details, and the
 maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 
+## The layout of the repository
+
+| Directory | What it holds |
+| --- | --- |
+| [`packages/eh_os_contract`](packages/eh_os_contract) | The engine: the domain and contract languages, dispatch, the log, conformance, and its documentation in `docs/`. |
+| [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | The dashboard that a host mounts. |
+| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | The verifier of EHOS's credentials, the sign-in through EHOS, and the application manifest. |
+| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | The renderer of a `graph.v1` document in a LiveView. It depends on no other package of this repository. |
+| [`sandbox`](sandbox) | The development host `:eh_os_contract_host`, with three invented case studies as test material. |
+| [`docs`](docs) | The design record, `docs/adr/`. |
+| [`plugins/eh-os-contract`](plugins/eh-os-contract), [`.claude-plugin`](.claude-plugin) | The Claude Code plugin that applications use, and the marketplace that publishes it. |
+
+Each package and `sandbox/` is a Mix project of its own. A package builds and tests without
+`sandbox/`. `sandbox/` is the first consumer of the packages, not a part of them.
+[`boundary`](https://hex.pm/packages/boundary) holds the line between the two: the compiler checks
+it.
+
+The case studies are `sandbox/lib/lending/`, `sandbox/lib/billing/` and `sandbox/lib/fulfilment/`: a
+library that lends copies, a company that bills subscriptions, and a shop that fulfils orders. Each
+has a domain, contracts, and implementations that decide and react.
+
+<a id="run-the-gate"></a>
+
+## Run the gate
+
+You need Elixir 1.18 or later, Erlang/OTP 27, and Docker for PostgreSQL. PostgreSQL listens on port
+5433.
+
+```bash
+docker compose up -d
+cd sandbox
+mix deps.get
+mix ecto.setup
+mix check
+```
+
+`mix check` in `sandbox/` runs these steps, in order:
+
+1. `format --check-formatted`.
+2. `compile --force --warnings-as-errors`. `boundary` reports a crossed boundary as a warning, so
+   without this flag the boundaries are not checked.
+3. `eh_os_contract.check` and `eh_os_contract.schema --check`, against `sandbox/eh_os_contract.lock`.
+4. The tests of the sandbox.
+5. `mix check` of each package, each in its own run, so that each package stands alone. The engine's
+   also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
+   `ehos_diagrams.gen --check`, which hold the generated pages and the diagrams to their sources.
+
+The gate must pass before a pull request is opened. CI runs the same gate on each pull request that
+is ready for review. A draft waits until it is marked ready. A pull request that changes only
+`README.md`, `CLAUDE.md`, `ROADMAP.md` or `docs/` skips the gate, except for
+`docs/adr/contract-v2.md`, whose examples a test compiles.
+
+<a id="run-the-development-host"></a>
+
+## Run the development host and the dashboard
+
+The sandbox host mounts the dashboard of `packages/eh_os_contract_web` at `/dashboard`:
+
+```bash
+cd sandbox && mix phx.server
+```
+
+Then open `http://localhost:4010/dashboard`. The sandbox host lets each person in, read-only, so run
+it only on your own machine. A host decides who can see its dashboard with an
+`EhOsContract.Web.Resolver`.
+
+An empty log gives empty screens. `mix sandbox.traffic` fills a log with about 6 weeks of runs of
+the case studies, with drift: broken and suspended promises, a deadline that passed, stages out of
+order, a transition that the lifecycle does not allow, and a step that fails. Each checkout on the
+machine shares the default development database, so use a database of your own:
+
+```bash
+cd sandbox && export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
+mix ecto.reset && mix sandbox.traffic && mix phx.server
+```
+
+The same answers are JSON under the `/api` mount of the host:
+[the README of the dashboard](packages/eh_os_contract_web/README.md#the-api) lists the routes.
+
 ## Where the work is recorded
 
 Each place answers one question. Copying an answer into a second place makes two versions, and one of them goes
@@ -52,7 +131,7 @@ stage was carried out stays in its issue.
    `CHANGELOG.md`, or the description says why not on a line `No changelog: <why>` (below).
 7. **Before it is opened**, the author reviews it (what to look at is in `.claude/review.md`, and the
    maintainers run the `ehos-dev:pre-pr-review` skill on it), and `mix check` in `sandbox/` passes
-   (`README.md`, "Working on it").
+   ("Run the gate", above).
 8. **When it is merged**, `ROADMAP.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
    when it upgrades.

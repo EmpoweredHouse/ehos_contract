@@ -2,330 +2,97 @@
 
 [![check](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml)
 
-**One contract per business process, and two things built on it: the plumbing an event-driven
-Elixir application runs on, and a check — for as long as the system runs — that what actually
-happened is what the contract says should.**
+This repository holds `eh_os_contract`, an engine for event-driven Elixir applications, and three
+packages around it. You describe a business process as Elixir modules. The application runs on these
+modules, and the engine checks if what occurred agrees with them. This page is for a person who
+meets the repository for the first time. [The glossary](packages/eh_os_contract/docs/glossary.md)
+defines each word of the engine.
 
-## Two halves, one contract
+## Which problem does it solve?
 
-A process is written down as Elixir modules, in the manner of [ESDM](https://www.esdm.io): a **domain** —
-its words, contexts, actors and the systems it depends on — **contracts** — the units that decide, their
-commands, events and invariants, what reacts to them and what is read — and a **process** module — its
-runs, their stages and endings, and what the process owner was promised. Both halves of the library read
-those modules and nothing else.
+Tests show that a module works. Monitoring shows that a server runs. Neither shows if the running
+system still does what the business agreed. Example: a case must be filed within 3 days, and for
+one case the code that files it does not run. No error occurs, so no person gets an alert.
 
-**Events.** `EhOsContract.dispatch/3` runs a command through the contract: it asks whether the actor may
-issue it, checks its fields, reads the unit's history from the log, lets the implementation decide, and
-appends what it decided — nothing the contract does not declare. The log is the engine's own, and the
-state of a unit is its events, folded. What takes events, a reaction or a read model, is declared beside
-the units and runs where its delivery says:
+![A workshop gives the contract; the application runs on it and appends events; conformance compares the log with the contract and answers the people.](packages/eh_os_contract/docs/img/conformance-flow.svg)
 
-| Consumer | Runs | Use it for |
-| --- | --- | --- |
-| a read model or a policy, `:in_transaction` (their default within one context) | inside the dispatch transaction; if it raises, nothing is appended | projections and follow-up commands in the same database |
-| a read model, a policy or a process manager, `:at_least_once` | fed from the log in order, after the commit, by a subscription that resumes where it stopped | whatever may lag the command |
-| an effect, `:at_least_once` (its default, and the only way it runs when it `calls:` a system) | as an Oban job inserted **in the dispatch transaction** | anything with outside I/O: mail, HTTP, another system |
-| an effect without `calls:`, `:in_transaction` | inside the dispatch transaction, after the policies | a side effect in the same database |
+[What is eh_os_contract?](packages/eh_os_contract/docs/introduction.md) tells each step of this
+picture, and what the engine does not do.
 
-Every append takes one lock, held until its transaction commits, which is what keeps the log's order. So
-whatever runs `:in_transaction` holds every other write in the application while it runs: keep it to the
-database, and put anything slow behind `:at_least_once`.
+## What does the report show?
 
-A policy or an effect delivered at least once does not compile unless it names what makes a second
-delivery harmless, because an event may be delivered more than once. A policy or a read model that takes an
-event of another context does not compile until it says how it is delivered: run `:in_transaction`, a failure in
-one part of the business undoes an event recorded in another, so that has to be a choice the contract states, and
-`mix eh_os_contract.check` warns of it.
-
-**Conformance.** The same contract, compared against the log dispatch has been writing: which declared
-steps never ran, what happened that nobody declared, which promises were broken, and which contract version
-was deployed when.
-
-## Between applications
-
-Several applications can exchange events, each keeping its own log. An event leaves an application only
-through a contract's `publish`: a relay reads the log in order and hands each published event to an
-`EhOsContract.Bus`. A receiving application takes it into an inbox, deduplicated, and only a policy reacts to
-it — another application's event never enters the receiver's log. A generated AsyncAPI document
-(`EhOsContract.AsyncAPI`) describes what each application publishes, in the format a broker's tooling reads.
-
-The library ships one bus, `EhOsContract.Bus.Local`, for tests and a single node, and depends on no broker. The
-adapter for a real one (NATS JetStream) belongs to EHOS, the platform the applications run on.
-
-Where the library is going, and what is being worked on now, is in [`ROADMAP.md`](ROADMAP.md).
-
-## The question the conformance half answers
-
-Tests tell you a module works. Monitoring tells you the server is up. Neither tells you the
-thing a process owner actually wants to know: **is the running system still doing what we agreed
-it would do?** An invoice that should have gone out, didn't. A case that should have been
-escalated after three days, wasn't. Nothing threw, nothing paged anyone, every dashboard is
-green — the code that should have run it just never fired.
-
-## The idea
-
-Declare the process once, as **contracts** and a **process**: Elixir modules, written by developers, approved
-by the person who owns the process, and versioned like any other code. Everything downstream
-reads those modules and nothing else — the code structure, the tests, the API surface, the
-graph of events the system is allowed to emit, and the assertions a log of what actually
-happened will be checked against ("within 3 days of X, Y must happen, or else Z").
-
-The library reads the contract twice: once at compile time, to refuse code that contradicts it,
-and continuously at runtime, comparing the event log against what was declared. **The gap
-between the two is what the conformance half reports.**
-
-```mermaid
-flowchart LR
-    W["Workshop with the<br/>people who do the work"] --> C["Contract<br/>code, versioned, approved"]
-    C --> G["Generated structure,<br/>tests, API"]
-    G --> R["Running system"]
-    R --> L[("Event log —<br/>what actually happened")]
-    C --> D{"Declared<br/>vs<br/>observed"}
-    L --> D
-    D --> P["The gap —<br/>the conformance report"]
-```
-
-## Seeing it work
-
-A contract that decides cases, and a process with one promise about them: a case is opened, and within
-three days it is either filed or explicitly flagged for review.
-
-```elixir
-defmodule Acme.Contracts.InvoiceFiling do
-  use EhOsContract.Contract, domain: Acme.Domain, context: :invoicing, id: "acme.invoice_filing"
-
-  aggregate :case, "Case" do
-    identity :case_id
-
-    command :open_case, "Open a case", by: :clerk, emits: :case_opened
-    command :file_invoice, "File the invoice", by: :clerk, emits: :invoice_filed
-    command :flag_invoice, "Flag for manual review", by: :clerk, emits: :invoice_flagged
-
-    event :case_opened, "Case opened"
-    event :invoice_filed, "Invoice filed"
-    event :invoice_flagged, "Invoice flagged for manual review"
-  end
-end
-
-defmodule Acme.Processes.CaseFiling do
-  use EhOsContract.Process,
-    id: "acme.case_filing",
-    domain: Acme.Domain,
-    label: "Invoice filing"
-
-  correlate :case_id
-
-  stage :filing, "Filing",
-    include: [{Acme.Contracts.InvoiceFiling, [:case_opened, :invoice_filed, :invoice_flagged]}]
-
-  ends_on [:invoice_filed, :invoice_flagged]
-
-  promise :invoice_follows_case do
-    from :case_opened
-    eventually :invoice_filed
-    within {3, :day}
-    or_else :invoice_flagged
-  end
-end
-```
-
-A module implements the `case` aggregate, and a command goes through `EhOsContract.dispatch/3`. Over a
-month, 40 cases were opened. 39 look completely uneventful — filed or flagged, no exceptions anywhere. One
-didn't: a code path that should have flagged it never ran, for reasons that have nothing to do with this
-library (a bug, a missed deploy, an edge case nobody tested). No error, so nothing paged anyone. This is
-the part of what `mix eh_os_contract.report` prints for that month about the process, in the sentences it
-prints — the header and the process's version, deployed since when, come before it:
+A process module declares a promise: after a case is opened, within 3 days its invoice is filed, or
+the case is flagged for review. In one month, 40 cases were opened, and the code did not file or flag
+one of them. `mix eh_os_contract.report` prints this for the process, after the version that is
+deployed:
 
 ```
 PROCESS: Invoice filing
-  Runs in this period: 40.
+  Runs in this period: 40, one per case_id.
   Rule: after "Case opened" within 3 days, "Invoice filed" follows, or else "Invoice flagged for manual review".
     BREACHED in 1 of 40 runs.
-    Of those that were met, 2 runs reached the fallback ending, which conforms to the rule.
 ```
 
-`BREACHED in 1 of 40 runs` is the conformance half on one line. It doesn't point at a stack trace, and it
-doesn't say what the invoice was for — it says reality stopped matching what was agreed, once out of forty
-times, and here's proof.
+The report does not show a stack trace or the contents of the invoice. It shows that the system did
+not do what the business agreed, one time in 40.
 
-## The four questions
+## Which packages does it hold?
 
-The conformance report, and the dashboard built on top of it, answers four questions —
-deliberately, and not one more:
-
-1. Which declared steps were never taken in this period?
-2. What happened that was never declared — drift?
-3. Which promises are being broken right now, and how often?
-4. Which contract version is deployed, and since when?
-
-For an aggregate that declares its lifecycle, the first two are asked of its transitions too: which
-declared transitions no aggregate took, and which moves the lifecycle does not allow happened anyway.
-
-Everything else already has an owner: performance is your APM's job, errors are your error
-tracker's job, **business state is the client application's job.** The library helps build that state —
-read models and queries are declared in the contract — but the dashboard never shows it. The day this library starts
-answering "which customer's order hasn't shipped yet," it has become a second, worse screen of
-that application — see [non-goals](#non-goals).
-
-## Seeing the dashboard
-
-The same four questions, as a screen instead of a report — [`packages/eh_os_contract_web`](packages/eh_os_contract_web),
-mounted at `/dashboard` on this repository's sandbox host the way `oban_web` mounts into any Phoenix
-app. Built only once `mix eh_os_contract.report`'s text output above had already proven the signal was worth
-showing; the screen reformats that answer, it doesn't invent a second one. Two screens: contract
-status (the four questions, per contract), and graph — a domain's context map, its system of contracts and
-what flows between them, and each contract's full graph, its units and their lifecycles, over the log —
-drawn by [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) from the `graph.v1` document the
-engine gives, with a panel for whatever is clicked.
-
-```bash
-cd sandbox && mix phx.server
-```
-
-An empty log gives empty screens. `mix sandbox.traffic` fills one with about six weeks of the case studies'
-runs, drift included: broken and suspended promises, a deadline passed, stages out of order, a move the
-lifecycle does not allow, a step that fails. Run it on a database of your own, since the default development
-database is shared by every checkout on the machine:
-
-```bash
-cd sandbox && export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
-mix ecto.reset && mix sandbox.traffic && mix phx.server
-```
-
-The same answers, and each contract's and domain's graph as a `graph.v1` document with what the log says
-over it, are JSON for any other client — a CI job, a tool — under the host's `/api` mount: the routes are in
-[the web package's README](packages/eh_os_contract_web/README.md#the-api), and `mix eh_os_contract.graph`
-writes the same documents to a file.
-
-Then open `http://localhost:4010/dashboard`. There is no login: who may see the dashboard is the
-host's decision, made through an `EhOsContract.Web.Resolver` it passes to the mount, and the sandbox
-host lets everyone in read-only — nothing here belongs pointed at anything but your own machine.
-
-## Writing a contract
-
-If you know `Ecto.Schema`, you already have the mental model: a schema declares the shape of rows that
-are **stored**, a contract declares the shape of events that **happened** and of the decisions that produce
-them. Both are declarations a machine reads, and both generate code you didn't write — here, a struct for
-every command, event and state, and a behaviour for every piece of code that decides or reacts.
-
-Beyond the example above: invariants, each with a scenario — given events, when a command, then events or
-the refusal — that is also a test of the implementation; policies, effects and process managers; read
-models and the queries that read them; `external` systems, named after what they do for the business rather than the
-vendor, so a report can tell "we broke the rule" from "the system we depend on was down"; and personal
-data, encrypted in the log per subject so that erasing a subject is deleting a key.
-
-How to write a domain and a contract is in
-[`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md), and every refusal of the
-compiler by its code in [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md). Every key of both
-DSLs is in a reference that is not hand-written: `mix eh_os_contract.docs`, run inside the package,
-generates [`docs/dsl/`](packages/eh_os_contract/docs/dsl) from the DSLs themselves, and the package's gate
-runs it with `--check`, failing the build if the two drift apart. A reference that can go stale is the
-exact failure mode this project exists to catch in other people's systems, so it doesn't get to have one
-of its own.
-
-`mix eh_os_contract.graph` gives a contract's or a domain's graph as a `graph.v1` document — every fact a
-picture of it can draw, for the dashboard, EHOS Console or a diff in CI — and with `--overlay` what the log
-says over it, for the team that runs it.
-
-## Using it in your application
-
-The packages install from git — see [`packages/eh_os_contract`](packages/eh_os_contract#installation)
-for the engine (dependency, migration, configuration, the supervision-tree child) and
-[`packages/eh_os_contract_web`](packages/eh_os_contract_web#installation) for the dashboard, and
-[`packages/eh_os_contract_auth`](packages/eh_os_contract_auth#installation) for verifying EHOS credentials —
-including [where the keys come from, and what to configure at integration](packages/eh_os_contract_auth#where-the-keys-come-from-and-what-to-configure-at-integration).
-
-## Working on it
-
-How work is planned, recorded and reviewed — issues, pull requests, where a decision is written down — is in
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-Requires Elixir `~> 1.18`, Erlang/OTP 27, and Docker (for Postgres).
-
-```bash
-docker compose up -d
-cd sandbox
-mix deps.get
-mix ecto.setup
-mix check
-```
-
-`mix check` in `sandbox/` is the gate: formatting, `compile --force --warnings-as-errors`,
-`eh_os_contract.check`, `eh_os_contract.schema --check` and the sandbox's own tests, then each package's own `mix check` as a
-separate project — the engine's includes `eh_os_contract.docs --check` and `eh_os_contract.rules --check`. `--warnings-as-errors`
-matters because `boundary` reports module-boundary violations as warnings, so without that flag the
-boundaries below would be documentation rather than a check.
-
-| Task | Does |
+| Package | What it does |
 | --- | --- |
-| `mix eh_os_contract.check` | whole-program checks over the contracts and their implementations, each finding under a stable name |
-| `mix eh_os_contract.report --since … --until …` | the conformance report for a period |
-| `mix eh_os_contract.graph --contract <id> \| --domain <name> [--overlay [--since …]]` | a contract's or a domain's `graph.v1` document — steps, actors, read side, external systems, stages, promises, lifecycles, the context map — or, with `--overlay`, what the log says over it |
-| `mix eh_os_contract.view` / `glossary` / `pages` | the domain as a tree, its ubiquitous language, or Markdown pages, one per element |
-| `mix eh_os_contract.schema [--check \| --forget TYPE]` | records every event's fields by version in `eh_os_contract.lock`, and fails on a recorded version whose fields changed |
-| `mix eh_os_contract.subscriptions` | where each subscription stands, and a way past a poison event |
-| `mix eh_os_contract.rewrap` | rewraps the subjects' data keys with the vault's current master key |
-| `mix eh_os_contract.docs` / `rules` | inside `packages/eh_os_contract` only: regenerate `docs/dsl/` and `docs/rules.md` |
-| `mix eh_os_contract.manifest --output <file>` | from `eh_os_contract_auth`: the EHOS application manifest, `ehos.yaml` extended with what the contracts offer |
+| [`eh_os_contract`](packages/eh_os_contract) | The engine: the domain and contract languages, dispatch, the log, conformance. |
+| [`eh_os_contract_web`](packages/eh_os_contract_web) | A dashboard that an application mounts. It shows the conformance and the graph of each contract. |
+| [`eh_os_contract_graph`](packages/eh_os_contract_graph) | Draws the graph of a contract or a domain in a LiveView. |
+| [`eh_os_contract_auth`](packages/eh_os_contract_auth) | Connects an application to EHOS, the platform that hosts it: it verifies the credentials that EHOS issues. |
 
-## The repository
+The packages install from git. [Getting started](packages/eh_os_contract/docs/getting-started.md)
+installs the engine. The README of each other package tells how to install it.
 
-| Directory | What |
-| --- | --- |
-| [`packages/eh_os_contract`](packages/eh_os_contract) | **the library** — the domain and contract DSLs, dispatch, the event store, conformance, [`docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
-| [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | the mountable dashboard |
-| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | connects an application to EHOS: verifies its credentials against keys kept in the application's database, signs a person in through EHOS, and writes the application manifest |
-| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | draws a contract's or a domain's `graph.v1` document in a LiveView, for the dashboard and the EHOS Console; depends on no other package here (in progress) |
-| [`sandbox`](sandbox) | a host application around the packages, with the test material below |
-| [`docs`](docs) | the starting assumptions and the design record (`docs/adr/`) |
+<a id="use-the-skills-with-claude-code"></a>
 
-The library is a self-contained Elixir package with its own `mix.exs` and its own test suite, none
-of it requiring a client application to exist. That is the part meant to eventually ship to Hex.
+## Use the skills with Claude Code
 
-[`packages/eh_os_contract_web`](packages/eh_os_contract_web) ships alongside it — the dashboard from
-[above](#seeing-the-dashboard), structured the same way `oban_web` sits beside `oban`: a mountable
-router and screens, own `mix.exs`, own test host, no opinion about a host's own domain.
+This repository is also a Claude Code marketplace. Its plugin `eh-os-contract` gives an assistant
+the skills to write contracts by the rules of the engine. The skills decide where a feature goes,
+turn workshop notes into a domain and contracts, and add an event. They also write a decider and a
+reaction, and change a contract that has history.
 
-The sandbox — `sandbox/lib/lending/`, `sandbox/lib/billing/` and `sandbox/lib/fulfilment/`, the domains,
-contracts and implementations of three invented businesses, a library lending copies, a company billing
-subscriptions and a shop fulfilling orders — is test material and the library's first consumer, kept around so the library's assumptions get exercised against something other than its own
-imagination. [`boundary`](https://hex.pm/packages/boundary) enforces the line between the two
-from the first commit, so it's a fact the compiler checks, not a promise in a document.
+1. In the `.claude/settings.json` of your application, add the marketplace
+   `EmpoweredHouse/eh-os-contract` at the tag of a release of the plugin,
+   `eh-os-contract-plugin-vX.Y.Z`.
+2. Enable the plugin `eh-os-contract@eh-os-contract`.
+3. If your machine has no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and run
+   `gh auth setup-git`. The repository is private, so Claude Code fetches it with the git
+   credentials of the machine.
 
-## Non-goals
-
-| | Why not |
-| --- | --- |
-| An opinion on the API layer | REST vs. GraphQL is an open question this project has no standing to close by building one. |
-| A project generator (`mix eh_os_contract.new`) | Worth building once something has been copied twice — at a second real client, not before. |
-| Real registries, real mail | A behaviour plus a fake. Real integrations are the client's domain cost and carry no signal for the library. |
-| Identity: accounts, roles, sign-in screens | The library takes an actor as an opaque subject with the capabilities and scopes its verified credential grants; EHOS derives those from the contract's `by:` through the application manifest, and only a `:system` actor is checked against `by:` directly. EHOS owns accounts and its own sign-in screens: `eh_os_contract_auth` verifies EHOS's credentials and hands a person to EHOS to sign in, and access to the dashboard is decided by the host that mounts it. |
-| A message broker | The library defines a bus and ships a local one; the adapter for a real broker belongs to EHOS. |
-| Alerts, ops dashboards, metrics collection | Performance is your APM's job, errors are your error tracker's job, business state is the client application's job. |
-| Anything that answers a question about one specific customer | The moment this library can tell you "which customer's order hasn't shipped yet," it has stopped checking conformance and started being a worse copy of the client's own application. |
-
-## Learn more
-
-| Question | Read |
-| --- | --- |
-| How do I write a domain and a contract | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
-| What will not compile, every refusal with its code | [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md) |
-| Every key of both DSLs, generated from the code | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
-| The second DSL, and what it reverses in the first | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
-| Why does the library work this way — eighteen starting decisions (written under its earlier name, `pns`) | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
-| What did each decision beat, which alternatives were rejected | [`docs/adr/design-rationale.md`](docs/adr/design-rationale.md) |
-| Code shapes, schemas, library choices, implementation traps | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
+**Result:** the skills show in Claude Code, for example `/eh-os-contract:change-contract`. The
+template of `ehos_app` writes these two settings into each project that it generates.
 
 ## Status
 
-Before 1.0. Versions are released as tags of this repository (`vX.Y.Z`, the packages' `CHANGELOG.md`s say what
-each changed), and applications install the packages from git; publishing on Hex is being prepared
-([`ROADMAP.md`](ROADMAP.md)). Until 1.0 a minor version may break, and its changelog says how to upgrade.
+The packages are before version 1.0. A release is a tag of this repository, `vX.Y.Z`, and the
+`CHANGELOG.md` of each package tells what changed. Applications install the packages from git.
+Until 1.0, a minor version can break an application, and its changelog tells how to upgrade.
 
-The full test suite runs in CI on every pull request that changes code once it is ready for review — a draft
-waits until it is marked ready (see the badge above); one that changes only `README.md`, `CLAUDE.md`,
-`ROADMAP.md` or `docs/` (except the one page a test compiles) skips it.
+## Next steps
 
-- **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md), and the [code of conduct](CODE_OF_CONDUCT.md).
-- **A security problem:** report it privately, as [`SECURITY.md`](SECURITY.md) says, not in an issue.
-- **Licence:** [Apache 2.0](LICENSE), with the third-party software the packages bundle in [`NOTICE`](NOTICE).
+- [What is eh_os_contract?](packages/eh_os_contract/docs/introduction.md): what the engine does,
+  and what it does not do.
+- [Getting started](packages/eh_os_contract/docs/getting-started.md): install the engine and
+  dispatch a first command.
+- [Write a domain, a contract and a process module](packages/eh_os_contract/docs/contract.md): the
+  full task.
+- [Contributing](CONTRIBUTING.md): the layout of the repository, its gate, and how work goes to
+  `main`. Also the [code of conduct](CODE_OF_CONDUCT.md).
+- [Security](SECURITY.md): report a security problem privately, not in an issue.
+
+## Background
+
+The design record holds the first decisions and the alternatives that they rejected:
+
+- [The starting assumptions](docs/adr/architecture.md), written under the earlier name `pns`.
+- [The contract language, version 2](docs/adr/contract-v2.md).
+- [Design rationale](docs/adr/design-rationale.md) and [technology notes](docs/adr/technology-notes.md).
+
+Licence: [Apache 2.0](LICENSE). [`NOTICE`](NOTICE) lists the third-party software that the packages
+bundle.
