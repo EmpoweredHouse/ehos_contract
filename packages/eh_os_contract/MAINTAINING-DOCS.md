@@ -88,14 +88,14 @@ behaviour, not in shape. A behaviour change is the moment to search the prose pa
 
 ## Adding a page
 
-1. Write it in `docs/`, not in a subdirectory: ExDoc writes every page into one directory, so a page in a
-   subdirectory links an image by a path that is wrong in the HTML. Say what it is for, how it behaves at run
-   time, what the compiler refuses and what the check reports, with an example that compiles. The existing
-   concept pages are the pattern.
+1. Write a prose page in `docs/`, not in a subdirectory: ExDoc writes every page into one directory, so a
+   prose page in a subdirectory links an image by a path that is wrong in the HTML. Say what it is for, how it
+   behaves at run time, what the compiler refuses and what the check reports, with an example that compiles.
+   The existing concept pages are the pattern.
 2. Name what it covers in its `<!-- covers: … -->` comment.
 3. Add it to `EhOsContract.Docs.prose/0` (a concept to `concepts/0`, in the order a reader takes them), and to
-   `extras` in `mix.exs` (a concept to `@concepts`), with its group in `groups_for_extras`. `docs_test` fails if one lists it and the other
-   does not.
+   `extras` in `mix.exs` (a concept to `@concepts`), with its group in `groups_for_extras`. `docs_test` fails
+   if one lists it and the other does not.
 4. Link it from the pages that lead to it (`README.md`, the introduction, the page before it).
 5. Run `mix eh_os_contract.docs`; `--coverage` lists what no page covers yet.
 

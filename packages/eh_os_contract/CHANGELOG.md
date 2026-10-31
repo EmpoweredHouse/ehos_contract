@@ -74,8 +74,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   a master key, and what an erasure does not reach in backups, moved to `domain-data.md`.
 - **The concept pages are in `docs/`, beside the other pages** (#517). `docs/concepts/units.md` is now
   `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
-  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. A page in a
-  subdirectory linked an image by a path that was wrong in the HTML.
+  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The
+  `eh-os-contract` plugin's `change-contract` skill names the new path, at 0.14.2.
 
 ### Fixed
 
@@ -86,7 +86,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
   a run and its promises. The page no longer counts a read model among what reacts to events (#511).
-- **`docs/concepts/domain.md` and `docs/concepts/between-contracts.md` said an application has one domain.**
+- **`docs/domain.md` and `docs/between-contracts.md` said an application has one domain.**
   It may hold more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and
   only the domain named after the application publishes.
 - **The pages, the DSL reference and the moduledocs called an event a "fact"** (#512). They now say "event",
