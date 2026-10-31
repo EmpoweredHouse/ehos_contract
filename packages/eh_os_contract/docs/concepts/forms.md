@@ -1,49 +1,53 @@
-# Forms: issuing a command from a page
-
-This page covers how a page lets a person issue a command: a form checked while they type, with the
-rules the contract states, and dispatch's refusal put back on the form when they submit it.
+# Issue a command from a form
 
 <!-- covers: entities contract.aggregate.command -->
 
-A command declares its fields: which are required, their types, the domain's enums and values, and
-the invariants of those values. Dispatch holds every command to that declaration. A form has to hold
-what a person typed to the same rules, before it is sent, and say which field is wrong.
-`EhOsContract.Form` builds the form's `Ecto.Changeset` from the command's declaration, so the rules are
-written once, in the contract.
+This page tells how to build a form that checks what a person types against the contract. The form
+also shows the refusal of dispatch. It is for a developer who writes the pages of an
+application. [The glossary](../glossary.md) defines each word in italics.
 
-The same holds for the two other things a person sends: an event an actor records (`recorded_by:`),
-for `EhOsContract.record/3`, and a query's params, a search or a filter over a read model, for
-`EhOsContract.query/3`. `Form.changeset/4` takes the event's module or the query's as it takes a
-command's, and `Form.to_struct/1` gives the struct each of them takes. "A form" here is any input that
-arrives as text: an HTML page, a CSV import, a console.
+A command declares its fields: which fields are required, their types, the enums and values of the
+domain, and the invariants of those values. Dispatch holds each command to this declaration. A
+*form* must hold what a person types to the same rules, before it sends the command, and tell which
+field is wrong. `EhOsContract.Form` builds the `Ecto.Changeset` of the form from the declaration of
+the command. So you write the rules one time, in the contract.
 
-## The rule, from both sides
+A form is each input that arrives as text: an HTML page, a CSV import, a console. The same steps
+apply to an event that an actor records, and to the params of a query.
 
-- **The contract holds the rules.** A required field, a type, an enum's members, a domain value's
-  invariant, a unit's invariant and a command's constraint are declared in the domain and the contract,
-  and nowhere else.
-- **The changeset checks the shape of the input, and nothing more.** It asks whether each field the
-  command needs is there, whether each value is of its declared type, and whether a domain value keeps
-  its own invariants: a billing period written `YYYY-MM`, an amount that is not negative. Those it asks
-  of the domain, as dispatch asks them.
-- **A form never copies an invariant.** A unit's invariants and a command's constraints need the unit's
-  history, which only dispatch reads. They reach the form as dispatch's refusal, which
-  `EhOsContract.Form.refused/3` puts back on it. Writing one again as a validation in the page makes a
-  second rule that can disagree with the first, and nothing fails when it does.
+## What does the form check, and what does it not check?
 
-What stays the application's:
+- **The contract holds the rules.** The domain and the contract declare each rule, and no other
+  place declares them. Examples: a required field, a type, the members of an enum, an invariant of a
+  value or of a unit, a constraint of a command.
+- **The changeset checks the shape of the input.** It checks that each needed field is there, and
+  that each value has its declared type. It asks the domain if a domain value keeps
+  its invariants, as dispatch does. Examples: a billing period written `YYYY-MM`, an amount that is
+  not negative.
+- **The form does not copy an invariant of a unit.** Such an invariant, or a constraint of a
+  command, needs the history of the unit. Only dispatch reads that history. The rule comes back to
+  the form as the refusal of dispatch, which `EhOsContract.Form.refused/3` puts on the form.
 
-- the fields a form has that the command does not, a search box, a picker's query, "add another row",
-  in a changeset of its own;
-- every word a person reads. The engine puts its reason on each error and writes no message of its
-  own, so the application says it in its client's language;
-- how the page lays the form out, and what it says about a refusal that is no field's: a capability
-  the person lacks, a failure to supply a field.
+Do not write an invariant of a unit again as a validation in the page. Your validation is a second
+rule. It can disagree with the first, and no test fails when it does.
 
-## An example
+The application keeps these things:
 
-An accountant issues an invoice for a month. A period is a month written `YYYY-MM`, which is the
-value's invariant, and an invoice is issued once, which is the unit's.
+- the fields of a form that the command does not have, in a changeset of its own. Examples: a
+  search box, the query of a picker, "add another row".
+- each word that a person reads. The engine puts its reason on each error, and writes no message of
+  its own. The application writes the message, in the language of its client.
+- the layout of the form, and what it says about a refusal that belongs to no field. Examples: a
+  capability that the person does not have, a field that the host did not supply.
+
+## Before you start
+
+- A Phoenix LiveView page, with the `actor` of the person in its assigns.
+- A contract with the command, and a module for each domain value with invariants.
+
+This page uses this contract. An accountant issues an invoice for a month. A period is a month
+written `YYYY-MM`: this is the invariant of the value. An invoice is issued one time: this is the
+invariant of the unit.
 
 ```elixir
 defmodule Concepts.Forms.Domain do
@@ -124,11 +128,28 @@ defmodule Concepts.Forms.Contracts.Invoicing do
 end
 ```
 
-## The page
+## What occurs from a keystroke to a refusal?
 
-A LiveView builds the changeset on `mount` and on each `phx-change`, and dispatches on `phx-submit`.
-The identity of the invoice is the page's, not the person's: it goes in `data:`, and a value the params
-carry for it is ignored.
+![The page builds the changeset on each change; on submit, it dispatches the command, and puts the refusal of dispatch back on the form.](../img/form-refusal.svg)
+
+1. The person types in the form. The page gets a `phx-change` event.
+2. The page builds the changeset with `EhOsContract.Form.changeset/4`.
+3. The changeset gives the errors of the shape: a missing field, a wrong type, a broken invariant of
+   a domain value.
+4. The person submits the form. The page gets a `phx-submit` event.
+5. `EhOsContract.Form.to_struct/1` converts a valid changeset into the struct of the command.
+6. The page dispatches the command with the actor of the person.
+7. Dispatch reads the history of the unit. The implementation rejects the command on its invariant.
+8. Dispatch returns `{:error, reason}` to the page.
+9. `EhOsContract.Form.refused/3` puts the reason on the changeset.
+10. The page shows the error on the form, in the words of the application.
+
+The steps below write this code.
+
+## Build the form
+
+Build the changeset in `mount/3`. Put the identity of the invoice in `data:`. The page decides the
+identity, not the person: the changeset ignores a value of the identity in the params.
 
 <!-- not compiled: functions of the host's LiveView -->
 ```elixir
@@ -141,11 +162,44 @@ def mount(%{"id" => id}, _session, socket) do
   {:ok, assign(socket, invoice_id: id, form_key: Ecto.UUID.generate(), form: to_form(changeset))}
 end
 
+defp data(socket), do: %{invoice_id: socket.assigns.invoice_id}
+```
+
+```heex
+<.form for={@form} phx-change="validate" phx-submit="save">
+  <.error :for={error <- @form[:base].errors}>{error_message(error)}</.error>
+  <.input field={@form[:period]} label="Period" placeholder="2026-07" />
+  <.input field={@form[:amount]} label="Amount" />
+  <.input field={@form[:method]} type="select" label="Paid by" options={[Card: :card, Transfer: :transfer]} />
+  <.input field={@form[:due_on]} type="date" label="Due on" />
+  <.input field={@form[:note]} label="Note" />
+  <.button>Issue</.button>
+</.form>
+```
+
+**Result:** the page shows an empty form for the invoice.
+
+## Check the form while the person types
+
+Build the changeset again on each `phx-change`:
+
+<!-- not compiled: a function of the host's LiveView -->
+```elixir
 def handle_event("validate", %{"issue_invoice" => params}, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
   {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
 end
+```
 
+**Result:** if the person types `July` as the period, the form shows an error at the period.
+
+## Send the command, and put the refusal on the form
+
+On `phx-submit`, convert the changeset into the command, and dispatch it. Give dispatch the key of
+the form, so that a second submit of the same form is the same command.
+
+<!-- not compiled: a function of the host's LiveView -->
+```elixir
 def handle_event("save", %{"issue_invoice" => params}, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
 
@@ -165,24 +219,18 @@ def handle_event("save", %{"issue_invoice" => params}, socket) do
       {:noreply, assign(socket, :form, to_form(changeset))}
   end
 end
-
-defp data(socket), do: %{invoice_id: socket.assigns.invoice_id}
 ```
 
-```heex
-<.form for={@form} phx-change="validate" phx-submit="save">
-  <.error :for={error <- @form[:base].errors}>{error_message(error)}</.error>
-  <.input field={@form[:period]} label="Period" placeholder="2026-07" />
-  <.input field={@form[:amount]} label="Amount" />
-  <.input field={@form[:method]} type="select" label="Paid by" options={[Card: :card, Transfer: :transfer]} />
-  <.input field={@form[:due_on]} type="date" label="Due on" />
-  <.input field={@form[:note]} label="Note" />
-  <.button>Issue</.button>
-</.form>
-```
+A rule of a unit names no field. So `refused/3` puts a rejection on `:base`, the errors of the whole
+form. To show it at a field, name the field:
+`refused(changeset, reason, at: [period_closed: :period])`.
 
-The words are the application's. Its error helper reads the engine's reason from each error, not the
-message:
+**Result:** if the invoice was issued before, the form shows the rejection `issued_once`.
+
+## Write the messages from the reasons
+
+Each error carries the reason of the engine in its keyword list. Write the message from the reason,
+not from the text of the error:
 
 <!-- not compiled: a function of the host's error helpers -->
 ```elixir
@@ -198,11 +246,26 @@ def error_message({_message, opts}) do
 end
 ```
 
-## A form that records, and a form that asks
+| Error | When |
+| --- | --- |
+| `{"can't be blank", validation: :required}` | A required field is missing or blank. |
+| `{"is invalid", validation: :type}` | A value does not have its declared type, or is not a member of its enum. |
+| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name`. For a value with fields as a whole, the error is on the `:base` of its row. |
+| `{"does not exist", validation: :unknown}` | Dispatch found no entity that the field names. `refused/3` puts this error. |
+| `{"was refused", validation: :rejected, invariant: name}` | Dispatch rejected the command on the invariant of the unit, or on the constraint of the command, `name`. The error is at the field that `at:` names, or at `:base`. `refused/3` puts this error. |
+| `{"is invalid", validation: :generated \| :supplied}` | The command carried a field that dispatch generates or the host supplies. This is a mistake of the page, not of the person. `refused/3` puts this error. |
 
-A form that records an event is built from the event, and its struct goes to `record/3`; a refusal comes
-back through `refused/3` as a command's does. A search form is built from the query, which has no
-identity: its params are checked as fields, and its struct goes to `query/3`.
+**Result:** the person reads each error in the language of the application.
+
+## Build a form that records an event, or that asks a query
+
+`Form.changeset/4` also takes the module of an event that an actor records, or of a query.
+`Form.to_struct/1` gives the struct that each of them takes.
+
+- A form that records an event is built from the event. Its struct goes to `EhOsContract.record/3`.
+  A refusal comes back through `refused/3`, as for a command.
+- A search form, or a filter over a read model, is built from the query. A query has no identity:
+  the changeset checks its params as fields. Its struct goes to `EhOsContract.query/3`.
 
 <!-- not compiled: code of the host's LiveView -->
 ```elixir
@@ -219,66 +282,92 @@ else
 end
 ```
 
-A page that knows a capability's name rather than its module, as `EhOsContract.call/3` takes it, builds
-the same changeset by the name: `Form.changeset({:command, "forms_example.issue_invoice"}, params)`,
-among the registered contracts or those `contracts:` names. `call/3` itself takes data with the types
-JSON gives it, and a form's text goes through `Form`.
+## Build a form from the name of a capability
 
-Building a form asks no `EhOsContract.Authorizer`: what it checks is the shape the contract declares,
-its fields, their types, an enum's members and the names of its values' invariants, and whether the
-person may issue it is asked when it is sent. Show a form only to whom the page means to.
+A page can know the name of a capability and not its module, as `EhOsContract.call/3` takes it.
+Then build the changeset by the name:
+`Form.changeset({:command, "forms_example.issue_invoice"}, params)`. `Form` looks for the name in
+the registered contracts, or in the contracts that `contracts:` names.
 
-## What a form reads, and what it does not
+`call/3` takes data with the types that JSON gives it. Send the text of a form through `Form`.
 
-- **Text, as a form sends it.** Every value arrives as text and is read as its declared type, an
-  integer, a boolean, a decimal, a date or a timestamp. A field left blank (`""`, or only spaces) is
-  absent: a required one is an error, an optional one is nil. A select's text is found among an enum's
-  members, and an unknown one is an error; no atom is created from it.
-- **Rows, as `inputs_for` sends them.** A domain value with fields is a row, and a list of them a row
-  each, arriving as a map keyed by the rows' indices and read in their order. Each row is a changeset
-  of its own, which `<.inputs_for>` renders with its own errors: a problem at the row's field, and an
-  invariant of the value as a whole on the row's `:base`. A row the form sends is read whole from it:
-  a field of it the page did not render is absent, not `data:`'s. A blank item, which a checkbox group
-  or a list sends so that choosing nothing still sends the field, is dropped, and a list sent with no
-  rows is an empty list. Phoenix's `items_sort[]` and `items_drop[]` are not read: a page that adds,
-  removes or reorders rows changes the params it passes.
-- **What the params leave out keeps its value from `data:`.** An edit form need not render every
-  field: one absent from the params keeps the value the page gave it, its rows too. One the params
-  carry, even blank, is read from them, so a `<select multiple>` or a bare checkbox that sends nothing
-  when nothing is chosen needs a hidden blank input, as `<.input type="checkbox">` renders one, to
-  clear what `data:` holds. And leaving a field off the page does not protect it: params that carry it
-  set it. A value the page decides, not the person, goes into the struct after `to_struct/1`.
-- **Every change, every row.** A LiveView reads the form on each `phx-change`, every row of it. Bound
-  what a form may send where the host takes it: the socket's `max_frame_size`, the parser's `length`.
-- **Timestamps with their offset.** A `:timestamp` is read from ISO 8601 text with its offset,
-  `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends neither seconds nor an offset, which
-  is not a timestamp: the page adds them, or the field is a `:date`.
-- **Not a field the host supplies** (`supplied_by: :host`): the page fills it in `data:`, or passes
-  `supply: true` to `dispatch/3`, which then asks the `EhOsContract.Supplier`. **Not an identity
-  dispatch generates** for a unit the command creates. And **not the identity in `data:`**, whatever
-  the params say about it, nor shown back from them. Only the identity is held so; another field in
-  `data:` is a starting value the person may change. Holding the form to its unit is not access:
-  who may act on which unit is the `EhOsContract.Authorizer`'s and the host's to say.
+## What can go wrong
 
-## The errors
+**The form does not check who can act.** `Form` does not ask the `EhOsContract.Authorizer`. It
+checks only the shape that the contract declares. Examples: the fields, their types, the members of
+an enum, and the names of the invariants of its values. Dispatch asks if the person can issue the command,
+when the page sends it. Show a form only to the people that the page is for.
 
-Each error carries the engine's reason in its keyword list:
+**Text, as a form sends it.**
 
-| Error | When |
-| --- | --- |
-| `{"can't be blank", validation: :required}` | A required field is missing or blank |
-| `{"is invalid", validation: :type}` | A value is not of its declared type, or not one of an enum's members |
-| `{"is invalid", validation: :invariant, invariant: name}` | A domain value breaks its invariant `name`; a value with fields as a whole, on its row's `:base` |
-| `{"does not exist", validation: :unknown}` | Dispatch found no entity the field names (`refused/3`) |
-| `{"was refused", validation: :rejected, invariant: name}` | Dispatch refused on the unit's invariant or the command's constraint `name`, at the field `at:` names, or at `:base` (`refused/3`) |
-| `{"is invalid", validation: :generated \| :supplied}` | The command carried a field dispatch generates or the host supplies (`refused/3`): the page's mistake, never the person's |
+- Each value arrives as text. `Form` reads it as its declared type: an integer, a boolean, a
+  decimal, a date or a timestamp.
+- A blank field (`""`, or only spaces) is absent. If the field is required, this is an error. If it
+  is optional, its value is `nil`.
+- `Form` looks for the text of a select among the members of the enum. An unknown member is an
+  error. `Form` does not make an atom from it.
 
-A rule names no field, so a rejection goes on `:base`, the whole form's, unless the page names the field
-it is about: `refused(changeset, reason, at: [period_closed: :period])`. A problem at a field the form
-never sent, the identity in `data:` or a field the host supplies, also goes on `:base`, with `field:`
-naming it, so it is never shown at an input that is not there. A command with a field named `base`
-shares that key with the whole form's errors.
+**Rows, as `inputs_for` sends them.**
 
-Any other refusal, a capability the person lacks, an idempotency key used for another command, the
-host failing to supply a field, puts no error on the changeset: none of them is a field's, and the page
-says it from the reason `dispatch/3` answered.
+- A domain value with fields is a row. A list of such values is one row for each value.
+- The rows arrive as a map with the index of each row as its key. `Form` reads them in the order of
+  the indexes.
+- Each row is a changeset of its own. `<.inputs_for>` shows it with its own errors. A problem of a
+  field is at that field. An invariant of the value as a whole is on the `:base` of the row.
+- `Form` reads a row that the form sends as a whole. A field of the row that the page did not show
+  is absent. It does not come from `data:`.
+- A checkbox group or a list sends a blank item, so that the field arrives when the person chooses
+  nothing. `Form` drops this item. A list with no rows is an empty list.
+- `Form` does not read `items_sort[]` and `items_drop[]` of Phoenix. If the page adds, removes or
+  sorts rows, it changes the params that it gives to `Form`.
+
+**A field that the params leave out keeps its value from `data:`.**
+
+- An edit form does not have to show each field. A field that is not in the params keeps the value
+  that the page gave it, and so do its rows.
+- A field in the params, also a blank one, comes from the params. A `<select multiple>`, or a
+  checkbox, sends nothing when the person chooses nothing. So it needs a hidden blank input to clear
+  the value in `data:`. `<.input type="checkbox">` shows one.
+- A field that the page does not show is not protected: params that carry it set it. Put a value
+  that the page decides into the struct, after `to_struct/1`.
+
+**Each change sends each row.** A LiveView reads the whole form on each `phx-change`. Limit the size
+of what a form can send, where the host gets it: the `max_frame_size` of the socket, and the
+`length` of the parser.
+
+**A timestamp needs its offset.** `Form` reads a `:timestamp` from ISO 8601 text with its offset,
+for example `2026-08-14T09:30:00Z`. `<input type="datetime-local">` sends no seconds and no offset,
+so its text is not a timestamp. Add them in the page, or make the field a `:date`.
+
+**Some fields do not come from the person.**
+
+- A field that the host supplies (`supplied_by: :host`): the page fills it in `data:`, or gives
+  `supply: true` to `dispatch/3`. Then dispatch asks the `EhOsContract.Supplier`.
+- An identity that dispatch generates, for a unit that the command creates.
+- The identity in `data:`. `Form` ignores the identity in the params, and does not show it back
+  from them. Only the identity is kept this way. Another field in `data:` is a first value that the
+  person can change.
+
+Holding a form to its unit does not give access. The `EhOsContract.Authorizer` and the host decide
+who can act on which unit.
+
+**Some errors are not at an input.** A problem at a field that the form did not send goes on
+`:base`. Its `field:` names the field. Examples: the identity in `data:`, or a field that the
+host supplies. So the page never shows it at an input that is not there. If a command has a field
+with the name `base`, the field shares that key with the errors of the whole form.
+
+**Some refusals put no error on the changeset.** These refusals belong to no field:
+
+- a capability that the person does not have;
+- an idempotency key that another command used;
+- a field that the host did not supply.
+
+The page tells the person about them from the reason that `dispatch/3` returned.
+
+## Next steps
+
+- [Authorization](../authorization.md): how dispatch decides if the person can issue the command.
+- [Units](units.md): the invariants of a unit, and the rejections.
+- [Reading](reading.md): the queries that a search form asks.
+- [Actors, values, entities and external systems](domain-data.md): the values whose invariants a
+  form checks.
