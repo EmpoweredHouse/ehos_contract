@@ -84,7 +84,7 @@ cd sandbox
 mix phx.server
 ```
 
-Then open `http://localhost:4010/dashboard`. The sandbox host lets each person in, read-only, to
+Then open `http://localhost:4010/dashboard`. If you set `PORT`, the server uses that port instead. The sandbox host lets each person in, read-only, to
 the dashboard and to its JSON API. The server listens on each network interface of the machine.
 Run it only on a network that you trust. A host decides who can see its dashboard with an
 `EhOsContract.Web.Resolver`.

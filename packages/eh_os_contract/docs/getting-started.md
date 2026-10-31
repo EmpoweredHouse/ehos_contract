@@ -227,9 +227,10 @@ managers. Add it to the configuration of Oban in `config/config.exs`:
 config :my_app, Oban, repo: MyApp.Repo, queues: [events: 10]
 ```
 
-If Oban does not run this queue, the jobs stay in the table. No effect runs, and no timer fires.
+If Oban does not run this queue outside tests, the jobs stay in the table. No effect runs, and no timer
+fires. In tests, `EhOsContract.Testing.drain/1` runs them.
 
-Mark `async: false` on each test that writes the log. Each append holds one lock until its
+Set `async: false` on each test module that writes the log: `use ExUnit.Case, async: false`. Each append holds one lock until its
 transaction ends. In the Ecto sandbox, a transaction lasts for the whole test. Two such tests wait
 for each other, and one fails on the timeout of the repo.
 
@@ -298,8 +299,8 @@ EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id:
    dispatch, and the log gets nothing.
 7. The read models, policies and effects delivered `:in_transaction` run now. Dispatch also inserts
    an Oban job for each effect delivered `:at_least_once`.
-8. Dispatch commits its transaction and returns the result. The engine also records a refused
-   command.
+8. Dispatch commits its transaction and returns the result. If `lend_copy/2` rejects the command,
+   the engine records the refused command and returns the rejection.
 9. The read models, policies and process managers delivered `:at_least_once` read the new events
    from the log. Oban runs the jobs of the effects.
 
