@@ -36,7 +36,7 @@ another page uses a word in a different way, this page is correct.
 | **Entity** | A thing with an identity that the code of the application or another system keeps, outside the log. A contract points to it by its identity. | `entity`, in the domain |
 | **Event** | Something that occurred in the business, declared in a unit. A unit emits it after a decision, or an actor records it. The log keeps it. Do not call it a "fact". | `event` |
 | **External system** | A system that the application exchanges data with. Its name tells what it does for the business, not the name of its vendor. | `external`, in the domain |
-| **Form** | A changeset that the engine builds from a command, a recorded event or a query, to check text that a person sends. It checks the shape of the input, not the invariants of a unit. | `EhOsContract.Form` |
+| **Form** | Input that a person sends as text, such as an HTML form or a CSV import, to issue a command, record an event or ask a query. `EhOsContract.Form` checks its shape against the contract. | `EhOsContract.Form` |
 | **Identity** | The fields that tell one unit from another. The engine adds them to the state, the commands and the events of the unit. | `identity` |
 | **Implementation** | The module that holds the code of one declaration of a contract. It points to the contract. The contract does not name it. | `use <Contract>, aggregate: :name` |
 | **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message. If the publication declares `idempotent_on:`, it also drops the same event published again with a new id. The event does not go into the log. | `EhOsContract.Inbox` |

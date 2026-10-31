@@ -8,37 +8,12 @@ application. [The glossary](../glossary.md) defines each word in italics.
 
 A command declares its fields: which fields are required, their types, the enums and values of the
 domain, and the invariants of those values. Dispatch holds each command to this declaration. A
-*form* must hold what a person types to the same rules, before it sends the command, and tell which
-field is wrong. `EhOsContract.Form` builds the `Ecto.Changeset` of the form from the declaration of
-the command. So you write the rules one time, in the contract.
+*form* is input that a person sends as text: an HTML form, a CSV import, a console. It must keep
+the same rules before the application sends the command, and tell which field is wrong.
+`EhOsContract.Form` builds an `Ecto.Changeset` from the declaration of the command. So you write the
+rules one time, in the contract.
 
-A form is each input that arrives as text: an HTML page, a CSV import, a console. The same steps
-apply to an event that an actor records, and to the params of a query.
-
-## What does the form check, and what does it not check?
-
-- **The contract holds the rules.** The domain and the contract declare each rule, and no other
-  place declares them. Examples: a required field, a type, the members of an enum, an invariant of a
-  value or of a unit, a constraint of a command.
-- **The changeset checks the shape of the input.** It checks that each needed field is there, and
-  that each value has its declared type. It asks the domain if a domain value keeps
-  its invariants, as dispatch does. Examples: a billing period written `YYYY-MM`, an amount that is
-  not negative.
-- **The form does not copy an invariant of a unit.** Such an invariant, or a constraint of a
-  command, needs the history of the unit. Only dispatch reads that history. The rule comes back to
-  the form as the refusal of dispatch, which `EhOsContract.Form.refused/3` puts on the form.
-
-Do not write an invariant of a unit again as a validation in the page. Your validation is a second
-rule. It can disagree with the first, and no test fails when it does.
-
-The application keeps these things:
-
-- the fields of a form that the command does not have, in a changeset of its own. Examples: a
-  search box, the query of a picker, "add another row".
-- each word that a person reads. The engine puts its reason on each error, and writes no message of
-  its own. The application writes the message, in the language of its client.
-- the layout of the form, and what it says about a refusal that belongs to no field. Examples: a
-  capability that the person does not have, a field that the host did not supply.
+The same steps apply to an event that an actor records, and to the params of a query.
 
 ## Before you start
 
@@ -70,7 +45,7 @@ defmodule Concepts.Forms.Period do
   use Concepts.Forms.Domain, value: :period
 
   @impl true
-  def written_as_month(period), do: period =~ ~r/\A[0-9]{4}-(0[1-9]|1[0-2])\z/
+  def written_as_month(period), do: period =~ ~r/\A[0-9]{4}-(0[1-9]|1[0-2])\z/u
 end
 ```
 
@@ -128,6 +103,31 @@ defmodule Concepts.Forms.Contracts.Invoicing do
 end
 ```
 
+## Put each rule in the contract
+
+Declare each rule in the domain or in the contract, and in no other place. Examples: a required
+field, a type, the members of an enum, an invariant of a value or of a unit, a constraint of a
+command.
+
+- The changeset checks the shape of the input. It checks that each needed field is there, and that
+  each value has its declared type. It asks the domain if a domain value keeps its invariants, as
+  dispatch does. Examples: a billing period written `YYYY-MM`, an amount that is not negative.
+- The changeset does not check an invariant of a unit, or a constraint of a command. These need the
+  history of the unit, and only dispatch reads it. The rule comes back as the refusal of dispatch,
+  which `EhOsContract.Form.refused/3` puts on the changeset.
+
+Do not write an invariant of a unit again as a validation in the page. Your validation is a second
+rule. It can disagree with the first, and no test fails when it does.
+
+Keep these things in the application:
+
+- the fields of the form that the command does not have, in a changeset of its own. Examples: a
+  search box, the query of a picker, "add another row".
+- each word that a person reads. The engine puts its reason on each error, and writes no message of
+  its own. The application writes the message, in the language of its client.
+- the layout of the form, and what it says about a refusal that belongs to no field. Examples: a
+  capability that the person does not have, a field that the host did not supply.
+
 ## What occurs from a keystroke to a refusal?
 
 ![The page builds the changeset on each change; on submit, it dispatches the command, and puts the refusal of dispatch back on the form.](../img/form-refusal.svg)
@@ -139,17 +139,22 @@ end
 4. The person submits the form. The page gets a `phx-submit` event.
 5. `EhOsContract.Form.to_struct/1` converts a valid changeset into the struct of the command.
 6. The page dispatches the command with the actor of the person.
-7. Dispatch reads the history of the unit. The implementation rejects the command on its invariant.
-8. Dispatch returns `{:error, reason}` to the page.
-9. `EhOsContract.Form.refused/3` puts the reason on the changeset.
-10. The page shows the error on the form, in the words of the application.
+7. Dispatch reads the history of the unit, and asks the implementation to decide.
+8. The implementation rejects the command on the invariant of the unit.
+9. Dispatch returns `{:error, reason}` to the page.
+10. `EhOsContract.Form.refused/3` puts the reason on the changeset.
+11. The page shows the error on the form, in the words of the application.
 
 The steps below write this code.
 
 ## Build the form
 
 Build the changeset in `mount/3`. Put the identity of the invoice in `data:`. The page decides the
-identity, not the person: the changeset ignores a value of the identity in the params.
+identity, not the person: when `data:` holds the identity, the changeset ignores a value of the
+identity in the params.
+
+Before you show the form, check that the person can act on this invoice. The
+`EhOsContract.Authorizer` checks only the capability and its scope, not the unit.
 
 <!-- not compiled: functions of the host's LiveView -->
 ```elixir
@@ -157,6 +162,7 @@ alias Concepts.Forms.Contracts.Invoicing
 alias Concepts.Forms.Contracts.Invoicing.Commands.IssueInvoice
 
 def mount(%{"id" => id}, _session, socket) do
+  # The page checks that this person may act on this invoice: the Authorizer does not.
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, %{}, data: %{invoice_id: id})
   # One key per form shown, so a second submit of the same form is the same command.
   {:ok, assign(socket, invoice_id: id, form_key: Ecto.UUID.generate(), form: to_form(changeset))}
@@ -223,7 +229,7 @@ end
 
 A rule of a unit names no field. So `refused/3` puts a rejection on `:base`, the errors of the whole
 form. To show it at a field, name the field:
-`refused(changeset, reason, at: [period_closed: :period])`.
+`refused(changeset, reason, at: [issued_once: :period])`.
 
 **Result:** if the invoice was issued before, the form shows the rejection `issued_once`.
 
@@ -293,10 +299,12 @@ the registered contracts, or in the contracts that `contracts:` names.
 
 ## What can go wrong
 
-**The form does not check who can act.** `Form` does not ask the `EhOsContract.Authorizer`. It
+**The changeset does not check who can act.** `Form` does not ask the `EhOsContract.Authorizer`. It
 checks only the shape that the contract declares. Examples: the fields, their types, the members of
 an enum, and the names of the invariants of its values. Dispatch asks if the person can issue the command,
-when the page sends it. Show a form only to the people that the page is for.
+when the page sends it. Show a form only to the people that the page is for. Holding a form to its
+unit does not give access: the `EhOsContract.Authorizer` and the host decide who can act on which
+unit.
 
 **Text, as a form sends it.**
 
@@ -348,12 +356,9 @@ so its text is not a timestamp. Add them in the page, or make the field a `:date
   from them. Only the identity is kept this way. Another field in `data:` is a first value that the
   person can change.
 
-Holding a form to its unit does not give access. The `EhOsContract.Authorizer` and the host decide
-who can act on which unit.
-
 **Some errors are not at an input.** A problem at a field that the form did not send goes on
-`:base`. Its `field:` names the field. Examples: the identity in `data:`, or a field that the
-host supplies. So the page never shows it at an input that is not there. If a command has a field
+`:base`. Its `field:` names the field. Examples: the identity in `data:`, a field that the host
+supplies, or a field of rows, at which `inputs_for` shows nothing. So the page never shows it at an input that is not there. If a command has a field
 with the name `base`, the field shares that key with the errors of the whole form.
 
 **Some refusals put no error on the changeset.** These refusals belong to no field:
@@ -369,5 +374,5 @@ The page tells the person about them from the reason that `dispatch/3` returned.
 - [Authorization](../authorization.md): how dispatch decides if the person can issue the command.
 - [Units](units.md): the invariants of a unit, and the rejections.
 - [Reading](reading.md): the queries that a search form asks.
-- [Actors, values, entities and external systems](domain-data.md): the values whose invariants a
-  form checks.
+- [What are actors, values, entities and external systems?](domain-data.md): the values whose
+  invariants a form checks.
