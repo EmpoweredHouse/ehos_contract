@@ -75,8 +75,9 @@ The engine encrypts each personal field with a key for its subject.
   personal field.
 - The `EhOsContract.Vault` holds the master keys. The default vault, `EhOsContract.Vault.Local`,
   takes them from the configuration: `config :eh_os_contract, EhOsContract.Vault, keys: [...]`.
-- If the contracts of a node declare personal fields, the node does not start without a vault that
-  can wrap and unwrap.
+- If the contracts of a node declare personal fields, the node does not start without a configured
+  vault. The check at boot reads the configuration of the keys. It does not try a key.
+- The node also does not start if a read model that projects personal data has no `forget/2`.
 
 [Manage the master keys](master-keys.md) tells how to rotate a master key, and how to use a key
 management service.
@@ -85,8 +86,9 @@ management service.
 
 ## What happens when a subject is erased?
 
-To erase a subject, the engine destroys its data key. This is *crypto-shredding*. Each personal
-field that the key encrypted becomes unreadable, and the engine does not rewrite the log.
+To erase a subject, the engine destroys its data key. This is called crypto-shredding. Each
+personal field that the key encrypted becomes unreadable for good, and the engine does not rewrite
+the log. You cannot undo an erasure.
 
 <!-- not compiled: a call in the host's code -->
 ```elixir
@@ -110,18 +112,27 @@ EhOsContract.erase(:customer, "c-17", actor: actor)
    this struct in place of the value.
 
 After the erasure, dispatch refuses a command whose events carry personal data of the subject again.
-It answers `{:error, :subject_erased}`.
+It answers `{:error, :subject_erased}`. This is also true after the result `:no_data`: the engine
+records the erasure of the id in each case.
 
 `erase/3` returns one of three results:
 
 | Result | When | Appends `subject_erased` |
 | --- | --- | --- |
 | `{:ok, :erased}` | The engine deleted the data key. | yes |
-| `{:ok, :no_data}` | The engine found no data key for the id. The id can be wrong, or no personal data was written for it. | yes |
+| `{:ok, :no_data}` | The engine found no data key for the id. Either no personal data was written for it, or the id is wrong. | yes |
 | `{:ok, :already_erased}` | The subject was erased before. | no |
 
 The application decides who can erase a subject: `erase/3` does not ask the
-`EhOsContract.Authorizer`.
+`EhOsContract.Authorizer`. Check the id before you erase. An id of another real subject erases that
+subject.
+
+### An erasure holds the append lock
+
+Index the column by which `forget/2` finds the subject. An erasure runs in one transaction, which
+holds the lock that each append to the log takes. A read model delivered `:in_transaction` that
+projects personal data forgets inside this transaction. While it forgets, each other append to the
+log waits.
 
 <a id="what-does-an-erasure-not-reach"></a>
 
@@ -133,22 +144,28 @@ An erasure deletes the data key from the database. It does not delete it from yo
   master key can read the data of the subject.
 - So rotate and destroy the master keys at an interval that is not longer than the time that you
   keep backups. Or keep the table of data keys out of the backups of the log.
+  The table of data keys is `eh_os_contract_subject_keys`.
 - Each choice has a cost. A backup that is older than a destroyed master key cannot unwrap the data
-  of a subject. Nor can a backup that you restore without the table of data keys.
+  of any subject. Restore a log only with its table of data keys. Without the table, the
+  engine raises on a personal field of a subject that is not erased. It does not read the field as
+  erased.
+
+An erasure also does not reach these copies:
+
 - A read model keeps its copy of personal data as clear text, in your tables. `forget/2` deletes it
   from the live table. Only your backup policy reaches the backups of that table.
-
-### An erasure holds the append lock
-
-Index the column by which `forget/2` finds the subject. An erasure runs in one transaction, which
-holds the lock that each append to the log takes. A read model delivered `:in_transaction` that
-projects personal data forgets inside this transaction. While it forgets, each other append to the
-log waits.
+- `erase/3` reaches the read models of the applications in `config :eh_os_contract, applications:`.
+  A read model of a contract outside them keeps its copy.
+- A read model delivered `:at_least_once` keeps its copy until it reads the event of the erasure.
+  If `mix eh_os_contract.subscriptions --skip` moves it past that event, it keeps the copy. A
+  `--reset` rebuilds it, and the replay forgets.
+- An effect that already sent personal data to an external system, such as a text message gateway,
+  cannot take it back.
 
 ## An example
 
 A bike workshop keeps the phone of each customer. The phone is personal, so an erasure of the
-customer makes it unreadable. The shop and the quote stay readable.
+customer makes it unreadable. The customer id and the quote stay readable.
 
 ```elixir
 defmodule Concepts.PersonalData.Domain do
@@ -198,8 +215,8 @@ still gives the customer id and the quote. Its `customer_phone` is `%EhOsContrac
 
 - [Manage the master keys](master-keys.md): rotate a master key, or keep the keys in a key
   management service.
-- [Actors, values, entities and external systems](domain-data.md): the other declarations of a
-  domain.
+- [What are actors, values, entities and external systems?](domain-data.md): the other declarations
+  of a domain.
 - [Reading](reading.md): read models, and their `forget/2`.
 - [The compile refusals](../refusals.md#refusals-f): each refusal of a field, personal fields
   included.
