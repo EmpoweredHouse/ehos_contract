@@ -98,8 +98,9 @@ jobs:
       # anything. Fetched sources do not depend on the toolchain, so either matrix entry
       # would do; `oldest` is the pair this job also runs. The engine's entry holds no code
       # of the private ehos-tools (`ehos_*`), as ci.yml saves it, and an older entry saved
-      # with another `path` text cannot match this one. A run by hand on a branch also reads
-      # that branch's entries; whoever can run it there can change this file there too.
+      # with another `path` text cannot match this one. A run also reads the entries of the
+      # branch or tag it runs on, which only workflows running that ref's own files save:
+      # whoever could save one there could change this file there too.
       - name: Restore engine deps
         uses: actions/cache/restore@v4
         with:

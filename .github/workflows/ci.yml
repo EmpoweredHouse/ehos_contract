@@ -61,6 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # docs.yml restores this entry's dependency caches by its name.
           - name: oldest
             otp: "27.2"
             elixir: "1.18.4"
@@ -128,8 +129,8 @@ jobs:
           key: eh-os-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
       # The credential verifier (v2 stage EA), same shape: its gate runs as a
-      # separate Mix project via package_test_auth/1 in sandbox/mix.exs. docs.yml copies
-      # this key and path.
+      # separate Mix project via package_test_auth/1 in sandbox/mix.exs.
+      # docs.yml copies this key and path.
       - name: Cache credential verifier deps
         uses: actions/cache@v4
         with:
@@ -137,8 +138,8 @@ jobs:
           key: eh-os-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       # The graph renderer (plan E13b), same shape: its gate runs as a separate Mix
-      # project via package_test_graph/1 in sandbox/mix.exs. docs.yml copies this key and
-      # path.
+      # project via package_test_graph/1 in sandbox/mix.exs.
+      # docs.yml copies this key and path.
       - name: Cache graph renderer deps
         uses: actions/cache@v4
         with:
