@@ -315,7 +315,7 @@ defmodule EhOsContract.DocsTest do
     case parsed do
       {:ok, quoted} ->
         {_quoted, unknown} = quoted |> expand_aliases() |> Macro.prewalk([], &unknown_call/2)
-        for name <- unknown |> Enum.reverse() |> Enum.uniq(), do: "#{name} is not in the library"
+        unknown |> Enum.reverse() |> Enum.uniq()
 
       {:error, error} ->
         ["does not parse: #{inspect(error)}"]
@@ -363,7 +363,13 @@ defmodule EhOsContract.DocsTest do
          {:alias, _, [{{:., _, [{:__aliases__, _, base}, :{}]}, _, children}]},
          unknown
        ) do
-    targets = for {:__aliases__, meta, parts} <- children, do: {:__aliases__, meta, base ++ parts}
+    # `expand_aliases/1` may have written a child in full already.
+    targets =
+      for {:__aliases__, meta, parts} <- children,
+          do:
+            {:__aliases__, meta,
+             if(List.starts_with?(parts, base), do: parts, else: base ++ parts)}
+
     {_targets, unknown} = Macro.prewalk(targets, unknown, &unknown_call/2)
     {:read, unknown}
   end
@@ -378,7 +384,11 @@ defmodule EhOsContract.DocsTest do
         _other -> []
       end
 
-    unknown_keys = for key <- keys, unknown_key?(key), do: "the configuration key #{inspect(key)}"
+    unknown_keys =
+      for key <- keys,
+          unknown_key?(key),
+          do: "the configuration key #{inspect(key)} is not in the library"
+
     {node, Enum.reverse(unknown_keys, unknown)}
   end
 
@@ -389,7 +399,7 @@ defmodule EhOsContract.DocsTest do
         known_callback(spec, name, arity, unknown)
 
       nil ->
-        {:read, ["the callback #{Macro.to_string(spec)}, which has no return type" | unknown]}
+        {:read, ["the callback #{Macro.to_string(spec)} has no return type" | unknown]}
     end
   end
 
@@ -402,7 +412,12 @@ defmodule EhOsContract.DocsTest do
       )
 
     {_spec, unknown} = unknown_call({:@, [], [{:spec, [], [spec]}]}, unknown)
-    {:read, if(declared?, do: unknown, else: ["the callback #{name}/#{arity}" | unknown])}
+
+    {:read,
+     if(declared?,
+       do: unknown,
+       else: ["the callback #{name}/#{arity} is not in the library" | unknown]
+     )}
   end
 
   defp unknown_call({:@, _, [{attribute, _, [spec]}]}, unknown) when attribute in @typespecs do
@@ -437,7 +452,10 @@ defmodule EhOsContract.DocsTest do
 
   defp unknown_call({:__aliases__, _, [:EhOsContract | _] = parts} = node, unknown) do
     module = Module.concat(parts)
-    if Code.ensure_loaded?(module), do: {node, unknown}, else: {node, [inspect(module) | unknown]}
+
+    if Code.ensure_loaded?(module),
+      do: {node, unknown},
+      else: {node, ["#{inspect(module)} is not in the library" | unknown]}
   end
 
   defp unknown_call(node, unknown), do: {node, unknown}
@@ -472,7 +490,7 @@ defmodule EhOsContract.DocsTest do
     if Code.ensure_loaded?(module) and
          (function_exported?(module, name, arity) or macro_exported?(module, name, arity)),
        do: unknown,
-       else: ["#{inspect(module)}.#{name}/#{arity}" | unknown]
+       else: ["#{inspect(module)}.#{name}/#{arity} is not in the library" | unknown]
   end
 
   defp unknown_type(
@@ -494,7 +512,9 @@ defmodule EhOsContract.DocsTest do
 
     if known,
       do: {node, unknown},
-      else: {node, ["#{inspect(module)}.#{name}/#{length(args)} (a type)" | unknown]}
+      else:
+        {node,
+         ["#{inspect(module)}.#{name}/#{length(args)} (a type) is not in the library" | unknown]}
   end
 
   defp unknown_type(node, unknown), do: {node, unknown}
