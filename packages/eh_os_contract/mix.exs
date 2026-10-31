@@ -11,7 +11,7 @@ defmodule EhOsContract.MixProject do
   # writes every page into one directory, so a page in a subdirectory would link an image by a
   # path that is right in the repository and wrong in the HTML. `EhOsContract.Docs.concepts/0`
   # keeps the same list for the tests.
-  @concepts ~w(domain domain-data units reactions reading forms between-contracts process scenarios)
+  @concepts ~w(domain domain-data personal-data units reactions reading forms between-contracts process scenarios)
   @concept_pages Enum.map(@concepts, &"docs/#{&1}.md")
   @description "Checks that deployed code does what the declared business process says it does."
 

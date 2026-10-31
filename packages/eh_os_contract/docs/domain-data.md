@@ -1,19 +1,21 @@
-# Actors, personal data, values, entities and external systems
+# Actors, values, entities and external systems
 
-What a domain declares besides its contexts, and what the engine does with each: who acts, whose personal
-data is kept and how it is erased, the value types fields are made of, the entities contracts point at, and the
-systems the application depends on.
+This page tells what a domain declares besides its contexts, and what the engine does with each
+declaration. It is for a developer who writes the domain of an application. [The
+glossary](glossary.md) defines each word of the contract language.
 
-<!-- covers: entities domain.actor, domain.subject, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, free-text-not-personal, scoped-actor-with-unscoped-command -->
+<!-- covers: entities domain.actor, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, scoped-actor-with-unscoped-command -->
 
-How a domain is divided into subdomains and contexts, and how they relate, is in [the domain](domain.md).
-Every key named here is in [the domain's reference](dsl/domain-dsl.md).
+[The domain](domain.md) tells how a domain divides a business into contexts.
+[Personal data and erasure](personal-data.md) tells how a domain declares the subjects of personal
+data. [The domain reference](dsl/domain-dsl.md) gives each key of this page.
 
-## Actors
+## What is an actor?
 
-An actor is who issues commands, asks queries or records events: a kind of person (`:human`) or a system
-(`:system`). A contract names its actors in a command's or query's `by:` and an event's `recorded_by:`, and
-dispatch refuses an actor the declaration does not name before anything else.
+An actor is a kind of person or a system that issues commands, asks queries or records events. A
+contract names its actors in the `by:` of a command or a query, and in the `recorded_by:` of an
+event. Dispatch refuses an actor that the declaration does not name. It does this before it does
+anything else.
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
@@ -21,35 +23,48 @@ actor :mechanic, :human, "Mechanic", context: :workshop, scope: [:shop_id]
 actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 ```
 
-- **A human actor is a role.** EHOS grants roles to people; the role of `:mechanic` in the domain `:shop` is
-  `shop.mechanic`, and a credential carries the capabilities its roles hold. Knowing who is behind a credential is
-EHOS's job; the engine sees an opaque subject. [Authorization](authorization.md) is how a credential
-  becomes an actor.
-- **A system actor is the application's own code**, a job or an import, acting as itself:
-  `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential, and may do what the declarations
-  naming it allow. `backed_by:` names the external system it stands for; a human actor with `backed_by:` does
-  not compile ([`D4`](refusals.md#refusals-d)).
-- **`context:`** places the actor in one context. A contract of another context may not name it ([`X2`](refusals.md#refusals-x)). An
-  actor without `context:` may act in any.
-- **`responsibility`** inside the actor's block names what it answers for, as the material says it: prose a
-  page shows and nothing runs.
+- **A human actor is a role.** The platform that issues credentials grants roles to people. The role
+  of `:mechanic` in the domain `:shop` is `shop.mechanic`. A credential carries the capabilities of its
+  roles. The engine does not know the person: it sees an opaque subject.
+  [Authorization](authorization.md) tells how a credential becomes an actor.
+- **A system actor is code of the application** that acts as itself, such as a job or an import:
+  `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential. It can do what the
+  declarations that name it allow.
+- **`backed_by:`** names the external system that a system actor stands for. The compiler refuses
+  `backed_by:` on a human actor ([`D4`](refusals.md#refusals-d)).
+- **`context:`** puts the actor in one context. A contract of another context cannot name it
+  ([`X2`](refusals.md#refusals-x)). An actor without `context:` can act in each context.
+- **`responsibility`**, in the block of the actor, names what the actor answers for. A page shows it.
+  Nothing runs it.
 
-### Scoped actors
+The check warns about an actor that no declaration names (`orphan-actor`). The actor of a scenario
+does not count.
 
-`scope:` lists the dimensions a grant to this actor can be narrowed by, such as a shop, a clinic or a region. A query
-or a command declared with `scope: :shop_id` is then asked of the `EhOsContract.Authorizer` with the value of
-that field, and a credential whose grant holds other shops is refused; a scoped capability granted with no
-values is refused too, since empty is not "all". Every actor in a scoped declaration's `by:` has to carry the
-dimension ([`D10`](refusals.md#refusals-d)). What the checks do, before and after a query runs, is in
-[authorization](authorization.md).
+## What does the scope of an actor do?
+
+`scope:` lists the dimensions that can narrow a grant to this actor. Examples: a shop, a clinic, a
+region. A command or a query declared with `scope: :shop_id` then works like this:
+
+1. Dispatch asks the `EhOsContract.Authorizer` about the value of the field `shop_id`.
+2. If the grant of the credential holds other shops, the authorizer refuses.
+3. If the grant holds no values, the authorizer refuses too. Empty does not mean "all".
+
+Each actor in the `by:` of a scoped declaration must have the dimension
+([`D10`](refusals.md#refusals-d)). [Authorization](authorization.md) tells what the checks do
+before and after a query runs.
+
+The check warns when an actor with a scope is in the `by:` of a command without `scope`
+(`scoped-actor-with-unscoped-command`). Then the capability of that command is valid for each shop.
+Declare the `scope` of the command, or name another actor if this is what you want.
 
 <a id="who-may-let-whom-in"></a>
 
-### Who may let whom in
+## Who can let whom in?
 
-Some people come to an application by its own work, not by a decision of the company: an accountant adds a
-client company and its representative, who then signs in to see that company. `may_grant:` says which other
-person actors' roles a person in this one may grant through the application:
+Some people come to an application through its own work, not through a decision of the company.
+Example: an accountant adds a client company and its representative. The representative then signs in
+to see that company. `may_grant:` tells which roles a person of this actor can grant through the
+application:
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
@@ -57,99 +72,22 @@ actor :office_employee, :human, "Office employee", may_grant: [:client]
 actor :client, :human, "Client"
 ```
 
-The rule goes into the manifest beside the role, and EHOS shows it to whoever approves a deployment: adding one
-widens what the application asks for. Only a person grants and is granted; a rule never names the
-actor itself, and rules never lead back to an actor, since `a` granting `b` while `b` grants `a` lets a holder
-of `a` grant `a` through another ([`D4`](refusals.md#refusals-d)). An actor named in a rule, and one that has a
-rule, has to hold a capability, or it is no role in the manifest; the manifest's generator says so.
+- The rule goes into the manifest, beside the role. The person who approves a deployment sees it. A
+  new rule widens what the application asks for.
+- Only a human actor grants a role or gets one.
+- A rule cannot name its own actor. Rules cannot lead back to an actor: if `a` grants `b` and `b`
+  grants `a`, a holder of `a` can grant `a` ([`D4`](refusals.md#refusals-d)).
+- An actor in a rule, and an actor with a rule, must hold a capability. Otherwise it is no role in
+  the manifest, and the generator of the manifest tells you.
 
-<a id="subjects-and-personal-data"></a>
+## What is a value?
 
-## Subjects and personal data
+A value is a name that the domain gives to a type of data. A field of a contract can use it as its
+type: `field :quote, :money`. A value is one of these:
 
-A subject is a kind of person whose personal data the application keeps and may have to erase: a customer, a
-patient, an employee.
-
-<!-- in: Concepts.DomainData.Domain -->
-```elixir
-subject :customer, "Customer"
-```
-
-A contract marks which fields are personal, and whose. An identifier field names the subject it identifies
-with `subject:`; a personal field names that identifier with `personal:`:
-
-<!-- in: Concepts.DomainData.Contracts.Repairs, event :bike_accepted -->
-```elixir
-field :customer_id, :id, subject: :customer
-field :customer_phone, :string, personal: :customer_id
-```
-
-The identifier must be a required, non-personal `:id` field of the same struct, with `subject:`, and the
-subject must be declared in the domain ([`F5`](refusals.md#refusals-f), [`X3`](refusals.md#refusals-x)).
-
-**What the engine does with it.** Each subject gets a data key, 32 random bytes, the first time an event
-carries its personal data. Every personal field of an event is encrypted with that key before it is
-appended; the subject's id stays in the clear in its own field, so the log still says whose data it was. The
-data key is stored only wrapped by a master key, which the `EhOsContract.Vault` holds: by default
-`EhOsContract.Vault.Local`, which takes its master keys from configuration
-(`config :eh_os_contract, EhOsContract.Vault, keys: [...]`). A node whose contracts declare personal fields
-does not start without a vault that can wrap and unwrap.
-
-**Erasing a subject** destroys its data key, so every personal field sealed with it is unreadable for good
-(crypto-shredding). Nothing in the log is rewritten.
-
-<!-- not compiled: a call in the host's code -->
-```elixir
-EhOsContract.erase(:customer, "c-17", actor: actor)
-```
-
-It answers `{:ok, :erased}`, `{:ok, :no_data}` when no key was there for that id (a mistyped id, or nothing
-personal was ever written for it), or `{:ok, :already_erased}`. In the first 2 cases, `erase/3` appends
-`eh_os_contract.subject_erased`, with the subject's type and id and nothing personal; an erasure repeated
-appends nothing. From then on:
-
-- a personal field of that subject reads back as `%EhOsContract.Erased{subject: :customer, id: "c-17"}`, so
-  `evolve/2` and every reaction have to accept one in place of the value;
-- a read model that projects personal data forgets the subject;
-- a command whose events would carry the subject's personal data again is refused with
-  `{:error, :subject_erased}`.
-
-The host decides who may erase: `erase/3` asks no `Authorizer`.
-
-**Rotating a master key.** The first master key wraps each new data key. A data key is unwrapped by the
-master key that it names. Rotate in 3 deploys:
-
-1. Add the new key after the current key, and deploy. Then each node can unwrap what the new key wraps.
-2. Move the new key to the first place, and deploy.
-3. Rewrap each data key with the new key: `mix eh_os_contract.rewrap`, or
-   `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has no `mix`. Then remove the old key,
-   and deploy.
-
-If you put the new key first in one deploy, the nodes that still run the old configuration cannot read
-what the new nodes write until the rollout ends. A KMS goes behind the `EhOsContract.Vault` behaviour:
-`config :eh_os_contract, vault: MyApp.KmsVault`.
-
-**What an erasure does not reach.** An erasure deletes the data key from the database, not from your
-backups. A backup, a WAL archive or a replica still holds the wrapped key. A person who also has the
-master key can then read the data of the subject. So rotate and destroy the master keys at an interval
-that is not longer than the time that you keep backups. Or keep the key store out of the backups of the
-log. Each choice has a cost: a backup older than a destroyed master key, or restored without the key
-store, cannot unwrap the data of any subject. A read model keeps its copy of personal data as plain text
-in your tables. `forget/2` reaches the live table, and only your backup policy reaches its backups.
-
-**An erasure holds the append lock.** A read model delivered `:in_transaction` that projects personal
-data forgets inside the transaction of the erasure. This transaction holds the lock that each append
-takes. While the read model forgets, each other append to the log waits. Index the column that its `forget/2` finds the subject by.
-
-Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
-personal ([`F4`](refusals.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](refusals.md#refusals-f)), and a publication carries none
-([`D11`](refusals.md#refusals-d)): a copy on a broker cannot be erased.
-
-## Values
-
-A value type is a name the domain gives to data: one built-in type (`:id`, `:string`, `:integer`,
-`:decimal`, `:boolean`, `:date`, `:timestamp`, an enum, a list), with a `unit` when it is a number, or a set of
-fields. A contract's field takes it as its type, `field :quote, :money`.
+- a built-in type: `:id`, `:string`, `:integer`, `:decimal`, `:boolean`, `:date`, `:timestamp`, an
+  enum or a list. A number can have a `unit`;
+- a set of fields.
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
@@ -162,29 +100,41 @@ value :address, label: "Address" do
 end
 ```
 
-A value has a type or fields, never both and never neither ([`D3`](refusals.md#refusals-d)), and a `unit` only on an `:integer` or a
-`:decimal`. A field of a value made of fields may be `personal:`, naming an identifier field of the value with
-its `subject:`; a field of such a value then holds personal data wherever it is used.
+The compiler refuses a value with both a type and fields, or with neither. It refuses a `unit` on a
+value that is not an `:integer` or a `:decimal` ([`D3`](refusals.md#refusals-d)).
 
-A value made of fields is a struct of its own, `<Domain>.Values.Address`, which the domain generates with its
-required fields enforced, so `%Address{street: "Main 1"}` without a required `city` does not compile. The
-engine hands that struct wherever the value appears: in a command or an event, a unit's state, a form's rows
-and a read model's `Row`. Build the value as its struct in a decider or a reaction. A map with the same keys
-is not the value: a command carrying one is refused with the field and `:type`, and an event a decision
-returns with one raises, and so do an entity's row, a supplier's answer and a domain service's argument or
-result. A scenario writes the value as a map, which the engine casts, since a contract does not depend on its
-domain when it compiles; for the same reason a state field's `default:` holding such a value is a map, until
-`evolve/2` sets the field.
+A field of a value can be personal. Then the field holds personal data in each place that uses the
+value. [Personal data and erasure](personal-data.md) tells how to mark it.
 
-Code that needs an enum's members, a select's options or a check of its own, reads them from the domain
-instead of copying them: `Lending.Domain.members(:bike_kind)` is `[city: "City bike", road: "Road bike"]`,
-each member with its label, or `nil` for a member written as a bare atom. A value named after an enum value
-has its members; any other name raises `ArgumentError`.
+## What does the engine do with a value of fields?
 
-### Invariants of a value
+The domain generates a struct for each value of fields, such as `<Domain>.Values.Address`. The
+struct enforces the required fields. So `%Address{street: "Main 1"}` without a `city` does not
+compile.
 
-A value may declare what is true of every value of the type, each invariant with values that break it and
-values that keep it:
+The engine gives this struct in each place where the value occurs. Examples: a command, an event,
+the state of a unit, the rows of a form, the `Row` of a read model. Build the value as its struct in a decision
+or a reaction. A map with the same keys is not the value:
+
+- Dispatch refuses a command that carries a map, with the field and `:type`.
+- Dispatch raises an exception for an event that a decision returns with a map.
+- The same is true for the row of an entity, the answer of a supplier, and the arguments and the
+  result of a domain service.
+
+A scenario writes the value as a map, and the engine casts it. The reason is that a contract does
+not depend on its domain when it compiles. For the same reason, the `default:` of a state field
+with such a value is a map, until `evolve/2` sets the field.
+
+To read the members of an enum, ask the domain. Do not copy them:
+`Lending.Domain.members(:bike_kind)` gives `[city: "City bike", road: "Road bike"]`. A member written
+as a bare atom has the label `nil`. A name that is not an enum value raises `ArgumentError`.
+
+<a id="what-is-an-invariant-of-a-value"></a>
+
+## What is an invariant of a value?
+
+An invariant of a value is a rule that is true for each value of the type. Each invariant has
+examples that break it and examples that keep it:
 
 <!-- and in: Concepts.DomainData.Domain -->
 ```elixir
@@ -195,37 +145,47 @@ value :money, :integer, unit: :cents do
 end
 ```
 
-The domain then generates a behaviour, `<Domain>.Values.Money`, and a module bound with
-`use <Domain>, value: :money` defines one function per invariant, named after it, that answers `true` or
-`false`. Dispatch holds every value of the type to them: a command, or a recorded event, carrying a value that
-breaks one is refused, the field named with `{:invariant, :not_negative}`; an event that a decision returns with such a value
-raises. What is read back from the log is never held to them, so an invariant declared today does not make
-yesterday's events unreadable. `use EhOsContract.ScenarioCase, domain: <Domain>` turns each example into a
-test.
+1. The domain generates a behaviour, `<Domain>.Values.Money`.
+2. You write a module with `use <Domain>, value: :money`. It defines one function for each
+   invariant, with the name of the invariant. The function gives `true` or `false`.
+3. Dispatch holds each value of the type to the invariants. If a command or a recorded event
+   carries a value that breaks one, dispatch refuses it. The error names the field with
+   `{:invariant, :not_negative}`.
+4. If a decision returns an event with such a value, dispatch raises an exception.
+5. `use EhOsContract.ScenarioCase, domain: <Domain>` makes a test of each example.
 
-## Entities
+The engine does not hold the events that it reads back from the log to the invariants. So an
+invariant that you add today does not make the events of yesterday unreadable.
 
-An entity is a thing with an identity whose lifecycle the application's code or another system keeps,
-outside this log: a shop, a catalogue item, an accounting period. A contract points at it by its identity, a
-field of type `{:id, :shop}`.
+The check warns about a value with invariants and no module that checks them
+(`value-without-implementation`). Dispatch raises an exception for each value of it. The check
+reports this only after some contract of the domain has an implementation.
+
+## What is an entity?
+
+An entity is a thing with an identity, such as a shop, an item of a catalogue or an accounting
+period. The code of the application, or another system, keeps its lifecycle outside the log. A
+contract points to it by its identity, with a field of the type `{:id, :shop}`.
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
 entity :shop, "Shop", context: :workshop, identity: :shop_id
 ```
 
-It belongs to one context (required), and its `identity` is injected into its fields as a required,
-non-personal `:id`. `issued_by:` names the external system that gives the identity, when one does. An
-entity's fields may not be personal ([`D6`](refusals.md#refusals-d)). A contract naming an entity of another context depends on that
-context. [The domain](domain.md) page shows how to declare that dependency.
+- An entity belongs to one context. `context:` is required.
+- The engine adds its `identity` to its fields, as a required `:id` that is not personal.
+- `issued_by:` names the external system that gives the identity, if a system gives it.
+- The fields of an entity cannot be personal ([`D6`](refusals.md#refusals-d)).
+- A contract that names an entity of another context depends on that context. [The
+  domain](domain.md#which-context-depends-on-which) tells how to declare this.
 
-When a thing's lifecycle is decided by commands of this application, it is not an entity of the domain but a
-unit of a contract: an aggregate or a consistency boundary.
+If commands of this application decide the lifecycle of a thing, it is not an entity. It is a unit
+of a contract: an aggregate or a dynamic consistency boundary.
 
-## External systems
+## What is an external system?
 
-An external system is one the application exchanges data with, named after what it does for the business
-rather than after its vendor: `:card_terminal`, not the terminal's brand.
+An external system is a system that the application exchanges data with. Its name tells what it
+does for the business, not the name of its vendor: `:card_terminal`, not the brand of the terminal.
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
@@ -237,26 +197,43 @@ external :sms_gateway, "Text message gateway",
 end
 ```
 
-`direction:` is which way data flows: `:inbound` (the system only sends to the application), `:outbound` (the
-application only sends to it) or `:bidirectional`. `unavailable_looks_like` and `expected_latency` are what an
-outage looks like to the business and how long an answer usually takes; pages print them.
+`direction:` tells which way the data goes:
 
-A contract uses an external in 4 ways:
+| Direction | What it tells |
+| --- | --- |
+| `:inbound` | The system only sends to the application. |
+| `:outbound` | The application only sends to the system. |
+| `:bidirectional` | Both send. |
 
-- an **effect** `calls:` it, `calls: {:sms_gateway, :send_text}`. Once an external declares an `operation`,
-  every call to it names one ([`X4`](refusals.md#refusals-x));
-- an **event** `depends_on:` it, when the event needs the system's answer;
-- a **field** is `issued_by:` it, when the system gives its value, such as an invoice number or a parcel's
-  tracking number;
-- a **system actor** is `backed_by:` it, when the system acts in the application.
+`unavailable_looks_like` tells what an outage looks like to the business. `expected_latency` tells
+how long an answer usually takes. Pages show both.
 
-An external may also be one end of a directed relation; the other end is then a context. A name that is both a context
-and an external does not compile ([`D1`](refusals.md#refusals-d)).
+A contract uses an external system in four ways:
+
+| Declaration | When |
+| --- | --- |
+| An effect `calls:` it: `calls: {:sms_gateway, :send_text}` | The effect sends to the system. |
+| An event `depends_on:` it | The event needs the answer of the system. |
+| A field is `issued_by:` it | The system gives the value, such as an invoice number. |
+| A system actor is `backed_by:` it | The system acts in the application. |
+
+If an external system declares an `operation`, each call to it names one
+([`X4`](refusals.md#refusals-x)). An external system can also be the upstream end of a directed
+relation, as [the domain](domain.md#how-do-two-contexts-relate) tells.
+
+The check warns about these:
+
+- No declaration and no relation uses an external system (`orphan-external-system`).
+- No effect calls an operation (`operation-never-called`).
+- An `:outbound` system gives the value of a field or the identity of an entity, or backs an actor
+  (`external-direction-contradicted`). Each brings data from the system into the application, so
+  declare it `:bidirectional`. A call tells nothing about the direction, because an effect calls a
+  system to send and to fetch.
 
 ## An example
 
-A bike workshop: a mechanic accepts a bike for repair with a quote, a text tells the customer, and the card
-terminal records the payment.
+A bike workshop: a mechanic accepts a bike for repair with a quote. A text message tells the
+customer. The card terminal records the payment.
 
 ```elixir
 defmodule Concepts.DomainData.Domain do
@@ -267,8 +244,6 @@ defmodule Concepts.DomainData.Domain do
 
   actor :mechanic, :human, "Mechanic", context: :workshop, scope: [:shop_id]
   actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
-
-  subject :customer, "Customer"
 
   value :money, :integer, unit: :cents, label: "Amount" do
     invariant :not_negative, "An amount is not negative",
@@ -308,15 +283,11 @@ defmodule Concepts.DomainData.Contracts.Repairs do
       scope: :shop_id,
       emits: :bike_accepted do
       field :shop_id, {:id, :shop}
-      field :customer_id, :id, subject: :customer
-      field :customer_phone, :string, personal: :customer_id
       field :quote, :money
     end
 
     event :bike_accepted, "Bike accepted" do
       field :shop_id, {:id, :shop}
-      field :customer_id, :id, subject: :customer
-      field :customer_phone, :string, personal: :customer_id
       field :quote, :money
     end
 
@@ -333,80 +304,24 @@ defmodule Concepts.DomainData.Contracts.Repairs do
     idempotency: [key: :event_id, owner: :downstream]
 
   scenario "a bike is accepted" do
-    command :accept_bike, %{
-      shop_id: "s-1",
-      customer_id: "c-17",
-      customer_phone: "+1 555 0100",
-      quote: 4_500
-    }
-
+    command :accept_bike, %{shop_id: "s-1", quote: 4_500}
     expect :bike_accepted
   end
 end
 ```
 
-- The mechanic is scoped by shop, and `accept_bike` is too: a mechanic's grant for one shop does not accept
-  bikes for another.
-- The customer's phone is sealed with the customer's key; after `EhOsContract.erase(:customer, "c-17", …)`
-  every `bike_accepted` of that customer still says which shop, which customer id and what quote, and no
-  longer which phone.
-- `Money` checks every amount dispatch sees: a quote of `-1` is refused before the decision runs.
-- The card terminal is `:inbound`: it backs the actor that records payments. The text gateway is `:outbound`:
-  the effect only sends to it. The effect is delivered after the transaction (`:at_least_once`,
-  the default for an effect), so it names who makes a second delivery harmless: the gateway, which receives
-  the event's id.
+- The mechanic has the scope of a shop, and `accept_bike` has it too. A grant of a mechanic for one
+  shop does not accept bikes for another shop.
+- `Money` checks each amount that dispatch gets. Dispatch refuses a quote of `-1` before the decision.
+- The card terminal is `:inbound`: it backs the actor that records payments.
+- The text gateway is `:outbound`: the effect only sends to it.
+- The effect runs after the transaction, which is the default for an effect (`:at_least_once`). So
+  it names who makes a second delivery harmless: the gateway, which gets the id of the event.
 
-## What the compiler refuses
+## Next steps
 
-The full table is in [the compile refusals](refusals.md). For what this page covers:
-
-- **[`D1`](refusals.md#refusals-d)**: a name not snake_case, declared twice, or both a context and an external; an operation or a
-  responsibility not snake_case or declared twice.
-- **[`D3`](refusals.md#refusals-d)**: a value with both or neither of a type and fields, a `unit` on a value that is not numeric, an
-  undeclared `context:`, values in a cycle.
-- **[`D4`](refusals.md#refusals-d)**: an actor's name not snake_case, a human actor with `backed_by`, `backed_by` naming no external,
-  an undeclared `context:`; a `may_grant:` on a system actor, or naming the actor itself, a system, an undeclared
-  actor or one twice, and rules that lead back to an actor.
-- **[`D6`](refusals.md#refusals-d)**: `{:id, entity}` naming an undeclared entity; an entity with an undeclared context, or a field
-  that is personal or holds personal data.
-- **[`D8`](refusals.md#refusals-d)**: `issued_by:` naming what is not an external of the domain.
-- **[`D9`](refusals.md#refusals-d)**: a value invariant without examples of both kinds, an example not of the value's type, or one
-  that keeps an invariant and that another invariant lists as breaking.
-- **[`D10`](refusals.md#refusals-d)**: a scoped query or command whose `by:` names an actor that does not carry the scope.
-- **[`F5`](refusals.md#refusals-f)**: `personal:` naming what is not a required, non-personal `:id` field with `subject:` in the same
-  struct; a personal field whose type holds personal data of its own.
-- **[`X2`](refusals.md#refusals-x)**, **[`X3`](refusals.md#refusals-x)**, **[`X4`](refusals.md#refusals-x)**: `by:` or `recorded_by:` naming no actor of the domain or one of another
-  context; a type, an entity or a `subject:` the domain does not declare; `calls:`, `depends_on:` or
-  `issued_by:` naming no external, or an operation the external does not declare.
-
-## What `mix eh_os_contract.check` reports
-
-From [the rules](rules.md):
-
-- **`orphan-actor`** (warning): no command's or query's `by:`, no event's `recorded_by:` and no process's
-  `accountable` names the actor. A scenario's actor does not count. Remove it, or write the contract that
-  gives it work.
-- **`scoped-actor-with-unscoped-command`** (warning): an actor with scope dimensions is in the `by:` of a
-  command without `scope`, so that command's capability is application-wide for it. Declare the command's
-  `scope` when it acts on one of those dimensions, or name another actor when application-wide authority is
-  deliberate.
-- **`free-text-not-personal`** (notice): a `:string` field of an event, or text inside a list or a value of
-  one, is not `personal:`. Text is what a person typed, and unless it is personal it stays in the log as
-  written after its subject is erased. Mark it personal, or give a code, a number or a choice a type of its
-  own: an `:id`, an enum, or a value declared `code: true`, whose invariants, or those of a value it names, pin
-  its form. A code that identifies a person, such as a national id number, is still marked personal.
-- **`value-without-implementation`** (warning): a value declares invariants and no module checks them, so
-  dispatch raises on every value of it. Add a module with `use <Domain>, value: <name>`. The check reports it only once
-  some contract of the domain is implemented.
-- **`owner-view-without-label`** (notice): a value, or a member of its enum written as a bare atom, has no
-  label, so a business owner reading the model would see its name in the code. Write the member as
-  `card: "Card"`, and give the value `label:`.
-- **`orphan-external-system`** (warning): no actor is backed by the external, no relation ends at it, no
-  field or entity is issued by it, no effect calls it and no event depends on it.
-- **`operation-never-called`** (warning): an operation of an external is named in no effect's `calls:`.
-  Asked only of a system some effect calls. A system no effect calls is reported by
-  `orphan-external-system` instead, when nothing else uses it either.
-- **`external-direction-contradicted`** (warning): an external declared `direction: :outbound`, which only
-  receives from the application, issues a field's value or an entity's identity, or backs an actor: both bring
-  what the system says into the application. Declare it `:bidirectional` when it also answers. A call says
-  nothing either way, since an effect calls a system to send and to fetch alike.
+- [Personal data and erasure](personal-data.md): subjects, personal fields and erasure.
+- [Units](units.md): the aggregates and boundaries that use these declarations.
+- [Authorization](authorization.md): how a credential becomes an actor.
+- [The compile refusals](refusals.md), families D and X: each refusal of a domain, with its code.
+- [The rules of the check](rules.md): each warning and notice, with its fix.
