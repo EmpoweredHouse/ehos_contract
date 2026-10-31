@@ -42,8 +42,11 @@ when one differs from what the task would write now:
   - `<!-- not compiled: <why> -->` is for code no page can define: the host's configuration, its `mix.exs`, a
     call in its code, or a declaration of a model the page does not show. Such a snippet still parses. Prefer
     `in:`: a declaration marked `not compiled` can drift.
-  - In every snippet, each module, function, macro and type of the library that it names in full
-    (`EhOsContract.…`) exists, with the arity of the call. A name through an `alias` is not checked.
+  - Every example names only what the library has. In a module example and an `in:` snippet, a call to a
+    function of the library that does not exist fails, though the compiler only warns on it. In a
+    `not compiled` snippet, each module, function, macro and type of the library that it names exists, with
+    the arity of the call, also through an `alias`; each key of `config :eh_os_contract` is a key of the
+    configuration's schema; and each `@callback` is a callback of a behaviour of the library.
   - Inline code is not compiled. A declaration that a reader is to copy goes in a block.
 - says what it explains in a `<!-- covers: entities …; keys …; rules … -->` comment, and every name there has to
   exist (`EhOsContract.Docs.Prose`);
