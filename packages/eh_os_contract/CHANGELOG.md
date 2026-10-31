@@ -71,7 +71,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   and a diagram of dispatch. The README is short and links to both. Links change: the README's sections
   are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
   `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
-  a master key, and what an erasure does not reach in backups, moved to `concepts/domain-data.md`.
+  a master key, and what an erasure does not reach in backups, moved to `domain-data.md`.
+- **The concept pages are in `docs/`, beside the other pages** (#517). `docs/concepts/units.md` is now
+  `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
+  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. A page in a
+  subdirectory linked an image by a path that was wrong in the HTML.
 
 ### Fixed
 
@@ -317,12 +321,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
   using `boundary` could not call it, since the engine's boundary did not export it, and no page said how
-  to record an outage. It is exported now, and [processes](docs/concepts/process.md) says how to record one.
+  to record an outage. It is exported now, and [processes](docs/process.md) says how to record one.
 - **An actor says which roles a person in it may grant**, as agreed with EHOS.
   `actor :office_employee, :human, "Office employee", may_grant: [:client]` lets a person holding the
   office employee's role grant the client's role through the application, once EHOS grants under the rule.
   `D4` refuses the rule on a system actor, naming the actor itself, a system, an undeclared actor or one twice,
-  and rules that lead back to an actor. [Actors](docs/concepts/domain-data.md#who-may-let-whom-in) says
+  and rules that lead back to an actor. [Actors](docs/domain-data.md#who-may-let-whom-in) says
   more.
 
 ### Changed

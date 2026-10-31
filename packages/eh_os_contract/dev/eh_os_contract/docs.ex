@@ -24,7 +24,7 @@ defmodule EhOsContract.Docs do
   @spec prose() :: [String.t()]
   def prose do
     ["README.md", "docs/introduction.md", "docs/getting-started.md", "docs/contract.md"] ++
-      Enum.map(concepts(), &"docs/concepts/#{&1}.md") ++
+      Enum.map(concepts(), &"docs/#{&1}.md") ++
       ["docs/authorization.md", "docs/glossary.md"]
   end
 

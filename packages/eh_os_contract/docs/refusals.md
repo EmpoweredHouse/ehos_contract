@@ -107,7 +107,7 @@ modules as errors, with their codes. [The rules of the check](rules.md) lists th
 The compiler reads only the current declaration of an event. It cannot see that the fields of a
 recorded version changed. `mix eh_os_contract.schema --check` refuses that change. It compares the
 fields with the fields that `eh_os_contract.lock` recorded for each version. The
-[page on units](concepts/units.md) tells how to change an event that already has rows.
+[page on units](units.md) tells how to change an event that already has rows.
 
 <a id="refusals-c"></a>
 

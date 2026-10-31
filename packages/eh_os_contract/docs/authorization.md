@@ -359,7 +359,7 @@ is why the plug no longer builds them.
 
 `call/3` takes data with the types JSON gives it: a boolean as `true`, an integer as a number. A form sends text,
 `"false"` for a checkbox and `"42"` for an amount, and a page reads it through
-[`EhOsContract.Form`](concepts/forms.md) instead: a changeset that checks what was typed field by field
+[`EhOsContract.Form`](forms.md) instead: a changeset that checks what was typed field by field
 while the person types, built from the declaration by the module or by the same capability name
 (`Form.changeset({:command, "fulfilment.assign_pick_list"}, params)`), whose struct the page then
 dispatches with the person's actor. The `Authorizer` is asked then, by `dispatch/3`. Until the form is sent
