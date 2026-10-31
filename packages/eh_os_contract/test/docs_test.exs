@@ -37,33 +37,11 @@ defmodule EhOsContract.DocsTest do
   # the opening fence, the code without the fence's indent, and the comment on the line
   # above the fence.
   defp elixir_blocks(page) do
-    {blocks, open, _above} =
-      page
-      |> read()
-      |> String.split("\n")
-      |> Enum.with_index(1)
-      |> Enum.reduce({[], nil, ""}, fn
-        {line, number}, {blocks, nil, above} ->
-          case Regex.run(~r/^(\s*)```elixir\s*$/u, line) do
-            [_, indent] ->
-              {blocks, %{line: number, indent: indent, code: [], marker: marker(above)}, line}
-
-            nil ->
-              {blocks, nil, line}
-          end
-
-        {line, _number}, {blocks, block, _above} ->
-          if String.trim(line) == "```" do
-            code = block.code |> Enum.reverse() |> Enum.join("\n")
-            {[%{block | code: code} | blocks], nil, line}
-          else
-            {blocks,
-             %{block | code: [String.replace_prefix(line, block.indent, "") | block.code]}, line}
-          end
-      end)
-
-    if open, do: flunk("#{page}:#{open.line}: the block is not closed")
-    Enum.reverse(blocks)
+    for block <- page |> read() |> EhOsContract.Docs.Prose.code_blocks(),
+        block.info == "elixir" do
+      if not block.closed?, do: flunk("#{page}:#{block.line}: the block is not closed")
+      %{line: block.line, code: block.code, marker: marker(block.above)}
+    end
   end
 
   defp marker(line) do
@@ -94,7 +72,8 @@ defmodule EhOsContract.DocsTest do
 
   # Compiles `modules` as the page `page` and runs the rules between modules: what
   # fails, as lines. An example may call the host's own code, which does not exist
-  # here, so a warning is not a failure; an error is, and it is shown.
+  # here, so a warning is not a failure; an error is, and it is shown. A call to the
+  # library that is not there is only a warning of the compiler, and it fails too.
   defp compile_problems(page, modules) do
     {result, diagnostics} =
       Code.with_diagnostics(fn ->
@@ -105,9 +84,14 @@ defmodule EhOsContract.DocsTest do
         end
       end)
 
+    undefined =
+      for %{severity: :warning, message: message} = d <- diagnostics,
+          message =~ ~r/\AEhOsContract[\w.]*\.\w+[?!]?\/\d+ is undefined/u,
+          do: "#{d.file}:#{inspect(d.position)}: #{message}"
+
     case result do
       {:ok, violations} ->
-        for v <- violations, do: "#{v.file}:#{v.line}: #{v.message}"
+        undefined ++ for v <- violations, do: "#{v.file}:#{v.line}: #{v.message}"
 
       {:error, error} ->
         errors =
@@ -210,11 +194,8 @@ defmodule EhOsContract.DocsTest do
             end
           end)
 
-        # A call to the library that is not there is only a warning of the compiler.
-        unknown = Enum.flat_map([block | others], &unknown_calls(page, &1))
-
         case result do
-          {:ok, modules} -> unknown ++ compile_problems(page, modules)
+          {:ok, modules} -> compile_problems(page, modules)
           {:error, problem} when is_binary(problem) -> [problem]
           {:error, problem} -> ["does not parse: #{inspect(problem)}"]
         end
@@ -320,12 +301,68 @@ defmodule EhOsContract.DocsTest do
 
     case parsed do
       {:ok, quoted} ->
-        {_quoted, unknown} = Macro.prewalk(quoted, [], &unknown_call/2)
+        {_quoted, unknown} = quoted |> expand_aliases() |> Macro.prewalk([], &unknown_call/2)
         for name <- unknown |> Enum.reverse() |> Enum.uniq(), do: "#{name} is not in the library"
 
       {:error, error} ->
         ["does not parse: #{inspect(error)}"]
     end
+  end
+
+  # The snippet with each name it reaches through an `alias` written in full.
+  defp expand_aliases(quoted) do
+    {_quoted, aliases} =
+      Macro.prewalk(quoted, %{}, fn
+        {:alias, _, [{:__aliases__, _, parts} | options]} = node, aliases ->
+          as = get_in(options, [Access.at(0), :as])
+          short = if as, do: elem(as, 2), else: [List.last(parts)]
+          {node, Map.put(aliases, short, parts)}
+
+        node, aliases ->
+          {node, aliases}
+      end)
+
+    Macro.prewalk(quoted, fn
+      {:alias, _, _} = node ->
+        node
+
+      {:__aliases__, meta, [first | rest]} = node ->
+        case aliases[[first]] do
+          nil -> node
+          parts -> {:__aliases__, meta, parts ++ rest}
+        end
+
+      node ->
+        node
+    end)
+  end
+
+  # A key of the engine's configuration that its schema does not know.
+  defp unknown_call({:config, _, [:eh_os_contract | settings]} = node, unknown) do
+    keys =
+      case settings do
+        [{:__aliases__, _, parts}, _settings] -> [Module.concat(parts)]
+        [settings] when is_list(settings) -> Keyword.keys(settings)
+        _other -> []
+      end
+
+    unknown_keys = for key <- keys, unknown_key?(key), do: "the configuration key #{inspect(key)}"
+    {node, Enum.reverse(unknown_keys, unknown)}
+  end
+
+  # A callback that no behaviour of the library declares.
+  defp unknown_call({:@, _, [{:callback, _, [spec]}]}, unknown) do
+    {name, arity} = callback(spec)
+
+    declared? =
+      Enum.any?(
+        Application.spec(:eh_os_contract, :modules),
+        &(function_exported?(&1, :behaviour_info, 1) and
+            {name, arity} in &1.behaviour_info(:callbacks))
+      )
+
+    {_spec, unknown} = unknown_call({:@, [], [{:spec, [], [spec]}]}, unknown)
+    {:read, if(declared?, do: unknown, else: ["the callback #{name}/#{arity}" | unknown])}
   end
 
   defp unknown_call({:@, _, [{attribute, _, [spec]}]}, unknown) when attribute in @typespecs do
@@ -364,6 +401,21 @@ defmodule EhOsContract.DocsTest do
   end
 
   defp unknown_call(node, unknown), do: {node, unknown}
+
+  defp callback({:"::", _, [{:when, _, [head | _]}, _result]}),
+    do: callback({:"::", [], [head, nil]})
+
+  defp callback({:"::", _, [{name, _, args}, _result]}), do: {name, length(args || [])}
+
+  # The schema refuses a key it does not know, whatever the value; any other refusal is
+  # about the probe value.
+  defp unknown_key?(key) do
+    EhOsContract.Config.validate!([{key, :probe}])
+    false
+  rescue
+    error in ArgumentError ->
+      Exception.message(error) =~ ~r/unknown options|is not a key of the library/u
+  end
 
   defp unknown_function(parts, name, arity, unknown) do
     module = Module.concat(parts)

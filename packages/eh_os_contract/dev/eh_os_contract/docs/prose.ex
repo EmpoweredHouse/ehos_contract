@@ -216,39 +216,97 @@ defmodule EhOsContract.Docs.Prose do
             "`dsl-keys <entity>` or `config`"
   end
 
+  @doc """
+  The fenced code blocks of `markdown`, as CommonMark reads the fences, in order. Each
+  is `%{line:, info:, code:, above:, closed?:}`: the number of the line of its opening
+  fence, the first word of its info string, its content with the fence's indent taken
+  off each line, the line above the fence, and whether a fence closes it (one that
+  does not runs to the end of the text).
+  """
+  @spec code_blocks(String.t()) :: [
+          %{
+            line: pos_integer(),
+            info: String.t(),
+            code: String.t(),
+            above: String.t(),
+            closed?: boolean()
+          }
+        ]
+  def code_blocks(markdown) do
+    {blocks, open, _above} =
+      markdown
+      |> fences()
+      |> Enum.with_index(1)
+      |> Enum.reduce({[], nil, ""}, fn
+        {{line, {:open, indent, info}}, number}, {blocks, nil, above} ->
+          info = info |> String.split() |> List.first("")
+          block = %{line: number, info: info, indent: indent, code: [], above: above}
+          {blocks, block, line}
+
+        {{line, :close}, _number}, {blocks, block, _above} ->
+          {[finish(block, true) | blocks], nil, line}
+
+        {{line, :inside}, _number}, {blocks, block, _above} ->
+          code = String.replace_prefix(line, block.indent, "")
+          {blocks, %{block | code: [code | block.code]}, line}
+
+        {{line, :outside}, _number}, {blocks, nil, _above} ->
+          {blocks, nil, line}
+      end)
+
+    blocks = if open, do: [finish(open, false) | blocks], else: blocks
+    Enum.reverse(blocks)
+  end
+
+  defp finish(block, closed?) do
+    code = block.code |> Enum.reverse() |> Enum.join("\n")
+    block |> Map.delete(:indent) |> Map.merge(%{code: code, closed?: closed?})
+  end
+
   # Each line with its newline, and whether it is inside a fenced code block (the
-  # fences themselves count as inside), as CommonMark reads a fence: it opens with
-  # three or more backticks or tildes, indented at most three spaces, and a backtick
-  # fence whose info string holds a backtick opens nothing (it is inline code). It
-  # closes only on a line of the same character, at least as long, with nothing
-  # after it but spaces. So a block of four backticks can show a block of three, and
-  # `~~~` inside backticks closes nothing.
+  # fences themselves count as inside).
   defp lines(markdown) do
+    for {line, place} <- fences_with_newlines(markdown), do: {line, place != :outside}
+  end
+
+  # Each line without its line ending, and its place: `:outside` a block,
+  # `{:open, indent, info}` for an opening fence, `:inside` a block, `:close` for a
+  # closing fence.
+  defp fences(markdown) do
+    for {line, place} <- fences_with_newlines(markdown),
+        do: {line |> String.trim_trailing("\n") |> String.trim_trailing("\r"), place}
+  end
+
+  # A fence, as CommonMark reads one: it opens with three or more backticks or tildes,
+  # indented at most three spaces, and a backtick fence whose info string holds a
+  # backtick opens nothing (it is inline code). It closes only on a line of the same
+  # character, at least as long, with nothing after it but spaces. So a block of four
+  # backticks can show a block of three, and `~~~` inside backticks closes nothing.
+  defp fences_with_newlines(markdown) do
     markdown
     |> String.split(~r/(?<=\n)/u)
     |> Enum.reject(&(&1 == ""))
     |> Enum.map_reduce(nil, fn line, open ->
-      case {open, Regex.run(~r/\A {0,3}(`{3,}|~{3,})(.*?)\r?\n?\z/su, line)} do
-        {nil, [_, "`" <> _ = fence, info]} ->
+      case {open, Regex.run(~r/\A( {0,3})(`{3,}|~{3,})(.*?)\r?\n?\z/su, line)} do
+        {nil, [_, indent, "`" <> _ = fence, info]} ->
           if String.contains?(info, "`"),
-            do: {{line, false}, nil},
-            else: {{line, true}, fence}
+            do: {{line, :outside}, nil},
+            else: {{line, {:open, indent, info}}, fence}
 
-        {nil, [_, fence, _info]} ->
-          {{line, true}, fence}
+        {nil, [_, indent, fence, info]} ->
+          {{line, {:open, indent, info}}, fence}
 
         {nil, nil} ->
-          {{line, false}, nil}
+          {{line, :outside}, nil}
 
-        {open, [_, fence, rest]} ->
-          closes? =
-            String.first(fence) == String.first(open) and
-              String.length(fence) >= String.length(open) and String.trim(rest) == ""
-
-          {{line, true}, if(closes?, do: nil, else: open)}
+        {open, [_, _indent, fence, rest]} ->
+          if String.first(fence) == String.first(open) and
+               String.length(fence) >= String.length(open) and String.trim(rest) == "",
+             do: {{line, :close}, nil},
+             else: {{line, :inside}, open}
 
         {open, nil} ->
-          {{line, true}, open}
+          {{line, :inside}, open}
       end
     end)
     |> elem(0)
