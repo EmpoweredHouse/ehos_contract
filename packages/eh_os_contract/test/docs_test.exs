@@ -37,33 +37,16 @@ defmodule EhOsContract.DocsTest do
   # the opening fence, the code without the fence's indent, and the comment on the line
   # above the fence.
   defp elixir_blocks(page) do
-    {blocks, open, _above} =
-      page
-      |> read()
-      |> String.split("\n")
-      |> Enum.with_index(1)
-      |> Enum.reduce({[], nil, ""}, fn
-        {line, number}, {blocks, nil, above} ->
-          case Regex.run(~r/^(\s*)```elixir\s*$/u, line) do
-            [_, indent] ->
-              {blocks, %{line: number, indent: indent, code: [], marker: marker(above)}, line}
+    blocks = page |> read() |> EhOsContract.Docs.Prose.code_blocks()
 
-            nil ->
-              {blocks, nil, line}
-          end
+    # An unclosed block of any language runs to the end of the page, over the examples.
+    for block <- blocks,
+        not block.closed?,
+        do: flunk("#{page}:#{block.line}: the block is not closed")
 
-        {line, _number}, {blocks, block, _above} ->
-          if String.trim(line) == "```" do
-            code = block.code |> Enum.reverse() |> Enum.join("\n")
-            {[%{block | code: code} | blocks], nil, line}
-          else
-            {blocks,
-             %{block | code: [String.replace_prefix(line, block.indent, "") | block.code]}, line}
-          end
-      end)
-
-    if open, do: flunk("#{page}:#{open.line}: the block is not closed")
-    Enum.reverse(blocks)
+    for block <- blocks,
+        block.info == "elixir",
+        do: %{line: block.line, code: block.code, marker: marker(block.above)}
   end
 
   defp marker(line) do
@@ -94,7 +77,8 @@ defmodule EhOsContract.DocsTest do
 
   # Compiles `modules` as the page `page` and runs the rules between modules: what
   # fails, as lines. An example may call the host's own code, which does not exist
-  # here, so a warning is not a failure; an error is, and it is shown.
+  # here, so a warning is not a failure; an error is, and it is shown. A call to the
+  # library that is not there is only a warning of the compiler, and it fails too.
   defp compile_problems(page, modules) do
     {result, diagnostics} =
       Code.with_diagnostics(fn ->
@@ -105,14 +89,19 @@ defmodule EhOsContract.DocsTest do
         end
       end)
 
+    undefined =
+      for %{severity: :warning, message: message} = d <- diagnostics,
+          message =~ ~r/\AEhOsContract[\w.]*\.\w+[?!]?\/\d+ is undefined/u,
+          do: "#{d.file && Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{message}"
+
     case result do
       {:ok, violations} ->
-        for v <- violations, do: "#{v.file}:#{v.line}: #{v.message}"
+        undefined ++ for v <- violations, do: "#{v.file}:#{v.line}: #{v.message}"
 
       {:error, error} ->
         errors =
           for %{severity: :error} = d <- diagnostics,
-              do: "#{d.file}:#{inspect(d.position)}: #{d.message}"
+              do: "#{d.file && Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{d.message}"
 
         ["does not compile: #{Exception.message(error)}" | errors]
     end
@@ -210,13 +199,18 @@ defmodule EhOsContract.DocsTest do
             end
           end)
 
-        # A call to the library that is not there is only a warning of the compiler.
-        unknown = Enum.flat_map([block | others], &unknown_calls(page, &1))
-
         case result do
-          {:ok, modules} -> unknown ++ compile_problems(page, modules)
-          {:error, problem} when is_binary(problem) -> [problem]
-          {:error, problem} -> ["does not parse: #{inspect(problem)}"]
+          # The compiler does not warn on every name: a type, a `@behaviour`, a module
+          # passed as a value.
+          {:ok, modules} ->
+            Enum.flat_map([block | others], &unknown_calls(page, &1)) ++
+              compile_problems(page, modules)
+
+          {:error, problem} when is_binary(problem) ->
+            [problem]
+
+          {:error, problem} ->
+            ["does not parse: #{inspect(problem)}"]
         end
     end
   end
@@ -320,11 +314,92 @@ defmodule EhOsContract.DocsTest do
 
     case parsed do
       {:ok, quoted} ->
-        {_quoted, unknown} = Macro.prewalk(quoted, [], &unknown_call/2)
-        for name <- unknown |> Enum.reverse() |> Enum.uniq(), do: "#{name} is not in the library"
+        {_quoted, unknown} = quoted |> expand_aliases() |> Macro.prewalk([], &unknown_call/2)
+        unknown |> Enum.reverse() |> Enum.uniq()
 
       {:error, error} ->
         ["does not parse: #{inspect(error)}"]
+    end
+  end
+
+  # The snippet with each name it reaches through an `alias` written in full.
+  defp expand_aliases(quoted) do
+    {_quoted, aliases} =
+      Macro.prewalk(quoted, %{}, fn
+        {:alias, _, [{:__aliases__, _, parts} | options]} = node, aliases ->
+          as = get_in(options, [Access.at(0), :as])
+          short = if as, do: elem(as, 2), else: [List.last(parts)]
+          {node, Map.put(aliases, short, parts)}
+
+        {:alias, _, [{{:., _, [{:__aliases__, _, base}, :{}]}, _, children}]} = node, aliases ->
+          {node,
+           for(
+             {:__aliases__, _, parts} <- children,
+             into: aliases,
+             do: {[List.last(parts)], base ++ parts}
+           )}
+
+        node, aliases ->
+          {node, aliases}
+      end)
+
+    Macro.prewalk(quoted, fn
+      {:alias, _, _} = node ->
+        node
+
+      {:__aliases__, meta, [first | rest]} = node ->
+        case aliases[[first]] do
+          nil -> node
+          parts -> {:__aliases__, meta, parts ++ rest}
+        end
+
+      node ->
+        node
+    end)
+  end
+
+  # An alias names its modules; `alias EhOsContract.{A, B}` is no call of `{}`.
+  defp unknown_call(
+         {:alias, _, [{{:., _, [{:__aliases__, _, base}, :{}]}, _, children}]},
+         unknown
+       ) do
+    # `expand_aliases/1` may have written a child in full already.
+    targets =
+      for {:__aliases__, meta, parts} <- children,
+          do:
+            {:__aliases__, meta,
+             if(List.starts_with?(parts, base), do: parts, else: base ++ parts)}
+
+    {_targets, unknown} = Macro.prewalk(targets, unknown, &unknown_call/2)
+    {:read, unknown}
+  end
+
+  # A key of the engine's configuration that its schema does not know.
+  defp unknown_call({:config, _, [:eh_os_contract | settings]} = node, unknown) do
+    keys =
+      case settings do
+        [{:__aliases__, _, parts}, _settings] -> [Module.concat(parts)]
+        [key, _settings] when is_atom(key) -> [key]
+        [settings] when is_list(settings) -> for {key, _value} <- settings, do: key
+        _other -> []
+      end
+
+    unknown_keys =
+      for key <- keys,
+          unknown_key?(key),
+          do: "the configuration key #{inspect(key)} is not in the library"
+
+    {node, Enum.reverse(unknown_keys, unknown)}
+  end
+
+  # A callback that no behaviour of the library declares.
+  defp unknown_call({:@, _, [{:callback, _, [spec]}]}, unknown) do
+    case callback(spec) do
+      {name, arity} ->
+        known_callback(spec, name, arity, unknown)
+
+      nil ->
+        {:read, ["the callback #{Macro.to_string(spec)} has no return type" | unknown]}
     end
   end
 
@@ -360,10 +435,54 @@ defmodule EhOsContract.DocsTest do
 
   defp unknown_call({:__aliases__, _, [:EhOsContract | _] = parts} = node, unknown) do
     module = Module.concat(parts)
-    if Code.ensure_loaded?(module), do: {node, unknown}, else: {node, [inspect(module) | unknown]}
+
+    if Code.ensure_loaded?(module),
+      do: {node, unknown},
+      else: {node, ["#{inspect(module)} is not in the library" | unknown]}
   end
 
   defp unknown_call(node, unknown), do: {node, unknown}
+
+  defp known_callback(spec, name, arity, unknown) do
+    declared? =
+      Enum.any?(
+        library_modules(),
+        &(Code.ensure_loaded?(&1) and function_exported?(&1, :behaviour_info, 1) and
+            {name, arity} in &1.behaviour_info(:callbacks))
+      )
+
+    {_spec, unknown} = unknown_call({:@, [], [{:spec, [], [spec]}]}, unknown)
+
+    {:read,
+     if(declared?,
+       do: unknown,
+       else: ["the callback #{name}/#{arity} is not in the library" | unknown]
+     )}
+  end
+
+  defp callback({:when, _, [spec | _guards]}), do: callback(spec)
+  defp callback({:"::", _, [{name, _, args}, _result]}), do: {name, length(args || [])}
+  defp callback(_spec), do: nil
+
+  # The modules of `lib/`: the test's own support modules are no behaviours of the library.
+  defp library_modules do
+    lib = Path.expand("lib")
+
+    for module <- Application.spec(:eh_os_contract, :modules),
+        source = module.module_info(:compile)[:source],
+        String.starts_with?(to_string(source), lib),
+        do: module
+  end
+
+  # The schema refuses a key it does not know, whatever the value; any other refusal is
+  # about the probe value.
+  defp unknown_key?(key) do
+    EhOsContract.Config.validate!([{key, :probe}])
+    false
+  rescue
+    error in ArgumentError ->
+      Exception.message(error) =~ ~r/unknown options|is not a key of the library/u
+  end
 
   defp unknown_function(parts, name, arity, unknown) do
     module = Module.concat(parts)
@@ -371,7 +490,7 @@ defmodule EhOsContract.DocsTest do
     if Code.ensure_loaded?(module) and
          (function_exported?(module, name, arity) or macro_exported?(module, name, arity)),
        do: unknown,
-       else: ["#{inspect(module)}.#{name}/#{arity}" | unknown]
+       else: ["#{inspect(module)}.#{name}/#{arity} is not in the library" | unknown]
   end
 
   defp unknown_type(
@@ -393,7 +512,9 @@ defmodule EhOsContract.DocsTest do
 
     if known,
       do: {node, unknown},
-      else: {node, ["#{inspect(module)}.#{name}/#{length(args)} (a type)" | unknown]}
+      else:
+        {node,
+         ["#{inspect(module)}.#{name}/#{length(args)} (a type) is not in the library" | unknown]}
   end
 
   defp unknown_type(node, unknown), do: {node, unknown}
