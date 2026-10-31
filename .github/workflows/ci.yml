@@ -283,7 +283,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # No token is left in .git/config: the dependencies' code runs while they compile.
+      # No token is left in .git/config: the dependencies' code runs while they are fetched
+      # and compiled.
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -304,7 +305,8 @@ jobs:
           permission-contents: read
 
       # Git reads the token from this step's environment alone, so mix.lock keeps the
-      # plain URL.
+      # plain URL. Each fetched dependency's mix.exs runs here, while the token is in reach;
+      # `--only dev` keeps that to what the check needs.
       - name: Install engine deps
         working-directory: packages/eh_os_contract
         env:
