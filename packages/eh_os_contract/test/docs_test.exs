@@ -87,7 +87,7 @@ defmodule EhOsContract.DocsTest do
     undefined =
       for %{severity: :warning, message: message} = d <- diagnostics,
           message =~ ~r/\AEhOsContract[\w.]*\.\w+[?!]?\/\d+ is undefined/u,
-          do: "#{d.file}:#{inspect(d.position)}: #{message}"
+          do: "#{Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{message}"
 
     case result do
       {:ok, violations} ->
