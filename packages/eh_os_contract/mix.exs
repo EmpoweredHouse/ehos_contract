@@ -44,8 +44,10 @@ defmodule EhOsContract.MixProject do
       consolidate_protocols: Mix.env() != :test,
       aliases: aliases(),
       deps: deps(),
-      # `mix ehos_diagrams.gen [--check]`. `docs/authorization.md` is left out of the
-      # documents that may hold no Mermaid block until its two blocks become diagrams (#517).
+      # `mix ehos_diagrams.gen [--check]`, in `:dev` only: the sandbox's gate runs the check
+      # when the generator is fetched, and CI in a job of its own (#520).
+      # `docs/authorization.md` is left out of the documents that may hold no Mermaid block
+      # until its two blocks become diagrams (#517).
       ehos_diagrams: [
         sources: "docs/diagrams",
         out: "docs/img",
@@ -100,7 +102,6 @@ defmodule EhOsContract.MixProject do
         "eh_os_contract.check",
         "eh_os_contract.rules --check",
         "eh_os_contract.docs --check",
-        "ehos_diagrams.gen --check",
         # A reference in a doc to a module, a function or a page that is not there,
         # or is hidden, fails here rather than becoming a dead link on hexdocs.
         "docs -f html --warnings-as-errors --output _build/test/doc",
@@ -330,21 +331,23 @@ defmodule EhOsContract.MixProject do
       # The diagrams of the prose pages: hand-laid sources in `docs/diagrams/`, checked and
       # written into `docs/img/` in the design system's colours and fonts by
       # `mix ehos_diagrams.gen` (`ehos_diagrams:` above). Both live in the private
-      # EmpoweredHouse/ehos-tools, pinned by the commits their tags name
+      # ehos-tools, pinned by the commits their tags name
       # (`ehos_diagrams-v0.2.0`, `ehos_design-v0.5.0`); `ehos_diagrams` reads the design
-      # system's tokens and fonts from the `ehos_design` the host has. Hex leaves a
-      # `:dev`/`:test` dependency out of the published requirements.
+      # system's tokens and fonts from the `ehos_design` the host has. `:dev` only, as the
+      # dashboard's `ehos_design`: `mix deps.get --only test` fetches nothing private, so
+      # anyone can run this package's `mix check`. Hex leaves a `:dev` dependency out of the
+      # published requirements.
       {:ehos_diagrams, "~> 0.2.0",
        github: "EmpoweredHouse/ehos-tools",
        sparse: "packages/ehos_diagrams",
        ref: "2198050364cee447b66b010ac31dfd6df9c9262e",
-       only: [:dev, :test],
+       only: :dev,
        runtime: false},
       {:ehos_design, "~> 0.5.0",
        github: "EmpoweredHouse/ehos-tools",
        sparse: "packages/ehos_design",
        ref: "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0",
-       only: [:dev, :test],
+       only: :dev,
        runtime: false},
       # `EhOsContract.Form`'s tests build a form and its `inputs_for` as a LiveView page does.
       # Never a host's: the host brings its own. `phoenix_html` is in `:dev` too, because

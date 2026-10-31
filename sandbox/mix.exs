@@ -116,6 +116,7 @@ defmodule EhOsContractHost.MixProject do
         "eh_os_contract.schema --check",
         "test",
         &package_test/1,
+        &package_diagrams/1,
         &package_test_web/1,
         &package_test_auth/1,
         &package_test_graph/1
@@ -143,6 +144,32 @@ defmodule EhOsContractHost.MixProject do
       )
 
     if status != 0, do: Mix.raise("the engine's own gate failed (packages/eh_os_contract)")
+  end
+
+  # The engine's diagrams against their sources (#520). The generator is a `:dev` dependency
+  # from the private ehos-tools, so the engine's own gate, which runs in `:test`, leaves it out
+  # and anyone can run that. Here it runs where a maintainer's `mix deps.get` fetched it; without
+  # it the gate says so and goes on, and CI's `diagrams` job holds the check. The test is the
+  # dependency's own `mix.exs` in its sparse checkout, not its directory: a fetch that failed
+  # for want of access leaves the directory behind.
+  defp package_diagrams(_args) do
+    generator = "../packages/eh_os_contract/deps/ehos_diagrams/packages/ehos_diagrams/mix.exs"
+
+    if File.regular?(generator) do
+      {_output, status} =
+        System.cmd("mix", ["ehos_diagrams.gen", "--check"],
+          cd: "../packages/eh_os_contract",
+          env: [{"MIX_ENV", "dev"}],
+          into: IO.stream(:stdio, :line)
+        )
+
+      if status != 0,
+        do: Mix.raise("the engine's diagram check failed (packages/eh_os_contract)")
+    else
+      Mix.shell().info(
+        "The engine's diagrams were not checked: ehos-tools is not fetched in packages/eh_os_contract."
+      )
+    end
   end
 
   # A path dependency does not run its own tests automatically — same fact

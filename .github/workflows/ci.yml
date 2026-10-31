@@ -106,7 +106,8 @@ jobs:
       # host's. Confirmed 21 August 2026: packages/eh_os_contract/deps is
       # git-ignored, so a fresh checkout starts without it. The private ehos-tools'
       # packages are left out: anyone who can run a workflow here can restore a cache, and
-      # whoever cannot read ehos-tools must not read its code from one. The children are
+      # whoever cannot read ehos-tools must not read its code from one (this job no longer
+      # fetches them, #520; the exclusion stays as a guard). The children are
       # listed, not the directory: actions/cache archives a listed directory whole, and
       # drops by a `!` pattern only what the list itself holds. docs.yml restores the four
       # packages' entries with these keys and `path` texts copied: change them there too.
@@ -196,31 +197,16 @@ jobs:
         working-directory: sandbox
         run: mix deps.get
 
-      # The engine's `:dev`/`:test` dependencies `ehos_diagrams` and `ehos_design`, which its gate
-      # runs `mix ehos_diagrams.gen --check` with, live in the private EmpoweredHouse/ehos-tools.
-      # The "ehos-tools CI" GitHub App mints a token that may only read that repository and
-      # expires within the hour, as in eh-os. Git reads it from the next step's environment
-      # alone, so mix.lock keeps the plain URL. Pull requests from forks and from Dependabot get
-      # no Actions secrets, so this job fails for them.
-      - id: ehos-tools
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ secrets.EHOS_CI_APP_ID }}
-          private-key: ${{ secrets.EHOS_CI_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ehos-tools
-          permission-contents: read
-
+      # `--only test`, as for the dashboard below: the engine's `:dev` dependencies
+      # `ehos_diagrams` and `ehos_design` live in the private ehos-tools, which this job has
+      # no credentials for. Only `mix ehos_diagrams.gen` reads them, and the `diagrams` job
+      # below runs it; the gate says it did not (#520).
       - name: Install engine deps
         working-directory: packages/eh_os_contract
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
-          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
-        run: mix deps.get
+        run: mix deps.get --only test
 
       # `--only test`: the dashboard's `:dev` dependency, ehos_design, lives in the
-      # private EmpoweredHouse/ehos-tools, which this job has no credentials for. Only
+      # private ehos-tools, which this job has no credentials for. Only
       # `mix assets.build` reads it, and its output is committed, so the gate never needs it.
       - name: Install dashboard foundation deps
         working-directory: packages/eh_os_contract_web
@@ -238,8 +224,8 @@ jobs:
       # newest formats first. Nothing here is committed.
       - name: Format as the newest Elixir does
         if: ${{ matrix.name == 'newest' }}
-        # The environment the dependencies were fetched for: in `:dev` the dashboard
-        # would also ask for its private `:dev` dependency.
+        # The environment the dependencies were fetched for: in `:dev` the engine and the
+        # dashboard would also ask for their private `:dev` dependencies.
         env:
           MIX_ENV: test
         run: |
@@ -280,6 +266,58 @@ jobs:
       - name: mix check
         working-directory: sandbox
         run: mix check
+
+  # The engine's diagrams in `docs/img/` against their sources in `docs/diagrams/`, by
+  # `mix ehos_diagrams.gen --check` in `:dev`. The generator and the design system it reads
+  # live in the private ehos-tools, so this is the only job that gets a token for it, from
+  # the "ehos-tools CI" GitHub App: it may only read that repository and expires within the
+  # hour, as in eh-os. A pull request from a fork or from Dependabot gets no Actions
+  # secrets, so this job is skipped for it, and the `check` job above runs without them
+  # (#520). Nothing is cached: an entry would hold ehos-tools' code, which anyone who can
+  # run a workflow here could restore.
+  diagrams:
+    if: >-
+      ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # No token is left in .git/config: the dependencies' code runs while they are fetched
+      # and compiled.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The `oldest` pair of the `check` job's matrix.
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.2"
+          elixir-version: "1.18.4"
+
+      - id: ehos-tools
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.EHOS_CI_APP_ID }}
+          private-key: ${{ secrets.EHOS_CI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ehos-tools
+          permission-contents: read
+
+      # Git reads the token from this step's environment alone, so mix.lock keeps the
+      # plain URL. Each fetched dependency's mix.exs runs here, while the token is in reach;
+      # `--only dev` keeps that to what the check needs.
+      - name: Install engine deps
+        working-directory: packages/eh_os_contract
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
+        run: mix deps.get --only dev
+
+      - name: mix ehos_diagrams.gen --check
+        working-directory: packages/eh_os_contract
+        run: mix ehos_diagrams.gen --check
 
   # Each package as Hex would build it, and as an application would read it once
   # installed: `mix hex.build` refuses a dependency that is not a Hex package and a

@@ -36,15 +36,16 @@ You need these:
 
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
-- Read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its diagram
-  generator from there, in `:dev` and `:test`. Without access, `mix deps.get` fails in
-  `packages/eh_os_contract`, and the gate fails.
+- Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its
+  diagram generator from there, in `:dev` only. Without access, the gate does not check the
+  diagrams, and CI's `diagrams` job checks them. That job does not run for a pull request from a
+  fork or from Dependabot, so nothing checks the diagrams of such a pull request (#527).
 
 The gate runs the `mix check` of each package in that package, so each package needs its own
 dependencies. From the root of the repository, fetch them as CI does:
 
 ```bash
-(cd packages/eh_os_contract && mix deps.get)
+(cd packages/eh_os_contract && mix deps.get --only test)
 ```
 
 ```bash
@@ -57,6 +58,13 @@ dependencies. From the root of the repository, fetch them as CI does:
 
 ```bash
 (cd packages/eh_os_contract_graph && mix deps.get)
+```
+
+If you have access to `ehos-tools`, fetch all of the engine's dependencies instead. Then the gate
+also checks the diagrams:
+
+```bash
+(cd packages/eh_os_contract && mix deps.get)
 ```
 
 Then start PostgreSQL and run the gate:
@@ -78,9 +86,12 @@ mix check
 4. The tests of the sandbox.
 5. `mix check` of each package, each in its own run, so that each package stands alone. Each
    package builds its docs with `--warnings-as-errors` and runs `test/doc_coverage_test.exs`. The
-   engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check`,
-   `ehos_diagrams.gen --check` and `test/docs_test.exs`. These hold the generated pages, the
-   diagrams and the examples of the prose pages to the code.
+   engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
+   `test/docs_test.exs`. These hold the generated pages and the examples of the prose pages to the
+   code.
+6. After the engine, `ehos_diagrams.gen --check` in `:dev`, if the diagram generator is fetched.
+   It holds the diagrams to their sources. Without the generator, the gate prints that it did not
+   check the diagrams.
 
 Check the exit code of `mix check` itself. If you pipe the output into `tail`, the exit code is the
 exit code of `tail`.

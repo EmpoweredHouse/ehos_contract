@@ -10,13 +10,21 @@ name: private-references
 # Left out on purpose, each until the stage that decides it:
 # - docs/adr/: the dated design record, which #379 settles in one pass;
 # - the auth package's ehos.yaml schemas, SHA-pinned to EHOS's own copies;
-# - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE, and the
-#   comment in ci.yml that explains it), which the Hex readiness stage settles;
-# - the engine's ehos_diagrams and ehos_design dependencies, which draw its pages'
-#   diagrams (mix.exs, mix.lock, and the token steps in docs.yml and ci.yml that
-#   fetch them), which the Hex readiness stage settles with the dashboard's (#517);
+# - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE), which the
+#   Hex readiness stage settles;
 # - .claude/settings.team.json, which names the maintainers' plugin and is meant to;
-# - this file, which holds the pattern.
+# - this file, which holds the pattern, and .github/private-references.allow.
+#
+# Allowed line by line, not file by file (#520): each line of
+# .github/private-references.allow is `<path>:<line>`, exactly as `git grep` prints a
+# hit, once for each time the line may occur. It holds the lines that fetch the engine's
+# ehos_diagrams and ehos_design, which draw its pages' diagrams: their `github:` in
+# mix.exs, their entries in mix.lock, and the token in ci.yml's `diagrams` job. Any
+# other line that names a private repository fails, and so do a changed line, one more
+# copy of an allowed line, and an allowed line that no longer occurs: a new pin of either
+# dependency replaces its mix.lock line in the allowlist in the same pull request. The
+# check holds a line's text and count, not where it sits in its file: that an allowed
+# line stays where it is, the token in the `diagrams` job above all, is a reviewer's.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -36,21 +44,37 @@ jobs:
 
       # `-P`: the pattern needs a lookahead, so that this repository's own name,
       # eh-os-contract, is not a reference to EHOS's.
+      # `shell: bash` adds `-o pipefail`, which the default leaves out.
       - name: No reference into a private repository
+        shell: bash
         run: |
-          if git grep -n -P 'EmpoweredHouse/(eh-os(?!-contract)|ehos-tools|ehos-ledger|appunite-equipment)\b|\bD-\d{2,3}\b|\bT-\d{2}\b|eh-os#|\bFM-\d+|PLAN\.md|~/Projects' -- . \
+          found=$(git grep -P 'EmpoweredHouse/(eh-os(?!-contract)|ehos-tools|ehos-ledger|appunite-equipment)\b|\bD-\d{2,3}\b|\bT-\d{2}\b|eh-os#|\bFM-\d+|PLAN\.md|~/Projects' -- . \
               ':!docs/adr' \
               ':!packages/eh_os_contract_auth/priv/schemas' \
               ':!packages/eh_os_contract_web/mix.exs' \
               ':!packages/eh_os_contract_web/mix.lock' \
               ':!packages/eh_os_contract_web/NOTICE' \
-              ':!packages/eh_os_contract/mix.exs' \
-              ':!packages/eh_os_contract/mix.lock' \
-              ':!.github/workflows/docs.yml' \
-              ':!.github/workflows/ci.yml' \
               ':!.claude/settings.team.json' \
-              ':!.github/workflows/private-references.yml'; then
+              ':!.github/workflows/private-references.yml' \
+              ':!.github/private-references.allow') || [ $? -eq 1 ]
+          # Each hit takes one allowed line of the same text. A hit with none is a new
+          # reference; an allowed line with none is out of date.
+          if [ ! -f .github/private-references.allow ]; then
+            echo "::error::.github/private-references.allow is missing."
+            exit 1
+          fi
+          printf '%s\n' "$found" | sed '/^$/d' | LC_ALL=C sort > "$RUNNER_TEMP/hits"
+          LC_ALL=C sort .github/private-references.allow > "$RUNNER_TEMP/allowed"
+          left=$(LC_ALL=C comm -23 "$RUNNER_TEMP/hits" "$RUNNER_TEMP/allowed")
+          stale=$(LC_ALL=C comm -13 "$RUNNER_TEMP/hits" "$RUNNER_TEMP/allowed")
+          if [ -n "$left" ]; then
+            printf '%s\n' "$left"
             echo "::error::A link, a decision code or a path above points into a private repository. Say what it meant instead: a pull request or issue of this repository, or the meaning in words."
+            exit 1
+          fi
+          if [ -n "$stale" ]; then
+            printf '%s\n' "$stale"
+            echo "::error::The lines above are in .github/private-references.allow but in no file. Remove them from it."
             exit 1
           fi
           echo "No reference into a private repository."

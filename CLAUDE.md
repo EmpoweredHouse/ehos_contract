@@ -147,13 +147,16 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
 generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
-generated regions of the prose pages — to the code; `ehos_diagrams.gen --check`, which holds the diagrams in
-`docs/img/` to their sources in `docs/diagrams/`; `test/docs_test.exs`, which holds the examples and the refusal
+generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal
 table of `docs/refusals.md` to it, and what a prose page says it covers (`<!-- covers: … -->`,
 `EhOsContract.Docs.Prose`) to the entities, keys and rules that exist; `docs
 --warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
-`test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`),
+`test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`), then
+`ehos_diagrams.gen --check` in `packages/eh_os_contract` under `:dev`, which holds the diagrams in `docs/img/` to
+their sources in `docs/diagrams/` (only where `mix deps.get` fetched the private ehos-tools; without it the gate
+says it did not check them, and CI's `diagrams` job does, except for a pull request from a fork or Dependabot,
+#527), then
 `packages/eh_os_contract_web`,
 `packages/eh_os_contract_auth` and `packages/eh_os_contract_graph` (each with its own `docs --warnings-as-errors`
 and `test/doc_coverage_test.exs`). **It has to pass.** Separate invocations, not an umbrella, so that each package
