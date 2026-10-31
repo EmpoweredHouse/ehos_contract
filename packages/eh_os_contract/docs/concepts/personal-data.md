@@ -76,7 +76,8 @@ The engine encrypts each personal field with a key for its subject.
 - The `EhOsContract.Vault` holds the master keys. The default vault, `EhOsContract.Vault.Local`,
   takes them from the configuration: `config :eh_os_contract, EhOsContract.Vault, keys: [...]`.
 - If the contracts of a node declare personal fields, the node does not start without a configured
-  vault. The check at boot reads the configuration of the keys. It does not try a key.
+  vault. `EhOsContract.Vault.Local` reads the configuration of the keys, and does not try a key.
+  Another vault answers through its `check/0`.
 - The node also does not start if a read model that projects personal data has no `forget/2`.
 
 [Manage the master keys](master-keys.md) tells how to rotate a master key, and how to use a key
@@ -140,15 +141,18 @@ log waits.
 
 An erasure deletes the data key from the database. It does not delete it from your backups.
 
-- A backup, a WAL archive or a replica still holds the wrapped data key. A person who also has the
-  master key can read the data of the subject.
-- So rotate and destroy the master keys at an interval that is not longer than the time that you
-  keep backups. Or keep the table of data keys out of the backups of the log.
-  The table of data keys is `eh_os_contract_subject_keys`.
-- Each choice has a cost. A backup that is older than a destroyed master key cannot unwrap the data
-  of any subject. Restore a log only with its table of data keys. Without the table, the
-  engine raises on a personal field of a subject that is not erased. It does not read the field as
-  erased.
+- A backup, a WAL archive or a delayed replica still holds the wrapped data key. A person who also
+  has the master key can read the data of the subject.
+- So destroy each master key within the time that you keep backups.
+  [Manage the master keys](master-keys.md) tells how to rotate a key.
+- After that, a backup cannot unwrap a data key that the destroyed master key wraps. Accept this
+  cost, or keep those backups shorter.
+- The data keys are in the table `eh_os_contract_subject_keys`, and the erasures in
+  `eh_os_contract_erasures`. Restore both with the log, from the same moment. If they do not agree,
+  the engine raises on a personal field of a subject that has no key and no erasure. It does not
+  read the field as erased.
+- You can keep the table of data keys out of the backups of the log, so that no backup holds a data
+  key. Then you cannot restore the personal data from those backups: the engine raises on it.
 
 An erasure also does not reach these copies:
 

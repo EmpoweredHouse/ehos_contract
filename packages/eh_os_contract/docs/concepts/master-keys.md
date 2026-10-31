@@ -41,7 +41,9 @@ read what the new nodes write, until the rollout ends.
 
    **Result:** the new key wraps each new data key.
 
-3. When each node runs the configuration of step 2, rewrap each data key with the new key:
+3. When each node runs the configuration of step 2, rewrap each data key with the new key. Run the
+   rewrap with the configuration of step 2 too. It wraps with the first key of the list that it
+   reads.
 
    ```bash
    mix eh_os_contract.rewrap
@@ -49,24 +51,32 @@ read what the new nodes write, until the rollout ends.
 
    A release has no `mix`. From a release, call `EhOsContract.Personal.rewrap!(MyApp.Repo)`.
 
-   **Result:** the task prints how many data keys it rewrapped, and does not raise. The task does
-   not rewrite an event.
+   **Result:** the task prints how many data keys it rewrapped, and the id of the key that it used.
+   Example: `120 data keys rewrapped with 2026-09`. The id must be the id of the new key. The
+   task does not rewrite an event.
 
-   The rewrap runs in batches of 500 data keys, each in its own transaction. If it stops or raises,
-   run it again. If a data key is still on another master key at the end, the rewrap raises: a node
-   still wrapped with the old key.
+   The rewrap runs in batches of 500 data keys, each in its own transaction. If it stops, run it
+   again. "What can go wrong" below tells what to do when it raises.
 
    Run the rewrap at a quiet time. An erasure of a subject in the current batch waits for that batch,
    and holds the append lock while it waits. So each other append waits too.
 
-4. Do this step only when step 3 ended without an error. After you remove the old key, a data key
-   that it still wraps cannot be unwrapped. Remove the old key from the list, and deploy.
+4. Do this step only when step 3 ended without an error, with the id of the new key. After you
+   remove the old key, a data key that it still wraps cannot be unwrapped. Check the table of data
+   keys just before the deploy. Each row must name the new key:
+
+   ```sql
+   SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
+   ```
+
+   Then remove the old key from the list, and deploy.
 
    **Result:** the nodes use only the new key.
 
-Then destroy the old key, when no backup that you can restore needs it.
-[What does an erasure not reach?](personal-data.md#what-does-an-erasure-not-reach) tells the choices
-and their costs.
+Then destroy the old key, within the time that you keep backups. After that, a backup that holds a
+data key wrapped by the old key cannot unwrap it.
+[What does an erasure not reach?](personal-data.md#what-does-an-erasure-not-reach) tells why, and
+what it costs.
 
 ## Keep the master keys in a key management service
 
@@ -103,9 +113,8 @@ end
   stores it beside the wrapped data key.
 - `unwrap/3` returns `{:ok, data_key}`, or `:error`.
 - Give `context` to the KMS as additional authenticated data, when you encrypt and when you
-  decrypt. Then a wrapped key that moves to another subject does not unwrap. The engine depends on
-  this binding: without it, a person who can write to the database can make an erased subject
-  readable again.
+  decrypt. Then a wrapped key that moves to the row of another subject does not unwrap. The engine
+  depends on this binding.
 - `check/0` returns `:ok`, or `{:error, reason}` in a sentence that names no key. If it returns an
   error and a contract declares personal fields, the engine does not start.
 
@@ -118,7 +127,10 @@ config :eh_os_contract, vault: MyApp.KmsVault
 
 **Result:** the application starts, and wraps each new data key in the KMS.
 
-To rotate a key in the KMS, make `current/0` return the new key, and deploy. When each node runs
+`current/0` names the version of the key that wraps, not only the key. If the KMS rotates the
+version behind one name, the rewrap cannot see that the version changed.
+
+To rotate a key in the KMS, make `current/0` return the new version, and deploy. When each node runs
 it, rewrap each data key, as step 3 above tells. Disable the old key only after the rewrap ended
 without an error.
 
@@ -130,12 +142,18 @@ batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, 50)`; the Mix task takes 
 
 ## What can go wrong
 
-- **The rewrap raises.** A node still wraps with the old key. Wait until each node runs the new
-  configuration, and run the rewrap again. Do not remove the old key.
-- **A backup outlives an erasure.** A backup still holds the wrapped data keys. Rotate and destroy
-  the master keys at an interval that is not longer than the time that you keep backups.
-- **A destroyed master key cannot unwrap.** A backup that is older than a destroyed master key
-  cannot unwrap the data of any subject.
+The rewrap raises with one of these messages:
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| `… are still wrapped by another master key than …` | A node still wraps with the old key, or another rewrap holds some rows. | Wait until each node runs the new configuration and the other rewrap ends. Run the rewrap again. |
+| `… cannot be unwrapped with master key …; is that key still in the vault?` | The list of keys does not hold the key that wraps a row. | Put that key back in the list, deploy, and run the rewrap again. |
+| `the vault wrapped with … and calls … current` | A vault of your own returns from `wrap/2` an id other than `current/0`. | Make `wrap/2` return the id of `current/0`. |
+
+Do not remove the old key while the rewrap raises.
+
+A destroyed master key cannot unwrap a data key that it wraps, also in a backup. Before you destroy
+it, make sure that you do not need to restore such a backup.
 
 ## Next steps
 
