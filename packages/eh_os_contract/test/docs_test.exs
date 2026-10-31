@@ -403,23 +403,6 @@ defmodule EhOsContract.DocsTest do
     end
   end
 
-  defp known_callback(spec, name, arity, unknown) do
-    declared? =
-      Enum.any?(
-        library_modules(),
-        &(Code.ensure_loaded?(&1) and function_exported?(&1, :behaviour_info, 1) and
-            {name, arity} in &1.behaviour_info(:callbacks))
-      )
-
-    {_spec, unknown} = unknown_call({:@, [], [{:spec, [], [spec]}]}, unknown)
-
-    {:read,
-     if(declared?,
-       do: unknown,
-       else: ["the callback #{name}/#{arity} is not in the library" | unknown]
-     )}
-  end
-
   defp unknown_call({:@, _, [{attribute, _, [spec]}]}, unknown) when attribute in @typespecs do
     {_spec, unknown} = Macro.prewalk(spec, unknown, &unknown_type/2)
     {:read, unknown}
@@ -459,6 +442,23 @@ defmodule EhOsContract.DocsTest do
   end
 
   defp unknown_call(node, unknown), do: {node, unknown}
+
+  defp known_callback(spec, name, arity, unknown) do
+    declared? =
+      Enum.any?(
+        library_modules(),
+        &(Code.ensure_loaded?(&1) and function_exported?(&1, :behaviour_info, 1) and
+            {name, arity} in &1.behaviour_info(:callbacks))
+      )
+
+    {_spec, unknown} = unknown_call({:@, [], [{:spec, [], [spec]}]}, unknown)
+
+    {:read,
+     if(declared?,
+       do: unknown,
+       else: ["the callback #{name}/#{arity} is not in the library" | unknown]
+     )}
+  end
 
   defp callback({:when, _, [spec | _guards]}), do: callback(spec)
   defp callback({:"::", _, [{name, _, args}, _result]}), do: {name, length(args || [])}
