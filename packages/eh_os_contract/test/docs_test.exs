@@ -92,7 +92,7 @@ defmodule EhOsContract.DocsTest do
     undefined =
       for %{severity: :warning, message: message} = d <- diagnostics,
           message =~ ~r/\AEhOsContract[\w.]*\.\w+[?!]?\/\d+ is undefined/u,
-          do: "#{Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{message}"
+          do: "#{d.file && Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{message}"
 
     case result do
       {:ok, violations} ->
@@ -101,7 +101,7 @@ defmodule EhOsContract.DocsTest do
       {:error, error} ->
         errors =
           for %{severity: :error} = d <- diagnostics,
-              do: "#{Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{d.message}"
+              do: "#{d.file && Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{d.message}"
 
         ["does not compile: #{Exception.message(error)}" | errors]
     end
@@ -358,8 +358,15 @@ defmodule EhOsContract.DocsTest do
     end)
   end
 
-  # An alias is read through the names it gives, not as a call.
-  defp unknown_call({:alias, _, _}, unknown), do: {:read, unknown}
+  # An alias names its modules; `alias EhOsContract.{A, B}` is no call of `{}`.
+  defp unknown_call(
+         {:alias, _, [{{:., _, [{:__aliases__, _, base}, :{}]}, _, children}]},
+         unknown
+       ) do
+    targets = for {:__aliases__, meta, parts} <- children, do: {:__aliases__, meta, base ++ parts}
+    {_targets, unknown} = Macro.prewalk(targets, unknown, &unknown_call/2)
+    {:read, unknown}
+  end
 
   # A key of the engine's configuration that its schema does not know.
   defp unknown_call({:config, _, [:eh_os_contract | settings]} = node, unknown) do
@@ -377,11 +384,19 @@ defmodule EhOsContract.DocsTest do
 
   # A callback that no behaviour of the library declares.
   defp unknown_call({:@, _, [{:callback, _, [spec]}]}, unknown) do
-    {name, arity} = callback(spec)
+    case callback(spec) do
+      {name, arity} ->
+        known_callback(spec, name, arity, unknown)
 
+      nil ->
+        {:read, ["the callback #{Macro.to_string(spec)}, which has no return type" | unknown]}
+    end
+  end
+
+  defp known_callback(spec, name, arity, unknown) do
     declared? =
       Enum.any?(
-        Application.spec(:eh_os_contract, :modules),
+        library_modules(),
         &(Code.ensure_loaded?(&1) and function_exported?(&1, :behaviour_info, 1) and
             {name, arity} in &1.behaviour_info(:callbacks))
       )
@@ -429,7 +444,17 @@ defmodule EhOsContract.DocsTest do
 
   defp callback({:when, _, [spec | _guards]}), do: callback(spec)
   defp callback({:"::", _, [{name, _, args}, _result]}), do: {name, length(args || [])}
-  defp callback(_spec), do: {:"(a callback without ::)", 0}
+  defp callback(_spec), do: nil
+
+  # The modules of `lib/`: the test's own support modules are no behaviours of the library.
+  defp library_modules do
+    lib = Path.expand("lib")
+
+    for module <- Application.spec(:eh_os_contract, :modules),
+        source = module.module_info(:compile)[:source],
+        String.starts_with?(to_string(source), lib),
+        do: module
+  end
 
   # The schema refuses a key it does not know, whatever the value; any other refusal is
   # about the probe value.
