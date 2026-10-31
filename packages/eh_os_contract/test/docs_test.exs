@@ -37,11 +37,16 @@ defmodule EhOsContract.DocsTest do
   # the opening fence, the code without the fence's indent, and the comment on the line
   # above the fence.
   defp elixir_blocks(page) do
-    for block <- page |> read() |> EhOsContract.Docs.Prose.code_blocks(),
-        block.info == "elixir" do
-      if not block.closed?, do: flunk("#{page}:#{block.line}: the block is not closed")
-      %{line: block.line, code: block.code, marker: marker(block.above)}
-    end
+    blocks = page |> read() |> EhOsContract.Docs.Prose.code_blocks()
+
+    # An unclosed block of any language runs to the end of the page, over the examples.
+    for block <- blocks,
+        not block.closed?,
+        do: flunk("#{page}:#{block.line}: the block is not closed")
+
+    for block <- blocks,
+        block.info == "elixir",
+        do: %{line: block.line, code: block.code, marker: marker(block.above)}
   end
 
   defp marker(line) do
@@ -96,7 +101,7 @@ defmodule EhOsContract.DocsTest do
       {:error, error} ->
         errors =
           for %{severity: :error} = d <- diagnostics,
-              do: "#{d.file}:#{inspect(d.position)}: #{d.message}"
+              do: "#{Path.relative_to_cwd(d.file)}:#{inspect(d.position)}: #{d.message}"
 
         ["does not compile: #{Exception.message(error)}" | errors]
     end
@@ -195,9 +200,17 @@ defmodule EhOsContract.DocsTest do
           end)
 
         case result do
-          {:ok, modules} -> compile_problems(page, modules)
-          {:error, problem} when is_binary(problem) -> [problem]
-          {:error, problem} -> ["does not parse: #{inspect(problem)}"]
+          # The compiler does not warn on every name: a type, a `@behaviour`, a module
+          # passed as a value.
+          {:ok, modules} ->
+            Enum.flat_map([block | others], &unknown_calls(page, &1)) ++
+              compile_problems(page, modules)
+
+          {:error, problem} when is_binary(problem) ->
+            [problem]
+
+          {:error, problem} ->
+            ["does not parse: #{inspect(problem)}"]
         end
     end
   end
@@ -318,6 +331,14 @@ defmodule EhOsContract.DocsTest do
           short = if as, do: elem(as, 2), else: [List.last(parts)]
           {node, Map.put(aliases, short, parts)}
 
+        {:alias, _, [{{:., _, [{:__aliases__, _, base}, :{}]}, _, children}]} = node, aliases ->
+          {node,
+           for(
+             {:__aliases__, _, parts} <- children,
+             into: aliases,
+             do: {[List.last(parts)], base ++ parts}
+           )}
+
         node, aliases ->
           {node, aliases}
       end)
@@ -337,12 +358,16 @@ defmodule EhOsContract.DocsTest do
     end)
   end
 
+  # An alias is read through the names it gives, not as a call.
+  defp unknown_call({:alias, _, _}, unknown), do: {:read, unknown}
+
   # A key of the engine's configuration that its schema does not know.
   defp unknown_call({:config, _, [:eh_os_contract | settings]} = node, unknown) do
     keys =
       case settings do
         [{:__aliases__, _, parts}, _settings] -> [Module.concat(parts)]
-        [settings] when is_list(settings) -> Keyword.keys(settings)
+        [key, _settings] when is_atom(key) -> [key]
+        [settings] when is_list(settings) -> for {key, _value} <- settings, do: key
         _other -> []
       end
 
@@ -357,7 +382,7 @@ defmodule EhOsContract.DocsTest do
     declared? =
       Enum.any?(
         Application.spec(:eh_os_contract, :modules),
-        &(function_exported?(&1, :behaviour_info, 1) and
+        &(Code.ensure_loaded?(&1) and function_exported?(&1, :behaviour_info, 1) and
             {name, arity} in &1.behaviour_info(:callbacks))
       )
 
@@ -402,10 +427,9 @@ defmodule EhOsContract.DocsTest do
 
   defp unknown_call(node, unknown), do: {node, unknown}
 
-  defp callback({:"::", _, [{:when, _, [head | _]}, _result]}),
-    do: callback({:"::", [], [head, nil]})
-
+  defp callback({:when, _, [spec | _guards]}), do: callback(spec)
   defp callback({:"::", _, [{name, _, args}, _result]}), do: {name, length(args || [])}
+  defp callback(_spec), do: {:"(a callback without ::)", 0}
 
   # The schema refuses a key it does not know, whatever the value; any other refusal is
   # about the probe value.
