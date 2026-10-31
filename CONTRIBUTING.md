@@ -36,7 +36,7 @@ You need these:
 
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
-- Read access to the private repository `EmpoweredHouse/ehos-tools`. The engine takes its diagram
+- Read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its diagram
   generator from there, in `:dev` and `:test`, and the dashboard takes the design system, in
   `:dev`. Without access, `mix deps.get` fails in `packages/eh_os_contract` and
   `packages/eh_os_contract_web`, and the gate fails.
