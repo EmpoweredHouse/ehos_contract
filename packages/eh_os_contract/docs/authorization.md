@@ -9,7 +9,7 @@ record an event. This page explains how the pieces fit, and what is built today.
 roles; the application checks it on every call, locally, without asking EHOS.**
 
 The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
-pickers and each is granted one warehouse. [Scope](#scope) shows its
+pickers and each lead is granted one warehouse. [Scope](#scope) shows its
 domain and contract. The sandbox's `Fulfilment.Contracts.Warehouse` has more of the warehouse: there,
 pickers confirm and pack their pick lists.
 

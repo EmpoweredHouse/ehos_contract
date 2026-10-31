@@ -279,18 +279,19 @@ end
   runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
   ([`I4`](../refusals.md#refusals-i)). A command that invites several speakers to a workshop at once
-  emits one event for each speaker. The number of events grows with the list, so bound the list in
-  the decision or with a constraint of the command:
+  emits one event for each speaker. The number of events grows with the list, so the command bounds
+  the list with a constraint, and a scenario shows the refusal:
 
   <!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
   ```elixir
   command :invite_speakers, "Invite speakers",
     by: :organiser,
     emits: :speaker_invited,
-    rejects: :only_an_open_workshop,
+    rejects: [:only_an_open_workshop, :at_most_ten_speakers],
     from: :open,
     or_rejects: :only_an_open_workshop do
     field :speaker_ids, {:list, :id}
+    constraint :at_most_ten_speakers, "A workshop invites at most 10 speakers at once"
   end
 
   event :speaker_invited, "Speaker invited" do
@@ -301,8 +302,20 @@ end
   <!-- and in: Concepts.Units.Workshop -->
   ```elixir
   @impl true
+  def invite_speakers(%InviteSpeakers{speaker_ids: speakers}, _state) when length(speakers) > 10,
+    do: reject(:at_most_ten_speakers)
+
   def invite_speakers(%InviteSpeakers{workshop_id: workshop, speaker_ids: speakers}, _state),
     do: emit(for speaker <- speakers, do: %SpeakerInvited{workshop_id: workshop, speaker_id: speaker})
+  ```
+
+  <!-- and in: Concepts.Units.Contracts.Workshops -->
+  ```elixir
+  scenario "no more than 10 speakers are invited at once" do
+    given :places_offered, %{capacity: 20}
+    command :invite_speakers, %{speaker_ids: Enum.map(1..11, &"speaker-#{&1}")}
+    rejected :at_most_ten_speakers
+  end
   ```
 - **`evolve/2`** folds each event into the state, only when the unit declares a state beyond its
   identity. It runs over every event the stream will ever hold, so it only folds: no decision, no
