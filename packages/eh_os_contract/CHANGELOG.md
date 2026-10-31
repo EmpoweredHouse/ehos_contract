@@ -64,6 +64,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   L3, the rules between modules, is layer 4, and its L4, the implementation, is layer 3. Links change: `contract.md#refusals-<family>` is
   `refusals.md#refusals-<family>`, and `contract.md#process-modules` is `contract.md#write-a-process-module`.
   The `eh-os-contract` plugin's skills point at the new page, at 0.14.1.
+- **One overview page, and a getting-started page with each step's result** (#517).
+  `docs/introduction.md` tells what the engine does and does not do, with two diagrams: how a domain, a
+  contract and a process module fit together, and how the contract reaches the conformance report.
+  `docs/getting-started.md` now holds the installation, with its prerequisites, the result of each step
+  and a diagram of dispatch. The README is short and links to both. Links change: the README's sections
+  are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
+  `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
+  a master key, and what an erasure does not reach in backups, moved to `concepts/domain-data.md`.
 
 ### Fixed
 
