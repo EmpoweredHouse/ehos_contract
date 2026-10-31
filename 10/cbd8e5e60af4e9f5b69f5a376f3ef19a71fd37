@@ -1,0 +1,5 @@
+Pre-PR review of the four snippets on their pages, two rounds. Skills: code-review + ehos-dev:elixir (correctness; the fork ran in the other checkout, so the diff was reviewed by hand); engineering:code-review + ehos-dev:elixir (security/performance).
+Round 1 correctness: authorization.md claimed the sandbox has a recorded event - fixed (page model declares it); invite_speakers raised outside :open - fixed (from: :open, proven with ScenarioCase); @impl missing in snippet - fixed; process snippet repeated the module - fixed.
+Round 1 security: unbounded list in for - fixed (page says to bound it); JSON granted only the query - fixed; owner: :downstream for a read - no change needed (valid).
+Round 2: scoped picker implied a recording is narrowed by scope (it is not) - fixed (picker unscoped); invariant label named only call_off - fixed; 'invariant' vs constraint wording - fixed; 'fuller' sandbox wording - fixed.
+Gate sandbox mix check EXIT=0.
