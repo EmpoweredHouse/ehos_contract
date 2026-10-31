@@ -134,12 +134,14 @@ A person never *is* the application's code, so a person always comes through the
 
 ## The Authorizer
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract, authorizer: MyApp.Authorizer
 ```
 
 One callback:
 
+<!-- not compiled: the callback of a behaviour of the library -->
 ```elixir
 @callback authorize(EhOsContract.Actor.t(), EhOsContract.Authorizer.Request.t()) ::
             :ok | {:error, reason :: atom()}
@@ -186,6 +188,7 @@ end
 
 A query may be scoped by one field of its read model ([`D10`](refusals.md#refusals-d)):
 
+<!-- not compiled: declarations of a domain and a contract the page does not define -->
 ```elixir
 # in the domain
 actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
@@ -260,6 +263,7 @@ does.
 `EhOsContract.Plug` serves the commands, recordings and queries of the contracts it is given, under
 their capabilities:
 
+<!-- not compiled: a line of the host's router -->
 ```elixir
 # in the host's router, after the plug that verifies the credential
 forward "/api", EhOsContract.Plug, contracts: [Fulfilment.Contracts.Warehouse]
@@ -294,6 +298,7 @@ The plug is one door onto `EhOsContract.call/3`, and a host's other doors that c
 holding a person's credential or another API, call it the same way: the capability's name, the data as it
 was sent, the credential's actor.
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.call(
   {:command, "fulfilment.assign_pick_list"},
@@ -321,6 +326,7 @@ and the names of its values' invariants, so a page shows the form only to whom i
 
 ## Calling it from code
 
+<!-- not compiled: calls in the host's code -->
 ```elixir
 actor =
   EhOsContract.Actor.credential("u-81", ["fulfilment.assign_pick_list"],

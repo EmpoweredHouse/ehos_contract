@@ -9,6 +9,9 @@ defmodule EhOsContract.DocsTest do
     * every example that defines a module compiles, with the modules the same page
       defines before it, and passes the rules between modules — a page is read
       top to bottom, and so is it compiled;
+    * every example that defines no module, a snippet, compiles in the module of its
+      page that the comment above it names, or the comment says why it is not, and it
+      then parses and names only what the library has;
     * the table of refusals in `docs/refusals.md` names exactly the codes the
       library refuses with, and the layer that refuses each, each code asserted by
       a test in `test/dsl/`;
@@ -30,48 +33,331 @@ defmodule EhOsContract.DocsTest do
 
   defp read(path), do: File.read!(path)
 
-  # The ```elixir blocks of a page, in order.
-  defp blocks(page) do
-    ~r/^```elixir\n(.*?)^```/msu
-    |> Regex.scan(read(page), capture: :all_but_first)
-    |> List.flatten()
+  # The `elixir` blocks of a page, in order, as `%{line:, code:, marker:}`: the line of
+  # the opening fence, the code without the fence's indent, and the comment on the line
+  # above the fence.
+  defp elixir_blocks(page) do
+    {blocks, nil, _above} =
+      page
+      |> read()
+      |> String.split("\n")
+      |> Enum.with_index(1)
+      |> Enum.reduce({[], nil, ""}, fn
+        {line, number}, {blocks, nil, above} ->
+          case Regex.run(~r/^(\s*)```elixir\s*$/u, line) do
+            [_, indent] ->
+              {blocks, %{line: number, indent: indent, code: [], marker: marker(above)}, line}
+
+            nil ->
+              {blocks, nil, line}
+          end
+
+        {line, _number}, {blocks, block, _above} ->
+          if String.trim(line) == "```" do
+            code = block.code |> Enum.reverse() |> Enum.join("\n")
+            {[%{block | code: code} | blocks], nil, line}
+          else
+            {blocks,
+             %{block | code: [String.replace_prefix(line, block.indent, "") | block.code]}, line}
+          end
+      end)
+
+    Enum.reverse(blocks)
+  end
+
+  defp marker(line) do
+    case Regex.run(~r/^\s*<!--\s*(in|and in|not compiled):\s*(.*?)\s*-->\s*$/u, line) do
+      [_, "in", target] -> {:in, target}
+      [_, "and in", target] -> {:and_in, target}
+      [_, "not compiled", why] -> {:not_compiled, why}
+      nil -> nil
+    end
+  end
+
+  defp module_block?(block), do: block.code =~ ~r/^defmodule /mu
+
+  defp where(page, block), do: "#{page}:#{block.line}"
+
+  # A block's code, quoted with the lines it has on its page.
+  defp parse(page, block),
+    do: Code.string_to_quoted(block.code, file: page, line: block.line + 1)
+
+  defp modules(page) do
+    for block <- elixir_blocks(page), module_block?(block) do
+      {:ok, quoted} = parse(page, block)
+      quoted
+    end
+  end
+
+  # Compiles `modules` as the page `page` and runs the rules between modules: what
+  # fails, as lines. An example may call the host's own code, which does not exist
+  # here, so a warning is not a failure; an error is, and it is shown.
+  defp compile_problems(page, modules) do
+    {result, diagnostics} =
+      Code.with_diagnostics(fn ->
+        try do
+          {:ok, links([{page, {:__block__, [], modules}}])}
+        rescue
+          error -> {:error, error}
+        end
+      end)
+
+    case result do
+      {:ok, violations} ->
+        for v <- violations, do: "#{v.file}:#{v.line}: #{v.message}"
+
+      {:error, error} ->
+        errors =
+          for %{severity: :error} = d <- diagnostics,
+              do: "#{d.file}:#{inspect(d.position)}: #{d.message}"
+
+        ["does not compile: #{Exception.message(error)}" | errors]
+    end
   end
 
   for page <- @pages do
     test "the examples of #{page} compile and pass the rules between modules" do
-      source = unquote(page) |> blocks() |> Enum.filter(&(&1 =~ ~r/^defmodule /mu)) |> Enum.join()
+      modules = modules(unquote(page))
 
-      if source == "" do
+      if modules == [] do
         flunk("#{unquote(page)} has no example defining a module")
       end
 
-      # An example may call the host's own code, which does not exist here, so a
-      # warning is not a failure; an error is, and it is shown with the test's.
-      {result, diagnostics} =
-        Code.with_diagnostics(fn ->
-          try do
-            {:ok, links([{unquote(page), source}])}
-          rescue
-            error -> {:error, error}
-          end
-        end)
+      problems = compile_problems(unquote(page), modules)
+      assert problems == [], Enum.join(problems, "\n")
+    end
 
-      case result do
-        {:ok, violations} ->
-          assert violations == []
+    # A snippet is a block that defines no module. The comment on the line above it
+    # says where it belongs, `<!-- in: Lending.Contracts.Loans -->` or
+    # `<!-- in: Lending.Contracts.Loans, command :open_loan -->`, and it is compiled
+    # there with the page; `<!-- and in: … -->` puts it in place together with the
+    # snippet before it. Or the comment says why it is not compiled,
+    # `<!-- not compiled: … -->`.
+    test "the snippets of #{page} compile in the module they name" do
+      page = unquote(page)
+      modules = modules(page)
 
-        {:error, error} ->
-          errors =
-            for %{severity: :error} = d <- diagnostics,
-                do: "  #{d.file}:#{inspect(d.position)} #{d.message}"
+      problems =
+        for [block | _] = group <- page |> elixir_blocks() |> groups(),
+            problem <- snippet_problems(page, group, modules) do
+          "#{where(page, block)}: #{problem}"
+        end
 
-          flunk(
-            "#{unquote(page)} does not compile: #{Exception.message(error)}\n" <>
-              Enum.join(errors, "\n")
-          )
-      end
+      assert problems == [], Enum.join(problems, "\n\n")
     end
   end
+
+  # The blocks of a page, each with the `and in:` snippets that follow it.
+  defp groups(blocks) do
+    Enum.chunk_while(
+      blocks,
+      [],
+      fn
+        %{marker: {:and_in, _}} = block, group -> {:cont, group ++ [block]}
+        block, [] -> {:cont, [block]}
+        block, group -> {:cont, group, [block]}
+      end,
+      fn
+        [] -> {:cont, []}
+        group -> {:cont, group, []}
+      end
+    )
+  end
+
+  defp snippet_problems(page, [block | others], modules) do
+    stray? =
+      match?({:and_in, _}, block.marker) or
+        (others != [] and (module_block?(block) or not match?({:in, _}, block.marker)))
+
+    case {module_block?(block), block.marker} do
+      _stray when stray? ->
+        ["an `and in:` snippet follows a block that is not marked `in:`"]
+
+      {true, nil} ->
+        []
+
+      {true, _marker} ->
+        ["a block that defines a module is compiled with its page, and takes no marker"]
+
+      {false, nil} ->
+        [
+          "say on the line above the block where it belongs, `<!-- in: Module -->` or " <>
+            "`<!-- in: Module, command :name -->`, or why it is not compiled, " <>
+            "`<!-- not compiled: ... -->`"
+        ]
+
+      {false, {:not_compiled, _why}} ->
+        unknown_calls(page, block)
+
+      {false, {:in, _target}} ->
+        result =
+          Enum.reduce_while([block | others], {:ok, modules}, fn block, {:ok, modules} ->
+            {_kind, target} = block.marker
+
+            with {:ok, snippet} <- parse(page, block),
+                 {:ok, modules} <- insert(modules, target, exprs(snippet)) do
+              {:cont, {:ok, modules}}
+            else
+              error -> {:halt, error}
+            end
+          end)
+
+        case result do
+          {:ok, modules} -> compile_problems(page, modules)
+          {:error, problem} when is_binary(problem) -> [problem]
+          {:error, problem} -> ["does not parse: #{inspect(problem)}"]
+        end
+    end
+  end
+
+  # `modules` with the snippet put in the module `target` names, or in the declaration
+  # of that module it names after a comma.
+  defp insert(modules, target, snippet) do
+    [module | declaration] = String.split(target, ",", parts: 2)
+    module = Module.concat([String.trim(module)])
+    declaration = for d <- declaration, do: d |> Code.string_to_quoted!() |> key()
+
+    {modules, placed} =
+      Enum.map_reduce(modules, 0, fn quoted, placed ->
+        Macro.prewalk(quoted, placed, fn
+          {:defmodule, _, [{:__aliases__, _, parts}, _]} = node, placed ->
+            case Module.concat(parts) == module && place(node, declaration, snippet) do
+              {:ok, node} -> {node, placed + 1}
+              _not_here -> {node, placed}
+            end
+
+          node, placed ->
+            {node, placed}
+        end)
+      end)
+
+    if placed == 1,
+      do: {:ok, modules},
+      else: {:error, "the page has no one #{target}, with a do block, to put the snippet in"}
+  end
+
+  defp place(module, [], snippet) do
+    if body = with_body(module, &merge(&1, snippet)), do: {:ok, body}, else: :error
+  end
+
+  defp place(module, [key], snippet) do
+    {module, found} =
+      Macro.prewalk(module, 0, fn node, found ->
+        with true <- key(node) == key, {_, _, _} = node <- with_body(node, &merge(&1, snippet)) do
+          {node, found + 1}
+        else
+          _other -> {node, found}
+        end
+      end)
+
+    if found == 1, do: {:ok, module}, else: :error
+  end
+
+  defp with_body({kind, meta, args}, fun) when is_list(args) and args != [] do
+    case List.last(args) do
+      [{:do, body} | rest] -> {kind, meta, List.replace_at(args, -1, [{:do, fun.(body)} | rest])}
+      _other -> nil
+    end
+  end
+
+  defp with_body(_node, _fun), do: nil
+
+  # The snippet's declarations take the place of the body's declarations of the same
+  # key, at the first of them, or go to the end of the body.
+  defp merge(body, snippet) do
+    keys = for expr <- snippet, key = key(expr), do: key
+    body = exprs(body)
+    {before, rest} = Enum.split_while(body, &(key(&1) not in keys))
+    {:__block__, [], before ++ snippet ++ Enum.reject(rest, &(key(&1) in keys))}
+  end
+
+  defp exprs({:__block__, _, exprs}), do: exprs
+  defp exprs(expr), do: [expr]
+
+  # What tells a declaration from its siblings: its kind and its name. A function is
+  # named by its name alone, so a snippet's clauses take the place of all of the
+  # body's; a declaration with no name, as `state do … end`, by its kind.
+  defp key({kind, _, [{:when, _, [{name, _, _} | _]} | _]}) when kind in [:def, :defp],
+    do: {kind, name}
+
+  defp key({kind, _, [{name, _, _} | _]}) when kind in [:def, :defp], do: {kind, name}
+  defp key({kind, _, [[{:do, _} | _]]}) when is_atom(kind), do: {kind, nil}
+
+  defp key({kind, _, [name | _]})
+       when is_atom(kind) and kind not in [:@, :__aliases__, :., :%{}, :{}],
+       do: {kind, Macro.prewalk(name, &Macro.update_meta(&1, fn _ -> [] end))}
+
+  defp key(_expr), do: nil
+
+  @typespecs [:type, :typep, :opaque, :spec, :callback, :macrocallback]
+
+  # A snippet that is not compiled is still read: it parses, and each module of the
+  # library it names is there, with each function, macro or type it calls.
+  defp unknown_calls(page, block) do
+    # A line of a keyword list, as `compilers: …` of a `mix.exs`, parses inside one.
+    parsed =
+      with {:error, _} = error <- parse(page, block),
+           {:error, _} <- parse(page, %{block | code: "[#{block.code}]"}),
+           do: error
+
+    case parsed do
+      {:ok, quoted} ->
+        {_quoted, unknown} = Macro.prewalk(quoted, [], &unknown_call/2)
+        for name <- unknown |> Enum.reverse() |> Enum.uniq(), do: "#{name} is not in the library"
+
+      {:error, error} ->
+        ["does not parse: #{inspect(error)}"]
+    end
+  end
+
+  defp unknown_call({:@, _, [{attribute, _, [spec]}]}, unknown) when attribute in @typespecs do
+    {_spec, unknown} = Macro.prewalk(spec, unknown, &unknown_type/2)
+    {:read, unknown}
+  end
+
+  defp unknown_call(
+         {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args} = node,
+         unknown
+       ) do
+    module = Module.concat(parts)
+    arity = length(args)
+
+    if Code.ensure_loaded?(module) and
+         (function_exported?(module, name, arity) or macro_exported?(module, name, arity)),
+       do: {node, unknown},
+       else: {node, ["#{inspect(module)}.#{name}/#{arity}" | unknown]}
+  end
+
+  defp unknown_call({:__aliases__, _, [:EhOsContract | _] = parts} = node, unknown) do
+    module = Module.concat(parts)
+    if Code.ensure_loaded?(module), do: {node, unknown}, else: {node, [inspect(module) | unknown]}
+  end
+
+  defp unknown_call(node, unknown), do: {node, unknown}
+
+  defp unknown_type(
+         {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args} = node,
+         unknown
+       ) do
+    module = Module.concat(parts)
+
+    known =
+      case Code.Typespec.fetch_types(module) do
+        {:ok, types} ->
+          Enum.any?(types, fn {_kind, {type, _, params}} ->
+            type == name and length(params) == length(args)
+          end)
+
+        :error ->
+          false
+      end
+
+    if known,
+      do: {node, unknown},
+      else: {node, ["#{inspect(module)}.#{name}/#{length(args)} (a type)" | unknown]}
+  end
+
+  defp unknown_type(node, unknown), do: {node, unknown}
 
   # Where a code is refused decides its layer, by the name `docs/refusals.md` gives it:
   # the rules of one module, the rules between modules, the implementation macros.

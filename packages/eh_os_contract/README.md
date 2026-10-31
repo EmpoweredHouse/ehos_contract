@@ -33,6 +33,7 @@ and the concepts explain each kind of declaration, from [the domain](docs/concep
 Not on Hex yet, so from git. The package lives in a subdirectory of its repository,
 hence `sparse:`; `mix.lock` pins the commit.
 
+<!-- not compiled: a function of the host's mix.exs -->
 ```elixir
 def deps do
   [
@@ -69,6 +70,7 @@ the upgrade is another generated migration rather than an edit to the one above.
 
 Then tell EhOsContract which applications hold your contracts, and which repo to use:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract,
   applications: [:my_app],
@@ -78,6 +80,7 @@ config :eh_os_contract,
 The rules between a contract, its domain and its siblings are a Mix compiler, because those
 references record no compile dependency. Register it after Elixir's, in `mix.exs`:
 
+<!-- not compiled: a line of the host's mix.exs -->
 ```elixir
 compilers: Mix.compilers() ++ [:eh_os_contract]
 ```
@@ -86,6 +89,7 @@ And add EhOsContract to your supervision tree, after the repo and Oban. At boot 
 scans the running binary for contracts and their implementations and records which
 contract version is deployed; without it the report has nothing to compare against.
 
+<!-- not compiled: the host's supervision tree -->
 ```elixir
 children = [
   MyApp.Repo,
@@ -99,6 +103,7 @@ The child is a supervisor: it also starts one runner per consumer a contract fee
 from the log after the transaction. A test cannot use those runners, because they would
 not see the rows of its sandbox transaction, so in `config/test.exs`:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract, subscriptions: :manual
 ```
@@ -116,6 +121,7 @@ encrypted in the log, each subject under its own data key, and the data keys wra
 master key. Give the master keys in `config/runtime.exs`, 32 bytes each in Base64, the
 current one first:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract, EhOsContract.Vault,
   keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
@@ -132,6 +138,7 @@ goes behind the `EhOsContract.Vault` behaviour: `config :eh_os_contract, vault: 
 
 To erase a subject, that is, a person who asked for their data to be removed:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.erase(:member, "member-17", actor: actor)
 ```
@@ -236,6 +243,7 @@ end
 
 and a command goes through dispatch, with the actor your application authenticated:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias MyApp.Contracts.Onboarding
 

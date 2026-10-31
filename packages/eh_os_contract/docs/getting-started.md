@@ -10,6 +10,7 @@ and the first check and report.
 The dependency, the migration, the compiler and the place in the supervision tree are in
 [the README](../README.md). The 2 settings every application needs:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract,
   applications: [:my_app],
@@ -120,6 +121,7 @@ its name. [Scenarios](concepts/scenarios.md) says what each part of one asserts.
 
 From the application's own code, with the actor it authenticated:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias GettingStarted.Contracts.Loans
 
@@ -141,6 +143,7 @@ erasure belongs to no piece of work and sets none, nor does an identifier that i
 from another application's message for instance: the metadata stays as it was. Name it in the formatter's metadata to write it on each
 line, so one piece of work can be read across applications:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :logger, :default_formatter, metadata: [:request_id, :correlation_id]
 ```

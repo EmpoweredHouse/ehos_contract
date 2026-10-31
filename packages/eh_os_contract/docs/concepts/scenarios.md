@@ -158,6 +158,7 @@ end
 
 The test that runs every scenario of the contract is one line, in a test module of the application:
 
+<!-- not compiled: a line of the host's test module -->
 ```elixir
 use EhOsContract.ScenarioCase, contract: Concepts.Scenarios.Contracts.Loans
 ```
@@ -205,6 +206,7 @@ rule it `rejects:`, or an invariant of a domain value one of its fields holds, i
 and an outcome the declaration cannot produce does not compile ([`S6`](../refusals.md#refusals-s)). A key typed by a value whose
 invariant refuses "2026-13" shows it so:
 
+<!-- not compiled: a scenario of a contract the page does not define -->
 ```elixir
 scenario "a payment is not asked for a period that is no month" do
   command :request_payment, %{subscription_id: "sub-1", period_id: "2026-13", amount: 2_200}
