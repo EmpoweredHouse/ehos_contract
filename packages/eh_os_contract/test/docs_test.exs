@@ -37,7 +37,7 @@ defmodule EhOsContract.DocsTest do
   # the opening fence, the code without the fence's indent, and the comment on the line
   # above the fence.
   defp elixir_blocks(page) do
-    {blocks, nil, _above} =
+    {blocks, open, _above} =
       page
       |> read()
       |> String.split("\n")
@@ -62,6 +62,7 @@ defmodule EhOsContract.DocsTest do
           end
       end)
 
+    if open, do: flunk("#{page}:#{open.line}: the block is not closed")
     Enum.reverse(blocks)
   end
 
@@ -84,8 +85,10 @@ defmodule EhOsContract.DocsTest do
 
   defp modules(page) do
     for block <- elixir_blocks(page), module_block?(block) do
-      {:ok, quoted} = parse(page, block)
-      quoted
+      case parse(page, block) do
+        {:ok, quoted} -> quoted
+        {:error, error} -> flunk("#{where(page, block)} does not parse: #{inspect(error)}")
+      end
     end
   end
 
@@ -167,7 +170,8 @@ defmodule EhOsContract.DocsTest do
   defp snippet_problems(page, [block | others], modules) do
     stray? =
       match?({:and_in, _}, block.marker) or
-        (others != [] and (module_block?(block) or not match?({:in, _}, block.marker)))
+        (others != [] and (module_block?(block) or not match?({:in, _}, block.marker))) or
+        Enum.any?(others, &module_block?/1)
 
     case {module_block?(block), block.marker} do
       _stray when stray? ->
@@ -202,8 +206,11 @@ defmodule EhOsContract.DocsTest do
             end
           end)
 
+        # A call to the library that is not there is only a warning of the compiler.
+        unknown = Enum.flat_map([block | others], &unknown_calls(page, &1))
+
         case result do
-          {:ok, modules} -> compile_problems(page, modules)
+          {:ok, modules} -> unknown ++ compile_problems(page, modules)
           {:error, problem} when is_binary(problem) -> [problem]
           {:error, problem} -> ["does not parse: #{inspect(problem)}"]
         end
@@ -215,7 +222,7 @@ defmodule EhOsContract.DocsTest do
   defp insert(modules, target, snippet) do
     [module | declaration] = String.split(target, ",", parts: 2)
     module = Module.concat([String.trim(module)])
-    declaration = for d <- declaration, do: d |> Code.string_to_quoted!() |> key()
+    declaration = for d <- declaration, do: d |> Code.string_to_quoted() |> elem(1) |> key()
 
     {modules, placed} =
       Enum.map_reduce(modules, 0, fn quoted, placed ->
@@ -262,8 +269,8 @@ defmodule EhOsContract.DocsTest do
 
   defp with_body(_node, _fun), do: nil
 
-  # The snippet's declarations take the place of the body's declarations of the same
-  # key, at the first of them, or go to the end of the body.
+  # The snippet takes the place of the body's declarations of the same key as one of
+  # its own, at the first of them, or goes to the end of the body if it replaces none.
   defp merge(body, snippet) do
     keys = for expr <- snippet, key = key(expr), do: key
     body = exprs(body)
@@ -291,8 +298,9 @@ defmodule EhOsContract.DocsTest do
 
   @typespecs [:type, :typep, :opaque, :spec, :callback, :macrocallback]
 
-  # A snippet that is not compiled is still read: it parses, and each module of the
-  # library it names is there, with each function, macro or type it calls.
+  # A snippet is read for what it names of the library, by its full name: each module
+  # is there, with each function, macro or type it calls. One that is not compiled is
+  # read only so, and has to parse.
   defp unknown_calls(page, block) do
     # A line of a keyword list, as `compilers: …` of a `mix.exs`, parses inside one.
     parsed =
@@ -315,18 +323,29 @@ defmodule EhOsContract.DocsTest do
     {:read, unknown}
   end
 
+  # A call piped into takes one argument more than it shows; a capture names its arity.
   defp unknown_call(
-         {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args} = node,
+         {:|>, meta,
+          [left, {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args}]},
          unknown
-       ) do
-    module = Module.concat(parts)
-    arity = length(args)
+       ),
+       do: {{:|>, meta, [left, args]}, unknown_function(parts, name, length(args) + 1, unknown)}
 
-    if Code.ensure_loaded?(module) and
-         (function_exported?(module, name, arity) or macro_exported?(module, name, arity)),
-       do: {node, unknown},
-       else: {node, ["#{inspect(module)}.#{name}/#{arity}" | unknown]}
-  end
+  defp unknown_call(
+         {:&, _,
+          [
+            {:/, _,
+             [{{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, []}, arity]}
+          ]},
+         unknown
+       ),
+       do: {:read, unknown_function(parts, name, arity, unknown)}
+
+  defp unknown_call(
+         {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args},
+         unknown
+       ),
+       do: {args, unknown_function(parts, name, length(args), unknown)}
 
   defp unknown_call({:__aliases__, _, [:EhOsContract | _] = parts} = node, unknown) do
     module = Module.concat(parts)
@@ -334,6 +353,15 @@ defmodule EhOsContract.DocsTest do
   end
 
   defp unknown_call(node, unknown), do: {node, unknown}
+
+  defp unknown_function(parts, name, arity, unknown) do
+    module = Module.concat(parts)
+
+    if Code.ensure_loaded?(module) and
+         (function_exported?(module, name, arity) or macro_exported?(module, name, arity)),
+       do: unknown,
+       else: ["#{inspect(module)}.#{name}/#{arity}" | unknown]
+  end
 
   defp unknown_type(
          {{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, args} = node,
