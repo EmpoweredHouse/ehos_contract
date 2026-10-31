@@ -147,7 +147,6 @@ defmodule Concepts.Process.Processes.Loan do
     from :copy_written_off
     eventually :fine_charged
     within {7, :day}
-    waits_on [:catalogue]
   end
 end
 ```
@@ -199,7 +198,8 @@ A promise is what the process owner agreed happens in a run: after one event, an
   3 months late is not kept.
 - `waits_on` names the external systems the promise waits on through an earlier step, when neither
   `eventually` nor `or_else` calls them itself. The library charges for a lost copy only after it asks the
-  catalogue for the price of the copy. The charge itself does not call the catalogue:
+  catalogue for the price of the copy, through the effect `ask_price`. The charge itself does not call the
+  catalogue, so the promise names it:
 
   <!-- in: Concepts.Process.Processes.Loan -->
   ```elixir

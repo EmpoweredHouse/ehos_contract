@@ -10,7 +10,8 @@ roles; the application checks it on every call, locally, without asking EHOS.**
 
 The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
 pickers and each is granted one warehouse. [Scope](#scope) shows its
-domain and contract; the sandbox's `Fulfilment.Contracts.Warehouse` is a fuller one, with a recorded event.
+domain and contract. The sandbox's `Fulfilment.Contracts.Warehouse` is a fuller one, in which pickers
+confirm and pack their pick lists.
 
 Three places, each answering its own question:
 
@@ -200,6 +201,7 @@ defmodule Fulfilment.Domain do
   context :warehouse, "Warehouse", subdomain: :core
 
   actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+  actor :picker, :human, "Picker", scope: [:warehouse_id]
 end
 
 defmodule Fulfilment.Contracts.Warehouse do
@@ -221,6 +223,8 @@ defmodule Fulfilment.Contracts.Warehouse do
     event :assigned, "Pick list assigned" do
       field :picker_id, :id
     end
+
+    event :shelf_found_empty, "Shelf found empty", recorded_by: :picker
   end
 
   read_model :open_pick_lists, "Open pick lists", projects: [:assigned] do
@@ -243,8 +247,11 @@ EHOS binds the role with values, and the credential carries them:
 
 ```json
 {
-  "cap": ["fulfilment.open_pick_lists_for_warehouse"],
-  "scp": {"fulfilment.open_pick_lists_for_warehouse": {"warehouse_id": ["7"]}}
+  "cap": ["fulfilment.assign_pick_list", "fulfilment.open_pick_lists_for_warehouse"],
+  "scp": {
+    "fulfilment.assign_pick_list": {"warehouse_id": ["7"]},
+    "fulfilment.open_pick_lists_for_warehouse": {"warehouse_id": ["7"]}
+  }
 }
 ```
 

@@ -279,11 +279,17 @@ end
   runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
   ([`I4`](../refusals.md#refusals-i)). A command that invites several speakers to a workshop at once
-  emits one event for each speaker:
+  emits one event for each speaker. The number of events grows with the list, so bound the list in
+  the decision or with an invariant:
 
   <!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
   ```elixir
-  command :invite_speakers, "Invite speakers", by: :organiser, emits: :speaker_invited do
+  command :invite_speakers, "Invite speakers",
+    by: :organiser,
+    emits: :speaker_invited,
+    rejects: :only_an_open_workshop,
+    from: :open,
+    or_rejects: :only_an_open_workshop do
     field :speaker_ids, {:list, :id}
   end
 
@@ -294,6 +300,7 @@ end
 
   <!-- and in: Concepts.Units.Workshop -->
   ```elixir
+  @impl true
   def invite_speakers(%InviteSpeakers{workshop_id: workshop, speaker_ids: speakers}, _state),
     do: emit(for speaker <- speakers, do: %SpeakerInvited{workshop_id: workshop, speaker_id: speaker})
   ```
