@@ -1,0 +1,5 @@
+Review of #517 step 3 (the domain pages), by ehos-dev:pre-pr-review, two reviews in two rounds.
+Correctness: code-review (high), ehos-dev:elixir, ehos-dev:voice, ehos-dev:diagrams. Security and performance: ehos-dev:elixir; engineering:code-review not in this session, worked by .claude/review.md.
+Round 1: 16 correctness and 12 security findings. Fixed all but: how-tos in docs/concepts (kept by the stage), the page list in docs.ex and mix.exs (docs_test holds them equal), the KMS example's comments (host example): no change needed.
+Round 2: 10 correctness and 9 security findings on the fixes, all fixed (rewrap with the old configuration, context binding overclaimed, causes of a raise, key destruction policy, restore of the key and erasure tables, one statement of unit access, form's meaning). Skipped: the Vault and rewrap moduledocs lack the key-id check; issue drafted, to file with the user's go-ahead.
+Gate: mix check in sandbox/ EXIT=0 at 3a1a99db; mix ehos_diagrams.gen --check: 8 diagrams up to date; docs and prose tests 65, 0 failures.
