@@ -1,0 +1,6 @@
+Two reviews, two rounds (#521).
+Round 1, correctness (code-review high): no blocking finding; the copies can drift (skipped, #525); the oldest choice was tied to the toolchain (fixed d9c78043); only the engine step pointed at docs.yml (fixed d9c78043); a run by hand reads its branch entries, unsaid (fixed d9c78043); compiled deps cold (skipped, #525).
+Round 1, security (engineering:code-review): no finding; drift (skipped, #525); older entries cannot match, unsaid (fixed d9c78043).
+Round 2, correctness: no defect; matrix rename unflagged (fixed b456338c); orphaned wrap words (fixed b456338c).
+Round 2, security: the trust sentence named who runs, not who saves, and left out tags (fixed b456338c); matrix pointer (fixed b456338c); "either entry would do" on pull requests (no change needed: docs.yml never reads a pull request scope, confirmed by the correctness review).
+Gate EXIT=0 at b456338c; actionlint 0.
