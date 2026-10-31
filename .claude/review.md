@@ -34,7 +34,8 @@ to:
   `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
   holds the refusal table of `packages/eh_os_contract/docs/refusals.md` to the code, and checks the
   links of every ExDoc extra, the package's `CHANGELOG.md` included;
-- `mix ehos_diagrams.gen --check` in `packages/eh_os_contract` holds the diagrams in `docs/img/` to
+- `mix ehos_diagrams.gen --check` in `packages/eh_os_contract`, run in `:dev` by the gate where the
+  private ehos-tools is fetched and by CI's `diagrams` job, holds the diagrams in `docs/img/` to
   their sources in `docs/diagrams/`, their labels to the glossary, and the pages to no Mermaid;
 - `packages/eh_os_contract/test/dsl/contract_examples_test.exs` compiles the examples of
   `docs/adr/contract-v2.md`;

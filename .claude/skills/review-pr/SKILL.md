@@ -41,7 +41,7 @@ Given a green gate, three things are closed:
 - **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
   `packages/eh_os_contract/docs/contract.md`'s examples and `packages/eh_os_contract/docs/refusals.md`'s table against
   the code (`test/docs_test.exs`), and the diagrams in `packages/eh_os_contract/docs/img/` against their sources
-  (`mix ehos_diagrams.gen --check`).
+  (`mix ehos_diagrams.gen --check`, in `:dev`: CI's `diagrams` job, and the gate where ehos-tools is fetched).
 - **The docs are complete and most of their references resolve**: every public function of each package's
   `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
   a `@doc false` function is not held to a `@spec`, though `CLAUDE.md` still asks for one); and no doc
