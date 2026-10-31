@@ -103,8 +103,8 @@ end
 The compiler refuses a value with both a type and fields, or with neither. It refuses a `unit` on a
 value that is not an `:integer` or a `:decimal` ([`D3`](refusals.md#refusals-d)).
 
-Give each value a `label:`, and write each member of an enum with its label: `card: "Card"`. If you
-do not, the check gives a notice (`owner-view-without-label`). A person who reads the model then
+Give each value a `label:`, and write each member of an enum with its label: `city: "City bike"`. If
+you do not, the check gives a notice (`owner-view-without-label`). A person who reads the model then
 sees the name from the code.
 
 A field of a value can be personal. Then the field holds personal data in each place that uses the
@@ -117,8 +117,8 @@ struct enforces the required fields. So `%Address{street: "Main 1"}` without a `
 compile.
 
 The engine gives this struct in each place where the value occurs. Examples: a command, an event,
-the state of a unit, the rows of a form, the `Row` of a read model. Build the value as its struct in a decision
-or a reaction. A map with the same keys is not the value:
+the state of a unit, the rows of a form, the `Row` of a read model. Build the value as its struct in
+a decision or a reaction. A map with the same keys is not the value:
 
 - Dispatch refuses a command that carries a map, with the field and `:type`.
 - Dispatch raises an exception for an event that a decision returns with a map.

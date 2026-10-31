@@ -121,15 +121,16 @@ Example: the term "Ausleihe" with `translation :en, "Loan"` has the word in code
 
 `mix eh_os_contract.glossary` shows, under each term, its word in code and the declarations that use
 it. It also shows each process module that includes events of the context and uses the word. The
-word can be in the id, the stages, the promises or the `correlate` fields of the process module. `mix eh_os_contract.check` reads the names of units, read models and fields in two directions:
+word can be in the id, the stages, the promises or the `correlate` fields of the process module.
+
+`mix eh_os_contract.check` reads the names of units, read models and fields in two directions:
 
 - It lists the words of a context that no term covers, as one notice for each context
   (`word-without-term`). The word that the most names use comes first. It ignores words of 1 or 2
   letters, such as `id`, and the names of commands and events.
 - It warns about a name that uses the word of a term of another context. It does not warn when a
   term of its own context covers the word (`term-of-another-context`). Define the word in this
-  context too, or
-  rename the field.
+  context too, or rename the field.
 
 Both rules ignore the part of a field name that names its value type. Example: in a field
 `:office_nip` of the type `:nip`, the word "nip" belongs to the value, not to a context. The second

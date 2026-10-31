@@ -146,13 +146,20 @@ cannot read what the new nodes write, until the rollout ends.
   table.
 - **A read model that has not read the erasure yet.** A read model delivered `:at_least_once` keeps
   the plain text until its subscription reads `subject_erased`. If the subscription stops, the
-  data stays. `mix eh_os_contract.subscriptions` shows where each subscription is.
+  data stays. `mix eh_os_contract.subscriptions` shows where each subscription is. If `--skip`
+  moves the subscription past the erasure, the copy stays until `--reset` rebuilds the read model.
 
-So [change the master key](#rotate-a-master-key), and then destroy the old key, at an interval that
-is not longer than the time that you keep backups. Do not destroy a master key that still wraps a data
-key. If you do, the personal data of each subject whose key it wraps becomes unreadable. Or keep the table of subject keys out of the backups of the log. Each choice has a cost: a
-backup older than a destroyed master key cannot unwrap the data of any subject. A backup restored
-without the subject keys cannot either.
+To limit what a backup can read, do one of these:
+
+- [Change the master key](#rotate-a-master-key), and then destroy the old key. Do this at an interval
+  that is not longer than the time that you keep backups.
+- Keep the table of subject keys out of the backups of the log.
+
+Each choice has a cost: a backup older than a destroyed master key cannot unwrap the data of any
+subject. A backup restored without the subject keys cannot either.
+
+Do not destroy a master key that still wraps a data key. If you do, the personal data of each subject
+whose key it wraps becomes unreadable.
 
 ## Why can an erasure make other appends wait?
 

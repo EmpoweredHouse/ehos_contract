@@ -261,9 +261,11 @@ data with the types of JSON. Send the text of a form through `Form` first.
 
 ## Show a form only to the people who can use it
 
-Show the form only to a person whose actor can issue the command. A form does not ask the
+Show the form only to a person whose actor can issue the command. The actor of a credential carries
+its capabilities: `"forms_example.issue_invoice" in actor.capabilities`. A form does not ask the
 `EhOsContract.Authorizer`: it checks only the shape that the contract declares. Dispatch asks if the
-person can issue the command, when the form is sent.
+person can issue the command, when the form is sent. For a scoped command, only dispatch checks the
+values of the scope.
 
 A form also does not hold the person to one unit. The `EhOsContract.Authorizer` and your application
 decide who can act on which unit.
