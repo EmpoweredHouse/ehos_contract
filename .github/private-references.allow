@@ -1,5 +1,6 @@
 .github/workflows/ci.yml:          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
 .github/workflows/ci.yml:          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
 packages/eh_os_contract/mix.exs:       github: "EmpoweredHouse/ehos-tools",
+packages/eh_os_contract/mix.exs:       github: "EmpoweredHouse/ehos-tools",
 packages/eh_os_contract/mix.lock:  "ehos_design": {:git, "https://github.com/EmpoweredHouse/ehos-tools.git", "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0", [sparse: "packages/ehos_design", ref: "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0"]},
 packages/eh_os_contract/mix.lock:  "ehos_diagrams": {:git, "https://github.com/EmpoweredHouse/ehos-tools.git", "2198050364cee447b66b010ac31dfd6df9c9262e", [sparse: "packages/ehos_diagrams", ref: "2198050364cee447b66b010ac31dfd6df9c9262e"]},

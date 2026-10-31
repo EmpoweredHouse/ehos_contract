@@ -288,6 +288,7 @@ jobs:
         with:
           persist-credentials: false
 
+      # The `oldest` pair of the `check` job's matrix.
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "27.2"
@@ -310,7 +311,7 @@ jobs:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
           GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
-        run: mix deps.get
+        run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check
         working-directory: packages/eh_os_contract

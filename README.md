@@ -256,6 +256,11 @@ separate project — the engine's includes `eh_os_contract.docs --check` and `eh
 matters because `boundary` reports module-boundary violations as warnings, so without that flag the
 boundaries below would be documentation rather than a check.
 
+Each package fetches its own dependencies. Fetch the engine's and the dashboard's with `mix deps.get --only test`:
+their `:dev` dependencies come from a private repository. The gate needs nothing more. Where a maintainer has
+access, `mix deps.get` in `packages/eh_os_contract` also fetches the diagram generator, and the gate then checks the
+engine's diagrams.
+
 | Task | Does |
 | --- | --- |
 | `mix eh_os_contract.check` | whole-program checks over the contracts and their implementations, each finding under a stable name |

@@ -6,7 +6,9 @@ assistant; a host reads the pages themselves, on hexdocs or in `docs/`. This fil
 
 Most of it you do not have to remember. `mix check` (in `sandbox/`, or in this package) fails when the
 documentation and the code disagree, and the failure says what to run or write. The table below is what each
-failure asks of you.
+failure asks of you. The diagram check is the exception: its generator is a `:dev` dependency from a private
+repository, so this package's `mix check` does not run it. The gate in `sandbox/` runs it where `mix deps.get`
+fetched the generator, and CI runs it in its `diagrams` job.
 
 ## Two kinds of page
 

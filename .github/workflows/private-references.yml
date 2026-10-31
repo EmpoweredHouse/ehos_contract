@@ -17,11 +17,12 @@ name: private-references
 #
 # Allowed line by line, not file by file (#520): each line of
 # .github/private-references.allow is `<path>:<line>`, exactly as `git grep` prints a
-# hit. It holds the lines that fetch the engine's ehos_diagrams and ehos_design, which
-# draw its pages' diagrams: their `github:` in mix.exs, their entries in mix.lock, and
-# the token in ci.yml's `diagrams` job. Any other line of those files that names a
-# private repository fails, and so does a changed one: a new pin of either dependency
-# changes its mix.lock line, which goes into the allowlist in the same pull request.
+# hit, once for each time the line may occur. It holds the lines that fetch the engine's
+# ehos_diagrams and ehos_design, which draw its pages' diagrams: their `github:` in
+# mix.exs, their entries in mix.lock, and the token in ci.yml's `diagrams` job. Any
+# other line that names a private repository fails, and so do a changed line and one
+# more copy of an allowed line: a new pin of either dependency changes its mix.lock
+# line, which goes into the allowlist in the same pull request.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -52,7 +53,10 @@ jobs:
               ':!.claude/settings.team.json' \
               ':!.github/workflows/private-references.yml' \
               ':!.github/private-references.allow') || [ $? -eq 1 ]
-          left=$(printf '%s\n' "$found" | grep -v -x -F -f .github/private-references.allow) || [ $? -eq 1 ]
+          # Each hit takes one allowed line of the same text; what has none is left.
+          [ -f .github/private-references.allow ]
+          left=$(LC_ALL=C comm -23 <(printf '%s\n' "$found" | sed '/^$/d' | LC_ALL=C sort) \
+            <(LC_ALL=C sort .github/private-references.allow))
           if [ -n "$left" ]; then
             printf '%s\n' "$left"
             echo "::error::A link, a decision code or a path above points into a private repository. Say what it meant instead: a pull request or issue of this repository, or the meaning in words."
