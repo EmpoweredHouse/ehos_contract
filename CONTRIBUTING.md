@@ -37,11 +37,29 @@ You need these:
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
 - Read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its diagram
-  generator from there, in `:dev` and `:test`, and the dashboard takes the design system, in
-  `:dev`. Without access, `mix deps.get` fails in `packages/eh_os_contract` and
-  `packages/eh_os_contract_web`, and the gate fails.
+  generator from there, in `:dev` and `:test`. Without access, `mix deps.get` fails in
+  `packages/eh_os_contract`, and the gate fails.
 
-From the root of the repository:
+The gate runs the `mix check` of each package in that package, so each package needs its own
+dependencies. From the root of the repository, fetch them as CI does:
+
+```bash
+(cd packages/eh_os_contract && mix deps.get)
+```
+
+```bash
+(cd packages/eh_os_contract_web && mix deps.get --only test)
+```
+
+```bash
+(cd packages/eh_os_contract_auth && mix deps.get)
+```
+
+```bash
+(cd packages/eh_os_contract_graph && mix deps.get)
+```
+
+Then start PostgreSQL and run the gate:
 
 ```bash
 docker compose up -d
