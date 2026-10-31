@@ -278,12 +278,24 @@ end
   workshop's `call_off` needs no refusal of its own: dispatch refuses it outside `:open` before it
   runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
-  ([`I4`](../refusals.md#refusals-i)). A command seating a whole group at once would read:
+  ([`I4`](../refusals.md#refusals-i)). A command that invites several speakers to a workshop at once
+  emits one event for each speaker:
 
-  <!-- not compiled: a command the page does not declare -->
+  <!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
   ```elixir
-  def seat_group(%SeatGroup{workshop_id: workshop, attendee_ids: attendees}, _state),
-    do: emit(for attendee <- attendees, do: %SeatTaken{workshop_id: workshop, attendee_id: attendee})
+  command :invite_speakers, "Invite speakers", by: :organiser, emits: :speaker_invited do
+    field :speaker_ids, {:list, :id}
+  end
+
+  event :speaker_invited, "Speaker invited" do
+    field :speaker_id, :id
+  end
+  ```
+
+  <!-- and in: Concepts.Units.Workshop -->
+  ```elixir
+  def invite_speakers(%InviteSpeakers{workshop_id: workshop, speaker_ids: speakers}, _state),
+    do: emit(for speaker <- speakers, do: %SpeakerInvited{workshop_id: workshop, speaker_id: speaker})
   ```
 - **`evolve/2`** folds each event into the state, only when the unit declares a state beyond its
   identity. It runs over every event the stream will ever hold, so it only folds: no decision, no

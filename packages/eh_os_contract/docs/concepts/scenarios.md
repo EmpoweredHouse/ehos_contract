@@ -31,6 +31,19 @@ defmodule Concepts.Scenarios.Domain do
   context :desk, "Lending desk", subdomain: :core
 
   actor :librarian, :human, "Librarian"
+
+  value :loan_weeks, :integer, label: "Weeks of a loan" do
+    invariant :one_to_four_weeks, "A copy is lent for 1 to 4 weeks",
+      violated_by: [0, 5],
+      satisfied_by: [1, 4]
+  end
+end
+
+defmodule Concepts.Scenarios.LoanWeeks do
+  use Concepts.Scenarios.Domain, value: :loan_weeks
+
+  @impl true
+  def one_to_four_weeks(weeks), do: weeks in 1..4
 end
 
 defmodule Concepts.Scenarios.Contracts.Loans do
@@ -55,6 +68,7 @@ defmodule Concepts.Scenarios.Contracts.Loans do
     command :lend_copy, "Lend a copy", by: :librarian, emits: :copy_lent do
       field :copy_id, :id
       field :member_id, :id
+      field :weeks, :loan_weeks, optional: true
     end
 
     command :return_copy, "Take a copy back",
@@ -203,14 +217,14 @@ Which outcomes a scenario may state depends on its target ([`S6`](../refusals.md
 
 What a scenario expects has to be possible: `expect` names an event the command emits ([`S5`](../refusals.md#refusals-s)), `rejected` a
 rule it `rejects:`, or an invariant of a domain value one of its fields holds, its identity included ([`S4`](../refusals.md#refusals-s)),
-and an outcome the declaration cannot produce does not compile ([`S6`](../refusals.md#refusals-s)). A key typed by a value whose
-invariant refuses "2026-13" shows it so:
+and an outcome the declaration cannot produce does not compile ([`S6`](../refusals.md#refusals-s)). A field typed by a value whose
+invariant refuses 5 shows it so:
 
-<!-- not compiled: a scenario of a contract the page does not define -->
+<!-- in: Concepts.Scenarios.Contracts.Loans -->
 ```elixir
-scenario "a payment is not asked for a period that is no month" do
-  command :request_payment, %{subscription_id: "sub-1", period_id: "2026-13", amount: 2_200}
-  rejected :named_by_month
+scenario "a copy is not lent for 5 weeks" do
+  command :lend_copy, %{copy_id: "c-1", member_id: "m-1", weeks: 5}
+  rejected :one_to_four_weeks
 end
 ```
 

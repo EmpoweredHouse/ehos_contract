@@ -9,8 +9,8 @@ record an event. This page explains how the pieces fit, and what is built today.
 roles; the application checks it on every call, locally, without asking EHOS.**
 
 The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
-pickers and each is granted one warehouse: the sandbox's `Fulfilment.Contracts.Warehouse`, with a query
-and a recorded event added for this page.
+pickers and each is granted one warehouse. [Scope](#scope) shows its
+domain and contract; the sandbox's `Fulfilment.Contracts.Warehouse` is a fuller one, with a recorded event.
 
 Three places, each answering its own question:
 
@@ -184,25 +184,60 @@ defmodule MyApp.Authorizer do
 end
 ```
 
+<a id="scope"></a>
+
 ## Scope: narrowing a query to rows
 
-A query may be scoped by one field of its read model ([`D10`](refusals.md#refusals-d)):
+A query may be scoped by one field of its read model ([`D10`](refusals.md#refusals-d)). The actor
+names the field in its domain, and the query names it in `scope:`. A command may be scoped the same
+way, by one of its fields:
 
-<!-- not compiled: declarations of a domain and a contract the page does not define -->
 ```elixir
-# in the domain
-actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+defmodule Fulfilment.Domain do
+  use EhOsContract.Domain, name: :fulfilment, language: :en
 
-# in the contract
-query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
-  reads: :open_pick_lists, by: [:lead], scope: :warehouse_id do
-  param :warehouse_id, :id
+  subdomain :core, "Core", type: :core
+  context :warehouse, "Warehouse", subdomain: :core
+
+  actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+end
+
+defmodule Fulfilment.Contracts.Warehouse do
+  use EhOsContract.Contract,
+    domain: Fulfilment.Domain,
+    context: :warehouse,
+    id: "fulfilment.warehouse"
+
+  aggregate :pick_list, "Pick list" do
+    identity [:warehouse_id, :order_id]
+
+    command :assign_pick_list, "Assign a pick list to a picker",
+      by: :lead,
+      scope: :warehouse_id,
+      emits: :assigned do
+      field :picker_id, :id
+    end
+
+    event :assigned, "Pick list assigned" do
+      field :picker_id, :id
+    end
+  end
+
+  read_model :open_pick_lists, "Open pick lists", projects: [:assigned] do
+    field :warehouse_id, :id
+    field :order_id, :id
+    field :picker_id, :id
+  end
+
+  query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
+    reads: :open_pick_lists, by: [:lead], scope: :warehouse_id do
+    param :warehouse_id, :id
+  end
 end
 ```
 
-A command may be scoped the same way, by one of its fields: `assign_pick_list` is `scope:
-:warehouse_id`, so a lead granted warehouse 7 cannot assign a pick list of warehouse 12, and its
-credential needs the values for it as for the query.
+A lead granted warehouse 7 cannot assign a pick list of warehouse 12, and the credential needs the
+values for the command as for the query.
 
 EHOS binds the role with values, and the credential carries them:
 
