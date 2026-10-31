@@ -49,6 +49,10 @@ defmodule Concepts.Process.Domain do
   context :desk, "Lending desk", subdomain: :core
 
   actor :librarian, :human, "Librarian"
+
+  external :catalogue, "Catalogue", direction: :outbound do
+    operation :look_up_price, "Look up the price of a copy"
+  end
 end
 
 defmodule Concepts.Process.Contracts.Loans do
@@ -74,6 +78,11 @@ defmodule Concepts.Process.Contracts.Loans do
     event :copy_returned, "Copy returned"
     event :copy_written_off, "Copy written off as lost"
   end
+
+  effect :ask_price, "Ask the catalogue the price of a lost copy",
+    handles: :copy_written_off,
+    calls: {:catalogue, :look_up_price},
+    idempotency: [key: :event_id, owner: :downstream]
 end
 
 defmodule Concepts.Process.Contracts.Fines do
@@ -188,17 +197,17 @@ A promise is what the process owner agreed happens in a run: after one event, an
   a correct ending, just not the one wanted. `within` binds it as well, so a run that ends the other way
   3 months late is not kept.
 - `waits_on` names the external systems the promise waits on through an earlier step, when neither
-  `eventually` nor `or_else` calls them itself. A subscription's invoice is issued, or the period is
-  disputed, only after its usage is collected from the metering system. Issuing the invoice does not call it:
+  `eventually` nor `or_else` calls them itself. The library charges for a lost copy only after it asks the
+  catalogue for the price of the copy, through the effect `ask_price`. The charge itself does not call the
+  catalogue, so the promise names it:
 
-  <!-- not compiled: a promise of a process the page does not define -->
+  <!-- in: Concepts.Process.Processes.Loan -->
   ```elixir
-  promise :invoiced_within_two_days do
-    from :period_closed
-    eventually :invoice_issued
-    within {2, :day}
-    or_else :period_disputed
-    waits_on [:metering]
+  promise :lost_copy_charged_within_a_week do
+    from :copy_written_off
+    eventually :fine_charged
+    within {7, :day}
+    waits_on [:catalogue]
   end
   ```
 
