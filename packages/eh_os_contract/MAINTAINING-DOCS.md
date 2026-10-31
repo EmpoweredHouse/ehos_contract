@@ -29,8 +29,24 @@ when one differs from what the task would write now:
 `EhOsContract.Docs.prose/0` (in `dev/`). Each of them:
 
 - has at least one example that defines a module, and every `elixir` block that defines one compiles, with the
-  modules the page defines before it, and passes the rules between modules (`test/docs_test.exs`); a snippet
-  that defines nothing is not compiled, so read it against the code;
+  modules the page defines before it, and passes the rules between modules (`test/docs_test.exs`);
+- says, on the line above each `elixir` block that defines no module (a snippet), where the snippet belongs, and
+  the same test compiles the page with it in place:
+  - `<!-- in: Lending.Contracts.Loans -->` puts it in the body of that module of the page;
+    `<!-- in: Lending.Contracts.Loans, command :open_loan -->` in the body of the one declaration of that module
+    with that kind and name. The snippet takes the place of the body's declarations of the same kind and name as
+    one of its own (for a function, all its clauses), where the first of them was; if it replaces none, it goes
+    at the end of the body. Module attributes of the body, such as `@impl`, stay where they are. So a snippet that needs more of the model than it shows fails, as it would for a
+    reader who pastes it.
+  - `<!-- and in: … -->` puts a snippet in place together with the one before it, for a change that needs both:
+    an `upcast` step and the function of the implementation it names, a supplied field and the scenario that
+    then gives it.
+  - `<!-- not compiled: <why> -->` is for code no page can define: the host's configuration, its `mix.exs`, a
+    call in its code, or a declaration of a model the page does not show. Such a snippet still parses. Prefer
+    `in:`: a declaration marked `not compiled` can drift.
+  - In every snippet, each module, function, macro and type of the library that it names in full
+    (`EhOsContract.…`) exists, with the arity of the call. A name through an `alias` is not checked.
+  - Inline code is not compiled. A declaration that a reader is to copy goes in a block.
 - says what it explains in a `<!-- covers: entities …; keys …; rules … -->` comment, and every name there has to
   exist (`EhOsContract.Docs.Prose`);
 - links each refusal code it names, `` [`D4`](refusals.md#refusals-d) ``, to its family's table in

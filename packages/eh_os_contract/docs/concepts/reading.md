@@ -115,6 +115,7 @@ an index on each subject's identifier and query scope. The migration is the appl
 on. A test of the application holds the table to the contract, so a field added to one and not the
 other fails there rather than at the first write:
 
+<!-- not compiled: a test of the host -->
 ```elixir
 test "the read models' tables fit their contracts" do
   EhOsContract.Testing.assert_read_model_tables()
@@ -249,6 +250,7 @@ in a transaction of the configured repo that is rolled back.
 
 The application's own code asks with the parameters' struct and the actor:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias Concepts.Reading.Contracts.Loans
 
@@ -264,6 +266,7 @@ name and the query's), as it would for a command.
 command that appended it returns. Pass the receipt's position, and the query waits until the read
 model has taken it:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 {:ok, receipt} = EhOsContract.dispatch(Loans, command, actor: actor)
 EhOsContract.query(Loans, params, actor: actor, min_position: receipt.position)

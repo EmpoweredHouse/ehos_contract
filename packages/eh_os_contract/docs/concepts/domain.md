@@ -18,6 +18,7 @@ the events of its own domain ([`X5`](../refusals.md#refusals-x)), and the tasks 
 exactly may publish, since EHOS lets an application publish only under its own name: `:"my-shop"` for
 `my-shop`, never `:my_shop`.
 
+<!-- in: Concepts.Domain.Domain -->
 ```elixir
 use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsaw"
 ```
@@ -39,6 +40,7 @@ A subdomain is a part of the business, named as the business names it, with its 
 - `:supporting`: what the core needs and nobody sells ready-made;
 - `:generic`: what any business does the same way, and could buy.
 
+<!-- in: Concepts.Domain.Domain -->
 ```elixir
 subdomain :lending, "Lending", type: :core
 subdomain :cataloguing, "Cataloguing", type: :supporting
@@ -55,8 +57,11 @@ A bounded context is a part of the domain where a word means one thing. "Copy" a
 member can take home; in the catalogue it may be any item on the shelf, lendable or not. Separate contexts
 let the same word mean 2 things without either being wrong.
 
+<!-- in: Concepts.Domain.Domain -->
 ```elixir
 context :loans, "Loans", subdomain: :lending do
+  term "Copy", definition: "An item a member may take home"
+
   term "Loan", definition: "A copy lent to a member until it is returned" do
     avoid "Borrowing", reason: "The desk lends; the member borrows"
   end
@@ -122,6 +127,7 @@ arrow from upstream to downstream, a symmetric one a line, and `:separate_ways` 
 | `:shared_kernel` | the two share a part of the model |
 | `:separate_ways` | the two do not depend on each other |
 
+<!-- in: Concepts.Domain.Domain -->
 ```elixir
 relation :customer_supplier, upstream: :catalogue, downstream: :loans, terms: [{"Item", "Copy"}]
 relation :separate_ways, between: [:loans, :events]
@@ -186,7 +192,7 @@ The loan desk depends on the catalogue: a loan names the copy it lends, which th
 
 ```elixir
 defmodule Concepts.Domain.Domain do
-  use EhOsContract.Domain, name: :domain_page, language: :en
+  use EhOsContract.Domain, name: :lending, language: :en
 
   subdomain :lending, "Lending", type: :core
   subdomain :cataloguing, "Cataloguing", type: :supporting
@@ -204,10 +210,14 @@ defmodule Concepts.Domain.Domain do
     end
   end
 
+  context :events, "Library events", subdomain: :lending
+
   relation :customer_supplier,
     upstream: :catalogue,
     downstream: :loans,
     terms: [{"Item", "Copy"}]
+
+  relation :separate_ways, between: [:loans, :events]
 
   entity :copy, "Copy", context: :catalogue, identity: :copy_id
 
@@ -218,7 +228,7 @@ defmodule Concepts.Domain.Contracts.Loans do
   use EhOsContract.Contract,
     domain: Concepts.Domain.Domain,
     context: :loans,
-    id: "domain_page.loans"
+    id: "lending.loans"
 
   aggregate :loan, "Loan" do
     identity :loan_id

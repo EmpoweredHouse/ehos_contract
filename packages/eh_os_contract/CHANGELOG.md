@@ -64,9 +64,21 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   L3, the rules between modules, is layer 4, and its L4, the implementation, is layer 3. Links change: `contract.md#refusals-<family>` is
   `refusals.md#refusals-<family>`, and `contract.md#process-modules` is `contract.md#write-a-process-module`.
   The `eh-os-contract` plugin's skills point at the new page, at 0.14.1.
+- **One overview page, and a getting-started page with each step's result** (#517).
+  `docs/introduction.md` tells what the engine does and does not do, with two diagrams: how a domain, a
+  contract and a process module fit together, and how the contract reaches the conformance report.
+  `docs/getting-started.md` now holds the installation, with its prerequisites, the result of each step
+  and a diagram of dispatch. The README is short and links to both. Links change: the README's sections
+  are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
+  `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
+  a master key, and what an erasure does not reach in backups, moved to `concepts/domain-data.md`.
 
 ### Fixed
 
+- **The installation never said that Oban must run the queue `:events`** (#517). Without it, the jobs of
+  the effects delivered `:at_least_once` and of the timers of process managers wait in the table: no
+  effect runs, and no timer fires. `docs/getting-started.md`
+  now configures the queue.
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
   a run and its promises. The page no longer counts a read model among what reacts to events (#511).

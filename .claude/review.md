@@ -127,5 +127,11 @@ Kinds of problems a review here found that neither file names yet:
   read against the code: `mix eh_os_contract.check` fails on an error. Found in #517.
 - `actions/cache` archives a listed directory whole: a `!` pattern drops only an entry the list
   itself holds, so exclude from a list of children (`deps/*`), never from the directory. Found in #517.
+- An installation page is read against what the sandbox host really configures (`sandbox/config/`):
+  the Oban queue `:events`, `testing: :manual`, a key per environment. A host that follows the page
+  and not the sandbox gets jobs that never run. Found in #517.
+- A shell snippet that sets the database by `cd` and `export` before `mix ecto.reset` drops the
+  shared database when one line fails or is copied alone: give the variables on each command. Found
+  in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

@@ -130,6 +130,7 @@ A LiveView builds the changeset on `mount` and on each `phx-change`, and dispatc
 The identity of the invoice is the page's, not the person's: it goes in `data:`, and a value the params
 carry for it is ignored.
 
+<!-- not compiled: functions of the host's LiveView -->
 ```elixir
 alias Concepts.Forms.Contracts.Invoicing
 alias Concepts.Forms.Contracts.Invoicing.Commands.IssueInvoice
@@ -183,6 +184,7 @@ defp data(socket), do: %{invoice_id: socket.assigns.invoice_id}
 The words are the application's. Its error helper reads the engine's reason from each error, not the
 message:
 
+<!-- not compiled: a function of the host's error helpers -->
 ```elixir
 def error_message({_message, opts}) do
   case {opts[:validation], opts[:invariant]} do
@@ -202,6 +204,7 @@ A form that records an event is built from the event, and its struct goes to `re
 back through `refused/3` as a command's does. A search form is built from the query, which has no
 identity: its params are checked as fields, and its struct goes to `query/3`.
 
+<!-- not compiled: code of the host's LiveView -->
 ```elixir
 # `InvoicesOfPeriod`: a query over a read model of invoices, which a contract declares beside the
 # example's command.

@@ -15,6 +15,7 @@ An actor is who issues commands, asks queries or records events: a kind of perso
 (`:system`). A contract names its actors in a command's or query's `by:` and an event's `recorded_by:`, and
 dispatch refuses an actor the declaration does not name before anything else.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 actor :mechanic, :human, "Mechanic", context: :workshop, scope: [:shop_id]
 actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
@@ -50,6 +51,7 @@ Some people come to an application by its own work, not by a decision of the com
 client company and its representative, who then signs in to see that company. `may_grant:` says which other
 person actors' roles a person in this one may grant through the application:
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 actor :office_employee, :human, "Office employee", may_grant: [:client]
 actor :client, :human, "Client"
@@ -61,11 +63,14 @@ actor itself, and rules never lead back to an actor, since `a` granting `b` whil
 of `a` grant `a` through another ([`D4`](../refusals.md#refusals-d)). An actor named in a rule, and one that has a
 rule, has to hold a capability, or it is no role in the manifest; the manifest's generator says so.
 
+<a id="subjects-and-personal-data"></a>
+
 ## Subjects and personal data
 
 A subject is a kind of person whose personal data the application keeps and may have to erase: a customer, a
 patient, an employee.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 subject :customer, "Customer"
 ```
@@ -73,6 +78,7 @@ subject :customer, "Customer"
 A contract marks which fields are personal, and whose. An identifier field names the subject it identifies
 with `subject:`; a personal field names that identifier with `personal:`:
 
+<!-- in: Concepts.DomainData.Contracts.Repairs, event :bike_accepted -->
 ```elixir
 field :customer_id, :id, subject: :customer
 field :customer_phone, :string, personal: :customer_id
@@ -92,6 +98,7 @@ does not start without a vault that can wrap and unwrap.
 **Erasing a subject** destroys its data key, so every personal field sealed with it is unreadable for good
 (crypto-shredding). Nothing in the log is rewritten.
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.erase(:customer, "c-17", actor: actor)
 ```
@@ -109,6 +116,31 @@ appends nothing. From then on:
 
 The host decides who may erase: `erase/3` asks no `Authorizer`.
 
+**Rotating a master key.** The first master key wraps each new data key. A data key is unwrapped by the
+master key that it names. Rotate in 3 deploys:
+
+1. Add the new key after the current key, and deploy. Then each node can unwrap what the new key wraps.
+2. Move the new key to the first place, and deploy.
+3. Rewrap each data key with the new key: `mix eh_os_contract.rewrap`, or
+   `EhOsContract.Personal.rewrap!(MyApp.Repo)` from a release, which has no `mix`. Then remove the old key,
+   and deploy.
+
+If you put the new key first in one deploy, the nodes that still run the old configuration cannot read
+what the new nodes write until the rollout ends. A KMS goes behind the `EhOsContract.Vault` behaviour:
+`config :eh_os_contract, vault: MyApp.KmsVault`.
+
+**What an erasure does not reach.** An erasure deletes the data key from the database, not from your
+backups. A backup, a WAL archive or a replica still holds the wrapped key. A person who also has the
+master key can then read the data of the subject. So rotate and destroy the master keys at an interval
+that is not longer than the time that you keep backups. Or keep the key store out of the backups of the
+log. Each choice has a cost: a backup older than a destroyed master key, or restored without the key
+store, cannot unwrap the data of any subject. A read model keeps its copy of personal data as plain text
+in your tables. `forget/2` reaches the live table, and only your backup policy reaches its backups.
+
+**An erasure holds the append lock.** A read model delivered `:in_transaction` that projects personal
+data forgets inside the transaction of the erasure. This transaction holds the lock that each append
+takes. While the read model forgets, each other append to the log waits. Index the column that its `forget/2` finds the subject by.
+
 Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
 personal ([`F4`](../refusals.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../refusals.md#refusals-f)), and a publication carries none
 ([`D11`](../refusals.md#refusals-d)): a copy on a broker cannot be erased.
@@ -119,6 +151,7 @@ A value type is a name the domain gives to data: one built-in type (`:id`, `:str
 `:decimal`, `:boolean`, `:date`, `:timestamp`, an enum, a list), with a `unit` when it is a number, or a set of
 fields. A contract's field takes it as its type, `field :quote, :money`.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 value :money, :integer, unit: :cents, label: "Amount"
 value :bike_kind, {:enum, [city: "City bike", road: "Road bike"]}, label: "Kind of bike"
@@ -153,6 +186,7 @@ has its members; any other name raises `ArgumentError`.
 A value may declare what is true of every value of the type, each invariant with values that break it and
 values that keep it:
 
+<!-- and in: Concepts.DomainData.Domain -->
 ```elixir
 value :money, :integer, unit: :cents do
   invariant :not_negative, "An amount is not negative",
@@ -175,6 +209,7 @@ An entity is a thing with an identity whose lifecycle the application's code or 
 outside this log: a shop, a catalogue item, an accounting period. A contract points at it by its identity, a
 field of type `{:id, :shop}`.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 entity :shop, "Shop", context: :workshop, identity: :shop_id
 ```
@@ -192,6 +227,7 @@ unit of a contract: an aggregate or a consistency boundary.
 An external system is one the application exchanges data with, named after what it does for the business
 rather than after its vendor: `:card_terminal`, not the terminal's brand.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 external :sms_gateway, "Text message gateway",
   direction: :outbound,

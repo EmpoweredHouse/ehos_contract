@@ -1,0 +1,125 @@
+<!-- title: How does the contract reach the conformance report? -->
+<!-- desc: The application runs on the contracts and appends events, and conformance compares the log with what the contracts and process modules declare. -->
+<!-- words: contract, process module, application, log, conformance -->
+<!-- technical: Workshop -->
+<!-- verbs: describes, generates, appends, declares, records, answers -->
+<!-- parts: workshop = -, contract = -, application = -, log = -, conformance = - -->
+<svg viewBox="0 0 1000 584" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="conformance-flow-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Connectors (behind the parts) -->
+  <line class="arr" x1="200" y1="132" x2="291" y2="132" marker-end="url(#conformance-flow-arrow)"/>
+  <line class="arr" x1="452" y1="132" x2="547" y2="132" marker-end="url(#conformance-flow-arrow)"/>
+  <line class="arr" x1="708" y1="132" x2="799" y2="132" marker-end="url(#conformance-flow-arrow)"/>
+  <line class="arr" x1="372" y1="168" x2="372" y2="271" marker-end="url(#conformance-flow-arrow)"/>
+  <polyline class="arr" points="880,168 880,304 709,304" marker-end="url(#conformance-flow-arrow)"/>
+  <polyline class="arr" points="292,304 120,304 120,169" marker-end="url(#conformance-flow-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="206" y="110" width="80" height="14" rx="2"/>
+  <circle class="badge" cx="216" cy="117" r="6"/>
+  <text class="badget" x="216" y="120" text-anchor="middle">1</text>
+  <text class="lbl" x="228" y="120">DESCRIBES</text>
+
+  <rect class="mask" x="460" y="110" width="80" height="14" rx="2"/>
+  <circle class="badge" cx="470" cy="117" r="6"/>
+  <text class="badget" x="470" y="120" text-anchor="middle">2</text>
+  <text class="lbl" x="482" y="120">GENERATES</text>
+
+  <rect class="mask" x="716" y="110" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="726" cy="117" r="6"/>
+  <text class="badget" x="726" y="120" text-anchor="middle">3</text>
+  <text class="lbl" x="738" y="120">APPENDS</text>
+
+  <rect class="mask" x="384" y="208" width="80" height="14" rx="2"/>
+  <circle class="badge" cx="394" cy="215" r="6"/>
+  <text class="badget" x="394" y="218" text-anchor="middle">4</text>
+  <text class="lbl" x="406" y="218">DECLARES</text>
+
+  <rect class="mask" x="756" y="282" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="766" cy="289" r="6"/>
+  <text class="badget" x="766" y="292" text-anchor="middle">5</text>
+  <text class="lbl" x="778" y="292">RECORDS</text>
+
+  <rect class="mask" x="168" y="282" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="178" cy="289" r="6"/>
+  <text class="badget" x="178" y="292" text-anchor="middle">6</text>
+  <text class="lbl" x="190" y="292">ANSWERS</text>
+
+  <!-- The workshop -->
+  <rect class="knock" x="40" y="96" width="160" height="72" rx="6"/>
+  <rect id="conformance-flow-workshop" class="n-ext" x="40" y="96" width="160" height="72" rx="6"/>
+  <text class="name" x="120" y="126" text-anchor="middle">Workshop</text>
+  <text class="sub" x="120" y="144" text-anchor="middle">the people who do the work</text>
+
+  <!-- The contract -->
+  <rect class="knock" x="292" y="96" width="160" height="72" rx="6"/>
+  <rect id="conformance-flow-contract" class="n-focal" x="292" y="96" width="160" height="72" rx="6"/>
+  <text class="name" x="372" y="126" text-anchor="middle">Contracts</text>
+  <text class="sub" x="372" y="144" text-anchor="middle">and process modules</text>
+
+  <!-- The application -->
+  <rect class="knock" x="548" y="96" width="160" height="72" rx="6"/>
+  <rect id="conformance-flow-application" class="n-back" x="548" y="96" width="160" height="72" rx="6"/>
+  <text class="name" x="628" y="126" text-anchor="middle">Application</text>
+  <text class="sub" x="628" y="144" text-anchor="middle">dispatches commands</text>
+
+  <!-- The log -->
+  <rect class="knock" x="800" y="96" width="160" height="72" rx="6"/>
+  <rect id="conformance-flow-log" class="n-store" x="800" y="96" width="160" height="72" rx="6"/>
+  <text class="name" x="880" y="126" text-anchor="middle">Log</text>
+  <text class="sub" x="880" y="144" text-anchor="middle">what occurred</text>
+
+  <!-- Conformance -->
+  <rect class="knock" x="292" y="272" width="416" height="64" rx="6"/>
+  <rect id="conformance-flow-conformance" class="n-shared" x="292" y="272" width="416" height="64" rx="6"/>
+  <text class="name" x="500" y="300" text-anchor="middle">Conformance</text>
+  <text class="sub" x="500" y="318" text-anchor="middle">the report and the dashboard: four questions</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="376" x2="960" y2="376"/>
+  <text class="eyes" x="40" y="396">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="416" r="6"/>
+  <text class="badget" x="46" y="419" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="420">The people describe the process, and a developer writes it.</text>
+  <circle class="badge" cx="46" cy="440" r="6"/>
+  <text class="badget" x="46" y="443" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="444">The contracts generate structs, behaviours and tests.</text>
+  <circle class="badge" cx="46" cy="464" r="6"/>
+  <text class="badget" x="46" y="467" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="468">Through dispatch, the application appends only declared events.</text>
+
+  <circle class="badge" cx="526" cy="416" r="6"/>
+  <text class="badget" x="526" y="419" text-anchor="middle">4</text>
+  <text class="keyt" x="540" y="420">The contracts and process modules declare what must occur.</text>
+  <circle class="badge" cx="526" cy="440" r="6"/>
+  <text class="badget" x="526" y="443" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="444">The log records what occurred, and when.</text>
+  <circle class="badge" cx="526" cy="464" r="6"/>
+  <text class="badget" x="526" y="467" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="468">Conformance answers the people where the two differ.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="532" x2="960" y2="532"/>
+  <rect class="n-focal" x="40" y="548" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="557">What you declare</text>
+  <rect class="n-back" x="160" y="548" width="14" height="10" rx="2"/>
+  <text class="legt" x="180" y="557">Code of your application</text>
+  <rect class="n-store" x="340" y="548" width="14" height="10" rx="2"/>
+  <text class="legt" x="360" y="557">Kept by the engine</text>
+  <rect class="n-shared" x="500" y="548" width="14" height="10" rx="2"/>
+  <text class="legt" x="520" y="557">Given by the engine</text>
+  <rect class="n-ext" x="660" y="548" width="14" height="10" rx="2"/>
+  <text class="legt" x="680" y="557">People</text>
+  <line class="arr" x1="760" y1="553" x2="787" y2="553" marker-end="url(#conformance-flow-arrow)"/>
+  <text class="legt" x="796" y="557">Gives to</text>
+  </g>
+</svg>

@@ -69,6 +69,7 @@ reads an entity, since a unit's state is its events.
 An event leaves the application only through `publish`. It names a local event, the versioned name it goes
 out under, and the fields it carries:
 
+<!-- in: Concepts.Between.Contracts.Loans -->
 ```elixir
 publish :loan_opened,
   as: "between_example.loan.opened.v1",
@@ -93,6 +94,7 @@ a message from each, hands the batch to the configured `EhOsContract.Bus`, and m
 the bus says it holds the batch. A relay that stops in between publishes the batch again under the same ids,
 so a message may arrive twice, never zero times, and never without its event in the log.
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
 ```
@@ -115,6 +117,7 @@ The reference is [`publish`](../dsl/contract-publish.md).
 The subscriber names the event by its published name, gives it a name in this contract, and lists the fields
 it reads. Only a policy takes it:
 
+<!-- in: Concepts.Between.Holds.Contracts.Holds -->
 ```elixir
 subscribe "between_example.loan.opened.v1", as: :copy_lent do
   field :loan_id, :id
