@@ -1,0 +1,6 @@
+Pre-PR review of #528, two rounds. Skills: code-review + ehos-dev:elixir (correctness); engineering:code-review + ehos-dev:elixir (security/performance).
+Round 1 correctness: in: snippets lost the full-name check - fixed; @callback with when crashed - fixed; behaviour_info without ensure_loaded - fixed; config :eh_os_contract, :key form - fixed, module/nested keys narrowed in MAINTAINING-DOCS; unclosed block of another language - fixed; multi-alias - fixed; mixed paths - fixed; repeated reports per group - no change needed.
+Round 1 security/performance: no security finding; same low items as above; validate! probe is pure; dev/ not in a host's build.
+Round 2 correctness: alias targets no longer checked (regression) - fixed; nil diagnostic file - fixed; callback without return type message - fixed; aliases of the target module - skipped, #533; double report - skipped, #533.
+Round 2 security/performance: test-support modules counted as behaviours - fixed (lib/ only); ~400 ms module loading - no change needed.
+Reverse checks for each fix on pages; gate sandbox mix check EXIT=0 (one rerun after too_many_connections from another worktree).
