@@ -71,11 +71,19 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   and a diagram of dispatch. The README is short and links to both. Links change: the README's sections
   are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
   `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
-  a master key, and what an erasure does not reach in backups, moved to `domain-data.md`.
+  a master key, and what an erasure does not reach in backups, moved to `personal-data.md`.
 - **The concept pages are in `docs/`, beside the other pages** (#517). `docs/concepts/units.md` is now
   `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
   addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The
   `change-contract` skill of the `eh-os-contract` plugin names the new path, in plugin 0.14.2.
+- **The domain pages are rewritten, and personal data has a page of its own** (#517).
+  `docs/domain.md` gives the patterns of the relations between contexts as tables, with a diagram of
+  which context depends on which. `docs/domain-data.md` keeps actors, values, entities and external
+  systems. Subjects, personal fields, erasure and the master keys are in the new `docs/personal-data.md`,
+  with a diagram of what an erasure does. `docs/forms.md` is a how-to, with a diagram of the steps from a
+  keystroke to a refusal. The pages link to `refusals.md` and `rules.md` instead of their own lists.
+  Links change: `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and changing a master
+  key is `personal-data.md#rotate-a-master-key`.
 
 ### Fixed
 
