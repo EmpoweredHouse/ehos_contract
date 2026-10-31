@@ -34,7 +34,7 @@ when one differs from what the task would write now:
     `<!-- in: Lending.Contracts.Loans, command :open_loan -->` in the body of the one declaration of that module
     with that kind and name. The snippet takes the place of the body's declarations of the same kind and name as
     one of its own (for a function, all its clauses), where the first of them was; if it replaces none, it goes
-    at the end of the body. So a snippet that needs more of the model than it shows fails, as it would for a
+    at the end of the body. Module attributes of the body, such as `@impl`, stay where they are. So a snippet that needs more of the model than it shows fails, as it would for a
     reader who pastes it.
   - `<!-- and in: … -->` puts a snippet in place together with the one before it, for a change that needs both:
     an `upcast` step and the function of the implementation it names, a supplied field and the scenario that

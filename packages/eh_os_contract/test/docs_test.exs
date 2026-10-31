@@ -170,12 +170,16 @@ defmodule EhOsContract.DocsTest do
   defp snippet_problems(page, [block | others], modules) do
     stray? =
       match?({:and_in, _}, block.marker) or
-        (others != [] and (module_block?(block) or not match?({:in, _}, block.marker))) or
-        Enum.any?(others, &module_block?/1)
+        (others != [] and (module_block?(block) or not match?({:in, _}, block.marker)))
+
+    module_after? = Enum.any?(others, &module_block?/1)
 
     case {module_block?(block), block.marker} do
       _stray when stray? ->
         ["an `and in:` snippet follows a block that is not marked `in:`"]
+
+      _module when module_after? ->
+        ["a block that defines a module is compiled with its page, and takes no marker"]
 
       {true, nil} ->
         []
@@ -224,6 +228,12 @@ defmodule EhOsContract.DocsTest do
     module = Module.concat([String.trim(module)])
     declaration = for d <- declaration, do: d |> Code.string_to_quoted() |> elem(1) |> key()
 
+    if nil in declaration,
+      do: {:error, "the marker's declaration does not parse, or names none: #{target}"},
+      else: insert(modules, target, module, declaration, snippet)
+  end
+
+  defp insert(modules, target, module, declaration, snippet) do
     {modules, placed} =
       Enum.map_reduce(modules, 0, fn quoted, placed ->
         Macro.prewalk(quoted, placed, fn
@@ -338,7 +348,8 @@ defmodule EhOsContract.DocsTest do
              [{{:., _, [{:__aliases__, _, [:EhOsContract | _] = parts}, name]}, _, []}, arity]}
           ]},
          unknown
-       ),
+       )
+       when is_integer(arity),
        do: {:read, unknown_function(parts, name, arity, unknown)}
 
   defp unknown_call(
