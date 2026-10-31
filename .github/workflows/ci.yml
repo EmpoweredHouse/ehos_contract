@@ -61,6 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # docs.yml restores this entry's dependency caches by its name.
           - name: oldest
             otp: "27.2"
             elixir: "1.18.4"
@@ -107,7 +108,8 @@ jobs:
       # packages are left out: anyone who can run a workflow here can restore a cache, and
       # whoever cannot read ehos-tools must not read its code from one. The children are
       # listed, not the directory: actions/cache archives a listed directory whole, and
-      # drops by a `!` pattern only what the list itself holds.
+      # drops by a `!` pattern only what the list itself holds. docs.yml restores the four
+      # packages' entries with these keys and `path` texts copied: change them there too.
       - name: Cache engine deps
         uses: actions/cache@v4
         with:
@@ -119,6 +121,7 @@ jobs:
       # The dashboard package, same shape
       # as the engine above: a path dependency whose own gate runs as a
       # fully separate Mix project via package_test_web/1 in sandbox/mix.exs.
+      # docs.yml copies this key and path.
       - name: Cache dashboard foundation deps
         uses: actions/cache@v4
         with:
@@ -127,6 +130,7 @@ jobs:
 
       # The credential verifier (v2 stage EA), same shape: its gate runs as a
       # separate Mix project via package_test_auth/1 in sandbox/mix.exs.
+      # docs.yml copies this key and path.
       - name: Cache credential verifier deps
         uses: actions/cache@v4
         with:
@@ -135,6 +139,7 @@ jobs:
 
       # The graph renderer (plan E13b), same shape: its gate runs as a separate Mix
       # project via package_test_graph/1 in sandbox/mix.exs.
+      # docs.yml copies this key and path.
       - name: Cache graph renderer deps
         uses: actions/cache@v4
         with:
