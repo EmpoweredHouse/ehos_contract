@@ -22,6 +22,7 @@ each word in italics.
 
 The package is not on Hex. Add it from git to `deps/0` in `mix.exs`:
 
+<!-- not compiled: a dependency in the host's mix.exs -->
 ```elixir
 {:eh_os_contract,
  git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
@@ -30,6 +31,7 @@ The package is not on Hex. Add it from git to `deps/0` in `mix.exs`:
 
 Then add the compiler `:eh_os_contract` after the compilers of Elixir, in `project/0`:
 
+<!-- not compiled: a line of the host's mix.exs -->
 ```elixir
 compilers: Mix.compilers() ++ [:eh_os_contract]
 ```
@@ -184,6 +186,7 @@ raises `EhOsContract.Migrations.current_version/0`, generate a new migration tha
 
 Tell the engine which OTP applications hold your contracts, and which repo to use:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract,
   applications: [:my_app],
@@ -192,6 +195,7 @@ config :eh_os_contract,
 
 Add `EhOsContract` to the supervision tree, after the repo and Oban:
 
+<!-- not compiled: the host's supervision tree -->
 ```elixir
 children = [
   MyApp.Repo,
@@ -207,6 +211,7 @@ after the commit.
 
 In `config/test.exs`, stop these runners:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :eh_os_contract, subscriptions: :manual
 config :my_app, Oban, testing: :manual
@@ -217,6 +222,7 @@ A test that needs a runner, an effect or a timer calls `EhOsContract.Testing.dra
 Oban must run the queue `:events`, which holds the jobs of the effects and of the timers of process
 managers. Add it to the configuration of Oban in `config/config.exs`:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :my_app, Oban, repo: MyApp.Repo, queues: [events: 10]
 ```
@@ -234,6 +240,7 @@ key is first.
 In production, read the key from the environment in `config/runtime.exs`. Do not commit a key of
 production:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 if config_env() == :prod do
   config :eh_os_contract, EhOsContract.Vault,
@@ -265,6 +272,7 @@ Build an actor by hand only to try the engine, or in a test.
 actor: `EhOsContract.call/3` and `EhOsContract.Plug` take one.
 [Authorization](authorization.md) tells how.
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias GettingStarted.Contracts.Loans
 
@@ -316,6 +324,7 @@ The engine puts the value in the metadata of the Logger, as `correlation_id`. It
 runs the command, and while it reacts to an event, a timer or a message of that work. After that,
 the metadata has its earlier value again. Add the key to the metadata of your formatter:
 
+<!-- not compiled: the host's configuration -->
 ```elixir
 config :logger, :default_formatter, metadata: [:request_id, :correlation_id]
 ```

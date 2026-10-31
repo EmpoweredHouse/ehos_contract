@@ -280,6 +280,7 @@ end
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
   ([`I4`](../refusals.md#refusals-i)). A command seating a whole group at once would read:
 
+  <!-- not compiled: a command the page does not declare -->
   ```elixir
   def seat_group(%SeatGroup{workshop_id: workshop, attendee_ids: attendees}, _state),
     do: emit(for attendee <- attendees, do: %SeatTaken{workshop_id: workshop, attendee_id: attendee})
@@ -307,17 +308,18 @@ declaration: to fold a unit's state, to feed a reaction, to publish it. So an ev
 changes only with a new version of its fields, `schema_version`, and a step, `upcast`, that says how
 a row of the version before reads in the new one. The rows themselves never change.
 
+<!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
 ```elixir
-event :demand_opened, "Demand opened", schema_version: 2 do
-  field :demand_reason, :demand_reason
-  field :priority, :string
+event :places_offered, "Places offered", schema_version: 2 do
+  field :capacity, :integer
+  field :room, :string, optional: true
 
-  upcast from: 1, rename: [reason: :demand_reason], default: [priority: "normal"]
+  upcast from: 1, rename: [places: :capacity], default: [room: "Main hall"]
 end
 ```
 
-A row written at version 1 is read with `reason` under its new name, `demand_reason`, and with
-`priority` as `"normal"`; a row of version 2 is read as it is. Version 3 adds `upcast from: 2`, and a
+A row written at version 1 is read with `places` under its new name, `capacity`, and with `room` as
+`"Main hall"`; a row of version 2 is read as it is. Version 3 adds `upcast from: 2`, and a
 row of version 1 goes through both steps in turn.
 
 - **`rename:`** moves a field of the older version to its name in the next. A personal field may be
@@ -327,21 +329,23 @@ row of version 1 goes through both steps in turn.
   A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
 - **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
 - **`function:`** names a function of the unit's implementation, for a change a rename and a default
-  cannot say: amounts stored in cents read as a decimal, one field split in two. It is a step on its
-  own.
+  cannot say: amounts stored in cents read as a decimal, one field split in two, two fields joined in
+  one. It is a step on its own.
 
+<!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
 ```elixir
-event :fee_charged, "Fee charged", schema_version: 2 do
-  field :amount, :decimal
+event :places_offered, "Places offered", schema_version: 2 do
+  field :capacity, :integer
 
-  upcast from: 1, function: :amount_from_minor
+  upcast from: 1, function: :capacity_from_rows
 end
 ```
 
+<!-- and in: Concepts.Units.Workshop -->
 ```elixir
 @impl true
-def amount_from_minor(%{"amount_minor" => minor} = data),
-  do: data |> Map.delete("amount_minor") |> Map.put("amount", Decimal.div(minor, 100))
+def capacity_from_rows(%{"rows" => rows, "seats_per_row" => seats} = data),
+  do: data |> Map.drop(["rows", "seats_per_row"]) |> Map.put("capacity", rows * seats)
 ```
 
 The function takes the row's payload at that version as the log stores it, with string keys, and

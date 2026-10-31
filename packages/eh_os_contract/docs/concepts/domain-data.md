@@ -15,6 +15,7 @@ An actor is who issues commands, asks queries or records events: a kind of perso
 (`:system`). A contract names its actors in a command's or query's `by:` and an event's `recorded_by:`, and
 dispatch refuses an actor the declaration does not name before anything else.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 actor :mechanic, :human, "Mechanic", context: :workshop, scope: [:shop_id]
 actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
@@ -50,6 +51,7 @@ Some people come to an application by its own work, not by a decision of the com
 client company and its representative, who then signs in to see that company. `may_grant:` says which other
 person actors' roles a person in this one may grant through the application:
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 actor :office_employee, :human, "Office employee", may_grant: [:client]
 actor :client, :human, "Client"
@@ -68,6 +70,7 @@ rule, has to hold a capability, or it is no role in the manifest; the manifest's
 A subject is a kind of person whose personal data the application keeps and may have to erase: a customer, a
 patient, an employee.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 subject :customer, "Customer"
 ```
@@ -75,6 +78,7 @@ subject :customer, "Customer"
 A contract marks which fields are personal, and whose. An identifier field names the subject it identifies
 with `subject:`; a personal field names that identifier with `personal:`:
 
+<!-- in: Concepts.DomainData.Contracts.Repairs, event :bike_accepted -->
 ```elixir
 field :customer_id, :id, subject: :customer
 field :customer_phone, :string, personal: :customer_id
@@ -94,6 +98,7 @@ does not start without a vault that can wrap and unwrap.
 **Erasing a subject** destroys its data key, so every personal field sealed with it is unreadable for good
 (crypto-shredding). Nothing in the log is rewritten.
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.erase(:customer, "c-17", actor: actor)
 ```
@@ -146,6 +151,7 @@ A value type is a name the domain gives to data: one built-in type (`:id`, `:str
 `:decimal`, `:boolean`, `:date`, `:timestamp`, an enum, a list), with a `unit` when it is a number, or a set of
 fields. A contract's field takes it as its type, `field :quote, :money`.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 value :money, :integer, unit: :cents, label: "Amount"
 value :bike_kind, {:enum, [city: "City bike", road: "Road bike"]}, label: "Kind of bike"
@@ -180,6 +186,7 @@ has its members; any other name raises `ArgumentError`.
 A value may declare what is true of every value of the type, each invariant with values that break it and
 values that keep it:
 
+<!-- and in: Concepts.DomainData.Domain -->
 ```elixir
 value :money, :integer, unit: :cents do
   invariant :not_negative, "An amount is not negative",
@@ -202,6 +209,7 @@ An entity is a thing with an identity whose lifecycle the application's code or 
 outside this log: a shop, a catalogue item, an accounting period. A contract points at it by its identity, a
 field of type `{:id, :shop}`.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 entity :shop, "Shop", context: :workshop, identity: :shop_id
 ```
@@ -219,6 +227,7 @@ unit of a contract: an aggregate or a consistency boundary.
 An external system is one the application exchanges data with, named after what it does for the business
 rather than after its vendor: `:card_terminal`, not the terminal's brand.
 
+<!-- in: Concepts.DomainData.Domain -->
 ```elixir
 external :sms_gateway, "Text message gateway",
   direction: :outbound,

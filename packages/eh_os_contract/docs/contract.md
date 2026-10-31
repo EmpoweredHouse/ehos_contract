@@ -27,6 +27,7 @@ compares the log with the contracts and the process modules.
   [Getting started](getting-started.md) tells.
 - Add the compiler `:eh_os_contract` after the compilers of Elixir, in `project/0` of `mix.exs`:
 
+  <!-- not compiled: a line of the host's mix.exs -->
   ```elixir
   compilers: Mix.compilers() ++ [:eh_os_contract]
   ```
@@ -165,6 +166,7 @@ The example declares these parts:
 
 Run the scenarios as tests. Add this line to a test module:
 
+<!-- not compiled: a line of the host's test module -->
 ```elixir
 use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
 ```
@@ -237,6 +239,7 @@ implementation. So a change to the code does not compile the contract again.
 
 Send a command with `EhOsContract.dispatch/3`, with the actor that your application authenticated:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias Lending.Contracts.Loans
 
@@ -327,14 +330,68 @@ engine judges runs, promises and deadlines.
 ### Let only one person issue a command
 
 Some rules name a person, not a role. Example: only the librarian who lent a copy takes it back.
-Add `actor_is` to the command, with a field of the state that names the person:
+Add `actor_is` to the command, with a field of the state that names the person. Declare the invariant
+that dispatch rejects on. The command that opens the loan carries the librarian, and its event keeps
+the librarian:
 
+<!-- in: Lending.Contracts.Loans, aggregate :loan -->
 ```elixir
+state do
+  field :returned, :boolean, default: false
+  field :librarian_id, :id, optional: true
+end
+
+invariant :returned_where_lent, "A copy is taken back by the librarian who lent it"
+
 command :return_copy, "Take a copy back",
   by: :librarian,
   emits: :copy_returned,
-  rejects: [:returned_where_lent] do
+  rejects: [:returned_once, :returned_where_lent] do
   actor_is :librarian_id, or_rejects: :returned_where_lent
+end
+
+command :open_loan, "Lend a copy", by: :librarian, emits: :loan_opened do
+  field :copy_id, :id
+  field :member_id, :id
+  field :librarian_id, :id, optional: true
+end
+
+event :loan_opened, "Copy lent" do
+  field :copy_id, :id
+  field :member_id, :id
+  field :librarian_id, :id, optional: true
+end
+```
+
+Your application gives `librarian_id`: the subject of the credential of the librarian. The
+implementation copies the field into the event, and `evolve/2` folds it into the state:
+
+<!-- and in: Lending.Loan -->
+```elixir
+def open_loan(%OpenLoan{} = command, _state) do
+  emit(%LoanOpened{
+    loan_id: command.loan_id,
+    copy_id: command.copy_id,
+    member_id: command.member_id,
+    librarian_id: command.librarian_id
+  })
+end
+
+def evolve(state, %LoanOpened{librarian_id: id}), do: %{state | librarian_id: id}
+def evolve(state, %CopyReturned{}), do: %{state | returned: true}
+```
+
+Show the rejection in a scenario. `as` names the person who issues the command
+([`S7`](refusals.md#refusals-s)):
+
+<!-- and in: Lending.Contracts.Loans -->
+```elixir
+scenario "a copy is not taken back by another librarian" do
+  actor :librarian
+  as "librarian-ola"
+  given :loan_opened, %{copy_id: "c-1", member_id: "m-1", librarian_id: "librarian-jan"}
+  command :return_copy
+  rejected :returned_where_lent
 end
 ```
 
@@ -343,20 +400,31 @@ end
 - Dispatch compares the field with the subject of the credential, after it folds the state.
 - If they are not equal, dispatch rejects the command on the invariant in `or_rejects:`. The log gets
   a rejected command and no event.
-- If the field is empty, dispatch rejects each person.
+- If the field is empty, dispatch rejects each person. With `optional: true`, a loan that names no
+  librarian is valid, and nobody takes its copy back through this command.
 - A `:system` actor and a reaction act for the application. Dispatch does not compare them.
 - A role gives no exception. If a person must act on the unit of another person, declare a command
   for it.
-- In a scenario, name the person with `as "librarian-ola"`, beside its `actor`
-  ([`S7`](refusals.md#refusals-s)).
 
 ### Take a field from the host
 
 Some fields of a decision are not the caller's to give. Example: the system at the desk knows if a
 copy was scanned. Declare such a field with `supplied_by: :host`:
 
+<!-- in: Lending.Contracts.Loans, command :open_loan -->
 ```elixir
 field :scanned, :boolean, supplied_by: :host
+```
+
+A scenario of the command gives the value, as the supplier does at run time
+([`S3`](refusals.md#refusals-s)):
+
+<!-- and in: Lending.Contracts.Loans -->
+```elixir
+scenario "a copy is lent" do
+  command :open_loan, %{copy_id: "c-1", member_id: "m-1", scanned: true}
+  expect :loan_opened
+end
 ```
 
 1. Write a module that implements `EhOsContract.Supplier`.

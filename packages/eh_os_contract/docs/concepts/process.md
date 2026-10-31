@@ -191,6 +191,7 @@ A promise is what the process owner agreed happens in a run: after one event, an
   `eventually` nor `or_else` calls them itself. A subscription's invoice is issued, or the period is
   disputed, only after its usage is collected from the metering system. Issuing the invoice does not call it:
 
+  <!-- not compiled: a promise of a process the page does not define -->
   ```elixir
   promise :invoiced_within_two_days do
     from :period_closed
@@ -224,6 +225,7 @@ call in `EhOsContract.Dependency.observe/3`, naming the contract and the externa
 `{:error, :unavailable}` is recorded as an observation and handed back, and any other answer passes through
 unrecorded, since an outage removes a finding from the report and nothing should be counted as one by guess.
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.Dependency.observe(MyApp.Contracts.Payments, :payment_gateway, fn ->
   MyApp.Gateway.charge(customer, amount)

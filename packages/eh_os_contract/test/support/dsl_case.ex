@@ -207,10 +207,10 @@ defmodule EhOsContract.DslCase do
   @doc """
   Compiles each `{file, source}` and returns what the rules between modules (L3,
   `EhOsContract.Contract.Links`) find among the modules they define, as
-  `%{message:, file:, line:}`. The sources have to compile: L3 reads compiled
-  modules.
+  `%{message:, file:, line:}`. A source is a string or quoted code (`compile/2`). The
+  sources have to compile: L3 reads compiled modules.
   """
-  @spec links([{String.t(), String.t()}]) :: [
+  @spec links([{String.t(), String.t() | Macro.t()}]) :: [
           %{message: String.t(), file: String.t() | nil, line: non_neg_integer() | nil}
         ]
   def links(sources) do
@@ -253,15 +253,18 @@ defmodule EhOsContract.DslCase do
   @doc """
   Compiles `source` as the file `file` with `:debug_info` on, and returns what
   `Code.compile_string/2` returns. The binaries then carry their debug chunk, which
-  is also where typespecs are read from.
+  is also where typespecs are read from. `source` may be quoted code, which keeps the
+  lines its metadata gives, as the examples of a documentation page do.
   """
-  @spec compile(String.t(), String.t()) :: [{module(), binary()}]
+  @spec compile(String.t() | Macro.t(), String.t()) :: [{module(), binary()}]
   def compile(source, file \\ "nofile") do
     previous = Code.get_compiler_option(:debug_info)
     Code.put_compiler_option(:debug_info, true)
 
     try do
-      Code.compile_string(source, file)
+      if is_binary(source),
+        do: Code.compile_string(source, file),
+        else: Code.compile_quoted(source, file)
     after
       Code.put_compiler_option(:debug_info, previous)
     end

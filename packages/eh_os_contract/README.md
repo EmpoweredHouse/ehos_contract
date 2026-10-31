@@ -56,6 +56,7 @@ end
 
 Your application sends a command through *dispatch*, with the actor that it authenticated:
 
+<!-- not compiled: a call in the host's code -->
 ```elixir
 alias MyApp.Contracts.Onboarding
 
