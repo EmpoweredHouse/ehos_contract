@@ -7,8 +7,8 @@ data, the things that the application points to, and the systems that it uses. I
 writes a domain. [The glossary](../glossary.md) defines each word in italics.
 
 [How does a domain divide a business into contexts?](domain.md) tells about the subdomains, the
-contexts and their relations. [Personal data and erasure](personal-data.md) tells about the
-subjects. [The domain reference](../dsl/domain-dsl.md) lists each key of this page.
+contexts and their relations. [How does the engine keep and erase personal data?](personal-data.md) tells about
+the subjects. [The domain reference](../dsl/domain-dsl.md) lists each key of this page.
 
 ## What is an actor?
 
@@ -28,14 +28,15 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
   [Authorization](../authorization.md) tells how a credential becomes an actor.
 - **A system actor is code of the application** that acts as itself, for example a job or an
   import: `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential. It can do what the
-  declarations that name it permit.
+  declarations that name it permit. The engine does not ask the `EhOsContract.Authorizer` about a
+  system actor. So do not build one for a request that comes from a person.
 - **`backed_by:`** names the external system that a system actor stands for. The compiler refuses
   `backed_by:` on a human actor ([`D4`](../refusals.md#refusals-d)).
 - **`context:`** puts the actor in one context. The compiler refuses the actor in a contract of
   another context ([`X2`](../refusals.md#refusals-x)). An actor without `context:` can act in each
   context.
 - **`responsibility`**, in the block of the actor, names what the actor answers for, in the words of
-  the workshop material. A page shows it. No code reads it.
+  the workshop material. The pages and the graph of the model show it. Nothing reads it at run time.
 
 If no `by:`, no `recorded_by:` and no `accountable` of a process module names an actor, the check
 warns `orphan-actor`. The actor of a scenario does not count. Remove the actor, or write the
@@ -113,8 +114,8 @@ end
 
 A value has a type or fields. The compiler refuses a value with both, or with neither, and a `unit`
 on a value that is not an `:integer` or a `:decimal` ([`D3`](../refusals.md#refusals-d)). A field
-of a value with fields can be personal: [Personal data and erasure](personal-data.md#personal-data-in-a-value)
-tells how.
+of a value with fields can be personal: [How does the engine keep and erase personal
+data?](personal-data.md#personal-data-in-a-value) tells how.
 
 If a value, or a member of its enum written as a bare atom, has no label, the check gives the notice
 `owner-view-without-label`. A business owner then reads the name in the code. Write the member as
@@ -228,7 +229,7 @@ end
   `:outbound`: only the application sends to the system. `:bidirectional`: both.
 - `unavailable_looks_like` tells what an outage looks like to the business.
 - `expected_latency` tells how long an answer usually takes.
-- The pages of the model show these two keys. No code reads them.
+- The pages and the graph of the model show these two keys. Nothing reads them at run time.
 
 A contract uses an external system in four ways:
 
@@ -349,8 +350,9 @@ end
 
 - The mechanic has the scope of a shop, and so does `accept_bike`. A mechanic with a grant for one
   shop cannot accept a bike for another shop.
-- The phone of the customer is personal. [Personal data and erasure](personal-data.md) tells what
-  the engine does with it.
+- The phone of the customer is personal.
+  [How does the engine keep and erase personal data?](personal-data.md) tells
+  what the engine does with it.
 - `Money` checks each amount that dispatch gets. Dispatch refuses a quote of `-1` before the decision
   runs.
 - The card terminal is `:inbound`: it backs the actor that records the payments.
@@ -360,8 +362,8 @@ end
 
 ## Next steps
 
-- [Personal data and erasure](personal-data.md): the subjects, and the personal fields of this
-  example.
+- [How does the engine keep and erase personal data?](personal-data.md): the subjects,
+  and the personal fields of this example.
 - [Authorization](../authorization.md): how a credential becomes an actor, and how a scope is
   checked.
 - [Reactions](reactions.md): the effects that call an external system.

@@ -15,8 +15,9 @@ contains these declarations:
 - the words of each part: the glossary of each context;
 - how the contexts depend on each other: the relations;
 - the actors, the values, the entities and the external systems, which
-  [Actors, values, entities and external systems](domain-data.md) tells about;
-- the subjects of personal data, which [Personal data and erasure](personal-data.md) tells about.
+  [What are actors, values, entities and external systems?](domain-data.md) tells about;
+- the subjects of personal data, which
+  [How does the engine keep and erase personal data?](personal-data.md) tells about.
 
 Each contract names its domain, for example `domain: Lending.Domain`. After Elixir compiles the
 project, the compiler `:eh_os_contract` checks each contract against its domain.
@@ -124,7 +125,7 @@ the catalogue gets this warning until a contract belongs to it.
 ### How does the check compare names with the glossary?
 
 The labels are in the language of the context. The identifiers are in the `code_language:` of the
-domain. The *word in code* of a term is its translation into that language. If the context is in
+domain. The word in code of a term is its translation into that language. If the context is in
 that language, the word in code is the term itself.
 
 Example: the term "Ausleihe" has `translation :en, "Loan"`, so its word in code is `loan`. The
@@ -151,7 +152,7 @@ inflected forms.
 ## How do two contexts relate?
 
 A *relation* tells how two contexts depend on each other. It has one of 8 patterns. Five patterns
-are directed: the *downstream* context depends on the *upstream* context. Three patterns are
+are directed: the downstream context depends on the upstream context. Three patterns are
 symmetric.
 
 | Pattern | Direction | What it says | What a contract can consume across it |
@@ -194,7 +195,7 @@ It also refuses a relation that the domain declares two times ([`D1`](../refusal
 
 ### What does a relation let through?
 
-A relation is a rule for the contracts. A contract of one context makes a *reference* to another
+A relation is a rule for the contracts. A contract of one context makes a reference to another
 context when it does one of these things:
 
 - it consumes a contract of the other context;
@@ -242,13 +243,14 @@ A contract has one context because it uses one language:
 - its actors are of that context. The compiler refuses an actor of another context in `by:`, in
   `recorded_by:` or as the actor of a scenario ([`X2`](../refusals.md#refusals-x)).
 
-A contract of one context reaches into another context in two ways. Each way is a dependency
+A contract of one context reaches into another context in three ways. Each way is a dependency
 between the two contexts:
 
 - it consumes a contract of the other context, for example
   `consumes Lending.Contracts.Catalogue, [:item_withdrawn]`, and reacts to its events;
-- it names an entity that the other context owns, for example a field `{:id, :copy}`, where the
-  catalogue owns `:copy`.
+- it names an entity or a unit that the other context owns, for example a field `{:id, :copy}`,
+  where the catalogue owns `:copy`;
+- it uses a value that the other context declares with `context:`.
 
 A policy or a read model without `delivery` runs in the transaction of the contract that decided its
 event. An effect and a process manager run after that transaction. So a policy or a read model that
@@ -326,21 +328,21 @@ end
 
 ![Loans depends on the catalogue, because a loan names a copy that the catalogue owns; library events and loans go separate ways.](../img/domain-contexts.svg)
 
-1. The relation `:customer_supplier` makes the catalogue the upstream and the loans the downstream.
-   So a contract of the loans context can make references to the catalogue. The catalogue cannot
-   make references to the loans.
-2. The domain declares the entity `:copy` with `context: :catalogue`.
-3. The command `open_loan` and the event `loan_opened` have a field of type `{:id, :copy}`. This
-   field is the reference that the relation lets through.
+1. Loans depends on the catalogue: a customer–supplier relation. It makes the catalogue the upstream
+   and the loans the downstream. So a contract of the loans context can make references to the
+   catalogue, and the catalogue cannot make references to the loans.
+2. The catalogue owns the entity copy: the domain declares `:copy` with `context: :catalogue`.
+3. A field of the loans contract names a copy: `open_loan` and `loan_opened` have a field of type
+   `{:id, :copy}`. This field is the reference that the relation lets through.
 
 Library events and loans go separate ways. No contract of one can make a reference to the other.
 
 ## Next steps
 
-- [Actors, values, entities and external systems](domain-data.md): the other declarations of a
-  domain.
-- [Personal data and erasure](personal-data.md): the subjects, and what the engine does with their
-  personal data.
+- [What are actors, values, entities and external systems?](domain-data.md): the other declarations
+  of a domain.
+- [How does the engine keep and erase personal data?](personal-data.md): the subjects,
+  and what the engine does with their personal data.
 - [Write a domain, a contract and a process module](../contract.md): the full task.
 - [The compile refusals](../refusals.md#refusals-d): each refusal of a domain, and of a contract
   against its domain ([`X`](../refusals.md#refusals-x)).

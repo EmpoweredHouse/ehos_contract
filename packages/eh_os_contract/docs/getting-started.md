@@ -368,7 +368,7 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 - [Write a domain, a contract and a process module](contract.md): the full task, with a process
   module and its promises.
 - The concepts: [the domain](concepts/domain.md), [actors and values](concepts/domain-data.md),
-  [personal data](concepts/personal-data.md),
+  [personal data](concepts/personal-data.md), [the master keys](concepts/master-keys.md),
   [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
   [forms](concepts/forms.md), [between contracts](concepts/between-contracts.md),
   [processes](concepts/process.md) and [scenarios](concepts/scenarios.md).
