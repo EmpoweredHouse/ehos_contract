@@ -356,6 +356,26 @@ event :loan_opened, "Copy lent" do
 end
 ```
 
+The implementation writes the subject of the actor into the event, and `evolve/2` folds it into the
+state:
+
+<!-- and in: Lending.Loan -->
+```elixir
+@impl true
+def open_loan(%OpenLoan{__meta__: meta} = command, _state) do
+  emit(%LoanOpened{
+    loan_id: command.loan_id,
+    copy_id: command.copy_id,
+    member_id: command.member_id,
+    librarian_id: meta.actor.subject
+  })
+end
+
+@impl true
+def evolve(state, %LoanOpened{librarian_id: id}), do: %{state | librarian_id: id}
+def evolve(state, %CopyReturned{}), do: %{state | returned: true}
+```
+
 Show the rejection in a scenario. `as` names the person who issues the command
 ([`S7`](refusals.md#refusals-s)):
 
