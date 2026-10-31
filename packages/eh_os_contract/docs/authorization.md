@@ -10,8 +10,8 @@ roles; the application checks it on every call, locally, without asking EHOS.**
 
 The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
 pickers and each is granted one warehouse. [Scope](#scope) shows its
-domain and contract. The sandbox's `Fulfilment.Contracts.Warehouse` is a fuller one, in which pickers
-confirm and pack their pick lists.
+domain and contract. The sandbox's `Fulfilment.Contracts.Warehouse` has more of the warehouse: there,
+pickers confirm and pack their pick lists.
 
 Three places, each answering its own question:
 
@@ -201,7 +201,7 @@ defmodule Fulfilment.Domain do
   context :warehouse, "Warehouse", subdomain: :core
 
   actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
-  actor :picker, :human, "Picker", scope: [:warehouse_id]
+  actor :picker, :human, "Picker"
 end
 
 defmodule Fulfilment.Contracts.Warehouse do

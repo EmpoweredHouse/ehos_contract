@@ -50,7 +50,7 @@ defmodule Concepts.Units.Contracts.Workshops do
       transition :open, :called_off, :closed
     end
 
-    invariant :only_an_open_workshop, "Only an open workshop is called off"
+    invariant :only_an_open_workshop, "Only an open workshop is changed"
 
     command :offer_places, "Offer places on a workshop",
       by: :organiser,
@@ -280,7 +280,7 @@ end
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
   ([`I4`](../refusals.md#refusals-i)). A command that invites several speakers to a workshop at once
   emits one event for each speaker. The number of events grows with the list, so bound the list in
-  the decision or with an invariant:
+  the decision or with a constraint of the command:
 
   <!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
   ```elixir
