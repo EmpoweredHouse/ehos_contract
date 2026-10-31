@@ -39,7 +39,8 @@ Then the field holds personal data in each place that uses the value.
 
 ## Where can personal data not go?
 
-The engine keeps personal data only where it can erase it. So some fields cannot be personal:
+The engine keeps personal data in the log only where an erasure reaches it. So some fields cannot
+be personal:
 
 - A field that tells the runs of a process apart, a `correlate` field
   ([`F4`](refusals.md#refusals-f)).
@@ -59,7 +60,7 @@ A code that identifies a person, such as a national id number, is personal data.
 
 ## What happens to personal data when a subject is erased?
 
-![Dispatch seals each personal field with the key of its subject; erasure destroys the key, so the log keeps the event and its sealed field cannot be read again.](img/personal-data-erasure.svg)
+![Dispatch encrypts personal fields with the key of their subject; erasure deletes the key, so the database holds no key that can read those events.](img/personal-data-erasure.svg)
 
 1. The first time an event carries personal data of a subject, dispatch makes a data key for the
    subject: 32 random bytes. It asks the `EhOsContract.Vault` to wrap the data key with a master
@@ -75,7 +76,9 @@ A code that identifies a person, such as a national id number, is personal data.
    `forget/2`. A read model delivered `:at_least_once` gets the same event later, in order.
 7. From then on, a personal field of that subject reads back as `%EhOsContract.Erased{}`.
 
-This is called crypto-shredding: the data stays in the log, and no key can read it.
+This is called crypto-shredding: the data stays in the log, and the database holds no key that can
+read it. [What does an erasure not reach?](#what-does-an-erasure-not-reach) tells where a key can
+still be.
 
 <!-- not compiled: a call in the host's code -->
 ```elixir
@@ -96,6 +99,8 @@ After an erasure:
   "c-17"}`. So `evolve/2` and each reaction must accept this struct in place of the value.
 - Dispatch refuses a command whose events carry personal data of the subject again, with
   `{:error, :subject_erased}`. A new key would make new data readable again.
+- This is also true after `{:ok, :no_data}`. So check the id before you erase: an erasure with a
+  wrong id blocks the personal data of the person who gets that id later.
 
 `erase/3` does not ask the `EhOsContract.Authorizer`. Your application decides who can erase.
 
@@ -129,6 +134,8 @@ deploys:
 Do not put the new key first in one deploy. If you do, the nodes that still run the old configuration
 cannot read what the new nodes write, until the rollout ends.
 
+<a id="what-does-an-erasure-not-reach"></a>
+
 ## What does an erasure not reach?
 
 - **Backups.** An erasure deletes the data key from the database, not from your backups. A backup, a
@@ -137,9 +144,13 @@ cannot read what the new nodes write, until the rollout ends.
 - **Read models.** A read model keeps its copy of personal data as plain text in your tables.
   `forget/2` deletes it from the live table. Only your backup policy reaches the backups of that
   table.
+- **A read model that has not read the erasure yet.** A read model delivered `:at_least_once` keeps
+  the plain text until its subscription reads `subject_erased`. If the subscription stops, the
+  data stays. `mix eh_os_contract.subscriptions` shows where each subscription is.
 
-So destroy each master key after an interval that is not longer than the time that you keep
-backups. Or keep the table of subject keys out of the backups of the log. Each choice has a cost: a
+So [change the master key](#rotate-a-master-key), and then destroy the old key, at an interval that
+is not longer than the time that you keep backups. Do not destroy a master key that still wraps a data
+key. If you do, the personal data of each subject whose key it wraps becomes unreadable. Or keep the table of subject keys out of the backups of the log. Each choice has a cost: a
 backup older than a destroyed master key cannot unwrap the data of any subject. A backup restored
 without the subject keys cannot either.
 

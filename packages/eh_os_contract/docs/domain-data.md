@@ -103,6 +103,10 @@ end
 The compiler refuses a value with both a type and fields, or with neither. It refuses a `unit` on a
 value that is not an `:integer` or a `:decimal` ([`D3`](refusals.md#refusals-d)).
 
+Give each value a `label:`, and write each member of an enum with its label: `card: "Card"`. If you
+do not, the check gives a notice (`owner-view-without-label`). A person who reads the model then
+sees the name from the code.
+
 A field of a value can be personal. Then the field holds personal data in each place that uses the
 value. [Personal data and erasure](personal-data.md) tells how to mark it.
 
@@ -218,7 +222,7 @@ A contract uses an external system in four ways:
 | A system actor is `backed_by:` it | The system acts in the application. |
 
 If an external system declares an `operation`, each call to it names one
-([`X4`](refusals.md#refusals-x)). An external system can also be the upstream end of a directed
+([`X4`](refusals.md#refusals-x)). An external system can also be one end of a directed
 relation, as [the domain](domain.md#how-do-two-contexts-relate) tells.
 
 The check warns about these:

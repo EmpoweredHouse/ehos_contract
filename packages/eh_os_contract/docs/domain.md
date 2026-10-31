@@ -64,6 +64,9 @@ The kind is for people. The graph of the domain, `mix eh_os_contract.graph --dom
 each subdomain with its kind. The dashboard draws a subdomain as a group of its contexts. Nothing
 reads the kind at run time.
 
+The check warns about a subdomain that no context names (`subdomain-without-bounded-context`). Give
+the subdomain a context, or remove it.
+
 ## What is a context?
 
 A context is a part of the domain in which each word has one meaning. Example: at the loan desk, a
@@ -117,13 +120,15 @@ Example: the term "Ausleihe" with `translation :en, "Loan"` has the word in code
 - Inflected forms do not match.
 
 `mix eh_os_contract.glossary` shows, under each term, its word in code and the declarations that use
-it. `mix eh_os_contract.check` reads the names of units, read models and fields in two directions:
+it. It also shows each process module that includes events of the context and uses the word. The
+word can be in the id, the stages, the promises or the `correlate` fields of the process module. `mix eh_os_contract.check` reads the names of units, read models and fields in two directions:
 
 - It lists the words of a context that no term covers, as one notice for each context
-  (`word-without-term`). It ignores words of 1 or 2 letters, such as `id`, and the names of commands
-  and events.
+  (`word-without-term`). The word that the most names use comes first. It ignores words of 1 or 2
+  letters, such as `id`, and the names of commands and events.
 - It warns about a name that uses the word of a term of another context. It does not warn when a
-  term of its own context covers the word (`term-of-another-context`). Define the word in this context too, or
+  term of its own context covers the word (`term-of-another-context`). Define the word in this
+  context too, or
   rename the field.
 
 Both rules ignore the part of a field name that names its value type. Example: in a field
@@ -134,6 +139,10 @@ rule also ignores a field that refers to another context by an identity, such as
 The check also warns about a label that uses a word that its glossary says to avoid
 (`label-with-avoided-term`). It reads the label of each declaration and of each enum member. A word
 matches whole, in any letter case. Inflected forms do not match, so name each form in `avoid`.
+
+- A word to avoid does not match where it is part of the term itself.
+- The check ignores the words that a translation avoids. These words belong to another language, and
+  the labels are not in that language.
 
 <a id="how-do-two-contexts-relate"></a>
 
@@ -307,7 +316,8 @@ The contract of loans names the entity `:copy`, which the catalogue owns. So loa
 catalogue, and the relation `:customer_supplier` says so.
 
 This example is small, so `mix eh_os_contract.check` reports findings for it. Example: no contract
-belongs to the catalogue or to the library events (`bounded-context-without-content`).
+belongs to the catalogue or to the library events (`bounded-context-without-content`). The entity
+`:copy` of the catalogue does not count: only a contract gives a context content.
 
 ## Next steps
 

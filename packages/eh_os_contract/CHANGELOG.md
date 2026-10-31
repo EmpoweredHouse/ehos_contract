@@ -82,8 +82,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   systems. Subjects, personal fields, erasure and the master keys are in the new `docs/personal-data.md`,
   with a diagram of what an erasure does. `docs/forms.md` is a how-to, with a diagram of the steps from a
   keystroke to a refusal. The pages link to `refusals.md` and `rules.md` instead of their own lists.
-  Links change: `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and changing a master
-  key is `personal-data.md#rotate-a-master-key`.
+  Links change: the section anchors of `domain.md`, `domain-data.md` and `forms.md` changed,
+  `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and changing a master key is
+  `personal-data.md#rotate-a-master-key`.
 
 ### Fixed
 

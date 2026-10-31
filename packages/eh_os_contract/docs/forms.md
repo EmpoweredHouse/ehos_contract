@@ -2,7 +2,7 @@
 
 This page tells how to let a person issue a command from a page of your application. The form checks
 what the person types by the rules of the contract. When the person submits, the form shows the
-refusal of dispatch at its field. The page is for a developer who writes the pages of an application.
+refusal of dispatch. The page is for a developer who writes the pages of an application.
 [The glossary](glossary.md) defines each word of the contract language.
 
 <!-- covers: entities contract.aggregate.command -->
@@ -25,13 +25,13 @@ console.
 - Use Phoenix LiveView for the page. The examples use its function components `<.form>` and
   `<.input>`.
 
-## Which rules does the form check?
+## Keep the rules in the contract
 
 The contract holds each rule. Examples: a required field, the members of an enum, an invariant of a
 value or of a unit, a constraint of a command. The form and dispatch read the rules from
 the contract.
 
-![The form checks each field as the person types; dispatch checks the invariants of the unit, and the form shows its refusal at the field.](img/forms-refusal.svg)
+![The form checks each field as the person types; the implementation rejects on an invariant of the unit, and the form shows that refusal.](img/forms-refusal.svg)
 
 1. The person types in a field. The person is the actor of the command. The LiveView gets a
    `phx-change` event.
@@ -149,8 +149,10 @@ end
 
 Build the changeset on `mount` and on each `phx-change`. Dispatch the command on `phx-submit`.
 
-Put the identity of the invoice in `data:`. The page decides the identity, not the person. The form
-ignores a value for the identity in the params.
+Put the identity of the invoice in `data:`. The page decides the identity, not the person. When
+`data:` holds the identity, the form ignores a value for it in the params. When `data:` holds none,
+the form reads the identity from the params. Example: a form that creates a unit under an identity
+that the person types.
 
 <!-- not compiled: functions of the host's LiveView -->
 ```elixir
@@ -259,13 +261,14 @@ data with the types of JSON. Send the text of a form through `Form` first.
 
 ## Show a form only to the people who can use it
 
-A form does not ask the `EhOsContract.Authorizer`. It checks only the shape that the contract
-declares. Dispatch asks if the person can issue the command, when the form is sent.
+Show the form only to a person whose actor can issue the command. A form does not ask the
+`EhOsContract.Authorizer`: it checks only the shape that the contract declares. Dispatch asks if the
+person can issue the command, when the form is sent.
 
 A form also does not hold the person to one unit. The `EhOsContract.Authorizer` and your application
 decide who can act on which unit.
 
-## How does the form read the input?
+## Send input that the form can read
 
 - **Text.** Each value arrives as text. The form reads it as its declared type: an integer, a
   boolean, a decimal, a date or a timestamp.
@@ -286,14 +289,14 @@ decide who can act on which unit.
 
 The form does not read these fields from the params:
 
-- the identity in `data:`. The form does not show it back from the params either;
+- the identity, when `data:` holds it. The form does not show it back from the params either;
 - a field that the host supplies (`supplied_by: :host`). Give it in `data:`, or pass `supply: true` to
   `dispatch/3`, which then asks the `EhOsContract.Supplier`;
 - an identity that dispatch generates for a unit that the command creates.
 
 Another field in `data:` is only a start value. The person can change it.
 
-## How does the form read rows?
+## Send rows
 
 A value of fields is a row. A list of such values is one row for each item. The rows arrive as a map
 keyed by their index, and the form reads them in that order.
@@ -311,7 +314,7 @@ keyed by their index, and the form reads them in that order.
 A LiveView reads the whole form, each row too, on each `phx-change`. Limit what a form can send where
 the host takes it: the `max_frame_size` of the socket, and the `length` of the parser.
 
-## Which errors can a field get?
+## Write a message for each error
 
 Each error carries the reason of the engine in its keyword list:
 
@@ -324,7 +327,7 @@ Each error carries the reason of the engine in its keyword list:
 | `{"was refused", validation: :rejected, invariant: name}` | Dispatch refused on the invariant of the unit or the constraint of the command `name` (`refused/3`). |
 | `{"is invalid", validation: :generated \| :supplied}` | The command carried a field that dispatch generates or the host supplies (`refused/3`). This is an error of the page, not of the person. |
 
-## Where does a refusal go on the form?
+## Put a refusal at its field
 
 - A rule names no field. So `refused/3` puts a rejection on `:base`, the errors of the whole form.
   To put it at a field, name the field: `refused(changeset, reason, at: [period_closed: :period])`.

@@ -1,5 +1,5 @@
 <!-- title: What occurs from a keystroke to a refusal? -->
-<!-- desc: The form checks each field as the person types; dispatch checks the invariants of the unit, and the form shows its refusal at the field. -->
+<!-- desc: The form checks each field as the person types; the implementation rejects on an invariant of the unit, and the form shows that refusal. -->
 <!-- words: actor, value, dispatch, implementation -->
 <!-- technical: LiveView, Form -->
 <!-- verbs: types, builds, asks, shows, submits, dispatches, rejects, returns, puts -->

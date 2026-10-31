@@ -1,5 +1,5 @@
 <!-- title: What happens to personal data when a subject is erased? -->
-<!-- desc: Dispatch encrypts personal fields with the key of their subject; erasure deletes the key, so the log keeps events that no key can read. -->
+<!-- desc: Dispatch encrypts personal fields with the key of their subject; erasure deletes the key, so the database holds no key that can read those events. -->
 <!-- words: dispatch, subject, log, read model, consumer -->
 <!-- technical: Vault, erase/3 -->
 <!-- verbs: asks, stores, appends, deletes, forgets, reads -->
