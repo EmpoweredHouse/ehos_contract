@@ -331,7 +331,8 @@ engine judges runs, promises and deadlines.
 
 Some rules name a person, not a role. Example: only the librarian who lent a copy takes it back.
 Add `actor_is` to the command, with a field of the state that names the person. Declare the invariant
-that dispatch rejects on, and the event field that fills the state field:
+that dispatch rejects on. The command that opens the loan carries the librarian, and its event keeps
+the librarian:
 
 <!-- in: Lending.Contracts.Loans, aggregate :loan -->
 ```elixir
@@ -349,6 +350,12 @@ command :return_copy, "Take a copy back",
   actor_is :librarian_id, or_rejects: :returned_where_lent
 end
 
+command :open_loan, "Lend a copy", by: :librarian, emits: :loan_opened do
+  field :copy_id, :id
+  field :member_id, :id
+  field :librarian_id, :id, optional: true
+end
+
 event :loan_opened, "Copy lent" do
   field :copy_id, :id
   field :member_id, :id
@@ -356,22 +363,20 @@ event :loan_opened, "Copy lent" do
 end
 ```
 
-The implementation writes the subject of the actor into the event, and `evolve/2` folds it into the
-state:
+Your application gives `librarian_id`: the subject of the credential of the librarian. The
+implementation copies the field into the event, and `evolve/2` folds it into the state:
 
 <!-- and in: Lending.Loan -->
 ```elixir
-@impl true
-def open_loan(%OpenLoan{__meta__: meta} = command, _state) do
+def open_loan(%OpenLoan{} = command, _state) do
   emit(%LoanOpened{
     loan_id: command.loan_id,
     copy_id: command.copy_id,
     member_id: command.member_id,
-    librarian_id: meta.actor.subject
+    librarian_id: command.librarian_id
   })
 end
 
-@impl true
 def evolve(state, %LoanOpened{librarian_id: id}), do: %{state | librarian_id: id}
 def evolve(state, %CopyReturned{}), do: %{state | returned: true}
 ```
