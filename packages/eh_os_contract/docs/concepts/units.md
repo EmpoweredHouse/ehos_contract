@@ -154,20 +154,29 @@ refused when it brings its own identity (`{field, :generated}`) or when it has n
 
 - **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
   rules they may refuse on (`rejects:`). A command with no `by:` must be issued by a policy or a
-  process manager of the contract, or nobody could issue it ([`C1`](../contract.md#refusals-c)).
+  process manager of the contract, or nobody could issue it ([`C1`](../refusals.md#refusals-c)).
 - **Its events** are what it decided. An event no command emits is an event recorded without a
   decision, and says who records it, `recorded_by: :front_desk`; it enters through
-  `EhOsContract.record/3`. An event that is neither is refused ([`A2`](../contract.md#refusals-a)).
+  `EhOsContract.record/3`. An event that is neither is refused ([`A2`](../refusals.md#refusals-a)).
 - **Its state** is what it remembers between decisions, folded from its own events. It holds only
   what a decision reads.
 - **Its invariants** are the rules every command keeps, as the business states them. A command may
   also name a rule of its own, a `constraint`, for a rule about its data alone. Every invariant and
-  every constraint needs a scenario that refuses on it ([`S8`](../contract.md#refusals-s)).
+  every constraint needs a scenario that refuses on it ([`S8`](../refusals.md#refusals-s)).
 - **Its lifecycle**, when it has one, names the statuses its decisions depend on, the status its
   first event starts it in, and the events that move it between them. The engine computes `status`
   from the stream and puts it into the state; a command's `from:` names the statuses it is issued in,
   and dispatch refuses it in any other, on its `or_rejects:` invariant, before the decision runs. The
-  rules of the graph are in [the guide](../contract.md).
+  rules of the graph are in [the compile refusals](../refusals.md#refusals-t).
+- **What its lifecycle allows at run time.** If a decision emits an event that the graph does not
+  allow from the current status, dispatch raises and appends nothing. An event that no transition
+  names is allowed in each status that is not final, after an initial event. A recorded event that
+  does not fit is appended and does not move the status.
+- **A key with rules of its own.** An identity can name a domain value, for example
+  `identity [:company_id, period_id: :period]`. Dispatch holds the key to the invariants of the value.
+  If the key of a command or a recorded event breaks one, dispatch refuses it with
+  `{:invalid, [period_id: {:invariant, name}]}`, before it reads a stream. The type of the value must
+  be `:id`, because the key names the stream ([`F1`](../refusals.md#refusals-f)).
 - **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
   [process module](process.md)'s to say.
 
@@ -184,13 +193,13 @@ A `dcb` declares what it reads with `consults`:
 - `consults :seat_taken, match: :workshop_id` reads every `seat_taken` whose `workshop_id` is the
   boundary's. `match:` names fields of the boundary's identity, and every event of this contract
   consulted that way has to carry them as a required, non-personal `:id`, or a domain value resting on
-  one, such as a period named "2026-07" ([`A4`](../contract.md#refusals-a)).
+  one, such as a period named "2026-07" ([`A4`](../refusals.md#refusals-a)).
 - `consults :enrolment_closed, where: "enrolment closed for every course"` reads every event of that
   type, whoever it is about, with the criterion in prose. Use it only when no field can say it
   (`consults-without-match`, below).
 
 A consulted event may be one of another unit of the same contract, or one the contract `consumes`
-from a sibling; one received from another application is refused ([`A4`](../contract.md#refusals-a)). A boundary has no lifecycle
+from a sibling; one received from another application is refused ([`A4`](../refusals.md#refusals-a)). A boundary has no lifecycle
 and no generated identity: it spans streams, and its identity is what the command names.
 
 At run time the boundary reads its own events carrying its identity and every event it consults, in
@@ -214,7 +223,7 @@ defect in the code, never a business outcome.
 
 Every example of a rule, `{[1, 3], 0}`, is a test: `use EhOsContract.ScenarioCase, contract:
 Concepts.Units.Contracts.Workshops` calls the function with the arguments and compares the result. A
-rule without examples does not compile ([`S9`](../contract.md#refusals-s)).
+rule without examples does not compile ([`S9`](../refusals.md#refusals-s)).
 
 ## The code that decides
 
@@ -269,7 +278,7 @@ end
   workshop's `call_off` needs no refusal of its own: dispatch refuses it outside `:open` before it
   runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
   producing them; one with `into:` or `reduce:` produces something else, and does not compile
-  ([`I4`](../contract.md#refusals-i)). A command seating a whole group at once would read:
+  ([`I4`](../refusals.md#refusals-i)). A command seating a whole group at once would read:
 
   ```elixir
   def seat_group(%SeatGroup{workshop_id: workshop, attendee_ids: attendees}, _state),
@@ -288,7 +297,7 @@ end
   appended.
 
 The engine finds implementations in the running binary of the applications it is configured with,
-and each declaration takes at most one ([`X8`](../contract.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
+and each declaration takes at most one ([`X8`](../refusals.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
 state is only its identity needs no module.
 
 ## An event that already has rows
@@ -338,7 +347,7 @@ def amount_from_minor(%{"amount_minor" => minor} = data),
 The function takes the row's payload at that version as the log stores it, with string keys, and
 gives the next version's; what it gives is read as the log stores a value, so a decimal, a date or an
 atom key reads as an old row's own would. The implementation does not compile without it
-([`I2`](../contract.md#refusals-i)), and it is pure: it reads nothing but the row. The engine cannot
+([`I2`](../refusals.md#refusals-i)), and it is pure: it reads nothing but the row. The engine cannot
 see what it did, so it refuses the row, naming the step and never a value, when the function:
 
 - moved a sealed personal value, made one, or reordered a list holding one: a seal opens only under
@@ -354,7 +363,7 @@ required, non-personal `:id`, date or timestamp, by which a boundary, a process 
 rows. A change to one of those is a new event. The compiler refuses a version without its step, a step
 to a field the event will not have, a step that renames onto or defaults a field the log keeps, a
 default for personal data, and a default that is not a value of its field
-([`U1`](../contract.md#refusals-u)–[`U4`](../contract.md#refusals-u)).
+([`U1`](../refusals.md#refusals-u)–[`U4`](../refusals.md#refusals-u)).
 
 A compile sees only today's declaration, so it cannot tell a field added to version 1 from version 1
 as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
@@ -405,7 +414,7 @@ version of an event no contract declares, and records what is declared: it is fo
 holds rows of, as one added on a branch never deployed.
 
 Refusing a field that stops being personal also keeps a seal out of what the application publishes. A
-`publish` cannot name a personal field ([`D11`](../contract.md#refusals-d)), but rows written while a field was personal hold its
+`publish` cannot name a personal field ([`D11`](../refusals.md#refusals-d)), but rows written while a field was personal hold its
 value sealed, and the relay publishes a row in the event's current shape, its values as stored. A field
 that stops being personal, or one a personal field is renamed onto, would send those seals to every
 subscriber. The lock refuses both; without it, or after `--forget` of a version the log holds rows of,
@@ -413,20 +422,20 @@ the relay publishes them (`EhOsContract.Relay`).
 
 ## What the compiler refuses
 
-The full table is in [the guide](../contract.md). The refusals a unit meets most:
+The full table is in [the compile refusals](../refusals.md). The refusals a unit meets most:
 
-- a command whose `emits:` is empty or names another unit's event ([`A1`](../contract.md#refusals-a)), or an event nothing emits
-  and nobody records ([`A2`](../contract.md#refusals-a)): declare who decides or records it;
-- `rejects:` naming neither an invariant of the unit nor a constraint of the command ([`A3`](../contract.md#refusals-a));
+- a command whose `emits:` is empty or names another unit's event ([`A1`](../refusals.md#refusals-a)), or an event nothing emits
+  and nobody records ([`A2`](../refusals.md#refusals-a)): declare who decides or records it;
+- `rejects:` naming neither an invariant of the unit nor a constraint of the command ([`A3`](../refusals.md#refusals-a));
 - a boundary that consults nothing, consults an event it cannot read, or consults without `match:` or
-  `where:` ([`A4`](../contract.md#refusals-a));
-- an invariant or constraint with no scenario that refuses on it ([`S8`](../contract.md#refusals-s)): the scenario is the case to
+  `where:` ([`A4`](../refusals.md#refusals-a));
+- an invariant or constraint with no scenario that refuses on it ([`S8`](../refusals.md#refusals-s)): the scenario is the case to
   ask the process owner for;
-- a lifecycle whose graph does not hold ([`T1`](../contract.md#refusals-t) to [`T4`](../contract.md#refusals-t));
-- an event above version 1 without a step from each version below it ([`U1`](../contract.md#refusals-u));
-- in the module: a missing callback ([`I2`](../contract.md#refusals-i)), `evolve/2` without a clause for an event the state is
-  kept from ([`I3`](../contract.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../contract.md#refusals-i)), `reject/1`
-  of a rule it does not reject on ([`I5`](../contract.md#refusals-i)).
+- a lifecycle whose graph does not hold ([`T1`](../refusals.md#refusals-t) to [`T4`](../refusals.md#refusals-t));
+- an event above version 1 without a step from each version below it ([`U1`](../refusals.md#refusals-u));
+- in the module: a missing callback ([`I2`](../refusals.md#refusals-i)), `evolve/2` without a clause for an event the state is
+  kept from ([`I3`](../refusals.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](../refusals.md#refusals-i)), `reject/1`
+  of a rule it does not reject on ([`I5`](../refusals.md#refusals-i)).
 
 ## What `mix eh_os_contract.check` reports
 

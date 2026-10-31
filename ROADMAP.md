@@ -49,6 +49,12 @@ Reported content, which `CODE_OF_CONDUCT.md` relies on) and actions pinned by SH
 weakness triaged before they become public; then the packages on Hex in dependency order, and the
 applications moved to them.
 
+## Stages outside a programme
+
+| Stage | What | Issue | Status |
+| --- | --- | --- | --- |
+| Docs by the writing rules | Each hand-written page rewritten by `ehos-dev:voice` and `ehos-dev:diagrams`, `contract.md` first | #517 | ◐ |
+
 ## Earlier programmes
 
 - **DD, "domain-driven design checked by code"** (5–18 October 2026): seven waves, in which each rule of the

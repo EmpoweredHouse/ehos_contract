@@ -245,8 +245,8 @@ EhOsContract.dispatch(Onboarding, %Onboarding.Commands.SubmitApplication{applica
 ```
 
 An implementation that emits an event its command does not declare, or leaves a callback out, does not
-compile. How to write both modules, and every refusal with its code, is in
-[`docs/contract.md`](docs/contract.md); every key of the DSLs is in the reference generated from them,
+compile. How to write both modules is in [`docs/contract.md`](docs/contract.md), and every refusal with
+its code in [`docs/refusals.md`](docs/refusals.md); every key of the DSLs is in the reference generated from them,
 [the domain](docs/dsl/domain-dsl.md), [the contract](docs/dsl/contract-dsl.md) and
 [the process module](docs/dsl/process-dsl.md). Who the actor is, and how a
 credential becomes one, is in [`docs/authorization.md`](docs/authorization.md).

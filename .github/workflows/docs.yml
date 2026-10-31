@@ -117,8 +117,26 @@ jobs:
           path: packages/eh_os_contract_graph/deps
           key: eh-os-contract-graph-deps-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
+      # The engine's `:dev`/`:test` dependencies `ehos_diagrams` and `ehos_design`, which `mix docs`
+      # does not need but `mix deps.get` fetches, live in the private EmpoweredHouse/ehos-tools.
+      # The "ehos-tools CI" GitHub App mints a token that may only read that repository and
+      # expires within the hour, as in eh-os. Git reads it from the next step's environment
+      # alone, so mix.lock keeps the plain URL.
+      - id: ehos-tools
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.EHOS_CI_APP_ID }}
+          private-key: ${{ secrets.EHOS_CI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ehos-tools
+          permission-contents: read
+
       - name: Install engine deps
         working-directory: packages/eh_os_contract
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
         run: mix deps.get
 
       # `--only test`, as in ci.yml: the dashboard's `:dev` dependency is in a private

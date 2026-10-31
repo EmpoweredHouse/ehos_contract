@@ -22,7 +22,7 @@ run, whether they come from 1 contract or from several, and says what the busine
 appended, the engine reads those fields from it and files the event under the process's `id:` and their
 values, in the same append as the event itself. Every included event carries the fields, required and not
 personal, and as the same kind of identifier in every contract: `:id`, `{:id, entity}` or a domain value
-resting on one ([`X6`](../contract.md#refusals-x)). An event may belong to the runs of more than one process.
+resting on one ([`X6`](../refusals.md#refusals-x)). An event may belong to the runs of more than one process.
 
 So a process that correlates on `:loan_id` puts the loan's first event and its last in one run, and a fine
 recorded in another contract with the same `loan_id` in that run too, since the process includes it. A run
@@ -31,7 +31,7 @@ application, which already knows.
 
 Correlate on what the business means by "one case". A run keyed by too coarse a field, a member instead of a
 loan, gathers unrelated loans into one and judges them together; one keyed by too fine a field splits a case
-in two, and a promise that spans both halves is never kept. At most 6 fields make 1 key ([`F9`](../contract.md#refusals-f)).
+in two, and a promise that spans both halves is never kept. At most 6 fields make 1 key ([`F9`](../refusals.md#refusals-f)).
 
 ## A process module
 
@@ -145,18 +145,18 @@ end
 The contracts know nothing of the run: they decide loans and fines, and declare their events. The module
 decides nothing and declares no event of its own; nothing is dispatched to it. `loan_id` is the loan's
 identity in `Loans` and an ordinary field in `Fines`; both are `:id`, so the module correlates on it
-([`X6`](../contract.md#refusals-x)).
+([`X6`](../refusals.md#refusals-x)).
 
 **Its `id:`** keys its runs, as a contract's `id:` keys its events: two processes of one system may not
-share it ([`X7`](../contract.md#refusals-x)), and renaming it changes the key every run is filed under, so the report no longer
+share it ([`X7`](../refusals.md#refusals-x)), and renaming it changes the key every run is filed under, so the report no longer
 finds the runs already in the log.
 
 **Stages** are the steps of a run, in order. Each names the events that belong to it with `include:`,
 `{Contract, :event}` or `{Contract, [:event, …]}`, without a compile dependency on the contract. A module has
-at least one stage, and every stage includes something ([`R3`](../contract.md#refusals-r)); a run with one step has one stage. The
-events are ones the contract declares, not ones it consumes or receives ([`X5`](../contract.md#refusals-x)). Everywhere else in the
+at least one stage, and every stage includes something ([`R3`](../refusals.md#refusals-r)); a run with one step has one stage. The
+events are ones the contract declares, not ones it consumes or receives ([`X5`](../refusals.md#refusals-x)). Everywhere else in the
 module an event is named by its name alone, so two included events of one name are refused, whichever
-contracts they come from ([`N1`](../contract.md#refusals-n)). The engine does not hold a run to the order of its stages; the
+contracts they come from ([`N1`](../refusals.md#refusals-n)). The engine does not hold a run to the order of its stages; the
 report counts the runs that entered them out of order.
 
 **`ends_on`** lists the events that end a run. Whichever comes first ends it, and a later event does not
@@ -165,7 +165,7 @@ since a fine settled ends a loan only for this process.
 
 **`accountable`** names the role that answers for the process: the actor a finding about it is addressed
 to. The report prints the actor's label beside the process. It is an actor of the domain, of any of its
-contexts, since a process may cross them ([`X2`](../contract.md#refusals-x)).
+contexts, since a process may cross them ([`X2`](../refusals.md#refusals-x)).
 
 A run is filed at the append of each included event; an included event without a value for every
 `correlate` field belongs to none of its runs.
@@ -182,7 +182,7 @@ A promise is what the process owner agreed happens in a run: after one event, an
   `from` again.
 - `eventually` keeps it.
 - `within` is the window, `{count, unit}` in seconds, minutes, hours or days. A calendar unit, a week or a
-  month, does not compile ([`R6`](../contract.md#refusals-r)): the report measures elapsed time against the window, and a month has no
+  month, does not compile ([`R6`](../refusals.md#refusals-r)): the report measures elapsed time against the window, and a month has no
   fixed length.
 - `or_else` is another event that keeps it the other way: the loan ended with the copy written off, which is
   a correct ending, just not the one wanted. `within` binds it as well, so a run that ends the other way
@@ -201,9 +201,9 @@ A promise is what the process owner agreed happens in a run: after one event, an
   end
   ```
 
-`from`, `eventually` and `or_else` are events the process includes ([`R5`](../contract.md#refusals-r)). Each system of `waits_on` is
+`from`, `eventually` and `or_else` are events the process includes ([`R5`](../refusals.md#refusals-r)). Each system of `waits_on` is
 an external of the domain, not one `eventually` or `or_else` already depends on, and one a contract the process
-includes depends on or calls, since an outage is recorded only under such a contract ([`X4`](../contract.md#refusals-x)).
+includes depends on or calls, since an outage is recorded only under such a contract ([`X4`](../refusals.md#refusals-x)).
 
 Each run gets one of 4 verdicts per promise:
 
@@ -249,7 +249,7 @@ not read as a promise being kept.
 it. A run that ended inside the deadline was kept, one that ended outside it exceeded it, and one still open
 past it is overdue: a finding of its own, since only a lower bound of its duration is known. An open run
 inside its deadline is the normal case and is not mentioned. A deadline is declared once, in the same fixed
-units as `within`, and needs `ends_on`, since it measures a run to its end ([`R6`](../contract.md#refusals-r)).
+units as `within`, and needs `ends_on`, since it measures a run to its end ([`R6`](../refusals.md#refusals-r)).
 
 A run is reported in the period it **started**, and measured over its whole history, so a run started in June
 and reported for July does not look as if it started in July.
@@ -305,22 +305,22 @@ under a term of a context whose events it includes when its id, a stage, a promi
 
 ## What the compiler refuses
 
-- An `id:` that is not the domain's `name:` then dotted snake_case segments ([`D11`](../contract.md#refusals-d)); a `domain:` that
-  is not a compiled domain ([`X1`](../contract.md#refusals-x)).
-- No `correlate`, an empty one, two, or one naming a field twice ([`R2`](../contract.md#refusals-r)); one of more than 6 fields
-  ([`F9`](../contract.md#refusals-f)).
+- An `id:` that is not the domain's `name:` then dotted snake_case segments ([`D11`](../refusals.md#refusals-d)); a `domain:` that
+  is not a compiled domain ([`X1`](../refusals.md#refusals-x)).
+- No `correlate`, an empty one, two, or one naming a field twice ([`R2`](../refusals.md#refusals-r)); one of more than 6 fields
+  ([`F9`](../refusals.md#refusals-f)).
 - A module without a stage, a stage including nothing, or an `include:` entry naming no event or no
-  contract module ([`R3`](../contract.md#refusals-r)).
-- An included event the contract does not declare ([`X5`](../contract.md#refusals-x)), or one whose `correlate` fields are missing,
-  optional, personal or of another identifier ([`X6`](../contract.md#refusals-x)); two included events of one name ([`N1`](../contract.md#refusals-n)).
+  contract module ([`R3`](../refusals.md#refusals-r)).
+- An included event the contract does not declare ([`X5`](../refusals.md#refusals-x)), or one whose `correlate` fields are missing,
+  optional, personal or of another identifier ([`X6`](../refusals.md#refusals-x)); two included events of one name ([`N1`](../refusals.md#refusals-n)).
 - A promise naming an event the process does not include, an `ends_on` event it does not include, or
-  `ends_on` twice ([`R5`](../contract.md#refusals-r)).
+  `ends_on` twice ([`R5`](../refusals.md#refusals-r)).
 - A `waits_on` naming no external of the domain, one the promise's `eventually` or `or_else` already
-  depends on, or one no contract the process includes uses ([`X4`](../contract.md#refusals-x)).
+  depends on, or one no contract the process includes uses ([`X4`](../refusals.md#refusals-x)).
 - `within` or `deadline` in a calendar unit, negative, malformed or longer than 100 years; `deadline` twice, or
-  without `ends_on` ([`R6`](../contract.md#refusals-r)).
-- An `accountable` that is not an actor of the domain ([`X2`](../contract.md#refusals-x)); an `id:` another process of the system has
-  ([`X7`](../contract.md#refusals-x)).
+  without `ends_on` ([`R6`](../refusals.md#refusals-r)).
+- An `accountable` that is not an actor of the domain ([`X2`](../refusals.md#refusals-x)); an `id:` another process of the system has
+  ([`X7`](../refusals.md#refusals-x)).
 
 ## What `mix eh_os_contract.check` reports
 

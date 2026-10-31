@@ -43,7 +43,20 @@ defmodule EhOsContract.MixProject do
       # and warn about each one.
       consolidate_protocols: Mix.env() != :test,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      # `mix ehos_diagrams.gen [--check]`. `docs/authorization.md` is left out of the
+      # documents that may hold no Mermaid block until its two blocks become diagrams (#517).
+      ehos_diagrams: [
+        sources: "docs/diagrams",
+        out: "docs/img",
+        vocabulary: {EhOsContract.Docs, :vocabulary, []},
+        pages: ["README.md", "docs/**/*.md"],
+        documents: [
+          "README.md",
+          "docs/{introduction,getting-started,contract,refusals,glossary}.md",
+          "docs/concepts/*.md"
+        ]
+      ]
     ]
   end
 
@@ -87,6 +100,7 @@ defmodule EhOsContract.MixProject do
         "eh_os_contract.check",
         "eh_os_contract.rules --check",
         "eh_os_contract.docs --check",
+        "ehos_diagrams.gen --check",
         # A reference in a doc to a module, a function or a page that is not there,
         # or is hidden, fails here rather than becoming a dead link on hexdocs.
         "docs -f html --warnings-as-errors --output _build/test/doc",
@@ -119,6 +133,8 @@ defmodule EhOsContract.MixProject do
   defp docs do
     [
       main: "readme",
+      # The diagrams `mix ehos_diagrams.gen` writes, which the pages link as `img/<id>.svg`.
+      assets: %{"docs/img" => "img"},
       extras:
         [
           "README.md",
@@ -136,6 +152,7 @@ defmodule EhOsContract.MixProject do
             "docs/configuration.md",
             "docs/cli.md",
             "docs/behaviours.md",
+            "docs/refusals.md",
             "docs/rules.md"
           ] ++
           dsl_reference("domain") ++
@@ -149,6 +166,7 @@ defmodule EhOsContract.MixProject do
           "docs/configuration.md",
           "docs/cli.md",
           "docs/behaviours.md",
+          "docs/refusals.md",
           "docs/rules.md"
         ],
         "DSL reference": ~r{docs/dsl/}
@@ -309,10 +327,30 @@ defmodule EhOsContract.MixProject do
       # (plan E13a), with the validator and the version `eh_os_contract_auth` uses.
       {:jsv, "~> 0.25.0", only: :test},
       {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
+      # The diagrams of the prose pages: hand-laid sources in `docs/diagrams/`, checked and
+      # written into `docs/img/` in the design system's colours and fonts by
+      # `mix ehos_diagrams.gen` (`ehos_diagrams:` above). Both live in the private
+      # EmpoweredHouse/ehos-tools, pinned by the commits their tags name
+      # (`ehos_diagrams-v0.2.0`, `ehos_design-v0.5.0`); `ehos_diagrams` reads the design
+      # system's tokens and fonts from the `ehos_design` the host has. Hex leaves a
+      # `:dev`/`:test` dependency out of the published requirements.
+      {:ehos_diagrams, "~> 0.2.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_diagrams",
+       ref: "2198050364cee447b66b010ac31dfd6df9c9262e",
+       only: [:dev, :test],
+       runtime: false},
+      {:ehos_design, "~> 0.5.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_design",
+       ref: "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0",
+       only: [:dev, :test],
+       runtime: false},
       # `EhOsContract.Form`'s tests build a form and its `inputs_for` as a LiveView page does.
-      # Never a host's: the host brings its own.
+      # Never a host's: the host brings its own. `phoenix_html` is in `:dev` too, because
+      # `ehos_design` above brings Phoenix LiveView there, which needs it.
       {:phoenix_ecto, "~> 4.6", only: :test},
-      {:phoenix_html, "~> 4.1", only: :test}
+      {:phoenix_html, "~> 4.1", only: [:dev, :test]}
     ]
   end
 end

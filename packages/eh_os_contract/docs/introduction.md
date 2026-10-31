@@ -115,7 +115,7 @@ about one particular customer.
 
 - **The model is code, and there is nothing beside it.** A domain and a contract are Elixir modules on
   [Spark](https://hexdocs.pm/spark), in the manner of [ESDM](https://www.esdm.io). What is wrong with them
-  fails the compile, with a code and a message ([what will not compile](contract.md)); what a model may
+  fails the compile, with a code and a message ([the compile refusals](refusals.md)); what a model may
   legally say but a reader should hear about, `mix eh_os_contract.check` reports ([its rules](rules.md)).
 - **The contract names no implementation.** An implementation points at its contract
   (`use MyContract, aggregate: :application`), never the other way round, so a change to the code never

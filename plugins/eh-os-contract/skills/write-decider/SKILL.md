@@ -65,8 +65,9 @@ The `use` gives the module the behaviour the contract generated (`C.Aggregates.<
 %EhOsContract.Rejection{}}`. `evolve/2` only when the state declares more than the unit's
 identity.
 
-Everything below is refused at compile time, with its code (`packages/eh_os_contract/docs/contract.md`, "What will not
-compile"), so do not spend attention on it:
+Everything below is refused at compile time, with its code (`packages/eh_os_contract/docs/refusals.md`; an engine
+released before that page has the list in `packages/eh_os_contract/docs/contract.md`, "What will not compile"), so do not spend attention on
+it:
 
 - `I1` — the `use` names no declaration, the wrong kind, or a second one for the same module;
 - `I2` — a command's callback is missing, or the function an event's `upcast from: n, function:

@@ -12,6 +12,9 @@ name: private-references
 # - the auth package's ehos.yaml schemas, SHA-pinned to EHOS's own copies;
 # - the dashboard's ehos_design dependency (mix.exs, mix.lock, NOTICE, and the
 #   comment in ci.yml that explains it), which the Hex readiness stage settles;
+# - the engine's ehos_diagrams and ehos_design dependencies, which draw its pages'
+#   diagrams (mix.exs, mix.lock, and the token steps in docs.yml and ci.yml that
+#   fetch them), which the Hex readiness stage settles with the dashboard's (#517);
 # - .claude/settings.team.json, which names the maintainers' plugin and is meant to;
 # - this file, which holds the pattern.
 on:
@@ -41,6 +44,9 @@ jobs:
               ':!packages/eh_os_contract_web/mix.exs' \
               ':!packages/eh_os_contract_web/mix.lock' \
               ':!packages/eh_os_contract_web/NOTICE' \
+              ':!packages/eh_os_contract/mix.exs' \
+              ':!packages/eh_os_contract/mix.lock' \
+              ':!.github/workflows/docs.yml' \
               ':!.github/workflows/ci.yml' \
               ':!.claude/settings.team.json' \
               ':!.github/workflows/private-references.yml'; then

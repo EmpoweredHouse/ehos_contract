@@ -6,7 +6,7 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 
 | Directory | What |
 | --- | --- |
-| `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md` |
+| `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md`, `docs/refusals.md` |
 | `packages/eh_os_contract_web/` | the mountable dashboard |
 | `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
 | `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
@@ -55,7 +55,8 @@ means today's `EhOsContract.X`.
 | The programmes, their stages and **their status** | [`ROADMAP.md`](ROADMAP.md) |
 | A stage's scope, decisions, review and pull requests | its GitHub issue (labels `publication`; `dd`, `wave-<n>` before it); how to run a stage through one: `CONTRIBUTING.md`, "From an idea to `main`", and the maintainers' `ehos-dev:stage-issue` skill |
 | What this repository is, the gate, the structure | [`README.md`](README.md) |
-| **How to write a domain and a contract**: what will not compile, every refusal with its code | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| **How to write a domain and a contract** | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
+| What will not compile: every refusal with its code | [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md) |
 | Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
 | Every rule of `mix eh_os_contract.check` (generated) | [`packages/eh_os_contract/docs/rules.md`](packages/eh_os_contract/docs/rules.md) |
 | What to write and run when you add something, so the docs stay true | [`packages/eh_os_contract/MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
@@ -86,7 +87,7 @@ on — and **contracts**, each in one context and, until the DD programme's wave
 process: the units that decide (aggregates, boundaries), their
 commands, events, invariants and lifecycles, what reacts to the events, what is read, the process they belong
 to, its promises, and scenarios. Both are Spark DSLs; what is wrong with them fails the compile, with a code
-and a message (`docs/contract.md`). Everything the library does reads those modules.
+and a message (`docs/refusals.md`). Everything the library does reads those modules.
 
 **`packages/eh_os_contract`, the engine:**
 
@@ -145,8 +146,9 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 tests, then `mix check` of each package in its own invocation:
 `packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
 generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
-generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal
-table of `docs/contract.md` to it, and what a prose page says it covers (`<!-- covers: … -->`,
+generated regions of the prose pages — to the code; `ehos_diagrams.gen --check`, which holds the diagrams in
+`docs/img/` to their sources in `docs/diagrams/`; `test/docs_test.exs`, which holds the examples and the refusal
+table of `docs/refusals.md` to it, and what a prose page says it covers (`<!-- covers: … -->`,
 `EhOsContract.Docs.Prose`) to the entities, keys and rules that exist; `docs
 --warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and

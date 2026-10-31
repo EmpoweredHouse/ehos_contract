@@ -26,9 +26,9 @@ every contract that consumes it at the next compile. The reference is
 
 The contract names the sibling's module without a compile dependency, and the Mix compiler
 (`compile.eh_os_contract`) checks the link instead: the sibling is a compiled contract of the same domain, and
-declares every event named ([`X5`](../contract.md#refusals-x)). The compiler also checks that a field this contract relies on to tell one run or one boundary from
+declares every event named ([`X5`](../refusals.md#refusals-x)). The compiler also checks that a field this contract relies on to tell one run or one boundary from
 another (a `correlate` field, a boundary's `match:`) exists in the sibling's event with the same type, and is
-neither optional nor personal ([`X6`](../contract.md#refusals-x)).
+neither optional nor personal ([`X6`](../refusals.md#refusals-x)).
 
 ### Delivery across contexts
 
@@ -40,7 +40,7 @@ sibling of the same context that is usually the right choice: one step of the bu
 of **another context** it means the two contexts commit together, and a failure of the policy or the read model rolls the other
 context's event back: a person's command in one context fails because something in another one did. So a
 policy or a read model that takes an event of a sibling of another context has to declare its delivery, or
-the contract does not compile ([`X10`](../contract.md#refusals-x)). Usually that delivery is `:at_least_once`: a policy then names its
+the contract does not compile ([`X10`](../refusals.md#refusals-x)). Usually that delivery is `:at_least_once`: a policy then names its
 `idempotency`, a read model none. An effect and a process manager are left alone, since undeclared they run
 `:at_least_once` already. How each delivery fails is on [the reactions page](reactions.md).
 
@@ -50,7 +50,7 @@ A contract often keeps the number of something a sibling decides: a clinic's set
 that booking made. The field's type says so, as it says which entity a field identifies:
 `field :visit_id, {:id, :visit}`. A unit keyed by that number says it in its identity, `identity visit_id:
 {:id, :visit}`. The name has to match exactly one unit of the domain's contracts or entity of the domain, or the
-contract does not compile ([`X3`](../contract.md#refusals-x)).
+contract does not compile ([`X3`](../refusals.md#refusals-x)).
 
 The compiler looks for the unit among the contracts of the project it compiles, so **a domain's contracts
 compile in one project**. A unit whose contract sits in a dependency is not seen: a correct reference to it is
@@ -128,7 +128,7 @@ policy :release_hold, "A lent copy is no longer held", handles: :copy_lent, issu
 transaction, the inbox writes its row and runs each policy that handles the event; the policy's commands are
 dispatched as a policy's always are. Only after that transaction commits does the inbox acknowledge the message. A read
 model, an effect and a process manager read the log, where the event never is, so a contract in which one of
-them takes a received event does not compile ([`D12`](../contract.md#refusals-d)); they react to what the policy's command records
+them takes a received event does not compile ([`D12`](../refusals.md#refusals-d)); they react to what the policy's command records
 instead. The policy's `delivery` changes nothing for a received event: the inbox runs it in the transaction
 that writes its row.
 
@@ -269,17 +269,17 @@ end
 ## What the compiler refuses
 
 - `consumes` of a contract that is not compiled, of another domain, or of an event the sibling does not
-  declare ([`X5`](../contract.md#refusals-x)); a field this contract correlates or matches on that is missing in the sibling's event, of
-  another type, optional or personal ([`X6`](../contract.md#refusals-x)). Another domain's events come only through `subscribe`.
+  declare ([`X5`](../refusals.md#refusals-x)); a field this contract correlates or matches on that is missing in the sibling's event, of
+  another type, optional or personal ([`X6`](../refusals.md#refusals-x)). Another domain's events come only through `subscribe`.
 - `consumes` given a published name, which is `subscribe`d to; `consumes` of the contract itself, naming no
-  events, renaming one it does not consume, or declaring fields ([`K1`](../contract.md#refusals-k)).
+  events, renaming one it does not consume, or declaring fields ([`K1`](../refusals.md#refusals-k)).
 - A policy or a read model taking an event of a sibling of another context without declaring `delivery`
-  ([`X10`](../contract.md#refusals-x)).
+  ([`X10`](../refusals.md#refusals-x)).
 - A `publish` from no local event, with no fields, with fields the event does not have or personal ones, with
   `idempotent_on:` outside its `fields:`, or under a name that is unversioned, shared with another
   publication, or outside the domain's `name:`; a `subscribe` unversioned, without `as:`, or listing no fields
-  ([`D11`](../contract.md#refusals-d)).
-- A read model, an effect or a process manager taking a received event ([`D12`](../contract.md#refusals-d)).
+  ([`D11`](../refusals.md#refusals-d)).
+- A read model, an effect or a process manager taking a received event ([`D12`](../refusals.md#refusals-d)).
 
 ## What `mix eh_os_contract.check` reports
 

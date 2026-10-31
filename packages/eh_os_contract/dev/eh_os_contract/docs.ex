@@ -18,14 +18,29 @@ defmodule EhOsContract.Docs do
   @doc """
   The pages written by hand: they may say what they cover and hold generated regions
   (`EhOsContract.Docs.Prose`). Every page ExDoc builds is generated (here, or
-  `docs/rules.md` by `eh_os_contract.rules`), listed here, or the changelog, which
-  `test/docs_test.exs` holds.
+  `docs/rules.md` by `eh_os_contract.rules`), listed here, the refusals' table, or the
+  changelog, which `test/docs_test.exs` holds.
   """
   @spec prose() :: [String.t()]
   def prose do
     ["README.md", "docs/introduction.md", "docs/getting-started.md", "docs/contract.md"] ++
       Enum.map(concepts(), &"docs/concepts/#{&1}.md") ++
       ["docs/authorization.md", "docs/glossary.md"]
+  end
+
+  @doc """
+  What the labels of the diagrams are held to, for `mix ehos_diagrams.gen`: each word the
+  glossary defines, in lower case. The engine has no maturity and no word that is never
+  shown alone, so it gives no concepts, no badges and no such words.
+  """
+  @spec vocabulary() :: map()
+  def vocabulary do
+    words =
+      ~r/^\| \*\*([^*]+)\*\* \|/mu
+      |> Regex.scan(File.read!("docs/glossary.md"), capture: :all_but_first)
+      |> Enum.map(fn [word] -> String.downcase(word) end)
+
+    %{words: words, alone: [], concepts: %{}, badges: []}
   end
 
   @doc "The concept pages, in the order a reader takes them."

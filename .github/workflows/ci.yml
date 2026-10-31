@@ -70,7 +70,11 @@ jobs:
     name: check (${{ matrix.name }})
 
     steps:
+      # No token is left in .git/config: the dependencies' code runs while they compile,
+      # and nothing after the checkout needs git to authenticate.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: erlef/setup-beam@v1
         id: beam
@@ -99,11 +103,17 @@ jobs:
       # `mix check` with `cd: "packages/eh_os_contract"` as a fully separate Mix
       # project — its own deps/ and mix.lock, fetched independently of the
       # host's. Confirmed 21 August 2026: packages/eh_os_contract/deps is
-      # git-ignored, so a fresh checkout starts without it.
+      # git-ignored, so a fresh checkout starts without it. The private ehos-tools'
+      # packages are left out: anyone who can run a workflow here can restore a cache, and
+      # whoever cannot read ehos-tools must not read its code from one. The children are
+      # listed, not the directory: actions/cache archives a listed directory whole, and
+      # drops by a `!` pattern only what the list itself holds.
       - name: Cache engine deps
         uses: actions/cache@v4
         with:
-          path: packages/eh_os_contract/deps
+          path: |
+            packages/eh_os_contract/deps/*
+            !packages/eh_os_contract/deps/ehos_*
           key: eh-os-contract-core-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
 
       # The dashboard package, same shape
@@ -145,7 +155,10 @@ jobs:
       # which the sandbox and the packages also build as path dependencies — and
       # the consolidated protocols are left out of the cache, and deleted after
       # the restore in case an entry saved before that exclusion still holds
-      # them, so they are always compiled fresh, exactly as before. That keeps the
+      # them, so they are always compiled fresh, exactly as before. So is the code
+      # of the private ehos-tools (`ehos_*`), as in the engine's deps above. Each
+      # application's directory is listed, not `_build`: actions/cache archives a
+      # listed directory whole, and a `!` pattern drops only what the list holds. That keeps the
       # formatter-cache caveat at the `mix check` step below true: `_build` holds
       # nothing of the repository's own between runs.
       # `ImageOS` (ubuntu24, …) is in the runner's environment, which the `env`
@@ -158,16 +171,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            sandbox/_build
-            packages/eh_os_contract/_build
-            packages/eh_os_contract_web/_build
-            packages/eh_os_contract_auth/_build
-            packages/eh_os_contract_graph/_build
+            sandbox/_build/*/lib/*
+            packages/eh_os_contract/_build/*/lib/*
+            packages/eh_os_contract_web/_build/*/lib/*
+            packages/eh_os_contract_auth/_build/*/lib/*
+            packages/eh_os_contract_graph/_build/*/lib/*
             !sandbox/_build/*/lib/eh_os_contract*
             !packages/*/_build/*/lib/eh_os_contract*
-            !sandbox/_build/*/consolidated
-            !packages/*/_build/*/consolidated
-            !packages/*/_build/*/doc
+            !sandbox/_build/*/lib/ehos_*
+            !packages/*/_build/*/lib/ehos_*
           key: build-${{ steps.image.outputs.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock', 'sandbox/config/**', 'packages/*/config/**') }}
 
       - name: Drop the repository's own compiled applications
@@ -179,8 +191,27 @@ jobs:
         working-directory: sandbox
         run: mix deps.get
 
+      # The engine's `:dev`/`:test` dependencies `ehos_diagrams` and `ehos_design`, which its gate
+      # runs `mix ehos_diagrams.gen --check` with, live in the private EmpoweredHouse/ehos-tools.
+      # The "ehos-tools CI" GitHub App mints a token that may only read that repository and
+      # expires within the hour, as in eh-os. Git reads it from the next step's environment
+      # alone, so mix.lock keeps the plain URL. Pull requests from forks and from Dependabot get
+      # no Actions secrets, so this job fails for them.
+      - id: ehos-tools
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.EHOS_CI_APP_ID }}
+          private-key: ${{ secrets.EHOS_CI_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ehos-tools
+          permission-contents: read
+
       - name: Install engine deps
         working-directory: packages/eh_os_contract
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
         run: mix deps.get
 
       # `--only test`: the dashboard's `:dev` dependency, ehos_design, lives in the
