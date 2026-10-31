@@ -37,8 +37,9 @@ You need these:
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
 - Read access to the private repository `EmpoweredHouse/ehos-tools`. The engine takes its diagram
-  generator from there, in `:dev` and `:test`. Without access, `mix deps.get` fails in
-  `packages/eh_os_contract` and in `sandbox/`.
+  generator from there, in `:dev` and `:test`, and the dashboard takes the design system, in
+  `:dev`. Without access, `mix deps.get` fails in `packages/eh_os_contract` and
+  `packages/eh_os_contract_web`, and the gate fails.
 
 From the root of the repository:
 
@@ -98,11 +99,19 @@ the case studies. The runs include drift:
 - a step that fails.
 
 Each checkout on the machine shares the default development database. Use a database of your own,
-because `mix ecto.reset` deletes the database first. In `sandbox/`:
+because `mix ecto.reset` deletes the database first. Give the two variables on each command, in
+`sandbox/`:
 
 ```bash
-export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
-mix ecto.reset && mix sandbox.traffic && mix phx.server
+MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix ecto.reset
+```
+
+```bash
+MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix sandbox.traffic
+```
+
+```bash
+MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
 ```
 
 The same answers are JSON under the `/api` mount of the host:

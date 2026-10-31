@@ -143,7 +143,7 @@
   <text class="keyt" x="540" y="624">Dispatch appends the declared events.</text>
   <circle class="badge" cx="526" cy="644" r="6"/>
   <text class="badget" x="526" y="647" text-anchor="middle">7</text>
-  <text class="keyt" x="540" y="648">Consumers :in_transaction run; effects :at_least_once get a job.</text>
+  <text class="keyt" x="540" y="648">Dispatch runs the consumers delivered :in_transaction.</text>
   <circle class="badge" cx="526" cy="668" r="6"/>
   <text class="badget" x="526" y="671" text-anchor="middle">8</text>
   <text class="keyt" x="540" y="672">After the commit, dispatch returns the result.</text>

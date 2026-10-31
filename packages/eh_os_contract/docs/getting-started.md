@@ -173,7 +173,8 @@ end
 `EhOsContract.Migrations` does not create the tables of Oban. If your application runs Oban
 already, remove the two `Oban.Migration` lines. Do not change this migration later. When a release
 raises `EhOsContract.Migrations.current_version/0`, generate a new migration that calls
-`EhOsContract.Migrations.up(version: N)` and `down(version: N)`.
+`EhOsContract.Migrations.up(version: N)` and `down(version: N)`. `N` is the new value of
+`current_version/0`.
 
 **Result:** `mix ecto.migrate` creates the tables whose names start with `eh_os_contract_`.
 
@@ -208,33 +209,40 @@ In `config/test.exs`, stop these runners:
 
 ```elixir
 config :eh_os_contract, subscriptions: :manual
+config :my_app, Oban, testing: :manual
 ```
 
-A test that needs a runner calls `EhOsContract.Testing.drain/1`.
+A test that needs a runner, an effect or a timer calls `EhOsContract.Testing.drain/1`.
 
-Oban must run the queue `:events`, which holds the jobs of the effects. Add it to the configuration
-of Oban:
+Oban must run the queue `:events`, which holds the jobs of the effects and of the timers of process
+managers. Add it to the configuration of Oban in `config/config.exs`:
 
 ```elixir
 config :my_app, Oban, repo: MyApp.Repo, queues: [events: 10]
 ```
 
-If Oban does not run this queue, the jobs stay in the table, and no effect runs.
+If Oban does not run this queue, the jobs stay in the table. No effect runs, and no timer fires.
 
 Mark `async: false` on each test that writes the log. Each append holds one lock until its
 transaction ends. In the Ecto sandbox, a transaction lasts for the whole test. Two such tests wait
 for each other, and one fails on the timeout of the repo.
 
 If a contract declares a personal field, give a master key before you start the application.
-Without one, the application does not start. Read the key from the environment in
-`config/runtime.exs`. Do not write a key in a file that you commit:
+Without one, the application does not start. Each key is 32 bytes in Base64, with an id. The current
+key is first.
+
+In production, read the key from the environment in `config/runtime.exs`. Do not commit a key of
+production:
 
 ```elixir
-config :eh_os_contract, EhOsContract.Vault,
-  keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
+if config_env() == :prod do
+  config :eh_os_contract, EhOsContract.Vault,
+    keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
+end
 ```
 
-Each key is 32 bytes in Base64, with an id. The current key is first.
+For development and tests, write a separate key, which protects no real data, in `config/dev.exs`
+and `config/test.exs`.
 [Subjects and personal data](concepts/domain-data.md#subjects-and-personal-data) tells how to rotate
 a key.
 
@@ -250,11 +258,17 @@ does, `applications:` names the wrong application: the engine found no contract 
 
 Send the command from your own code, with an *actor*. An actor of a person carries the
 *capabilities* that its credential grants. For `lend_copy`, the capability is
-`getting_started.lend_copy`:
+`getting_started.lend_copy`.
+
+Build an actor by hand only to try the engine, or in a test.
+`EhOsContract.Actor.credential/3` verifies nothing. In production, a verified credential gives the
+actor: `EhOsContract.call/3` and `EhOsContract.Plug` take one.
+[Authorization](authorization.md) tells how.
 
 ```elixir
 alias GettingStarted.Contracts.Loans
 
+# To try the engine only: this actor has the capability without a credential.
 actor = EhOsContract.Actor.credential("librarian-1", ["getting_started.lend_copy"])
 
 EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id: "m-1"},
@@ -276,19 +290,15 @@ EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id:
    dispatch, and the log gets nothing.
 7. The read models, policies and effects delivered `:in_transaction` run now. Dispatch also inserts
    an Oban job for each effect delivered `:at_least_once`.
-8. The transaction commits. A rejection commits too: the engine records the refused command.
+8. Dispatch commits its transaction and returns the result. The engine also records a refused
+   command.
 9. The read models, policies and process managers delivered `:at_least_once` read the new events
    from the log. Oban runs the jobs of the effects.
 
 Keep each consumer delivered `:in_transaction` to the database. Each append holds one lock until its
-transaction commits. While such a consumer runs, each other write of the application waits.
+transaction commits. While such a consumer runs, each other append to the log waits.
 [Reactions](concepts/reactions.md) tells how to choose the delivery.
 
-`EhOsContract.Actor.credential/3` checks nothing. In production, build an actor only from a
-credential that you verified.
-
-A request with a credential from outside goes through `EhOsContract.call/3`. Over HTTP, it goes
-through `EhOsContract.Plug`. [Authorization](authorization.md) tells how.
 
 **Result:** dispatch returns `{:ok, %EhOsContract.Receipt{}}`, with a `%CopyLent{}` struct in
 `events`. Dispatch the same command again, and it returns

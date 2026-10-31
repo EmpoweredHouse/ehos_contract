@@ -132,9 +132,9 @@ log. Each choice has a cost: a backup older than a destroyed master key, or rest
 store, cannot unwrap the data of any subject. A read model keeps its copy of personal data as plain text
 in your tables. `forget/2` reaches the live table, and only your backup policy reaches its backups.
 
-**An erasure holds the append lock.** A read model delivered `:in_transaction` forgets inside the
-transaction of the erasure, which holds the lock that each append takes. While it runs, each other write
-of the application waits. Index the column that its `forget/2` finds the subject by.
+**An erasure holds the append lock.** A read model delivered `:in_transaction` that projects personal
+data forgets inside the transaction of the erasure. This transaction holds the lock that each append
+takes. While the read model forgets, each other append to the log waits. Index the column that its `forget/2` finds the subject by.
 
 Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
 personal ([`F4`](../refusals.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../refusals.md#refusals-f)), and a publication carries none

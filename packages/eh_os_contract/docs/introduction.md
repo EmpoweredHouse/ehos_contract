@@ -25,10 +25,10 @@ occurs. Then the engine compares what occurred with what the modules declare.
 2. The domain also declares the *actors*, the *subjects* of personal data, the *values* and the
    *external systems*. An actor can belong to one context. Then only the contracts of that context
    can name it.
-3. A *context* draws a line inside the domain. A word can mean one thing in one context and
-   another thing in a second context.
-4. A *contract* holds the declarations of its context. Its *units* decide each *command*, with
-   *events* or a *rejection*. Its *reactions* and *read models* take the events, and its *queries* read the read
+3. A *context* is a part of the domain. In a context, each word has one meaning. The same word
+   can mean a different thing in another context.
+4. A *contract* belongs to one context, and a context can have more than one contract. The *units*
+   of a contract decide each *command*, with *events* or a *rejection*. Its *reactions* and *read models* take the events, and its *queries* read the read
    models.
 5. A *process module* describes one kind of *run*: its *stages*, the events that end it, its
    *promises* and its *deadline*. It includes events of one or more contracts of its domain. A

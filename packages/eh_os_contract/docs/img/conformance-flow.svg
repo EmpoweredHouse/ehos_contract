@@ -97,7 +97,7 @@
     <text class="keyt" x="60" y="444">The contracts generate structs, behaviours and tests.</text>
     <circle class="badge" cx="46" cy="464" r="6"/>
     <text class="badget" x="46" y="467" text-anchor="middle">3</text>
-    <text class="keyt" x="60" y="468">The application appends only the declared events.</text>
+    <text class="keyt" x="60" y="468">Through dispatch, the application appends only declared events.</text>
     <circle class="badge" cx="526" cy="416" r="6"/>
     <text class="badget" x="526" y="419" text-anchor="middle">4</text>
     <text class="keyt" x="540" y="420">The contracts and process modules declare what must occur.</text>

@@ -43,16 +43,15 @@ that write contracts by the rules of the engine.
    ```
 
 3. If your machine has no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. Then give git
-   a credential for GitHub. `gh auth setup-git` does this for each HTTPS git command on the machine,
-   with the token of `gh`.
+   a credential for GitHub. `gh auth setup-git` gives the token of `gh` to each git command for
+   GitHub on the machine. A fine-grained token that can only read this repository gives less.
 4. Start Claude Code in the application, or run `/reload-plugins`.
 
 **Result:** the skills show in Claude Code, for example `/eh-os-contract:change-contract`.
 
-The template of `ehos_app` writes these settings into each project that it generates. To take a new
-version of the plugin, change the tag in `ref`.
+To take a new version of the plugin, change the tag in `ref`.
 
 ## Next steps
 
-- [Getting started](../../packages/eh_os_contract/docs/getting-started.md): install the engine.
-- [Write a domain, a contract and a process module](../../packages/eh_os_contract/docs/contract.md).
+- [Getting started](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/getting-started.md): install the engine.
+- [Write a domain, a contract and a process module](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/contract.md).
