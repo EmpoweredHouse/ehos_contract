@@ -155,7 +155,8 @@ hidden module, a module outside `lib/`, or a missing page (not to a module that 
 `test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`), then
 `ehos_diagrams.gen --check` in `packages/eh_os_contract` under `:dev`, which holds the diagrams in `docs/img/` to
 their sources in `docs/diagrams/` (only where `mix deps.get` fetched the private ehos-tools; without it the gate
-says it did not check them, and CI's `diagrams` job does), then
+says it did not check them, and CI's `diagrams` job does, except for a pull request from a fork or Dependabot,
+#527), then
 `packages/eh_os_contract_web`,
 `packages/eh_os_contract_auth` and `packages/eh_os_contract_graph` (each with its own `docs --warnings-as-errors`
 and `test/doc_coverage_test.exs`). **It has to pass.** Separate invocations, not an umbrella, so that each package

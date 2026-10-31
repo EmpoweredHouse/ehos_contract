@@ -38,7 +38,8 @@ You need these:
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
 - Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its
   diagram generator from there, in `:dev` only. Without access, the gate does not check the
-  diagrams, and CI's `diagrams` job checks them.
+  diagrams, and CI's `diagrams` job checks them. That job does not run for a pull request from a
+  fork or from Dependabot, so nothing checks the diagrams of such a pull request (#527).
 
 The gate runs the `mix check` of each package in that package, so each package needs its own
 dependencies. From the root of the repository, fetch them as CI does:
