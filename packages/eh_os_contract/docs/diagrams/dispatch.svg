@@ -97,7 +97,7 @@
   <rect class="knock" x="356" y="64" width="128" height="56" rx="6"/>
   <rect id="dispatch-authorizer" class="n-back" x="356" y="64" width="128" height="56" rx="6"/>
   <text class="name" x="420" y="88" text-anchor="middle">Authorizer</text>
-  <text class="sub" x="420" y="106" text-anchor="middle">your module</text>
+  <text class="sub" x="420" y="106" text-anchor="middle">the default, or yours</text>
 
   <!-- The implementation -->
   <rect class="knock" x="516" y="64" width="128" height="56" rx="6"/>
@@ -143,13 +143,13 @@
   <text class="keyt" x="540" y="624">Dispatch appends the declared events.</text>
   <circle class="badge" cx="526" cy="644" r="6"/>
   <text class="badget" x="526" y="647" text-anchor="middle">7</text>
-  <text class="keyt" x="540" y="648">Dispatch runs consumers :in_transaction and queues effect jobs.</text>
+  <text class="keyt" x="540" y="648">Consumers :in_transaction run; effects :at_least_once get a job.</text>
   <circle class="badge" cx="526" cy="668" r="6"/>
   <text class="badget" x="526" y="671" text-anchor="middle">8</text>
-  <text class="keyt" x="540" y="672">After the commit, dispatch returns {:ok, receipt}.</text>
+  <text class="keyt" x="540" y="672">After the commit, dispatch returns the result.</text>
   <circle class="badge" cx="526" cy="692" r="6"/>
   <text class="badget" x="526" y="695" text-anchor="middle">9</text>
-  <text class="keyt" x="540" y="696">After the commit, the log feeds the other consumers, in order.</text>
+  <text class="keyt" x="540" y="696">After the commit, subscriptions read the new events.</text>
   </g>
 
   <!-- Legend strip -->

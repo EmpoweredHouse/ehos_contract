@@ -13,8 +13,8 @@ each word in italics.
 
 - Elixir 1.18 or later.
 - An Ecto repo on PostgreSQL.
-- Oban 2.20 or later, on the same repo. The engine runs each effect as an Oban job, in the
-  transaction that appends its event.
+- Oban 2.20 or later, on the same repo. The engine runs each effect delivered `:at_least_once` as
+  an Oban job. Dispatch inserts the job in the transaction that appends its event.
 
 <a id="add-the-dependency"></a>
 
@@ -102,7 +102,7 @@ can reject on. A librarian can read the two scenarios and confirm them.
 **Result:** `mix compile` passes. If the model contradicts itself, the compiler stops with a code
 and a message. [The compile refusals](refusals.md) list each code.
 
-<a id="implement-what-it-decides"></a>
+<a id="implement-the-aggregate"></a>
 
 ## 3. Implement the aggregate
 
@@ -141,7 +141,7 @@ defmodule GettingStarted.LoansScenariosTest do
 end
 ```
 
-These tests do not use the database.
+The scenarios of this contract need no database.
 
 **Result:** `mix test` runs 2 tests, `scenario: a copy is lent` and
 `scenario: a lent copy is not lent again`. Both pass. [Scenarios](concepts/scenarios.md) tells
@@ -149,7 +149,7 @@ what each part of a scenario checks.
 
 <a id="create-the-tables"></a>
 
-## 5. Create the tables of the engine
+## 5. Create the tables
 
 The engine keeps its *log* and its other data in its own tables. Generate an empty migration with
 `mix ecto.gen.migration add_eh_os_contract`, and call the migrations of Oban and of the engine:
@@ -171,8 +171,9 @@ end
 ```
 
 `EhOsContract.Migrations` does not create the tables of Oban. If your application runs Oban
-already, remove the two `Oban.Migration` lines. When a later release of the engine needs new tables,
-add a new migration. Do not change this one.
+already, remove the two `Oban.Migration` lines. Do not change this migration later. When a release
+raises `EhOsContract.Migrations.current_version/0`, generate a new migration that calls
+`EhOsContract.Migrations.up(version: N)` and `down(version: N)`.
 
 **Result:** `mix ecto.migrate` creates the tables whose names start with `eh_os_contract_`.
 
@@ -211,13 +212,31 @@ config :eh_os_contract, subscriptions: :manual
 
 A test that needs a runner calls `EhOsContract.Testing.drain/1`.
 
+Oban must run the queue `:events`, which holds the jobs of the effects. Add it to the configuration
+of Oban:
+
+```elixir
+config :my_app, Oban, repo: MyApp.Repo, queues: [events: 10]
+```
+
+If Oban does not run this queue, the jobs stay in the table, and no effect runs.
+
 Mark `async: false` on each test that writes the log. Each append holds one lock until its
 transaction ends. In the Ecto sandbox, a transaction lasts for the whole test. Two such tests wait
 for each other, and one fails on the timeout of the repo.
 
 If a contract declares a personal field, give a master key before you start the application.
-Without one, the application does not start. [Subjects and personal data](concepts/domain-data.md#subjects-and-personal-data)
-tells how.
+Without one, the application does not start. Read the key from the environment in
+`config/runtime.exs`. Do not write a key in a file that you commit:
+
+```elixir
+config :eh_os_contract, EhOsContract.Vault,
+  keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}]
+```
+
+Each key is 32 bytes in Base64, with an id. The current key is first.
+[Subjects and personal data](concepts/domain-data.md#subjects-and-personal-data) tells how to rotate
+a key.
 
 [The configuration](configuration.md) lists each other key. The engine does not start with a key
 that it does not know.
@@ -229,10 +248,14 @@ does, `applications:` names the wrong application: the engine found no contract 
 
 ## 7. Dispatch a command
 
-Send the command from your own code, with the actor that your application authenticated:
+Send the command from your own code, with an *actor*. An actor of a person carries the
+*capabilities* that its credential grants. For `lend_copy`, the capability is
+`getting_started.lend_copy`:
 
 ```elixir
 alias GettingStarted.Contracts.Loans
+
+actor = EhOsContract.Actor.credential("librarian-1", ["getting_started.lend_copy"])
 
 EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id: "m-1"},
   actor: actor
@@ -242,17 +265,27 @@ EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id:
 ![Dispatch checks the actor, then in one transaction reads and folds the unit, gets the decision, appends the declared events and runs the consumers.](img/dispatch.svg)
 
 1. The application gives the command and the actor to `EhOsContract.dispatch/3`.
-2. For an actor from a credential, the *authorizer* of your application decides if the actor can
-   issue the command. A `:system` actor must be in the `by:` of the command. Then dispatch checks
-   the fields of the command.
-3. Dispatch starts one transaction and reads the events of the loan `c-1`.
-4. Dispatch gives the events to `evolve/2`, one at a time, in order.
-5. `lend_copy/2` decides: the event `copy_lent`, or a rejection on `lent_once`.
-6. Dispatch appends the declared events to the log.
-7. Dispatch runs each consumer delivered `:in_transaction`. It also inserts an Oban job for each
-   effect.
-8. The transaction commits, and dispatch returns the result.
-9. The consumers delivered `:at_least_once` read the new events from the log.
+2. For an actor from a credential, dispatch asks the *authorizer* if the actor has the capability.
+   Without configuration, this is `EhOsContract.Authorizer.Default`. A `:system` actor must be in
+   the `by:` of the command. Then dispatch checks the fields of the command.
+3. Dispatch starts one transaction. In it, dispatch reads the stream of the loan `c-1`.
+4. `evolve/2` gets each event of the stream, in order, and returns the state.
+5. `lend_copy/2` gets the command and the state. It returns `copy_lent`, or a rejection on
+   `lent_once`.
+6. Dispatch writes `copy_lent` to the log. An event that the command does not declare stops the
+   dispatch, and the log gets nothing.
+7. The read models, policies and effects delivered `:in_transaction` run now. Dispatch also inserts
+   an Oban job for each effect delivered `:at_least_once`.
+8. The transaction commits. A rejection commits too: the engine records the refused command.
+9. The read models, policies and process managers delivered `:at_least_once` read the new events
+   from the log. Oban runs the jobs of the effects.
+
+Keep each consumer delivered `:in_transaction` to the database. Each append holds one lock until its
+transaction commits. While such a consumer runs, each other write of the application waits.
+[Reactions](concepts/reactions.md) tells how to choose the delivery.
+
+`EhOsContract.Actor.credential/3` checks nothing. In production, build an actor only from a
+credential that you verified.
 
 A request with a credential from outside goes through `EhOsContract.call/3`. Over HTTP, it goes
 through `EhOsContract.Plug`. [Authorization](authorization.md) tells how.
@@ -265,13 +298,13 @@ through `EhOsContract.Plug`. [Authorization](authorization.md) tells how.
 
 ## 8. Follow one piece of work in the logs
 
-Each command belongs to a piece of work, which its *correlation* identifies. Give it as
+Each command belongs to a piece of work, which a UUID identifies. Give the UUID as
 `correlation_id:` in the options of dispatch, or as the header `x-correlation-id` over HTTP.
 Without one, the engine makes a new one.
 
 The engine puts the value in the metadata of the Logger, as `correlation_id`. It does this while it
-runs the command, and while it reacts to an event, a timer or a message of that work. After that, the metadata has its earlier value again.
-Add the key to the metadata of your formatter:
+runs the command, and while it reacts to an event, a timer or a message of that work. After that,
+the metadata has its earlier value again. Add the key to the metadata of your formatter:
 
 ```elixir
 config :logger, :default_formatter, metadata: [:request_id, :correlation_id]
@@ -281,7 +314,7 @@ The engine writes the value in lower case, as the log keeps it. An erasure belon
 work, so it sets no value. A value that is not the text of a UUID, for example from a message of
 another application, also sets none.
 
-**Result:** each line of the log of your application shows the `correlation_id` of its work. You
+**Result:** each line that the Logger writes for the work shows its `correlation_id`. You
 can follow one piece of work across applications.
 
 <a id="check-draw-and-report"></a>
@@ -296,8 +329,8 @@ mix eh_os_contract.view
 mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 ```
 
-- `mix eh_os_contract.check` reports what the model can say but you should know about. Run it in
-  CI. With `--warnings-as-errors`, a warning fails the build. [The rules](rules.md) give the reason
+- `mix eh_os_contract.check` reports errors, warnings and notices about the model. Run it in CI.
+  It fails when it finds an error. With `--warnings-as-errors`, a warning also fails it. [The rules](rules.md) give the reason
   for each finding.
 - `mix eh_os_contract.schema` records the fields of each event in `eh_os_contract.lock`. Commit
   the file. Run `mix eh_os_contract.schema --check` in CI too: it fails when the events differ from the
@@ -315,7 +348,9 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 - [What is eh_os_contract?](introduction.md): what the engine does, and what it does not do.
 - [Write a domain, a contract and a process module](contract.md): the full task, with a process
   module and its promises.
-- [Units that decide](concepts/units.md), [reactions](concepts/reactions.md) and
-  [reading](concepts/reading.md): what you can declare in a contract.
-- [Use the skills of the Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract#use-the-skills-with-claude-code):
-  an assistant that writes contracts by the rules of this engine.
+- The concepts: [the domain](concepts/domain.md), [actors, personal data and values](concepts/domain-data.md),
+  [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
+  [forms](concepts/forms.md), [between contracts](concepts/between-contracts.md),
+  [processes](concepts/process.md) and [scenarios](concepts/scenarios.md).
+- [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):
+  skills that write contracts by the rules of this engine.

@@ -126,11 +126,15 @@ what the new nodes write until the rollout ends. A KMS goes behind the `EhOsCont
 
 **What an erasure does not reach.** An erasure deletes the data key from the database, not from your
 backups. A backup, a WAL archive or a replica still holds the wrapped key. A person who also has the
-master key can then read the data of the subject. So destroy each old master key before your oldest
-backup expires, or keep the key store out of the backups of the log. Each choice has a cost: a backup
-older than a destroyed master key, or restored without the key store, cannot unwrap the data of any
-subject. A read model keeps its copy of personal data as plain text in your tables. `forget/2` reaches
-the live table, and only your backup policy reaches its backups.
+master key can then read the data of the subject. So rotate and destroy the master keys at an interval
+that is not longer than the time that you keep backups. Or keep the key store out of the backups of the
+log. Each choice has a cost: a backup older than a destroyed master key, or restored without the key
+store, cannot unwrap the data of any subject. A read model keeps its copy of personal data as plain text
+in your tables. `forget/2` reaches the live table, and only your backup policy reaches its backups.
+
+**An erasure holds the append lock.** A read model delivered `:in_transaction` forgets inside the
+transaction of the erasure, which holds the lock that each append takes. While it runs, each other write
+of the application waits. Index the column that its `forget/2` finds the subject by.
 
 Personal data stays where it can be erased. A field that tells runs apart (a `correlate` field) may not be
 personal ([`F4`](../refusals.md#refusals-f)), nor a process manager's state field or a scope field ([`F7`](../refusals.md#refusals-f)), and a publication carries none

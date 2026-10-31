@@ -75,6 +75,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **The installation never said that Oban must run the queue `:events`** (#517). Without it, the job of
+  each effect delivered `:at_least_once` waits in the table, and no effect runs. `docs/getting-started.md`
+  now configures the queue.
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
   a run and its promises. The page no longer counts a read model among what reacts to events (#511).

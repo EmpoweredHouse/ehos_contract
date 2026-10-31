@@ -4,7 +4,7 @@ How work is planned, recorded and reviewed in this repository, for a person join
 here follows the same scheme; `CLAUDE.md` and the skills in `.claude/skills/` give it the details, and the
 maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 
-## The layout of the repository
+## What does each directory hold?
 
 | Directory | What it holds |
 | --- | --- |
@@ -17,9 +17,12 @@ maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 | [`plugins/eh-os-contract`](plugins/eh-os-contract), [`.claude-plugin`](.claude-plugin) | The Claude Code plugin that applications use, and the marketplace that publishes it. |
 
 Each package and `sandbox/` is a Mix project of its own. A package builds and tests without
-`sandbox/`. `sandbox/` is the first consumer of the packages, not a part of them.
-[`boundary`](https://hex.pm/packages/boundary) holds the line between the two: the compiler checks
-it.
+`sandbox/`. `sandbox/` is the first consumer of the packages, not a part of them: it depends on them
+by path, and no package depends on it. Inside `sandbox/`,
+[`boundary`](https://hex.pm/packages/boundary) keeps the case studies, their parts and the web part of the
+host apart.
+
+`CLAUDE.md`, "What we do not build", lists what the repository does not build, and why.
 
 The case studies are `sandbox/lib/lending/`, `sandbox/lib/billing/` and `sandbox/lib/fulfilment/`: a
 library that lends copies, a company that bills subscriptions, and a shop that fulfils orders. Each
@@ -29,8 +32,15 @@ has a domain, contracts, and implementations that decide and react.
 
 ## Run the gate
 
-You need Elixir 1.18 or later, Erlang/OTP 27, and Docker for PostgreSQL. PostgreSQL listens on port
-5433.
+You need these:
+
+- Elixir 1.18 or later, and Erlang/OTP 27.
+- Docker, for PostgreSQL. PostgreSQL listens on port 5433.
+- Read access to the private repository `EmpoweredHouse/ehos-tools`. The engine takes its diagram
+  generator from there, in `:dev` and `:test`. Without access, `mix deps.get` fails in
+  `packages/eh_os_contract` and in `sandbox/`.
+
+From the root of the repository:
 
 ```bash
 docker compose up -d
@@ -47,9 +57,14 @@ mix check
    without this flag the boundaries are not checked.
 3. `eh_os_contract.check` and `eh_os_contract.schema --check`, against `sandbox/eh_os_contract.lock`.
 4. The tests of the sandbox.
-5. `mix check` of each package, each in its own run, so that each package stands alone. The engine's
-   also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
-   `ehos_diagrams.gen --check`, which hold the generated pages and the diagrams to their sources.
+5. `mix check` of each package, each in its own run, so that each package stands alone. Each
+   package builds its docs with `--warnings-as-errors` and runs `test/doc_coverage_test.exs`. The
+   engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check`,
+   `ehos_diagrams.gen --check` and `test/docs_test.exs`. These hold the generated pages, the
+   diagrams and the examples of the prose pages to the code.
+
+Check the exit code of `mix check` itself. If you pipe the output into `tail`, the exit code is the
+exit code of `tail`.
 
 The gate must pass before a pull request is opened. CI runs the same gate on each pull request that
 is ready for review. A draft waits until it is marked ready. A pull request that changes only
@@ -60,23 +75,33 @@ is ready for review. A draft waits until it is marked ready. A pull request that
 
 ## Run the development host and the dashboard
 
-The sandbox host mounts the dashboard of `packages/eh_os_contract_web` at `/dashboard`:
+The sandbox host mounts the dashboard of `packages/eh_os_contract_web` at `/dashboard`. From the
+root of the repository:
 
 ```bash
-cd sandbox && mix phx.server
+cd sandbox
+mix phx.server
 ```
 
-Then open `http://localhost:4010/dashboard`. The sandbox host lets each person in, read-only, so run
-it only on your own machine. A host decides who can see its dashboard with an
+Then open `http://localhost:4010/dashboard`. The sandbox host lets each person in, read-only, to
+the dashboard and to its JSON API. The server listens on each network interface of the machine.
+Run it only on a network that you trust. A host decides who can see its dashboard with an
 `EhOsContract.Web.Resolver`.
 
 An empty log gives empty screens. `mix sandbox.traffic` fills a log with about 6 weeks of runs of
-the case studies, with drift: broken and suspended promises, a deadline that passed, stages out of
-order, a transition that the lifecycle does not allow, and a step that fails. Each checkout on the
-machine shares the default development database, so use a database of your own:
+the case studies. The runs include drift:
+
+- broken and suspended promises;
+- a deadline that passed;
+- stages out of order;
+- a transition that the lifecycle does not allow;
+- a step that fails.
+
+Each checkout on the machine shares the default development database. Use a database of your own,
+because `mix ecto.reset` deletes the database first. In `sandbox/`:
 
 ```bash
-cd sandbox && export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
+export MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic
 mix ecto.reset && mix sandbox.traffic && mix phx.server
 ```
 

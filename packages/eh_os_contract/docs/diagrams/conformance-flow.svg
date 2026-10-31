@@ -1,6 +1,6 @@
 <!-- title: How does the contract reach the conformance report? -->
-<!-- desc: A workshop gives the contract; the application runs on it and appends events; conformance compares the log with the contract and answers the people. -->
-<!-- words: contract, application, log, conformance -->
+<!-- desc: The application runs on the contracts and appends events, and conformance compares the log with what the contracts and process modules declare. -->
+<!-- words: contract, process module, application, log, conformance -->
 <!-- technical: Workshop -->
 <!-- verbs: describes, generates, appends, declares, records, answers -->
 <!-- parts: workshop = -, contract = -, application = -, log = -, conformance = - -->
@@ -59,8 +59,8 @@
   <!-- The contract -->
   <rect class="knock" x="292" y="96" width="160" height="72" rx="6"/>
   <rect id="conformance-flow-contract" class="n-focal" x="292" y="96" width="160" height="72" rx="6"/>
-  <text class="name" x="372" y="126" text-anchor="middle">Contract</text>
-  <text class="sub" x="372" y="144" text-anchor="middle">code, versioned, reviewed</text>
+  <text class="name" x="372" y="126" text-anchor="middle">Contracts</text>
+  <text class="sub" x="372" y="144" text-anchor="middle">and process modules</text>
 
   <!-- The application -->
   <rect class="knock" x="548" y="96" width="160" height="72" rx="6"/>
@@ -87,17 +87,17 @@
 
   <circle class="badge" cx="46" cy="416" r="6"/>
   <text class="badget" x="46" y="419" text-anchor="middle">1</text>
-  <text class="keyt" x="60" y="420">The people of the process describe it; a developer writes it.</text>
+  <text class="keyt" x="60" y="420">The people describe the process, and a developer writes it.</text>
   <circle class="badge" cx="46" cy="440" r="6"/>
   <text class="badget" x="46" y="443" text-anchor="middle">2</text>
-  <text class="keyt" x="60" y="444">The contract generates structs, behaviours and tests.</text>
+  <text class="keyt" x="60" y="444">The contracts generate structs, behaviours and tests.</text>
   <circle class="badge" cx="46" cy="464" r="6"/>
   <text class="badget" x="46" y="467" text-anchor="middle">3</text>
-  <text class="keyt" x="60" y="468">Dispatch appends only the declared events.</text>
+  <text class="keyt" x="60" y="468">The application appends only the declared events.</text>
 
   <circle class="badge" cx="526" cy="416" r="6"/>
   <text class="badget" x="526" y="419" text-anchor="middle">4</text>
-  <text class="keyt" x="540" y="420">The contract declares the paths and the promises.</text>
+  <text class="keyt" x="540" y="420">The contracts and process modules declare what must occur.</text>
   <circle class="badge" cx="526" cy="440" r="6"/>
   <text class="badget" x="526" y="443" text-anchor="middle">5</text>
   <text class="keyt" x="540" y="444">The log records what occurred, and when.</text>
@@ -110,7 +110,7 @@
   <g class="legend">
   <line class="rule" x1="40" y1="532" x2="960" y2="532"/>
   <rect class="n-focal" x="40" y="548" width="14" height="10" rx="2"/>
-  <text class="legt" x="60" y="557">The contract</text>
+  <text class="legt" x="60" y="557">What you declare</text>
   <rect class="n-back" x="160" y="548" width="14" height="10" rx="2"/>
   <text class="legt" x="180" y="557">Code of your application</text>
   <rect class="n-store" x="340" y="548" width="14" height="10" rx="2"/>

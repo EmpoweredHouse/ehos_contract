@@ -10,11 +10,10 @@ defines each word of the engine.
 
 ## Which problem does it solve?
 
-Tests show that a module works. Monitoring shows that a server runs. Neither shows if the running
-system still does what the business agreed. Example: a case must be filed within 3 days, and for
-one case the code that files it does not run. No error occurs, so no person gets an alert.
+The engine finds where the running system does not do what the business agreed, also when no error
+occurs.
 
-![A workshop gives the contract; the application runs on it and appends events; conformance compares the log with the contract and answers the people.](packages/eh_os_contract/docs/img/conformance-flow.svg)
+![The application runs on the contracts and appends events, and conformance compares the log with what the contracts and process modules declare.](packages/eh_os_contract/docs/img/conformance-flow.svg)
 
 [What is eh_os_contract?](packages/eh_os_contract/docs/introduction.md) tells each step of this
 picture, and what the engine does not do.
@@ -22,9 +21,8 @@ picture, and what the engine does not do.
 ## What does the report show?
 
 A process module declares a promise: after a case is opened, within 3 days its invoice is filed, or
-the case is flagged for review. In one month, 40 cases were opened, and the code did not file or flag
-one of them. `mix eh_os_contract.report` prints this for the process, after the version that is
-deployed:
+the case is flagged for review. In one month, 40 cases were opened. The code filed 39 of them, and
+did not file or flag one. This is a part of what `mix eh_os_contract.report` prints for the month:
 
 ```
 PROCESS: Invoice filing
@@ -48,31 +46,18 @@ not do what the business agreed, one time in 40.
 The packages install from git. [Getting started](packages/eh_os_contract/docs/getting-started.md)
 installs the engine. The README of each other package tells how to install it.
 
-<a id="use-the-skills-with-claude-code"></a>
-
-## Use the skills with Claude Code
+## Is there help for an assistant?
 
 This repository is also a Claude Code marketplace. Its plugin `eh-os-contract` gives an assistant
-the skills to write contracts by the rules of the engine. The skills decide where a feature goes,
-turn workshop notes into a domain and contracts, and add an event. They also write a decider and a
-reaction, and change a contract that has history.
+skills that write contracts by the rules of the engine.
+[Enable the eh-os-contract plugin](plugins/eh-os-contract/README.md) tells how.
 
-1. In the `.claude/settings.json` of your application, add the marketplace
-   `EmpoweredHouse/eh-os-contract` at the tag of a release of the plugin,
-   `eh-os-contract-plugin-vX.Y.Z`.
-2. Enable the plugin `eh-os-contract@eh-os-contract`.
-3. If your machine has no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and run
-   `gh auth setup-git`. The repository is private, so Claude Code fetches it with the git
-   credentials of the machine.
-
-**Result:** the skills show in Claude Code, for example `/eh-os-contract:change-contract`. The
-template of `ehos_app` writes these two settings into each project that it generates.
-
-## Status
+## Which version is it?
 
 The packages are before version 1.0. A release is a tag of this repository, `vX.Y.Z`, and the
 `CHANGELOG.md` of each package tells what changed. Applications install the packages from git.
 Until 1.0, a minor version can break an application, and its changelog tells how to upgrade.
+[`ROADMAP.md`](ROADMAP.md) tells what is planned.
 
 ## Next steps
 
