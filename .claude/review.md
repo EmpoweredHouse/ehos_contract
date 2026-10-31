@@ -134,4 +134,7 @@ Kinds of problems a review here found that neither file names yet:
   shared database when one line fails or is copied alone: give the variables on each command. Found
   in #517.
 
+- A page's `<!-- covers: -->` comment keeps the coverage test green after a rewrite drops the
+  sentence about a rule: read each rule the comment names in the page's prose. Found in #517.
+
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.
