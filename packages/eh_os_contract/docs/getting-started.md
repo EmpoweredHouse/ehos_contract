@@ -251,8 +251,7 @@ end
 
 For development and tests, write a separate key, which protects no real data, in `config/dev.exs`
 and `config/test.exs`.
-[Subjects and personal data](concepts/domain-data.md#subjects-and-personal-data) tells how to rotate
-a key.
+[Manage the master keys](concepts/master-keys.md) tells how to rotate a key.
 
 [The configuration](configuration.md) lists each other key. The engine does not start with a key
 that it does not know.
@@ -368,7 +367,8 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 - [What is eh_os_contract?](introduction.md): what the engine does, and what it does not do.
 - [Write a domain, a contract and a process module](contract.md): the full task, with a process
   module and its promises.
-- The concepts: [the domain](concepts/domain.md), [actors, personal data and values](concepts/domain-data.md),
+- The concepts: [the domain](concepts/domain.md), [actors and values](concepts/domain-data.md),
+  [personal data](concepts/personal-data.md),
   [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
   [forms](concepts/forms.md), [between contracts](concepts/between-contracts.md),
   [processes](concepts/process.md) and [scenarios](concepts/scenarios.md).

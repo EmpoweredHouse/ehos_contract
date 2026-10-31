@@ -91,8 +91,9 @@ end
   ([`D13`](refusals.md#refusals-d)).
 
 [The domain](concepts/domain.md) tells how to add the glossary of a context and the relations between
-contexts. [Domain data](concepts/domain-data.md) tells how to add subjects, values, entities and
-external systems.
+contexts. [Domain data](concepts/domain-data.md) tells how to add actors, values, entities and
+external systems. [Personal data](concepts/personal-data.md) tells how to add subjects and personal
+fields.
 
 ## Write a contract
 
