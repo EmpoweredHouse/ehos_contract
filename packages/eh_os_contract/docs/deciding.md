@@ -162,7 +162,8 @@ end
    It can name the commands, the events and `State` of the unit by their short names.
 
 2. Write one callback for each command. It takes the command and the state. A command that declares
-   `reads:` also gets the rows of those entities, as a third argument. The callback returns `emit/1`
+   `reads:` also gets a third argument: a map with each entity under its `reads:` name, such as
+   `%{card: %{card_id: "card-1"}}`. The callback returns `emit/1`
    of the events that the command `emits:`, or `reject/1` of a rule that the command `rejects:`.
 
    ```elixir
@@ -239,8 +240,9 @@ An aggregate and a boundary write `evolve/2` by the same rules:
 - `evolve/2` folds each event into the state. It makes no decision.
 - It runs over each event of the stream that it folds, the oldest rows included. So it does not
   raise on data.
-- Dispatch also decodes a row whose type no contract declares now, and raises on it. Do not remove an
-  event that the log holds rows of. `mix eh_os_contract.schema --check` refuses that.
+- Do not remove an event that the log holds rows of. `mix eh_os_contract.schema --check` refuses
+  that for an event that the lock records. An aggregate raises on a row whose type no contract declares now. A boundary skips that row
+  without a warning, so a rule that it keeps can break.
 - Give it a clause for each event that the state is kept from, or a catch-all without a guard.
   Otherwise, the compiler refuses it ([`I3`](refusals.md#refusals-i)).
 - If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch decodes
@@ -278,7 +280,8 @@ A decision reads only these things:
 - the domain services.
 
 Do not read the database, the clock or another service in a callback. On a conflict, dispatch
-decides again, at most 3 times in all. A scenario gives a decision only events and a command.
+decides again, at most 3 times in all. A scenario gives a decision only events and a command. For a
+command that `reads:`, it also gives a `given_entity` of each entity.
 
 ## Refuse with a rule, and let a defect raise
 
