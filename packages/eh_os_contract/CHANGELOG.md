@@ -76,8 +76,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **The domain pages are split by what a reader asks** (#517). `docs/concepts/domain.md` tells how a domain
   divides a business into contexts, with the relation patterns in one table and a diagram of which context
   depends on which. Personal data and erasure have a page of their own, `concepts/personal-data.md`, with a
-  diagram of an erasure; rotating a master key and writing a vault for a key management service are a
-  how-to, `concepts/master-keys.md`. `concepts/domain-data.md` keeps the actors, the values, the entities
+  diagram of an erasure; rotating a master key, writing a vault for a key management service and restoring
+  a backup older than an erasure are a how-to, `concepts/master-keys.md`. `concepts/domain-data.md` keeps the actors, the values, the entities
   and the external systems. `concepts/forms.md` is a how-to, with a diagram from a keystroke to a refusal.
   The glossary defines "data key", "master key" and "form". Links change:
   `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and the headings of the four pages

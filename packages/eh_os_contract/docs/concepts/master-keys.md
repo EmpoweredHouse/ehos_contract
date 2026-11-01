@@ -1,7 +1,7 @@
-# Manage the master keys
+# Manage the keys and the backups of personal data
 
 This page tells how to rotate a master key, and how to keep the master keys in a key management
-service. It is for a developer or an operator of an application whose contracts declare personal
+service. It also tells how to restore a backup that is older than an erasure. It is for a developer or an operator of an application whose contracts declare personal
 fields. [The glossary](../glossary.md) defines each word in italics.
 
 A *master key* wraps the *data key* of each subject.
@@ -13,6 +13,9 @@ A *master key* wraps the *data key* of each subject.
 - You can run a Mix task on the database of the application, or call a function from a release.
 - To rotate a key in the configuration, the application uses the vault `EhOsContract.Vault.Local`,
   as [Getting started](../getting-started.md) tells.
+- To restore a backup that is older than an erasure, you keep a record of each erasure outside the
+  database. Write it before you call `erase/3`. It holds the type and the id of the subject, the
+  time, and who asked, and nothing personal. Keep each record as long as the oldest backup.
 
 ## Rotate a master key
 
@@ -139,6 +142,36 @@ read of personal data asks the vault to unwrap the keys of its subjects. With a 
 and each batch of a read model that touches personal data waits for the KMS, and counts against its
 quota. A replay or a rebuild of a read model asks for each subject again. For a smaller rewrap
 batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, 50)`; the Mix task takes no argument.
+
+<a id="restore-a-backup-older-than-an-erasure"></a>
+
+## Restore a backup older than an erasure
+
+A backup that is older than an erasure holds the data key of the subject, and no record of the
+erasure. A restored backup can also hold queued effect jobs and subscriptions that are behind. If
+they run, they read the personal data of the erased subject and can send it out. So repeat the
+erasures before anything reads the log.
+
+1. Start each node of the application without its consumers and without its endpoint. Use
+   `config :eh_os_contract, subscriptions: :manual`, and `queues: false` for Oban.
+
+   **Result:** no effect job, timer, relay or subscription runs.
+
+2. Call `erase/3` for each erasure in your record. Give it an actor for the person who restores.
+
+   **Result:** the engine deletes each restored data key, and records the erasure again. For an
+   erasure that the backup already holds, `erase/3` returns `{:ok, :already_erased}`.
+
+3. Start each node with its normal configuration.
+
+   **Result:** the read models delivered `:in_transaction` forgot the subjects in step 2. The other
+   read models forget them when their subscriptions reach the events of the erasures. Until then,
+   their queries return the old copy.
+
+The erasures of step 2 carry the time of the restore and the actor of step 2. Only your record keeps
+the time of the first erasure and who asked for it.
+
+If you have no record of the erasures, the restore makes those subjects readable again.
 
 ## What can go wrong
 

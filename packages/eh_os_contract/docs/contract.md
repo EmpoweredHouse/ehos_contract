@@ -330,7 +330,7 @@ engine judges runs, promises and deadlines.
 | Take events of another contract, or of another application | [Between contracts](concepts/between-contracts.md) |
 | Issue a command from a form | [Forms](concepts/forms.md) |
 | Mark personal data, and erase a subject | [How does the engine keep and erase personal data?](concepts/personal-data.md) |
-| Rotate a master key | [Manage the master keys](concepts/master-keys.md) |
+| Rotate a master key, or restore a backup older than an erasure | [Manage the keys and the backups of personal data](concepts/master-keys.md) |
 
 ### Let only one person issue a command
 

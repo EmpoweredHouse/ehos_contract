@@ -265,8 +265,13 @@ defp notice(socket, %EhOsContract.Rejection{}), do: socket
 defp notice(socket, reason) when reason in [:missing_capability, :unscoped_grant, :outside_scope],
   do: put_flash(socket, :error, "You cannot issue this invoice. Ask for access.")
 
-defp notice(socket, _other),
-  do: put_flash(socket, :error, "The invoice was not issued. Try again.")
+defp notice(socket, reason) when reason in [:conflict, :not_caught_up],
+  do: put_flash(socket, :error, "The invoice was not issued. Try again in a moment.")
+
+defp notice(socket, {:not_supplied, _reason}),
+  do: put_flash(socket, :error, "The invoice was not issued. Try again in a moment.")
+
+defp notice(socket, _other), do: put_flash(socket, :error, "The invoice was not issued.")
 ```
 
 | Error | When |
@@ -377,16 +382,16 @@ so its text is not a timestamp. Add them in the page, or make the field a `:date
 **Some errors are not at an input.** A problem at a field that the form did not send goes on
 `:base`. Its `field:` names the field. Examples: the identity in `data:`, a field that the host
 supplies, or a field of rows, at which `inputs_for` shows nothing. So the page never shows it at an
-input that is not there. If a command has a field with the name `base`, the field shares that key with the errors of the whole form.
+input that is not there. If a command has a field with the name `base`, the field shares that key
+with the errors of the whole form.
 
-**Some refusals put no error on the changeset.** These refusals belong to no field:
-
-- a capability that the person does not have;
-- an idempotency key that another command used;
-- a field that the host did not supply.
+**Some refusals put no error on the changeset.** Each refusal other than a problem of a field and a
+rejection belongs to no field. Examples: a missing capability, a conflict with another command, a
+field that the host did not supply, an erased subject.
 
 The page tells the person about them from the reason that `dispatch/3` returned, as `notice/2`
-above does. `EhOsContract.refusal/0` lists each reason.
+above does. `t:EhOsContract.refusal/0` lists these reasons. A rejection is an
+`EhOsContract.Rejection`.
 
 ## Next steps
 

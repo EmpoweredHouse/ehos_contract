@@ -80,7 +80,7 @@ The engine encrypts each personal field with a key for its subject.
   Another vault answers through its `check/0`.
 - The node also does not start if a read model that projects personal data has no `forget/2`.
 
-[Manage the master keys](master-keys.md) tells how to rotate a master key, and how to use a key
+[Manage the keys and the backups of personal data](master-keys.md) tells how to rotate a master key, and how to use a key
 management service.
 
 <a id="what-happens-when-a-subject-is-erased"></a>
@@ -144,7 +144,7 @@ An erasure deletes the data key from the database. It does not delete it from yo
 - A backup, a WAL archive or a delayed replica still holds the wrapped data key. A person who also
   has the master key can read the data of the subject.
 - So destroy each master key within the time that you keep backups.
-  [Manage the master keys](master-keys.md) tells how to rotate a key.
+  [Manage the keys and the backups of personal data](master-keys.md) tells how to rotate a key.
 - After that, a backup cannot unwrap a data key that the destroyed master key wraps. Accept this
   cost, or keep those backups shorter.
 - The data keys are in the table `eh_os_contract_subject_keys`, and the erasures in
@@ -153,7 +153,7 @@ An erasure deletes the data key from the database. It does not delete it from yo
   read the field as erased.
 - A backup that is older than an erasure holds the data key of the subject, and no record of the
   erasure. If you restore it, the engine reads the personal data of the subject again, and accepts
-  new personal data for it. [Restore a backup older than an erasure](#restore-a-backup-older-than-an-erasure)
+  new personal data for it. [Restore a backup older than an erasure](master-keys.md#restore-a-backup-older-than-an-erasure)
   tells what to do.
 - You can keep the table of data keys out of the backups of the log, so that no backup holds a data
   key. Then you cannot restore the personal data from those backups: the engine raises on it.
@@ -169,26 +169,6 @@ An erasure also does not reach these copies:
   `--reset` rebuilds it, and the replay forgets.
 - An effect that already sent personal data to an external system, such as a text message gateway,
   cannot take it back.
-
-<a id="restore-a-backup-older-than-an-erasure"></a>
-
-### Restore a backup older than an erasure
-
-A restored backup can hold queued effect jobs and subscriptions that are behind. If they run, they
-can read the personal data of an erased subject and send it out. So repeat the erasures before
-anything reads the log.
-
-1. Keep a record of each erasure outside the database. Write the type and the id of the subject, the
-   time, and who asked. Write nothing personal in it. Write the record before you call `erase/3`.
-2. After the restore, start the application without its consumers: with
-   `config :eh_os_contract, subscriptions: :manual`, with `queues: false` for Oban, and without its
-   endpoint.
-3. Call `erase/3` for each erasure in the record that is newer than the backup.
-4. Start the application with its normal configuration.
-
-**Result:** the engine deletes the restored data keys and records the erasures again. The read
-models delivered `:in_transaction` forget the subjects at once. The other read models forget them
-when they read the events of the erasures, after step 4.
 
 ## An example
 
@@ -241,7 +221,7 @@ still gives the customer id and the quote. Its `customer_phone` is `%EhOsContrac
 
 ## Next steps
 
-- [Manage the master keys](master-keys.md): rotate a master key, or keep the keys in a key
+- [Manage the keys and the backups of personal data](master-keys.md): rotate a master key, or keep the keys in a key
   management service.
 - [What are actors, values, entities and external systems?](domain-data.md): the other declarations
   of a domain.
