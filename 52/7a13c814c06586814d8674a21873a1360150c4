@@ -1,0 +1,1 @@
+Merge of origin/main (with #540, step 3 by another session) into the move: #540 pages taken as merged, master-keys.md and personal-data.md moved into docs/ too, their ../ links made flat; no review needed beyond the mechanical merge. Gate EXIT=0 at 527a13c8; the HTML now links img/<id>.svg for the three #540 diagrams.
