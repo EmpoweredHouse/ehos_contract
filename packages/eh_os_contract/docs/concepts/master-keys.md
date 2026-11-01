@@ -182,6 +182,10 @@ erasures before anything reads the log.
    events. Until then, its table holds the old copy. No effect runs yet, so no effect can read that
    copy and send it out.
 
+   A relay reads the log, not a read model. It publishes the events that were still waiting at the
+   time of the backup, and can publish some again under the same ids. A publication carries no
+   personal field, but it can carry the id of a subject.
+
 4. Wait until these read models have read the events of step 2. Their rows in
    `eh_os_contract_subscriptions` have the kind `read_model`:
 
