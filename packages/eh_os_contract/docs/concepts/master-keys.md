@@ -156,28 +156,49 @@ they run, they read the personal data of the erased subject and can send it out.
 erasures before anything reads the log.
 
 1. Start each node of the application without its consumers and without its endpoint. Use
-   `config :eh_os_contract, subscriptions: :manual`, and `queues: false` for Oban.
+   `config :eh_os_contract, subscriptions: :manual`, `queues: false` for Oban, and
+   `server: false` for the endpoint.
 
-   **Result:** no effect job, timer, relay or subscription runs.
+   **Result:** no effect job, timer, relay or subscription runs, and no request arrives.
 
 2. Call `erase/3` for each erasure in your record. Give it an actor for the person who restores.
+   Then note the position of the last event in the log:
+
+   ```sql
+   SELECT max(position) FROM eh_os_contract_events;
+   ```
 
    **Result:** the engine deletes each restored data key, and records the erasure again. For an
-   erasure that the backup already holds, `erase/3` returns `{:ok, :already_erased}`.
+   erasure that the backup already holds, `erase/3` returns `{:ok, :already_erased}` and appends
+   nothing. If no call appended an event, go to step 5.
 
-3. Start each node with its subscriptions and its Oban queues, still without its endpoint.
+3. Start each node with `subscriptions: :run`. Keep `queues: false` and `server: false`.
 
-   **Result:** the read models delivered `:in_transaction` forgot the subjects in step 2. The other
-   read models forget them when their subscriptions reach the events of the erasures. Until then,
-   their queries return the old copy.
+   **Result:** the read models delivered `:in_transaction` forgot the subjects in step 2. The read
+   models delivered `:at_least_once` that take `eh_os_contract.subject_erased` forget them when they
+   read those events. Until then, their tables hold the old copy. No effect runs yet, so no effect
+   can read that copy and send it out.
 
-4. Run `mix eh_os_contract.subscriptions`. Wait until each subscription is `running`, and has read
-   past the last event that step 2 appended.
+4. Wait until these read models have read the events of step 2. Their rows in
+   `eh_os_contract_subscriptions` have the kind `read_model`:
 
-5. Start the endpoint of each node.
+   ```sql
+   SELECT name, status, position FROM eh_os_contract_subscriptions WHERE kind = 'read_model';
+   ```
 
-   **Result:** the read models of the configured applications return no personal data of an erased
-   subject.
+   A read model that forgets is ready when its status is `running` or `stale`. Its position must
+   also be at or after the position of step 2. A read model that does not take
+   `eh_os_contract.subject_erased` keeps no personal data, and its position can stay lower. If a
+   read model is `failing`, reset it with `mix eh_os_contract.subscriptions --reset <name>`, with
+   the endpoint still off. Do not use `--skip`: a read model moved past an erasure keeps the copy.
+
+   **Result:** each read model that forgets has read the erasures.
+
+5. Start each node with its normal configuration.
+
+   **Result:** the read models of the applications in `config :eh_os_contract, applications:`
+   return no personal data of an erased subject. [What does an erasure not
+   reach?](personal-data.md#what-does-an-erasure-not-reach) tells the copies that remain.
 
 The erasures of step 2 carry the time of the restore and the actor of step 2. Only your record keeps
 the time of the first erasure and who asked for it.
