@@ -1,0 +1,123 @@
+<!-- title: Which events does an aggregate read, and which does a boundary read? -->
+<!-- desc: An aggregate folds its own stream; a boundary folds the events that its consults match; dispatch appends each decision only if what it read did not change. -->
+<!-- words: log, stream, event, aggregate, dynamic consistency boundary, dispatch -->
+<!-- technical: workshop_id -->
+<!-- verbs: selects, folds, matches, appends -->
+<!-- parts: log = -, stream = -, consulted = -, aggregate = -, boundary = - -->
+<svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="units-reads-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Connectors (behind the parts) -->
+  <polyline class="arr" points="140,200 140,132 299,132" marker-end="url(#units-reads-arrow)"/>
+  <line class="arr" x1="580" y1="132" x2="679" y2="132" marker-end="url(#units-reads-arrow)"/>
+  <polyline class="arr" points="140,320 140,388 299,388" marker-end="url(#units-reads-arrow)"/>
+  <line class="arr" x1="580" y1="388" x2="679" y2="388" marker-end="url(#units-reads-arrow)"/>
+  <polyline class="arr" points="810,100 810,50 90,50 90,199" marker-end="url(#units-reads-arrow)"/>
+  <polyline class="arr" points="810,420 810,470 90,470 90,321" marker-end="url(#units-reads-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="168" y="125" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="178" cy="132" r="6"/>
+  <text class="badget" x="178" y="135" text-anchor="middle">1</text>
+  <text class="lbl" x="190" y="135">selects</text>
+
+  <rect class="mask" x="592" y="125" width="62" height="14" rx="2"/>
+  <circle class="badge" cx="602" cy="132" r="6"/>
+  <text class="badget" x="602" y="135" text-anchor="middle">2</text>
+  <text class="lbl" x="614" y="135">folds</text>
+
+  <rect class="mask" x="168" y="381" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="178" cy="388" r="6"/>
+  <text class="badget" x="178" y="391" text-anchor="middle">3</text>
+  <text class="lbl" x="190" y="391">matches</text>
+
+  <rect class="mask" x="592" y="381" width="62" height="14" rx="2"/>
+  <circle class="badge" cx="602" cy="388" r="6"/>
+  <text class="badget" x="602" y="391" text-anchor="middle">4</text>
+  <text class="lbl" x="614" y="391">folds</text>
+
+  <rect class="mask" x="370" y="43" width="170" height="14" rx="2"/>
+  <circle class="badge" cx="380" cy="50" r="6"/>
+  <text class="badget" x="380" y="53" text-anchor="middle">5</text>
+  <text class="lbl" x="392" y="53">appends if unchanged</text>
+
+  <rect class="mask" x="370" y="463" width="170" height="14" rx="2"/>
+  <circle class="badge" cx="380" cy="470" r="6"/>
+  <text class="badget" x="380" y="473" text-anchor="middle">6</text>
+  <text class="lbl" x="392" y="473">appends if unchanged</text>
+
+  <!-- The log -->
+  <rect class="knock" x="40" y="200" width="180" height="120" rx="6"/>
+  <rect id="units-reads-log" class="n-store" x="40" y="200" width="180" height="120" rx="6"/>
+  <text class="name" x="130" y="256" text-anchor="middle">Log</text>
+  <text class="sub" x="130" y="274" text-anchor="middle">each event, in order</text>
+
+  <!-- The stream of the workshop -->
+  <rect class="knock" x="300" y="100" width="280" height="64" rx="6"/>
+  <rect id="units-reads-stream" class="n-shared" x="300" y="100" width="280" height="64" rx="6"/>
+  <text class="name" x="440" y="126" text-anchor="middle">Stream of workshop w-1</text>
+  <text class="sub" x="440" y="144" text-anchor="middle">places_offered, speaker_invited, called_off</text>
+
+  <!-- The consulted events -->
+  <rect class="knock" x="300" y="356" width="280" height="64" rx="6"/>
+  <rect id="units-reads-consulted" class="n-shared" x="300" y="356" width="280" height="64" rx="6"/>
+  <text class="name" x="440" y="382" text-anchor="middle">Consulted events of w-1</text>
+  <text class="sub" x="440" y="400" text-anchor="middle">places_offered, seat_taken, called_off</text>
+
+  <!-- The aggregate -->
+  <rect class="knock" x="680" y="100" width="260" height="64" rx="6"/>
+  <rect id="units-reads-aggregate" class="n-back" x="680" y="100" width="260" height="64" rx="6"/>
+  <text class="name" x="810" y="126" text-anchor="middle">Aggregate</text>
+  <text class="sub" x="810" y="144" text-anchor="middle">the workshop w-1</text>
+
+  <!-- The boundary -->
+  <rect class="knock" x="680" y="356" width="260" height="64" rx="6"/>
+  <rect id="units-reads-boundary" class="n-focal" x="680" y="356" width="260" height="64" rx="6"/>
+  <text class="name" x="810" y="382" text-anchor="middle">Dynamic consistency boundary</text>
+  <text class="sub" x="810" y="400" text-anchor="middle">a seat on w-1</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="520" x2="960" y2="520"/>
+  <text class="eyes" x="40" y="540">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="560" r="6"/>
+  <text class="badget" x="46" y="563" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="564">The engine selects the stream: the events with its name and identity.</text>
+  <circle class="badge" cx="46" cy="584" r="6"/>
+  <text class="badget" x="46" y="587" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="588">The aggregate folds its stream, and decides.</text>
+  <circle class="badge" cx="46" cy="608" r="6"/>
+  <text class="badget" x="46" y="611" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="612">The engine matches each consulted type, with the same workshop_id.</text>
+
+  <circle class="badge" cx="526" cy="560" r="6"/>
+  <text class="badget" x="526" y="563" text-anchor="middle">4</text>
+  <text class="keyt" x="540" y="564">The boundary folds them in the order of the log, and decides.</text>
+  <circle class="badge" cx="526" cy="584" r="6"/>
+  <text class="badget" x="526" y="587" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="588">Dispatch appends if the stream did not change after step 1.</text>
+  <circle class="badge" cx="526" cy="608" r="6"/>
+  <text class="badget" x="526" y="611" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="612">Dispatch appends if no event it read was appended after step 3.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="636" x2="960" y2="636"/>
+  <rect class="n-focal" x="40" y="652" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="661">The unit that reads more than one stream</text>
+  <rect class="n-back" x="300" y="652" width="14" height="10" rx="2"/>
+  <text class="legt" x="320" y="661">A unit</text>
+  <rect class="n-shared" x="400" y="652" width="14" height="10" rx="2"/>
+  <text class="legt" x="420" y="661">What the engine reads</text>
+  <rect class="n-store" x="580" y="652" width="14" height="10" rx="2"/>
+  <text class="legt" x="600" y="661">Kept by the engine</text>
+  <line class="arr" x1="740" y1="657" x2="767" y2="657" marker-end="url(#units-reads-arrow)"/>
+  <text class="legt" x="776" y="661">Events, in order</text>
+  </g>
+</svg>

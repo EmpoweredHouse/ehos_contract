@@ -88,6 +88,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the domain, personal data and forms pages now show in the HTML documentation, which looked for them
   outside its own directory. The `change-contract` skill of the `eh-os-contract` plugin names the new
   path, in plugin 0.14.2.
+- **The units and scenarios pages are split by what a reader asks** (#517). `docs/units.md` tells what
+  an aggregate, a dynamic consistency boundary and a domain service are, with two diagrams: the
+  lifecycle of an aggregate, and which events each kind of unit reads. Writing the module of a unit is
+  a how-to, `deciding.md`, and changing an event that already has rows is a how-to,
+  `event-versions.md`. `docs/scenarios.md` tells what a scenario is and how the engine runs it, with a
+  diagram for each kind of trigger. The glossary defines "property test", "schema version", "target",
+  "trigger" and "upcast". Links change: the sections of `units.md` on the code that decides and on an
+  event that already has rows are now `deciding.md` and `event-versions.md`. The `change-contract`
+  skill of the `eh-os-contract` plugin names `event-versions.md`, in plugin 0.14.3.
 
 ### Fixed
 

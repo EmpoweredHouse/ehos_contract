@@ -46,7 +46,7 @@ defmodule EhOsContract.Docs do
   @doc "The concept pages, in the order a reader takes them."
   @spec concepts() :: [String.t()]
   def concepts do
-    ~w(domain domain-data personal-data master-keys units reactions reading forms between-contracts process scenarios)
+    ~w(domain domain-data personal-data master-keys units deciding event-versions reactions reading forms between-contracts process scenarios)
   end
 
   # Each DSL with the prefix of its reference pages.

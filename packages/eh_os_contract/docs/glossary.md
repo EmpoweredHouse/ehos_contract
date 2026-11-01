@@ -50,6 +50,7 @@ another page uses a word in a different way, this page is correct.
 | **Process manager** | A reaction that steers one run over time. It keeps a state, sets timers, and issues commands. | `process_manager` |
 | **Process module** | A module that describes one kind of run. It names the events of each stage, from one or more contracts, the events that end a run, the promises and the deadline. A contract whose units only decide and record needs no process module. | `use EhOsContract.Process` |
 | **Promise** | What a process states about each run: after one event, another event follows, or an alternative event. A promise can also give a time limit. | `promise`, `eventually`, `or_else`, `within` |
+| **Property test** | A test that tries the code of a unit on many histories that the contract allows, and checks what each decision gives. | `EhOsContract.PropertyCase` |
 | **Publication** | The declaration that lets an event leave the application, as an integration event. It is the only way out. | `publish` |
 | **Query** | A question that an actor asks of one read model. The query names the actors that can ask it. It changes nothing. | `query` |
 | **Reaction** | A policy, an effect or a process manager: a declaration that does something because an event occurred. A read model is not a reaction. | — |
@@ -61,6 +62,7 @@ another page uses a word in a different way, this page is correct.
 | **Relay** | The consumer that reads the published events from the log and gives them to the bus. | `EhOsContract.Relay` |
 | **Run** | One case of a process. Example: one loan, from lending to return. The correlation fields of its events tell it from other runs. | — |
 | **Scenario** | An example that a contract or a process module carries: the events that occurred, what occurs next, and the result that it must give. The engine runs each scenario as a test. | `scenario`, `EhOsContract.ScenarioCase` |
+| **Schema version** | The version of the fields of an event. A row in the log keeps the version that it was written with. | `schema_version` |
 | **Stage** | One step of a run, with the events that it includes. The stages have an order. The report counts the runs that entered them out of order. | `stage` |
 | **State** | What a unit or a process manager remembers between decisions. The engine folds it from the events, in order. | `state` |
 | **Status** | The position of an aggregate in its lifecycle. The engine calculates it from the names of the events in the stream. | `status`, in the state |
@@ -69,9 +71,12 @@ another page uses a word in a different way, this page is correct.
 | **Subject** | A kind of person whose personal data the application keeps and may have to erase. Example: a customer. | `subject`, in the domain |
 | **Subscribed event** | An event of another application that a contract takes by its published name. It arrives in the inbox. | `subscribe` |
 | **Subscription** | The position in the log of one consumer that reads the log in order. Examples: a read model, a process manager, a relay, a policy delivered `:at_least_once`. | `mix eh_os_contract.subscriptions` |
+| **Target** | The declaration that a scenario runs: a unit, a policy, a process manager or a query. | `target` |
 | **Term** | One word of the glossary of a context, with its definition in that context. A term can name the words not to use for it. | `term` |
 | **Transition** | A move of an aggregate from one status to another, which one event makes. | `transition` |
+| **Trigger** | The one thing that occurs in a scenario after its givens: a command, an event for a reaction, a query or a recording. | `command`, `on`, `query`, `record` |
 | **Unit** | The thing that a command goes to: an aggregate or a dynamic consistency boundary. It keeps its invariants and answers each command with a decision. | `aggregate`, `dcb` |
+| **Upcast** | A step that tells how a row of an event at one schema version reads in the next version. The row does not change. | `upcast` |
 | **Value** | A name that the domain gives to a type of data: a built-in type, or a set of fields. A field can use it as its type. | `value`, in the domain |
 | **Verdict** | The result of one promise for one run at one moment: satisfied, violated, pending or suspended. | `:satisfied`, `:violated`, `:pending`, `:suspended` |
 
