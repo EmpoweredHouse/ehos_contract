@@ -305,7 +305,7 @@ EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id:
 
 Keep each consumer delivered `:in_transaction` to the database. Each append holds one lock until its
 transaction commits. While such a consumer runs, each other append to the log waits.
-[Reactions](reactions.md) tells how to choose the delivery.
+[What is a reaction?](reactions.md) tells how to choose the delivery.
 
 
 **Result:** dispatch returns `{:ok, %EhOsContract.Receipt{}}`, with a `%CopyLent{}` struct in
@@ -371,6 +371,7 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
   [personal data](personal-data.md), [the keys and the backups of personal data](master-keys.md),
   [units that decide](units.md), [the code that decides](deciding.md),
   [a change to an event with rows](event-versions.md), [reactions](reactions.md), [reading](reading.md),
+  [a read model and its query](read-models.md), [a subscription to repair](subscriptions.md),
   [forms](forms.md), [between contracts](between-contracts.md),
   [processes](process.md) and [scenarios](scenarios.md).
 - [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):

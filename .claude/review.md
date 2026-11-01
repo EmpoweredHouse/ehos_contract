@@ -139,5 +139,10 @@ Kinds of problems a review here found that neither file names yet:
 - What the engine narrows for speed is read with its fallback: the exact `evolve/2` catch-all
   narrows what dispatch decodes and what a boundary reads, and a page that gives the rule without
   the cases where it does not apply misleads. Found in #517.
+- An operator's command on a page is read against what it does to each kind it takes: `mix
+  eh_os_contract.subscriptions` boots the whole host, and a `--reset` is not a retry. It replays a
+  policy into new commands and effects, republishes a relay's whole log, and drops a process
+  manager's reactions and timers since the failure. A page that offers one remedy for every kind
+  sends an operator to lose data. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

@@ -1,45 +1,40 @@
-# Reactions: policies, effects and process managers
-
-What happens because something else happened: the 3 kinds of reaction a contract declares, when each
-runs, what a failure leaves in the log, and how a second delivery is made harmless.
+# What is a reaction?
 
 <!-- covers: entities contract.policy, contract.effect, contract.process_manager, contract.process_manager.timer, contract.process_manager.starts_on, contract.process_manager.on, contract.process_manager.ends_on; rules in-transaction-policy-fan-out, competing-in-transaction-consumers, process-manager-without-ends-on, process-manager-without-event-reactions, event-without-consumer, backward-edge -->
 
-A unit decides; a reaction follows. Every reaction is declared in the contract beside the units, takes events
-of this contract or of a sibling it `consumes`, and is bound by a module of its own, `use <Contract>, policy:
-:name`, as a unit is. A policy may also take an event this contract `subscribe`s to from another
-application, from its inbox ([between contracts](between-contracts.md)). The fourth kind of consumer, a read model with the query that reads it, keeps rows for
-someone to read and decides nothing; it has [its own page](reading.md).
+This page tells what the three kinds of reaction are, and when each one runs. It also tells what a
+failure leaves in the log, and how a second delivery changes nothing. It is for a developer who declares reactions in
+a contract. [The glossary](glossary.md) defines each word in italics.
 
-## Which kind
+## What does a reaction do?
 
-Pick the kind by what the reaction produces.
+A unit decides. A *reaction* does something because an event occurred. The contract declares each
+reaction beside its units, and a module of its own implements it:
+`use <Contract>, policy: :name`.
 
-| It… | Kind | Its callback |
+A reaction takes the events of its own contract. It can also take the events of another contract
+of the same domain, if its contract `consumes` them. A policy can also take an event of
+another application from the inbox. [How does an event reach another contract?](between-contracts.md)
+tells how.
+
+Choose the kind by what the reaction makes:
+
+| The reaction… | Kind | Its callback |
 | --- | --- | --- |
-| issues a command of this contract whenever an event happens | `policy` | one per event it handles, `(event)`, returning what it `issue`s |
-| acts outside the log: calls a system, sends a message | `effect` | one per event it handles, `(event)`, returning `:ok` or `{:error, reason}` |
-| steers one run over time: remembers, waits, gives up | `process_manager` | one per reaction or timer that issues, `(event, state)` or `(state)` |
+| issues a command of this contract each time that an event occurs | `policy` | one for each event, `(event)`, which returns what it `issue`s |
+| acts outside the log: it calls a system, or sends a message | `effect` | one for each event, `(event)`, which returns `:ok` or `{:error, reason}` |
+| steers one run over time: it remembers, waits, and stops | `process_manager` | one for each reaction or timer that issues, `(event, state)` or `(state)` |
 
-- **A policy is stateless.** It sees one event and nothing else, and the command it issues is decided by that
-  command's unit like any other: a rejection is the unit's answer. A policy that needs to remember something
-  between events, or to act when something does *not* happen in time, is a process manager.
-- **An effect is the only kind that touches the world outside the database.** When the world's answer matters
-  to the process, the effect records it as an event, through `EhOsContract.record/3` as a `:system` actor the
-  domain declares, and the rest of the process reacts to that event. An effect names the external systems it
-  calls, `calls: {:mailer, :send_reminder}`: the external and, when the domain lists what it does, one of its
-  operations.
-- **A process manager steers a run.** `correlate` names the fields that tell one run from another; it
-  `starts_on` an event, reacts `on` later events and on its own timers, sets and cancels timers, and ends on an
-  `ends_on` event. Its `state` is what it remembers between steps, folded by `evolve/2` as a unit's is.
+A read model also takes events, but it is not a reaction: it keeps rows for a reader and decides
+nothing. [What are read models and queries?](reading.md) tells about it.
 
-The keys of each are in the reference: [policy](dsl/contract-policy.md), [effect](dsl/contract-effect.md),
-[process manager](dsl/contract-process_manager.md).
+The references list each key: [`policy`](dsl/contract-policy.md),
+[`effect`](dsl/contract-effect.md) and [`process_manager`](dsl/contract-process_manager.md).
 
 ## An example
 
-A loan is closed when its copy comes back; a month after it is opened, unless the copy is back, it is
-marked overdue, and the member is sent a reminder.
+A librarian lends a copy. When the copy comes back, its loan closes. If the copy is not back after
+30 days, the loan is overdue, and the member gets a reminder.
 
 ```elixir
 defmodule Concepts.Reactions.Domain do
@@ -119,8 +114,8 @@ defmodule Concepts.Reactions.Contracts.Loans do
 end
 ```
 
-The policy's module has one callback per event it handles, named after the event, and `issue/1` takes the
-literal structs of the commands its `issues:` names:
+The module of the policy has one callback for each event that it handles. The callback has the
+name of the event:
 
 ```elixir
 defmodule Concepts.Reactions.CloseOnReturn do
@@ -131,124 +126,244 @@ defmodule Concepts.Reactions.CloseOnReturn do
 end
 ```
 
-## Delivery: what a failure leaves in the log
+`issue/1` takes only the struct literals of the commands in `issues:`
+([`I4`](refusals.md#refusals-i), [`I6`](refusals.md#refusals-i)).
 
-`delivery` is not about speed. It says whether the reaction belongs to the same step of the business as the
-event it takes, and so what is left in the log when the reaction fails.
+## What does each kind do?
 
-**`:in_transaction`** runs inside the dispatch that appended the event, before it commits. It is the default
-for a policy (and a read model). Dispatch runs every `:in_transaction` consumer that takes the event, in any
-contract of the application: read models first, then policies, then effects. What a policy issues is
-dispatched at once, in the same transaction.
+**A policy has no state.** It sees one event and nothing else. The unit of the command decides
+the command, as it decides any other command. If the unit rejects it, that is the answer of the
+unit. A policy issues only the commands of its own contract ([`P1`](refusals.md#refusals-p)). To
+reach a unit of another contract, that contract consumes the event and has its own policy.
+A command without `by:` needs a reaction that issues it ([`C1`](refusals.md#refusals-c)).
 
-- An exception in the reaction, or an effect's `{:error, reason}`, **rolls back the command that caused
-  it**: the person's command fails for a reason that is not theirs. When dispatch owns the transaction it
-  writes a `failed` row naming where it failed and the exception's module.
-- A rejection of the command a policy issues is the unit's answer, not a failure: the first command stands.
-- If a policy, further down the same chain, reacts again to a kind of event it already reacted to, that is a
-  cycle, and dispatch raises.
-- Every such reaction runs while the transaction holds the store's global append lock, so every other
-  append waits for it.
+If a policy must remember something between events, or must act when an event does *not*
+occur in time, use a process manager.
 
-**`:at_least_once`** runs after the commit. It is the default for an effect and the only delivery of a process
-manager. A policy delivered so is an ordered subscription to the log: 1 event per step, each step in its own
-transaction. An effect is an Oban job, inserted in the transaction that appends the event and holding only the
-effect's key and the event's id. A process manager is an ordered subscription too.
+**An effect is the only kind that acts outside the database.** It names the external systems that
+it calls, such as `calls: {:mailer, :send_reminder}`. If the domain lists the operations of the
+system, the effect also names one operation. If the answer of the system is important to the process, record it as
+an event. Call `EhOsContract.record/3` with a `:system` actor that the domain declares. The rest of
+the process then reacts to that event.
 
-- The triggering event stays in the log whatever the reaction does.
-- An event a subscription fails on is retried; after 3 attempts the subscription is `failing` at that
-  event and **stops there**. It never skips by itself: moving it on is a person's decision,
-  `mix eh_os_contract.subscriptions --skip` or `--reset`.
-- An effect's job is retried, 3 attempts in all. What Oban keeps of a failure names the effect and the
-  event's position, never a value, since a value may be personal data.
+**A process manager steers a run.** A *run* is one case of a process, such as one loan.
 
-So `:in_transaction` fits when "if this did not happen, the command did not happen either": a policy whose
-command is part of the same business step. `:at_least_once` fits when the reaction is a different failure domain:
-anything that calls out, fans out, or may be slow. An effect that calls an external system is always
-`:at_least_once`, since a call cannot be rolled back with the append.
+- `correlate` names the fields that tell one run from another.
+- `starts_on` names the event that starts a run.
+- `on` names a later event that it reacts to. It can also react to its own timers.
+- `ends_on` names the event that ends the run.
+- Its `state` is what it remembers between steps. `evolve/2` folds it, as for a unit.
 
-## Idempotency: a second delivery changes nothing
+A run that ended cannot start again with the same values of its `correlate` fields.
 
-Delivered `:at_least_once`, a reaction **will** see an event twice. A policy or an effect delivered so names
-`idempotency:`: the key that makes a second delivery harmless, and who keeps it so.
+<a id="where-does-each-reaction-run"></a>
 
-- **`owner: :infrastructure`**: the engine. Every command a policy or a process manager issues is keyed by
-  its cause, `"policy:<contract id>:<name>:<event id>:<index>"` or `"pm:<contract id>:<name>:<event id>:<index>"`,
-  so a second delivery appends nothing. That is why a process manager names no `idempotency`, and why a
-  policy needs nothing more than `[key: :event_id, owner: :infrastructure]`.
-- **`owner: :downstream`**: an effect passes the key to the system it calls, which ignores a repeat. The
-  key is the event's `__meta__.id`.
-- **`owner: :self`**: the reaction's own code keys what it writes: an effect that records the answer it got
-  passes an idempotency key derived from the event's id to `EhOsContract.record/3`.
+## Where does each reaction run?
 
-The engine does not key an effect's call to the world. That is the far end, where a duplicate e-mail would be
-sent, and `idempotency:` is where the contract says who stops it.
+The *delivery* of a reaction tells when it runs. It does not make the reaction faster. It tells
+what the log keeps when the reaction fails.
 
-## Where a new reaction starts
+![A consumer delivered in the transaction fails the command with it; a subscription or an Oban job runs after the commit, and its failure leaves the event in the log.](img/reaction-delivery.svg)
 
-What is in the log when a reaction is first deployed is history, and nothing new reacts to history by itself:
+1. Dispatch runs each consumer delivered `:in_transaction` before it commits.
+2. If one of them fails, the command fails with it.
+3. If none fails, dispatch commits. The log keeps the event.
+4. A *subscription* reads the log in order, after the commit.
+5. If a subscription fails 3 times on one event, it stops at that event.
+6. In the same transaction, dispatch inserts an Oban job for each effect delivered
+   `:at_least_once`.
+7. If the job fails 3 times, Oban discards it.
 
-- **A new policy delivered `:at_least_once` starts at the head of the log.** A deploy onto a year of history
-  issues nothing for that year.
-- **A new process manager replays the log with its reactions suppressed.** It learns the runs already there
-  and steers none of them; a timer of theirs that came due before the deploy is dropped.
-- **An effect has no position.** Its job is inserted by the dispatch that appends the event, so it acts on
-  events appended once it is deployed.
+| Kind | Delivery if you leave it out | Can it run `:in_transaction`? |
+| --- | --- | --- |
+| `policy` | `:in_transaction` | yes |
+| `effect` | `:at_least_once` | yes, if it has no `calls:` ([`P2`](refusals.md#refusals-p)) |
+| `process_manager` | `:at_least_once` | no ([`P4`](refusals.md#refusals-p)) |
 
-Reacting to history is a person's `mix eh_os_contract.subscriptions --reset`, never a side effect of a deploy.
-A policy reset to the start of the log derives the same keys from each event, so what it issued before is not
-issued twice.
+### What occurs in the transaction?
 
-## Timers
+`:in_transaction` runs the reaction in the dispatch that appended the event, before the commit.
 
-A timer fires `wait:` after the event that set it, or `at:` a `:timestamp` field of the manager's state. A
-reaction `sets:` it and `cancels:` it, and an `ends_on` event ends the run and forgets every timer it has.
+- Dispatch runs each consumer delivered `:in_transaction` that takes the event. It looks in each
+  contract of the applications in `config :eh_os_contract, applications:`, and of the application
+  of the contract.
+- The read models run first, then the policies, then the effects.
+- Dispatch dispatches each command that a policy issues at once, in the same transaction.
+- If a policy in the same chain reacts again to an event type that it reacted to before, that is
+  a cycle. Dispatch raises.
+- All these reactions run while the transaction holds the append lock of the log. Every other
+  append waits.
 
-The firing is an event in the run's own stream, which the process manager takes in order with everything
-else. A timer fired twice dispatches once, and a replay sees each firing where it happened. The callback of a timer
-that issues receives only the state: whatever its command needs, beyond the run's correlation, has to be
-in the state by then.
+If a reaction raises, or an effect returns `{:error, reason}`, the transaction rolls back. The
+command that caused it fails, for a reason that is not the fault of the person who sent it. If
+dispatch owns the transaction, it writes a row with the status `failed`. The row names the step
+that failed and the module of the exception.
 
-A timer's label says what the timer is for, "Return date", not how long it waits: `wait:` or `at:` says when,
-and a label that repeats it drifts the day someone changes it.
+If the unit rejects the command of a policy, that is not a failure: the first command stays. The
+same is true if the command of a policy is refused because its subject was erased.
 
-An event the manager takes that lacks its `correlate` fields joins no run and is passed over, and for a
-local event nothing refuses that at compile time: check that each event it names carries them. Its state
-holds no personal data ([`F7`](refusals.md#refusals-f)): it lives outside the log, where erasure cannot reach it.
+### What occurs after the commit?
 
-## What the compiler refuses
+`:at_least_once` runs the reaction after the commit. The event stays in the log, whatever the
+reaction does.
 
-- A policy or an effect taking an event that is neither this contract's nor consumed, or a policy issuing a
-  command of another contract ([`P1`](refusals.md#refusals-p)). Issue a command of this contract; another context's unit is reached
-  through its own policy.
-- An effect with `calls:` delivered `:in_transaction` ([`P2`](refusals.md#refusals-p)): deliver it `:at_least_once`.
-- A policy or an effect delivered `:at_least_once` without `idempotency`; `owner: :downstream` outside an
-  effect; `owner: :infrastructure` on an effect, or on a key other than `:event_id` ([`P3`](refusals.md#refusals-p)).
-- A process manager that starts on nothing, has an empty `correlate`, or is delivered `:in_transaction`; a
-  trigger that is neither an event it may take nor its own timer; a timer without exactly one of `wait:` and
-  `at:` ([`P4`](refusals.md#refusals-p)).
-- A timer's `wait:` that is negative, malformed, or longer than 100 years, a year counted as 366 days and a
-  month as a twelfth of that ([`R6`](refusals.md#refusals-r)): a timer longer than a century is a mistake in the contract.
-- A command no actor may issue and no reaction issues ([`C1`](refusals.md#refusals-c)).
-- In a module: `issue/1` given anything but struct literals of the commands its `issues:` names ([`I4`](refusals.md#refusals-i), [`I6`](refusals.md#refusals-i)).
+- **A policy or a process manager** reads the log through a subscription. The subscription takes
+  one event in each step, and each step has its own transaction. Each step holds the append lock,
+  because it dispatches commands.
+- **An effect** is an Oban job in the queue `:events`. Dispatch inserts the job in the transaction
+  that appends the event. The job holds the name of the effect, the id of the event and the name
+  of the application, and no value of the event.
 
-## What `mix eh_os_contract.check` reports
+If a subscription fails on an event, it tries the event again, after a pause of up to 30 seconds.
+After 3 attempts, the status of the subscription is `failing`. It stops at that event.
 
-- `in-transaction-policy-fan-out` (warning): a scenario shows an in-transaction policy issuing more than one
-  command, each while the append lock is held. Deliver it `:at_least_once`.
-- `competing-in-transaction-consumers` (warning): 2 policies or effects take one event inside its
-  transaction, in an order the contract does not state. If one depends on the other, have it react to the
-  event the other decides.
-- `process-manager-without-ends-on` (warning): every run stays open for ever, with its state. Declare
+- A `failing` subscription does not try again by itself. A restart of the host does not start it,
+  unless the declaration of a read model or a process manager changed.
+- It never skips the event by itself. A person decides what to do.
+  [Repair or replay a subscription](subscriptions.md) tells how.
+
+Oban makes 3 attempts at the job of an effect. After the last attempt, Oban discards the job, and
+the engine does nothing more. The conformance report shows the discarded job. What Oban keeps of a
+failure names the effect and the position of the event, never a value: a value can be personal
+data.
+
+> **Oban must use the repo of dispatch.**
+> Configure Oban with the same repo as the engine. Dispatch inserts the jobs in its own
+> transaction. With another repo, dispatch raises an `ArgumentError`.
+
+### Which delivery do I choose?
+
+Use `:in_transaction` if the command did not occur when the reaction did not occur. An example is
+a policy whose command is part of the same step of the business.
+
+Use `:at_least_once` if a failure of the reaction must not fail the command. This is a reaction
+that calls a system, issues many commands, or can be slow. An effect that calls an external system
+is always `:at_least_once`, because the engine cannot roll back a call.
+
+A policy that takes an event of another context must say its delivery.
+[How does an event reach another contract?](between-contracts.md#delivery-across-contexts) tells
+why.
+
+## How does a second delivery change nothing?
+
+A reaction delivered `:at_least_once` **will** see some events two times. A policy or an effect
+delivered so declares `idempotency:`. It names the key that tells a second delivery from the first,
+and who keeps the key ([`P3`](refusals.md#refusals-p)).
+
+| `owner:` | Who stops the second delivery | For |
+| --- | --- | --- |
+| `:infrastructure` | the engine; the key is `:event_id` | a policy |
+| `:downstream` | the system that the effect calls; the effect gives it the key | an effect |
+| `:self` | the code of the reaction; it keys what it writes | a policy or an effect |
+
+**The engine keys each command that a reaction issues.** The key comes from the cause of the
+command:
+
+- `"policy:<contract id>:<name>:<event id>:<index>"` for a policy;
+- `"pm:<contract id>:<name>:<event id>:<index>"` for a process manager.
+
+If a key is longer than 255 bytes, the engine uses a hash of it. When the unit accepts the command,
+the key stays with its events. A second delivery with the same key appends nothing. A process
+manager needs no `idempotency` for this reason, and a policy needs only
+`[key: :event_id, owner: :infrastructure]`.
+
+> **Only an accepted command keeps its key.**
+> If the unit rejected the command, a second delivery decides it again. The answer can change if
+> the unit changed in between.
+
+**For `:downstream`**, the effect gives the key to the system that it calls. The system ignores a
+call that it already took. With `key: :event_id`, the key is the `__meta__.id` of the event.
+`key:` can also name a field of the event.
+
+**For `:self`**, the code keys what it writes. Example: an effect records the answer that it got.
+It gives `EhOsContract.record/3` an idempotency key that it makes from the id of the event.
+
+The engine does not key the call of an effect to the world. A second e-mail is sent at the far
+end. `idempotency:` is where the contract says who stops it. The engine does not read
+`idempotency:` at run time.
+
+## Where does a new reaction start?
+
+The log can hold events from before a reaction was deployed. These events are history. A new
+reaction does not react to history by itself.
+
+- **A new policy delivered `:at_least_once` starts at the head.** If you deploy it onto a year of
+  history, it issues nothing for that year.
+- **A new process manager reads the log with its reactions turned off.** It learns the runs that
+  exist, and steers none of them. It drops each timer of these runs that was due before the
+  deploy.
+- **An effect has no position.** Dispatch inserts its job when it appends the event. The effect
+  acts only on events appended after the deploy.
+
+To make a new policy react to history, a person resets it:
+[Repair or replay a subscription](subscriptions.md). The policy makes the same keys from each event
+again, so it issues no accepted command two times. A reset of a process manager issues nothing for
+history.
+
+> **A change to a process manager forgets its runs.**
+> If you change its declaration, the engine marks it `stale` at the next boot. It then forgets every run and reads the log again, with its reactions turned off. It
+> keeps only the timers that are not due yet, or that still have a job.
+
+## How does a timer work?
+
+A reaction `sets:` a timer and `cancels:` it. The timer fires at one of these times:
+
+- `wait:` after the event that set it. The wait counts from the time of that event. Weeks,
+  months and years follow the calendar, in UTC.
+- `at:` a `:timestamp` field of the state, after `evolve/2` took the event. If the field is `nil`,
+  the subscription fails at that event.
+
+A `wait:` longer than 100 years is a mistake in the contract, and the compiler refuses it
+([`R6`](refusals.md#refusals-r)).
+
+If a reaction sets a timer again, the new time replaces the old one. An `ends_on` event ends the
+run, and the run forgets all its timers.
+
+The firing is an event in the stream of the run. The process manager takes it in order, with the
+other events. If the job of one timer runs two times, it can append two firings. The process
+manager dispatches its commands one time. When the log is read again, each firing is where it
+occurred.
+
+The callback of a timer gets only the state. Put in the state what the command needs, apart from
+the `correlate` fields.
+
+Give a timer a label that says what it is for, such as "Return date". Do not say how long it
+waits: `wait:` or `at:` says that. A label that repeats the time is wrong after a change to it.
+
+> **Check that each event carries the `correlate` fields.**
+> An event without them joins no run, and the process manager passes over it. For an event of
+> this contract, the compiler does not refuse this.
+
+The state of a process manager holds no personal data ([`F7`](refusals.md#refusals-f)). It is kept
+outside the log, where an erasure does not reach it.
+
+## What does the check say about a reaction?
+
+`mix eh_os_contract.check` gives these warnings. [The rules](rules.md) list all of them.
+
+- `in-transaction-policy-fan-out`: a scenario shows a policy delivered `:in_transaction` that
+  issues more than one command. Each command holds the append lock. Deliver it `:at_least_once`.
+- `competing-in-transaction-consumers`: two policies or effects take one event in its transaction,
+  and the contract does not say their order. If one needs the other, make it react to the event
+  that the other one decides.
+- `process-manager-without-ends-on`: each run stays open, with its state, for ever. Declare
   `ends_on`.
-- `process-manager-without-event-reactions` (warning): after it starts, the manager reacts only to its own
-  timers, so the process can end it but not steer it. It is a schedule, and may be simpler as one.
-- `event-without-consumer` (warning): nothing reacts to or reads an event: no reaction, read model,
-  boundary, consuming contract or `publish`, and no lifecycle or process module that the conformance
-  report reads. Add the reader it was declared for, or ask whether it is needed.
-- `backward-edge` (warning): a policy or a process manager reacting to an event that one stage of a
-  [process module](process.md) includes issues a command whose events sit in an earlier stage of it. Either
-  the stages are in the wrong order or the reaction is a loop the process has not declared.
+- `process-manager-without-event-reactions`: after it starts, the process manager reacts only to
+  its own timers. The process can end it, but cannot steer it. A schedule can be simpler.
+- `event-without-consumer`: nothing reacts to the event or reads it. No reaction, read model,
+  boundary, consuming contract or publication takes it. No lifecycle or process module that the
+  conformance report reads includes it. Add the reader that it is for, or ask if the event is
+  necessary.
+- `backward-edge`: a policy or a process manager reacts to an event in one stage of a
+  [process module](process.md). It issues a command whose events are in an earlier stage. The
+  stages are in the wrong order, or the process has a loop that it does not declare.
 
-All of the rules are in [the catalogue](rules.md). Reactions to another context's events, and to another
-application's, are on [their own page](between-contracts.md).
+## Next steps
+
+- [Repair or replay a subscription](subscriptions.md): what to do when a reaction stops at an event.
+- [What are read models and queries?](reading.md): the consumer that keeps rows for a reader.
+- [How does an event reach another contract?](between-contracts.md): reactions to the events of
+  another context and of another application.
+- [What is a scenario?](scenarios.md): how the scenarios test a reaction.
+- [The compile refusals](refusals.md#refusals-p): each refusal of a reaction, in the families P, R,
+  C and I.

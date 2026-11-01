@@ -325,9 +325,11 @@ engine judges runs, promises and deadlines.
 | Give an aggregate statuses and the transitions between them | [What are the units that decide?](units.md) |
 | Decide over the events of more than one stream | [What are the units that decide?](units.md) |
 | Change an event that already has rows in the log | [Change an event that already has rows](event-versions.md) |
-| React to an event with a policy, an effect or a process manager | [Reactions](reactions.md) |
-| Keep a read model and answer a query | [Reading](reading.md) |
-| Take events of another contract, or of another application | [Between contracts](between-contracts.md) |
+| React to an event with a policy, an effect or a process manager | [What is a reaction?](reactions.md) |
+| Keep a read model and answer a query | [What are read models and queries?](reading.md) |
+| Write the modules of a read model and a query, and ask the query | [Write a read model and its query](read-models.md) |
+| Move a subscription past an event, rebuild a read model, or replay the log | [Repair or replay a subscription](subscriptions.md) |
+| Take events of another contract, or of another application | [How does an event reach another contract?](between-contracts.md) |
 | Issue a command from a form | [Forms](forms.md) |
 | Mark personal data, and erase a subject | [How does the engine keep and erase personal data?](personal-data.md) |
 | Rotate a master key, or restore a backup older than an erasure | [Manage the keys and the backups of personal data](master-keys.md) |

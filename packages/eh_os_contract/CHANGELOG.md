@@ -98,6 +98,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   "target", "trigger" and "upcast". Links change: the sections of `units.md` on the code that decides
   and on an event that already has rows are now `deciding.md` and `event-versions.md`. The
   `change-contract` skill of the `eh-os-contract` plugin names `event-versions.md`, in plugin 0.14.3.
+- **The pages on reactions, reading and other contracts are split by what a reader asks** (#517).
+  `docs/reactions.md`, `docs/reading.md` and `docs/between-contracts.md` are Concept pages, each with
+  one diagram: where each consumer runs and what a failure leaves, how an event becomes a row and an
+  answer, and what occurs from a publication to the policy's command. Writing the modules of a read
+  model and a query, and asking the query, is a how-to, `read-models.md`. Moving a subscription past an
+  event, rebuilding a read model and replaying the log is a how-to, `subscriptions.md`. The pages now
+  say that a `failing` subscription does not try again by itself, and that a reset is not a retry:
+  what a reset of a policy, a relay and a process manager costs, and that it fails for a read model
+  without `reset/0`. Links change: the sections of `reading.md` on the modules and on
+  asking a query are now in `read-models.md`.
 
 ### Fixed
 
