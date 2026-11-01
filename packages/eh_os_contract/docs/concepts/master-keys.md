@@ -15,7 +15,10 @@ A *master key* wraps the *data key* of each subject.
   as [Getting started](../getting-started.md) tells.
 - To restore a backup that is older than an erasure, you keep a record of each erasure outside the
   database. Write it before you call `erase/3`. It holds the type and the id of the subject, the
-  time, and who asked, and nothing personal. Keep each record as long as the oldest backup.
+  time, and who asked. It holds no value of an erased field. Keep each record as long as the oldest
+  backup.
+- An id of a subject, or the name of who asked, can still identify a person. Keep the record under
+  the same privacy controls as your other records of people.
 
 ## Rotate a master key
 
@@ -162,11 +165,19 @@ erasures before anything reads the log.
    **Result:** the engine deletes each restored data key, and records the erasure again. For an
    erasure that the backup already holds, `erase/3` returns `{:ok, :already_erased}`.
 
-3. Start each node with its normal configuration.
+3. Start each node with its subscriptions and its Oban queues, still without its endpoint.
 
    **Result:** the read models delivered `:in_transaction` forgot the subjects in step 2. The other
    read models forget them when their subscriptions reach the events of the erasures. Until then,
    their queries return the old copy.
+
+4. Run `mix eh_os_contract.subscriptions`. Wait until each subscription is `running`, and has read
+   past the last event that step 2 appended.
+
+5. Start the endpoint of each node.
+
+   **Result:** the read models of the configured applications return no personal data of an erased
+   subject.
 
 The erasures of step 2 carry the time of the restore and the actor of step 2. Only your record keeps
 the time of the first erasure and who asked for it.
