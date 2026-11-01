@@ -267,7 +267,7 @@ the key stays with its events. A second delivery with the same key appends nothi
 manager needs no `idempotency` for this reason, and a policy needs only
 `[key: :event_id, owner: :infrastructure]`.
 
-> **A rejected command has no key.**
+> **Only an accepted command keeps its key.**
 > If the unit rejected the command, a second delivery decides it again. The answer can change if
 > the unit changed in between.
 

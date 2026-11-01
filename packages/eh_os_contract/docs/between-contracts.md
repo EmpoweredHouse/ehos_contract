@@ -149,7 +149,8 @@ is no outbox table.
 - A step reads up to 100 events of the publication, and makes a message from each.
 - If the relay stops after step 2 and before step 3, it publishes the batch again, under the same
   ids. So a message can arrive two times. It never arrives without its event in the log. It arrives
-  zero times only in three cases:
+  zero times only in four cases:
+  - the event was in the log before the `publish` was deployed, and nobody resets the relay;
   - a person skips the event on the relay, after the relay is `failing` at it;
   - the `publish` gets a new name;
   - a broker that keeps nothing, such as `EhOsContract.Bus.Local`, restarts.
@@ -216,7 +217,7 @@ never is. So the contract does not compile if one of them takes a subscribed eve
 - **Only what is published after the subscription arrives.** To get older events, ask their owner,
   not the bus. If the publisher resets its relay, the whole log arrives again, and the inbox takes
   each event that it did not take before.
-- **Without a bus, no inbox starts**, and no subscribed event arrives.
+- **If no bus is configured, no inbox starts**, and no subscribed event arrives.
 
 A contract that subscribes asks for a capability: the published name without its version, and
 `.subscribe`. Example: `between_example.loan.opened.subscribe`. The platform grants this
