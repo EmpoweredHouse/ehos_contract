@@ -4,10 +4,11 @@ This page tells how to move a subscription past an event that fails, and how to 
 model. It also tells how to make a consumer read the log again. It is for a developer or an operator of an
 application that runs on the engine. [The glossary](glossary.md) defines each word in italics.
 
-A *subscription* is the position of one consumer that reads the log in order, after the commit.
-These consumers have one:
+A *subscription* is the position of one consumer that reads the log in order. These consumers have
+one:
 
-- a read model delivered `:at_least_once` or `:in_transaction`;
+- a read model delivered `:at_least_once`, or `:in_transaction`: dispatch writes this one, and its
+  subscription reads the log only when it is rebuilt;
 - a policy delivered `:at_least_once`;
 - a process manager;
 - a relay, which sends the events of a publication to the bus.
@@ -122,7 +123,8 @@ either. You decide what occurs to the event.
      the read model keeps its copy of the subject until you reset it. If the subscription is a
      relay, the event never leaves the application.
 
-The result: the task prints the subscription as `running`, at a later position.
+The result: after a skip, the task prints the subscription as `running`, after the event. After a
+reset, it is `rebuilding`, then `running`.
 
 > **A changed declaration clears the failure.**
 > The next boot rebuilds a failing read model or process manager whose declaration changed. A failing policy or relay stays failing.
@@ -183,8 +185,8 @@ itself.
 
 ## React to history, or publish it again
 
-A new policy, process manager or relay starts at the head of the log. The events before it are
-history. To make it read the history, reset it with its key:
+A new policy or relay starts at the head of the log. The events before it are history. To make it
+read the history, reset it with its key:
 
 ```bash
 mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>

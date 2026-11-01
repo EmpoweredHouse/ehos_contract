@@ -179,7 +179,8 @@ end
 
 The module has one function, with the name of the query. It takes the struct of the parameters
 and a context with the actor. It returns the `Row` structs of the read model: a list, or one row
-or `nil` for `returns: :one`. With a table, it queries the schema, and returns what Ecto loads:
+or `nil` for `returns: :one`. With a table, it queries the schema, and returns what Ecto loads. It does not list the fields
+again:
 
 ```elixir
 defmodule Concepts.ReadModels.LoansOfMember do

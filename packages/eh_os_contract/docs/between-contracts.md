@@ -76,8 +76,8 @@ clinic keeps the visit that the booking contract made. The type of the field say
 which entity a field names: `field :visit_id, {:id, :visit}`. A unit with that number as its key
 says it in its identity: `identity visit_id: {:id, :visit}`.
 
-The name must match one unit of the contracts of the domain, or one entity of the domain. If not,
-the contract does not compile ([`X3`](refusals.md#refusals-x)).
+The name must match exactly one unit of the contracts of the domain, or one entity of the domain.
+If it matches none, or more than one, the contract does not compile ([`X3`](refusals.md#refusals-x)).
 
 > **Compile the contracts of a domain in one project.**
 > The compiler looks for the unit only in the project that it compiles. It does not
@@ -196,8 +196,8 @@ never is. So the contract does not compile if one of them takes a subscribed eve
 - **One event, one reaction.** The row of the inbox has the key of the message. The inbox drops a
   second delivery of a message, and acknowledges it. If the publisher declares `idempotent_on:`, the
   inbox also drops the same event published again with a new id. The inbox keeps its rows.
-- **A message that does not fit comes again.** If the data does not fit, or the policy raises, the
-  transaction rolls back. The inbox answers `:nack`, and the bus
+- **A message that does not fit comes again.** The data must fit the fields of the subscribed
+  event. If it does not, or the policy raises, the transaction rolls back. The inbox answers `:nack`, and the bus
   delivers the message again. Nothing is lost while you correct the declaration or the code. The
   limit of the transport on deliveries stops a message that never succeeds.
 - **A rejection is an answer.** If the unit rejects the command of the policy, the inbox takes the

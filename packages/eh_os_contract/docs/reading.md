@@ -163,7 +163,7 @@ Each field has the type of the contract:
 | The field in the contract | In the `Row` |
 | --- | --- |
 | an enum | an `Ecto.Enum`, stored as the name of its member |
-| a `:timestamp` | a time with microseconds, at the precision of the time that you write |
+| a `:timestamp` | a time with microseconds; you can write a time of any precision |
 | a value of the domain | the type that the domain gives it |
 | a value made of fields, or a list of them | a `jsonb` column, written as the log writes it and read back as the struct of the value |
 
@@ -196,7 +196,8 @@ from then on. If the log already holds its events, rebuild it by hand:
 
 The version of a read model is a digest of its declaration and of each event that it takes. If
 the version changes, the engine marks the read model `stale` at the next boot. If the read model
-defines `reset/0`, the engine rebuilds it at that boot. Without `reset/0`, it stays `stale`, and
+defines `reset/0`, the engine rebuilds it at that boot. With `subscriptions: :manual`, as in tests,
+the engine does neither. Without `reset/0`, it stays `stale`, and
 writes new events over its old rows.
 
 ## What does a query answer?
