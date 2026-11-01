@@ -70,12 +70,14 @@ defmodule Mix.Tasks.EhOsContract.Schema do
       otherwise than above, with no step a function. A function covers every change a
       step could carry, since the engine cannot see what it does.
     * a field becomes personal or stops being, or another identifier seals it; a personal
-      field changes its type, or a value holding personal data its shape; a required
-      personal field, at any depth, is one old rows may lack; an identifier that seals a field
-      changes its `subject:`; or a field the log tags rows with (a required,
-      non-personal `:id`, `:date` or `:timestamp`) was not tagged so under that name in
-      the version before. Inside a domain value too. No step carries those: rows already
-      sealed or tagged keep what they were written with. Declare a new event.
+      field changes its type otherwise than in place (an `:integer` made a `:decimal` still
+      reads, and is recorded in place), or a value holding personal data changes its shape;
+      a required personal field, at any depth, is one old rows may lack; an identifier that
+      seals a field changes its `subject:`; or a field the log tags rows with (a required,
+      non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one) was not
+      tagged under that name in the version before. Inside a domain value too. No step
+      carries those: rows already sealed or tagged keep what they were written with. Declare
+      a new event.
     * the file holds a version newer than the one declared, whose rows would not read.
     * the file holds an event no contract declares any more, renamed or removed, whose
       rows would not read either.

@@ -10,8 +10,8 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 `EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
 §13. Not yet run on a real change: read what it says against those before trusting it. The upcasts
 were added on 17 October 2026 (plan DD, V1, #333), checked against `EhOsContract.Upcast` and
-`packages/eh_os_contract/docs/units.md` (`packages/eh_os_contract/docs/concepts/units.md` up to engine
-0.13.0), "An event that already has rows"; the schema lock on 17 October 2026 (plan DD, V3, #340, and
+`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows" (after engine
+0.13.0, `packages/eh_os_contract/docs/event-versions.md`); the schema lock on 17 October 2026 (plan DD, V3, #340, and
 V4, #346), against `mix eh_os_contract.schema`'s documentation.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
@@ -53,7 +53,8 @@ member added, `:integer` to `:decimal`, `:id` to `:string` — it records in pla
 field marked so that a field declared again under its name is held to what old rows hold. A raised
 version's steps must cover each other change: `rename:` a renamed field, `default:` a new required
 one, `function:` anything else. A field turned personal or not, sealed by another identifier,
-personal and changing its type, holding personal data and changing its shape, a required personal
+personal and changing its type otherwise than in place (an `:integer` made a `:decimal` still
+reads), holding personal data and changing its shape, a required personal
 field old rows may lack (at any depth), or newly tagged by the log, it refuses even with a step. It
 cannot say whether old rows exist, so its refusal starts this skill's analysis rather than settling
 it: raise the version with its step, or,
@@ -89,7 +90,7 @@ rows: before `declaration_digests` were recorded it answers `:not_recorded`.
 | A label, `source:`, a scenario's description, a term of the glossary | `words` | Nothing functional, and no new version: no event is stamped differently and no read model rebuilds. |
 | A new unit, command, event, reaction, read model | `added` | Additive. A new policy starts at the head and does not react to history; a new ordered read model projects it from position 0 (`write-reaction`). |
 | A new **optional** field on an event | `changed` | Compatible: old rows read back with `nil`. |
-| A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: raise `schema_version` with `upcast from: n, default: [field: value]`, make it optional, or a new event. A personal field takes no default, nor does a field the log tags rows with — a required, non-personal `:id`, date or timestamp (`U3`). |
+| A new **required** field on an event | `changed` | **Every old row of that type fails to decode** (`:required`), with the consequences above. With history: raise `schema_version` with `upcast from: n, default: [field: value]`, make it optional, or a new event. A personal field takes no default, nor does a field the log tags rows with — a required, non-personal `:id`, date or timestamp, or a domain value resting on one (`U3`). |
 | A field of an event renamed | `changed` | Old rows hold the old name, so the new one reads as missing: a required one fails to decode. With history: raise `schema_version` with `upcast from: n, rename: [old: :new]`. A personal field may be renamed: its sealed value opens under the old name. The unit's identity may not, nor may a rename land on a field the log tags rows with: old rows keep their tags under the old name, and a boundary or a process finding rows by it would miss them (`U3`). That change is a new event. |
 | `schema_version` raised | `changed` | Every version below it needs its step (`U1`), empty when the fields kept their shape. A row is read through the steps from its own version; a row of a newer version than the code declares is not read at all, and its readers wait. |
 | A field removed from an event | `changed` | Old rows still decode — an undeclared key is ignored on read. Personal values stay sealed in the log until their subject is erased. |

@@ -1,27 +1,42 @@
-# Units that decide: aggregates, consistency boundaries and domain services
+# What are the units that decide?
 
-This page covers the declarations that decide (an aggregate over one stream, a dynamic consistency
-boundary over a query of the log, the domain services both may call) and the module each one needs.
+<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service; rules aggregate-without-events, event-name-with-aggregate-prefix, consults-without-match, core-command-never-refuses, core-unit-records-only -->
 
-<!-- covers: entities contract.aggregate, contract.dcb, contract.domain_service, contract.aggregate.event.upcast; rules aggregate-without-events, emits-never-produced, event-name-with-aggregate-prefix, consults-without-match, contract-without-implementation, declaration-without-implementation, transition-without-scenario, core-command-never-refuses, core-unit-records-only -->
+This page tells what an aggregate, a dynamic consistency boundary and a domain service are, and
+how the engine decides with them. It is for a developer who declares them in a contract, and for a
+person who reads the rules of a business in a contract. [The glossary](glossary.md) defines each
+word in italics.
 
-A **unit** is what a command is sent to. It holds the rules that must stay true, reads what it has
-decided before, and answers each command with events or a refusal. The engine knows 2 kinds:
+## What is a unit?
 
-- an **aggregate** decides over one stream: the events that carry its identity, and nothing else;
-- a **dynamic consistency boundary** (`dcb`) decides over a query of the log: its own events, and
-  the events of other units it `consults`.
+A *unit* is the thing that a command goes to. It keeps the rules of the business that must stay
+true. It reads the events that it decided before. It answers each command with events or with a
+refusal.
 
-Otherwise both are declared with the same `identity`, `state`, `invariant`, `command` and `event`,
-and both are implemented the same way. Every key is in the reference:
-[`aggregate`](dsl/contract-aggregate.md), [`dcb`](dsl/contract-dcb.md) and
-[`domain_service`](dsl/contract-domain_service.md).
+The engine has two kinds of unit:
+
+- An *aggregate* decides over one *stream*: the events that carry its identity, and no other
+  events.
+- A *dynamic consistency boundary* (`dcb`) decides over a query of the log: its own events, and the
+  events of other units that it consults.
+
+The two kinds have the same declarations: `identity`, `state`, `invariant`, `command` and `event`.
+You write the code of both in the same way. [Write the code that decides](deciding.md) tells how.
+
+A *domain service* is logic that belongs to no unit. A unit calls it while it decides.
+
+The references list each key: [`aggregate`](dsl/contract-aggregate.md),
+[`dcb`](dsl/contract-dcb.md) and [`domain_service`](dsl/contract-domain_service.md).
 
 ## An example
 
-A workshop offers a number of places, and may be called off. A place on it is taken one attendee at a
-time, and never more places than were offered. The workshop is an aggregate; a seat is a boundary that
-reads the workshop's events and every seat taken on it; how many places are left is a domain service.
+A workshop offers a number of places. An organiser can call the workshop off. Each attendee takes
+one seat. A workshop never has more attendees than places.
+
+- The workshop is an aggregate.
+- A seat is a dynamic consistency boundary. It reads the events of the workshop, and each seat that
+  an attendee took on it.
+- The number of free places is a domain service.
 
 ```elixir
 defmodule Concepts.Units.Domain do
@@ -58,6 +73,15 @@ defmodule Concepts.Units.Contracts.Workshops do
       field :capacity, :integer
     end
 
+    command :invite_speaker, "Invite a speaker",
+      by: :organiser,
+      emits: :speaker_invited,
+      rejects: :only_an_open_workshop,
+      from: :open,
+      or_rejects: :only_an_open_workshop do
+      field :speaker_id, :id
+    end
+
     command :call_off, "Call a workshop off",
       by: :organiser,
       emits: :called_off,
@@ -67,6 +91,10 @@ defmodule Concepts.Units.Contracts.Workshops do
 
     event :places_offered, "Places offered" do
       field :capacity, :integer
+    end
+
+    event :speaker_invited, "Speaker invited" do
+      field :speaker_id, :id
     end
 
     event :called_off, "Workshop called off"
@@ -107,6 +135,12 @@ defmodule Concepts.Units.Contracts.Workshops do
     end
   end
 
+  scenario "an open workshop invites a speaker" do
+    given :places_offered, %{capacity: 10}
+    command :invite_speaker, %{speaker_id: "speaker-1"}
+    expect :speaker_invited
+  end
+
   scenario "an open workshop is called off" do
     given :places_offered, %{capacity: 10}
     command :call_off
@@ -142,363 +176,196 @@ defmodule Concepts.Units.Contracts.Workshops do
 end
 ```
 
-## An aggregate
+## What does an aggregate declare?
 
-An aggregate is one thing with an identity that lasts (a workshop, a loan, a visit) and the rules
-that hold for it alone. `identity` names the fields that tell one from another, and the library
-injects them into its state, its commands and its events, so `workshop_id` is in every one of them
-without being declared there. `identity :booking_id, generated: :uuid` lets the library give a new one
-its identity, a UUIDv7, when a command declared `creates: true` arrives without it. Such a command is
-refused when it brings its own identity (`{field, :generated}`) or when it has no idempotency key
-(`{:error, :idempotency_key_required}`), since a retry would otherwise create a second unit.
+An aggregate is one thing with an identity that lasts: a workshop, a loan, a visit. It holds the
+rules that apply to that thing alone.
 
-- **Its commands** say who may issue them (`by:`), the events they may produce (`emits:`) and the
-  rules they may refuse on (`rejects:`). A command with no `by:` must be issued by a policy or a
-  process manager of the contract, or nobody could issue it ([`C1`](refusals.md#refusals-c)).
-- **Its events** are what it decided. An event no command emits is an event recorded without a
-  decision, and says who records it, `recorded_by: :front_desk`; it enters through
-  `EhOsContract.record/3`. An event that is neither is refused ([`A2`](refusals.md#refusals-a)).
-- **Its state** is what it remembers between decisions, folded from its own events. It holds only
-  what a decision reads.
-- **Its invariants** are the rules every command keeps, as the business states them. A command may
-  also name a rule of its own, a `constraint`, for a rule about its data alone. Every invariant and
-  every constraint needs a scenario that refuses on it ([`S8`](refusals.md#refusals-s)).
-- **Its lifecycle**, when it has one, names the statuses its decisions depend on, the status its
-  first event starts it in, and the events that move it between them. The engine computes `status`
-  from the stream and puts it into the state; a command's `from:` names the statuses it is issued in,
-  and dispatch refuses it in any other, on its `or_rejects:` invariant, before the decision runs. The
-  rules of the graph are in [the compile refusals](refusals.md#refusals-t).
-- **What its lifecycle allows at run time.** If a decision emits an event that the graph does not
-  allow from the current status, dispatch raises and appends nothing. An event that no transition
-  names is allowed in each status that is not final, after an initial event. A recorded event that
-  does not fit is appended and does not move the status.
-- **A key with rules of its own.** An identity can name a domain value, for example
-  `identity [:company_id, period_id: :period]`. Dispatch holds the key to the invariants of the value.
-  If the key of a command or a recorded event breaks one, dispatch refuses it with
-  `{:invalid, [period_id: {:invariant, name}]}`, before it reads a stream. The type of the value must
-  be `:id`, because the key names the stream ([`F1`](refusals.md#refusals-f)).
-- **Not its run.** Which run its events belong to, in which stage, and which of them ends it, is a
-  [process module](process.md)'s to say.
+- **Its identity.** `identity` names the fields that tell one aggregate from another. The library
+  adds them to the state, the commands and the events of the aggregate. So `workshop_id` is in each
+  of them, and you do not declare it there.
+- **Its commands.** A command says who can issue it (`by:`), which events it can produce
+  (`emits:`), and which rules can refuse it (`rejects:`). A command without `by:` must have a
+  policy or a process manager of the contract that issues it ([`C1`](refusals.md#refusals-c)).
+  `emits:` names at least one event, and each event is of the same unit ([`A1`](refusals.md#refusals-a)). `rejects:`
+  names an invariant of the unit or a constraint of the command ([`A3`](refusals.md#refusals-a)).
+- **Its events.** An event is what the aggregate decided. If no command emits an event, an actor
+  records it without a decision: `recorded_by: :front_desk`. Such an event enters the log through
+  `EhOsContract.record/3`. The compiler refuses an event that is neither
+  ([`A2`](refusals.md#refusals-a)).
+- **Its state.** The state is what the aggregate keeps between two decisions. The engine folds it
+  from the events of the aggregate. It holds only what a decision reads.
+- **Its invariants.** An *invariant* is a rule that each command keeps, in the words of the
+  business. A *constraint* is a rule of one command, about the data of that command. Each invariant
+  and each constraint needs a scenario that refuses on it ([`S8`](refusals.md#refusals-s)).
+- **Its lifecycle**, if it has one. The next section tells about it.
 
-## A dynamic consistency boundary
+An aggregate does not say which run of a process its events belong to, in which stage, or which
+event ends the run. A [process module](process.md) says that.
 
-Some rules span events that belong to different things. "A workshop never has more attendees than
-places" reads the workshop's offer and every seat taken on it, and each seat is an attendee's. An
-aggregate could hold them (every seat taken on the workshop's own stream) at the price of one
-stream that every attendee's decision goes through. A boundary decides over exactly the events the
-rule reads instead.
+### What does a generated identity do?
 
-A `dcb` declares what it reads with `consults`:
+`identity :booking_id, generated: :uuid` tells the library to give each new aggregate its identity,
+a UUIDv7. The library gives it when a command with `creates: true` arrives without an identity.
 
-- `consults :seat_taken, match: :workshop_id` reads every `seat_taken` whose `workshop_id` is the
-  boundary's. `match:` names fields of the boundary's identity, and every event of this contract
-  consulted that way has to carry them as a required, non-personal `:id`, or a domain value resting on
-  one, such as a period named "2026-07" ([`A4`](refusals.md#refusals-a)).
-- `consults :enrolment_closed, where: "enrolment closed for every course"` reads every event of that
-  type, whoever it is about, with the criterion in prose. Use it only when no field can say it
-  (`consults-without-match`, below).
+Dispatch refuses such a command in two cases:
 
-A consulted event may be one of another unit of the same contract, or one the contract `consumes`
-from a sibling; one received from another application is refused ([`A4`](refusals.md#refusals-a)). A boundary has no lifecycle
-and no generated identity: it spans streams, and its identity is what the command names.
+- The command brings its own identity: `{:error, {:invalid, [booking_id: :generated]}}`.
+- The command has no idempotency key: `{:error, :idempotency_key_required}`. Without the key, a
+  retry of the command makes a second aggregate.
 
-At run time the boundary reads its own events carrying its identity and every event it consults, in
-the log's order, folds them through `evolve/2`, and decides. The append is conditional: if anything it
-read was appended in between, the decision is taken again.
+### What does a key with rules of its own do?
 
-**Which one.** Reach for an aggregate when the rule is about one thing and the events it reads are
-that thing's own. Reach for a boundary when the rule reads events that belong to several things, and
-narrow it with `match:` to the ones the decision is about. A boundary that reads more than it needs
-conflicts with every decision that touches what it read.
+An identity can name a domain value, for example `identity [:company_id, period_id: :period]`.
+Dispatch holds the key to the invariants of the value.
 
-## A domain service
+- If the key of a command or of a recorded event breaks an invariant, dispatch refuses it. It
+  does not read a stream. It returns `{:error, {:invalid, [period_id: {:invariant, name}]}}`.
+- The type of the value must be `:id`, because the key names the stream
+  ([`F1`](refusals.md#refusals-f)).
 
-Logic that belongs to no unit (the places left on a workshop, a price from a tariff) is a
-`domain_service`: pure functions, each with its typed arguments and result, and the rules it follows,
-each with examples. A decision calls it through the module the contract generates,
-`Concepts.Units.Contracts.Workshops.DomainServices.Seating.free_places(3, 1)`, never the
-implementation directly. That module checks the arguments against their declared types, runs the
-implementation, and checks the result, and the values' invariants too; a mismatch raises, since it is a
-defect in the code, never a business outcome.
+## What is a lifecycle?
 
-Every example of a rule, `{[1, 3], 0}`, is a test: `use EhOsContract.ScenarioCase, contract:
-Concepts.Units.Contracts.Workshops` calls the function with the arguments and compares the result. A
-rule without examples does not compile ([`S9`](refusals.md#refusals-s)).
+A *lifecycle* names the statuses that the decisions of an aggregate depend on. It says which status
+the first event starts the aggregate in, and which events move it from one status to another.
 
-## The code that decides
+- The engine calculates the *status* from the names of the events in the stream, and puts it in the
+  state.
+- `from:` on a command names the statuses in which the command can be issued.
+- In another status, dispatch refuses the command with its `or_rejects:` invariant. Your code does
+  not run.
 
-A contract names no implementation. A module binds to one declaration with `use <Contract>,
-aggregate: :name`, `dcb: :name` or `domain_service: :name`. The module gets: the generated behaviour; the
-unit's commands, events and `State` by their short names (for a boundary, its consulted events too); and
-`emit/1` and `reject/1`:
+![The event places_offered starts the workshop in Open; speaker_invited keeps it there; called_off moves it to Called off, where call_off is refused.](img/units-lifecycle.svg)
 
-```elixir
-defmodule Concepts.Units.Workshop do
-  use Concepts.Units.Contracts.Workshops, aggregate: :workshop
+1. The event `places_offered` starts the workshop in the status Open.
+2. No transition names the event `speaker_invited`, so the workshop stays Open.
+3. The event `called_off` moves the workshop to Called off. This status is final.
+4. In Called off, dispatch refuses `call_off` with a rejection on `only_an_open_workshop`.
 
-  @impl true
-  def offer_places(%OfferPlaces{workshop_id: id, capacity: capacity}, _state),
-    do: emit(%PlacesOffered{workshop_id: id, capacity: capacity})
+<a id="lifecycle-at-run-time"></a>
 
-  @impl true
-  def call_off(%CallOff{workshop_id: id}, _state), do: emit(%CalledOff{workshop_id: id})
-end
+### What does the lifecycle allow at run time?
 
-defmodule Concepts.Units.Seat do
-  use Concepts.Units.Contracts.Workshops, dcb: :seat
+Dispatch holds each decision to the lifecycle, one event at a time.
 
-  alias Concepts.Units.Contracts.Workshops.DomainServices.Seating
+- If a decision emits an event that the lifecycle does not allow from the current status, dispatch
+  raises. It appends nothing.
+- Before the first event, the lifecycle allows only an event that `initial` names.
+- After the first event, it allows an event that no transition names, in each status that is not
+  final. The status does not change. An `initial` event is not allowed again.
+- In a final status, it allows no event.
+- A recorded event that does not fit the lifecycle is appended. It does not change the status.
 
-  @impl true
-  def take_seat(_command, %State{called_off: true}), do: reject(:the_workshop_is_on)
-  def take_seat(_command, %State{capacity: nil}), do: reject(:a_place_is_free)
+[The compile refusals](refusals.md#refusals-t) list what the compiler refuses in a lifecycle.
 
-  def take_seat(%TakeSeat{workshop_id: workshop, attendee_id: attendee}, state) do
-    if Seating.free_places(state.capacity, state.taken) == 0,
-      do: reject(:a_place_is_free),
-      else: emit(%SeatTaken{workshop_id: workshop, attendee_id: attendee})
-  end
+## What is a dynamic consistency boundary?
 
-  @impl true
-  def evolve(state, %PlacesOffered{capacity: capacity}), do: %{state | capacity: capacity}
-  def evolve(state, %SeatTaken{}), do: %{state | taken: state.taken + 1}
-  def evolve(state, %CalledOff{}), do: %{state | called_off: true}
-end
+Some rules read events that belong to different things. Example: "A workshop never has more
+attendees than places". This rule reads the places of the workshop, and each seat on it. Each seat
+belongs to an attendee.
 
-defmodule Concepts.Units.SeatingRules do
-  use Concepts.Units.Contracts.Workshops, domain_service: :seating
+An aggregate can hold this rule: each seat goes into the stream of the workshop. Then the decision
+of each attendee goes through that one stream. A dynamic consistency boundary reads only the events
+that the rule reads.
 
-  @impl true
-  def free_places(capacity, taken), do: max(capacity - taken, 0)
-end
-```
+A `dcb` declares what it reads with `consults`. The compiler refuses a boundary that consults
+nothing ([`A4`](refusals.md#refusals-a)).
 
-- **One callback per command**, `(command, state)`, answering with `emit/1`: the literal structs of
-  events the command `emits:`, or `reject/1` with an invariant or constraint it `rejects:`. The
-  workshop's `call_off` needs no refusal of its own: dispatch refuses it outside `:open` before it
-  runs. A decision that produces one event per item of its data emits a list of literals, or a `for`
-  producing them; one with `into:` or `reduce:` produces something else, and does not compile
-  ([`I4`](refusals.md#refusals-i)). A command that invites several speakers to a workshop at once
-  emits one event for each speaker. The number of events grows with the list, so the command bounds
-  the list with a constraint, and a scenario shows the refusal:
+- `consults :seat_taken, match: :workshop_id` reads each `seat_taken` that has the `workshop_id` of
+  the boundary. `match:` names fields of the identity of the boundary.
+- Each event of the contract that a boundary consults with `match:` must have these fields. Each
+  field is a required `:id` that is not personal, or a domain value on an `:id`, such as a period
+  "2026-07" ([`A4`](refusals.md#refusals-a)).
+- `consults :enrolment_closed, where: "enrolment closed for every course"` reads each event of
+  that type, about any thing. The prose gives the rule. Use it only when no field can say it.
 
-  <!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
-  ```elixir
-  command :invite_speakers, "Invite speakers",
-    by: :organiser,
-    emits: :speaker_invited,
-    rejects: [:only_an_open_workshop, :at_most_ten_speakers],
-    from: :open,
-    or_rejects: :only_an_open_workshop do
-    field :speaker_ids, {:list, :id}
-    constraint :at_most_ten_speakers, "A workshop invites at most 10 speakers at once"
-  end
+A boundary can consult an event of another unit of its contract. It can also consult an event that
+the contract `consumes` from a sibling contract. The compiler refuses an event that another
+application sends ([`A4`](refusals.md#refusals-a)).
 
-  event :speaker_invited, "Speaker invited" do
-    field :speaker_id, :id
-  end
-  ```
+A boundary has no lifecycle and no generated identity. It reads more than one stream, and the
+command gives its identity.
 
-  <!-- and in: Concepts.Units.Workshop -->
-  ```elixir
-  @impl true
-  def invite_speakers(%InviteSpeakers{speaker_ids: speakers}, _state) when length(speakers) > 10,
-    do: reject(:at_most_ten_speakers)
+<a id="which-events-does-each-unit-read"></a>
 
-  def invite_speakers(%InviteSpeakers{workshop_id: workshop, speaker_ids: speakers}, _state),
-    do: emit(for speaker <- speakers, do: %SpeakerInvited{workshop_id: workshop, speaker_id: speaker})
-  ```
+### Which events does each unit read?
 
-  <!-- and in: Concepts.Units.Contracts.Workshops -->
-  ```elixir
-  scenario "no more than 10 speakers are invited at once" do
-    given :places_offered, %{capacity: 20}
-    command :invite_speakers, %{speaker_ids: Enum.map(1..11, &"speaker-#{&1}")}
-    rejected :at_most_ten_speakers
-  end
-  ```
-- **`evolve/2`** folds each event into the state, only when the unit declares a state beyond its
-  identity. It runs over every event the stream will ever hold, so it only folds: no decision, no
-  raise on data. Keep a catch-all, when one is needed, exactly `def evolve(state, _), do: state`, so
-  dispatch reads and decodes only the events the other clauses name.
-- **The decision is pure.** It reads the command, its `__meta__` (the actor, `occurred_at`), the
-  state and the domain services, and nothing else: on a conflict dispatch decides again, up to 3
-  times, and a scenario gives a decision only events and a command.
-- **A refusal is a business answer; anything else is a defect.** `reject/1` makes `{:error,
-  %EhOsContract.Rejection{}}` naming the rule, writes a `rejected` row and appends nothing. An
-  exception, an event outside `emits:` or an event whose fields do not fit raises, and nothing is
-  appended.
+![An aggregate folds its stream, and a boundary folds the events that it consults. Dispatch appends a decision only if what it read did not change.](img/units-reads.svg)
 
-The engine finds implementations in the running binary of the applications it is configured with,
-and each declaration takes at most one ([`X8`](refusals.md#refusals-x)). A unit whose events are all `recorded_by:` and whose
-state is only its identity needs no module.
+1. The engine selects the stream of the workshop: the events with its name and its identity.
+2. The aggregate folds its stream through `evolve/2`, and decides.
+3. The engine matches the consulted events: each type that `consults` names, with the same
+   `workshop_id`. It adds the own events of the seat.
+4. The boundary folds these events in the order of the log, and decides.
+5. Dispatch appends the decision of the aggregate if no event was added to its stream after step 1.
+6. Dispatch appends the decision of the boundary if no event that it read was appended after step 3.
 
-## An event that already has rows
+If the condition of step 5 or 6 fails, dispatch reads and decides again. It decides at most 3
+times in all. Then it returns `{:error, :conflict}`. If the caller dispatches inside its own
+transaction, dispatch decides one time only.
+[Write the code that decides](deciding.md#what-can-go-wrong) tells what to do.
 
-The log keeps every event as it was written, and the engine reads each one again with today's
-declaration: to fold a unit's state, to feed a reaction, to publish it. So an event that has rows
-changes only with a new version of its fields, `schema_version`, and a step, `upcast`, that says how
-a row of the version before reads in the new one. The rows themselves never change.
+A boundary reads, and conflicts on, only the types of event that its `evolve/2` names. This is true
+when each other clause is exactly `def evolve(state, _), do: state`. So name in `evolve/2` each
+consulted type that the decision needs: the boundary does not read a type that it does not name.
 
-<!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
-```elixir
-event :places_offered, "Places offered", schema_version: 2 do
-  field :capacity, :integer
-  field :room, :string, optional: true
+A boundary reads its whole query, its own events and each consulted type, in these cases:
 
-  upcast from: 1, rename: [places: :capacity], default: [room: "Main hall"]
-end
-```
+- it has no `evolve/2`;
+- its `evolve/2` names no type that the boundary reads, of its own or consulted;
+- its `evolve/2` has another catch-all.
 
-A row written at version 1 is read with `places` under its new name, `capacity`, and with `room` as
-`"Main hall"`; a row of version 2 is read as it is. Version 3 adds `upcast from: 2`, and a
-row of version 1 goes through both steps in turn.
+[Write the code that decides](deciding.md#write-evolve-2) tells the rule.
 
-- **`rename:`** moves a field of the older version to its name in the next. A personal field may be
-  renamed: the engine opens its sealed value under the name it was sealed with.
-- **`default:`** gives a value to a field the older version did not have, written as the log stores
-  one (an enum's member as its name, a date as text). A row that holds the field keeps its own.
-  A rename onto a name an old row already holds replaces that row's own value: say both, or neither.
-- **A step with neither** says the fields kept their shape: a version raised for their meaning alone.
-- **`function:`** names a function of the unit's implementation, for a change a rename and a default
-  cannot say: amounts stored in cents read as a decimal, one field split in two, two fields joined in
-  one. It is a step on its own.
+### Which one do I choose?
 
-<!-- in: Concepts.Units.Contracts.Workshops, aggregate :workshop -->
-```elixir
-event :places_offered, "Places offered", schema_version: 2 do
-  field :capacity, :integer
+- Choose an aggregate when the rule is about one thing, and the events that it reads are of that
+  thing.
+- Choose a boundary when the rule reads events of more than one thing. Use `match:` to read only the
+  events of the decision.
 
-  upcast from: 1, function: :capacity_from_rows
-end
-```
+A boundary that reads more than it needs conflicts with each decision that changes what it read. If
+a boundary consults with `where:` alone, the check gives the warning `consults-without-match`.
 
-<!-- and in: Concepts.Units.Workshop -->
-```elixir
-@impl true
-def capacity_from_rows(%{"rows" => rows, "seats_per_row" => seats} = data),
-  do: data |> Map.drop(["rows", "seats_per_row"]) |> Map.put("capacity", rows * seats)
-```
+## What is a domain service?
 
-The function takes the row's payload at that version as the log stores it, with string keys, and
-gives the next version's; what it gives is read as the log stores a value, so a decimal, a date or an
-atom key reads as an old row's own would. The implementation does not compile without it
-([`I2`](refusals.md#refusals-i)), and it is pure: it reads nothing but the row. The engine cannot
-see what it did, so it refuses the row, naming the step and never a value, when the function:
+A domain service holds logic that belongs to no unit. Examples: the free places of a workshop, a
+price from a tariff.
 
-- moved a sealed personal value, made one, or reordered a list holding one: a seal opens only under
-  the field it was sealed in, so a personal field is renamed with `rename:`, and its value, which the
-  function sees sealed, cannot be converted at all;
-- left a field the log tags rows with other than the row was written with, a new required `:id`
-  among them: that change is a new event;
-- raised, threw, exited, or gave no map.
+- A domain service has pure functions. Each function has typed arguments, a typed result and its
+  rules.
+- Each rule has examples. Each example is a test: the function gets the arguments, and must return
+  the result. `{[1, 3], 0}` means that `free_places(1, 3)` returns `0`.
+- The compiler refuses a rule without examples ([`S9`](refusals.md#refusals-s)).
+- A decision calls the function through the module that the contract makes:
+  `Concepts.Units.Contracts.Workshops.DomainServices.Seating.free_places(3, 1)`. It does not call
+  the implementation directly.
+- That module checks the arguments against their types, runs the implementation, and checks the
+  result. It also checks the invariants of the values.
+- If a check fails, the module raises. A wrong argument or result is a defect in the code. It is
+  never an answer of the business.
 
-A step covers what it can say in words. What the log keeps beside a row's payload by a field's name
-cannot be carried across: the unit's identity, and every field the log tags each row with — a
-required, non-personal `:id`, date or timestamp, by which a boundary, a process and the report find
-rows. A change to one of those is a new event. The compiler refuses a version without its step, a step
-to a field the event will not have, a step that renames onto or defaults a field the log keeps, a
-default for personal data, and a default that is not a value of its field
-([`U1`](refusals.md#refusals-u)–[`U4`](refusals.md#refusals-u)).
+## What does the check say about a unit?
 
-A compile sees only today's declaration, so it cannot tell a field added to version 1 from version 1
-as it always was. `mix eh_os_contract.schema` keeps that record: `eh_os_contract.lock`, beside
-`mix.lock`, holds the fields of every event by its type in the log and its version, as a row holds
-them. A change old rows still read is recorded in place: a field added as optional, a field removed, a
-required field made optional, an enum given members, an `:integer` made a `:decimal`, an `:id` made a
-`:string`, and the same inside a list or a domain value. A field removed stays in the file, marked
-`removed: true`, since old rows still hold it and rows written since do not: a field declared again
-under its name is held to what both hold. `--check` fails when a recorded version changed otherwise,
-when the steps from a recorded version to the declared one do not cover what changed, when the file
-records a version newer than the declared one or an event no contract declares any more, or when the
-file is behind the contracts:
+`mix eh_os_contract.check` reads the units of each contract. [The rules of the check](rules.md)
+give each rule. These rules are about the declaration of a unit:
 
-```
-** (Mix) eh_os_contract.lock and the contracts disagree:
+- `aggregate-without-events`: a unit has no event, so it decides nothing.
+- `event-name-with-aggregate-prefix`: the name of an event starts with the name of its unit, for
+  example `workshop_offered`. Name what occurred: `places_offered`.
+- `consults-without-match`: a boundary reads each event of a type. Under load, most of its
+  decisions are tried again, or refused with `:conflict`.
+- `core-unit-records-only`: a unit of a core subdomain has no command that can be refused. The page
+  of each unit that only records shows "Records only", in each context.
+- `core-command-never-refuses` (a notice): a command of a core subdomain rejects nothing. The check
+  leaves out a command without `by:`, which only a policy or a process manager issues.
 
-  * shop.orders.order_placed at schema_version 1: courier was added, [type: :string], and is
-    required: give it a `default:`, or make it optional. A row written at version 1 holds the fields
-    the lock records, and would not read: raise its schema_version with a step `upcast from: 1` that
-    covers the change, or, if no log holds rows of it, run
-    `mix eh_os_contract.schema --forget shop.orders.order_placed`
-```
+## Next steps
 
-Run it beside `mix eh_os_contract.check`, and commit the file: a new version shows in a pull request
-as the fields it records. A field's type there is what the log stores, so a domain value given another
-field changes every event that holds it, while renaming the value, relabelling a field or reordering
-the fields changes nothing.
-
-A raised version's steps are held to what changed from every earlier version the file records, each
-read as the declared one through the steps between them, as the engine reads an old row: `rename:`
-carries a field to its new name, `default:` gives a new required field its value where an old row
-lacks it, and a step by a function covers every change a step could carry. A field renamed without
-`rename:`, a required field added without a default, a field that was optional made required (old rows
-hold an explicit `nil`, which a default does not fill), or a type changed otherwise than above, with no
-step a function, is refused, naming the field and the steps. Some changes are refused even with a
-step, since rows already written keep what they were written with:
-
-- a field that becomes personal, stops being, or is sealed by another identifier;
-- a personal field whose type changes, or a value holding personal data whose shape changes, since a
-  sealed value cannot be converted or its seal moved;
-- a required personal field old rows may lack, added, made required, or inside a value added or
-  reshaped, since a default would be clear text and a function makes no seal;
-- an identifier that seals a field given another `subject:`;
-- a field the log tags rows with that the version before did not tag under that name.
-
-Each is a new event. `--forget TYPE` drops the event's versions from the declared one up, or every
-version of an event no contract declares, and records what is declared: it is for versions no log
-holds rows of, as one added on a branch never deployed.
-
-Refusing a field that stops being personal also keeps a seal out of what the application publishes. A
-`publish` cannot name a personal field ([`D11`](refusals.md#refusals-d)), but rows written while a field was personal hold its
-value sealed, and the relay publishes a row in the event's current shape, its values as stored. A field
-that stops being personal, or one a personal field is renamed onto, would send those seals to every
-subscriber. The lock refuses both; without it, or after `--forget` of a version the log holds rows of,
-the relay publishes them (`EhOsContract.Relay`).
-
-## What the compiler refuses
-
-The full table is in [the compile refusals](refusals.md). The refusals a unit meets most:
-
-- a command whose `emits:` is empty or names another unit's event ([`A1`](refusals.md#refusals-a)), or an event nothing emits
-  and nobody records ([`A2`](refusals.md#refusals-a)): declare who decides or records it;
-- `rejects:` naming neither an invariant of the unit nor a constraint of the command ([`A3`](refusals.md#refusals-a));
-- a boundary that consults nothing, consults an event it cannot read, or consults without `match:` or
-  `where:` ([`A4`](refusals.md#refusals-a));
-- an invariant or constraint with no scenario that refuses on it ([`S8`](refusals.md#refusals-s)): the scenario is the case to
-  ask the process owner for;
-- a lifecycle whose graph does not hold ([`T1`](refusals.md#refusals-t) to [`T4`](refusals.md#refusals-t));
-- an event above version 1 without a step from each version below it ([`U1`](refusals.md#refusals-u));
-- in the module: a missing callback ([`I2`](refusals.md#refusals-i)), `evolve/2` without a clause for an event the state is
-  kept from ([`I3`](refusals.md#refusals-i)), `emit/1` of anything but the literal events the command emits ([`I4`](refusals.md#refusals-i)), `reject/1`
-  of a rule it does not reject on ([`I5`](refusals.md#refusals-i)).
-
-## What `mix eh_os_contract.check` reports
-
-From [its rules](rules.md):
-
-- `aggregate-without-events` (warning): a unit declares no event, so it has no command either and
-  decides nothing. Declare what it decides, or remove it.
-- `event-name-with-aggregate-prefix` (warning): `workshop_offered` in the unit `workshop` says the unit
-  twice. Name what happened: `places_offered`.
-- `consults-without-match` (warning): a boundary consults an event by `where:` alone, so it reads
-  every event of that type, and under load most decisions are retried or refused with `:conflict`.
-  Name the identity fields that narrow it.
-- `transition-without-scenario` (warning): no scenario takes a transition of the lifecycle. Add a
-  scenario of a command whose `given` leaves the unit in the transition's `from` status and which
-  expects the event, as "an open workshop is called off" does above.
-- `emits-never-produced` (warning): a command may emit an event no `emit/1` of its module names.
-  Either narrow `emits:` to what the code decides, or decide the event with `emit/1`.
-- `declaration-without-implementation` (warning): some declarations of a contract have modules and
-  this one has none, so dispatch refuses to run it. Add the module.
-- `contract-without-implementation` (notice): nothing implements the contract at all. Legal (a
-  contract may be written before its code) but nothing of it can be dispatched yet.
-- `core-unit-records-only` (warning): the unit's context belongs to a subdomain of `type: :core`, it has
-  events, and no command of the unit can be refused: none has `rejects:`, or it has no commands and its
-  events are only `recorded_by:`. The core is where the business decides; a unit that only records keeps a log.
-  Its page says "Records only", in any context, so a reader sees which units decide nothing.
-- `core-command-never-refuses` (notice): a command of a core context rejects nothing, so no rule of
-  its unit refuses a request; only its fields' types and values can. The check skips a command that only a
-  policy or a process manager issues, with no `by:`: it follows from an event already decided. Either the
-  command has a rule not declared yet, or it records an event, and an event `recorded_by:` an actor says that
-  more plainly. Some core commands legitimately always succeed.
+- [Write the code that decides](deciding.md): the module of each unit and domain service.
+- [Change an event that already has rows](event-versions.md): a new version of an event, and how
+  old rows read in it.
+- [What is a scenario?](scenarios.md): the examples that prove each rule.
+- [Write a domain, a contract and a process module](contract.md): the full task.
+- [The compile refusals](refusals.md#refusals-a): each refusal of a unit, and of a lifecycle
+  ([`T`](refusals.md#refusals-t)).

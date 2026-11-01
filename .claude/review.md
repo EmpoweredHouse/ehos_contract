@@ -133,5 +133,11 @@ Kinds of problems a review here found that neither file names yet:
 - A shell snippet that sets the database by `cd` and `export` before `mix ecto.reset` drops the
   shared database when one line fails or is copied alone: give the variables on each command. Found
   in #517.
+- A page's example is read as the code a host copies: an upcast step against the version it reads
+  from, and an example copied from another page against that page. A split page needs its own
+  compiled example, and the copies drift. Found in #517.
+- What the engine narrows for speed is read with its fallback: the exact `evolve/2` catch-all
+  narrows what dispatch decodes and what a boundary reads, and a page that gives the rule without
+  the cases where it does not apply misleads. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

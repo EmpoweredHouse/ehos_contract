@@ -146,8 +146,8 @@ end
 The scenarios of this contract need no database.
 
 **Result:** `mix test` runs 2 tests, `scenario: a copy is lent` and
-`scenario: a lent copy is not lent again`. Both pass. [Scenarios](scenarios.md) tells
-what each part of a scenario checks.
+`scenario: a lent copy is not lent again`. Both pass. [What is a scenario?](scenarios.md)
+tells what each part of a scenario checks.
 
 <a id="create-the-tables"></a>
 
@@ -369,7 +369,8 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
   module and its promises.
 - The concepts: [the domain](domain.md), [actors and values](domain-data.md),
   [personal data](personal-data.md), [the keys and the backups of personal data](master-keys.md),
-  [units that decide](units.md), [reactions](reactions.md), [reading](reading.md),
+  [units that decide](units.md), [the code that decides](deciding.md),
+  [a change to an event with rows](event-versions.md), [reactions](reactions.md), [reading](reading.md),
   [forms](forms.md), [between contracts](between-contracts.md),
   [processes](process.md) and [scenarios](scenarios.md).
 - [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):

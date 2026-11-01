@@ -175,7 +175,7 @@ use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
 ```
 
 The result is one ExUnit test for each scenario, against your implementation.
-[Scenarios](scenarios.md) tells what each kind of scenario checks.
+[What is a scenario?](scenarios.md) tells what each kind of scenario checks.
 
 A contract describes what its units decide, not the run that they make. A loan from lending to
 return is a run. Write it in a [process module](#write-a-process-module).
@@ -219,9 +219,9 @@ end
   `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx.
 
 Tell the engine where your implementations are: `config :eh_os_contract, applications: [:lending]`.
-A unit whose events are all recorded needs no implementation if its state is only its identity. If it
-keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
-[Units](units.md) tells more about the code that decides.
+A unit whose events are all recorded needs no implementation: nothing decides it, so dispatch never
+folds its state. It needs one only for an upcast step by a function.
+[Write the code that decides](deciding.md) tells more.
 
 <a id="which-module-names-which"></a>
 
@@ -322,9 +322,9 @@ engine judges runs, promises and deadlines.
 
 | Task | Page |
 | --- | --- |
-| Give an aggregate statuses and the transitions between them | [Units](units.md) |
-| Decide over the events of more than one stream | [Units](units.md) |
-| Change an event that already has rows in the log | [Units](units.md) |
+| Give an aggregate statuses and the transitions between them | [What are the units that decide?](units.md) |
+| Decide over the events of more than one stream | [What are the units that decide?](units.md) |
+| Change an event that already has rows in the log | [Change an event that already has rows](event-versions.md) |
 | React to an event with a policy, an effect or a process manager | [Reactions](reactions.md) |
 | Keep a read model and answer a query | [Reading](reading.md) |
 | Take events of another contract, or of another application | [Between contracts](between-contracts.md) |
@@ -480,8 +480,9 @@ suspended card cannot borrow a copy.
 
 ## Next steps
 
-- [Units](units.md): aggregates, consistency boundaries and the code that decides.
-- [Scenarios](scenarios.md): what each kind of scenario checks.
+- [What are the units that decide?](units.md): aggregates, consistency boundaries and domain services.
+- [Write the code that decides](deciding.md): the module of each unit.
+- [What is a scenario?](scenarios.md): what each kind of scenario checks.
 - [Processes](process.md): runs, stages, promises and deadlines.
 - [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The DSL reference: each key of [the domain](dsl/domain-dsl.md),

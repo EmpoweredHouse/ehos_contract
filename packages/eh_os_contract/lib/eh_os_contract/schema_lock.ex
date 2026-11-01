@@ -23,8 +23,9 @@ defmodule EhOsContract.SchemaLock do
   # its new name, a default gives a new required field its value where a row lacks it,
   # and a function covers everything a step could carry, since the engine cannot see what
   # it does. No step carries a field that turns personal or stops being, or is sealed by
-  # another identifier; a personal field whose type changes, or a value holding personal
-  # data whose shape does; a required personal field, at any depth, old rows may lack; or
+  # another identifier; a personal field whose type changes otherwise than in place (an
+  # integer made a decimal still reads, sealed or not), or a value holding personal
+  # data whose shape changes; a required personal field, at any depth, old rows may lack; or
   # an identifier that seals a field given another subject: a seal opens only under what
   # sealed it, and no step converts, moves or makes one. Nor a field the log tags rows
   # with that the version before did not tag under that name, since rows written before
