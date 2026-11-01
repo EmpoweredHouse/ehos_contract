@@ -31,9 +31,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **Breaking:** `eh_os_contract_auth` requires `jsv` `~> 0.26.2`, not `~> 0.25.0`. 0.26.2 fixes
   EEF-CVE-2026-117680 (CVE-2026-117680, GHSA-cvmg-hgv6-jqcp), which fails a host's `mix hex.audit` while
   its lock holds 0.25.0. `jsv` checks only the host's own `ehos.yaml` and bundle as it builds, and a release
-  holds none of it. 0.26.2 also counts `minLength` and `maxLength` in code points and reads `date-time`
-  as RFC 3339 says. A host runs `mix deps.update jsv`, and removes any `ignore_advisories:` entry it
-  added for this advisory (#543).
+  holds none of it. A value that matches a `pattern` only after heavy backtracking is now refused
+  (`indeterminate_pattern`), where 0.25.0 read it as no match. Since 0.25.0, `jsv` also counts
+  `minLength` and `maxLength` in code points and reads `date-time` as RFC 3339 says. A host runs
+  `mix deps.update jsv`, and removes any `ignore_advisories:` entry it added for this advisory (#543).
 
 ## [0.10.0] - 2026-10-29
 

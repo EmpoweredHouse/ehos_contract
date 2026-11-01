@@ -10,10 +10,10 @@ with the options they beat, its review and its pull requests; this file holds on
 
 - **Released:** v0.13.1, with the engine 0.13.1 (the documentation rewritten by the reader's question, a
   glossary, and an event no longer called a fact) and `eh_os_contract_auth` 0.11.0 (`jsv` required at
-  `~> 0.26.2`, which fixes EEF-CVE-2026-117680); `eh_os_contract_graph` stays at 0.9.1-dev and
-  `eh_os_contract_web` at 0.8.1-dev, last released as 0.9.0 and 0.8.0 at v0.13.0, and the plugin's skills at
-  0.14.3. Applications install them from git. The pull request after the tag moves each released package to
-  its next patch's `-dev`.
+  `~> 0.26.2`, which fixes a vulnerability of its patterns, EEF-CVE-2026-117680); `eh_os_contract_graph`
+  stays at 0.9.1-dev and `eh_os_contract_web` at 0.8.1-dev, last released as 0.9.0 and 0.8.0 at v0.13.0, and
+  the plugin's skills at 0.14.3. Applications install them from git. The pull request after the tag moves each
+  released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**

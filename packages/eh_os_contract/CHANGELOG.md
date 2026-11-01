@@ -89,7 +89,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The diagrams of
   the domain, personal data and forms pages now show in the HTML documentation, which looked for them
   outside its own directory. The `change-contract` skill of the `eh-os-contract` plugin names the new
-  path, in plugin 0.14.2.
+  path, from plugin 0.14.3 (0.14.2 has no tag).
 - **The units and scenarios pages are split by what a reader asks** (#517). `docs/units.md` tells what
   an aggregate, a dynamic consistency boundary and a domain service are, with two diagrams: the
   lifecycle of an aggregate, and which events each kind of unit reads. Writing the module of a unit is a
