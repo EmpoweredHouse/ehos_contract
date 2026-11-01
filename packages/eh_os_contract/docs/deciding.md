@@ -15,7 +15,8 @@ points to the contract. Dispatch calls this module when a command arrives.
 - The application of the module is in `config :eh_os_contract, applications: [...]`.
   [Getting started](getting-started.md) tells how.
 
-This page uses the workshop of [the units page](units.md), with one more command:
+This page uses the workshop of [the units page](units.md). Its command `invite_speakers` takes a list
+of speakers, in place of `invite_speaker`:
 
 ```elixir
 defmodule Concepts.Deciding.Domain do
@@ -120,6 +121,12 @@ defmodule Concepts.Deciding.Contracts.Workshops do
     rejected :only_an_open_workshop
   end
 
+  scenario "an open workshop is called off" do
+    given :places_offered, %{capacity: 10}
+    command :call_off
+    expect :called_off
+  end
+
   scenario "no more than 10 speakers are invited at once" do
     given :places_offered, %{capacity: 20}
     command :invite_speakers, %{speaker_ids: Enum.map(1..11, &"speaker-#{&1}")}
@@ -221,6 +228,8 @@ defmodule Concepts.Deciding.Seat do
 end
 ```
 
+<a id="write-evolve-2"></a>
+
 ## Write `evolve/2`
 
 An aggregate and a boundary write `evolve/2` by the same rules:
@@ -228,13 +237,13 @@ An aggregate and a boundary write `evolve/2` by the same rules:
 - A unit needs `evolve/2` only when it declares a state, beyond its identity.
 - `evolve/2` folds each event into the state. It makes no decision.
 - It runs over each event that the stream will ever hold. So it does not raise on data.
-- Give it a clause for each event that the state is kept from. Otherwise, the compiler refuses it
-  ([`I3`](refusals.md#refusals-i)).
-- If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch reads and
-  decodes only the events that the other clauses name.
+- Give it a clause for each event that the state is kept from, or a catch-all without a guard.
+  Otherwise, the compiler refuses it ([`I3`](refusals.md#refusals-i)).
+- If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch decodes
+  only the events that the other clauses name. A boundary also reads, and conflicts on, only those
+  events. An aggregate still reads its whole stream.
 - Another catch-all, such as one with a guard or one that changes the state, can fold any event. Then
-  dispatch reads and decodes each event of the unit. A boundary then also conflicts on each of
-  them.
+  dispatch decodes each event of the unit, and a boundary reads and conflicts on each of them.
 
 ## Write the module of a domain service
 
@@ -295,12 +304,14 @@ rule:
 - `emits-never-produced`: a command can emit an event that no `emit/1` of its module names. Make
   `emits:` match what the code decides, or decide the event with `emit/1`.
 
+<a id="what-can-go-wrong"></a>
+
 ## What can go wrong
 
 **Dispatch raises on an event that the lifecycle does not allow.** The lifecycle does not allow
 the event from the status of the aggregate. Nothing is appended. Give the
 command a `from:`, or change what the callback emits.
-[What does the lifecycle allow at run time?](units.md) tells the rules.
+[What does the lifecycle allow at run time?](units.md#lifecycle-at-run-time) tells the rules.
 
 **Dispatch returns `{:error, :conflict}`.** Each time that dispatch tried, another command appended
 to what the unit read. Dispatch tries at most 3 times.
@@ -310,8 +321,9 @@ to what the unit read. Dispatch tries at most 3 times.
 - A boundary that reads more than its rule needs conflicts often. Narrow its `consults` with
   `match:`.
 
-**A scenario fails with no implementation.** A scenario runs the module of its target. A contract
-without code is valid. A scenario of it is not.
+**A scenario fails with no implementation.** A scenario runs the module of its target, except a
+recording, which runs no code. A contract without code is valid. A scenario of it is not. Add the
+module, or name it with `implementations:` in `use EhOsContract.ScenarioCase`.
 
 ## Next steps
 

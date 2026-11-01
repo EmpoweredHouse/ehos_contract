@@ -1,5 +1,5 @@
 <!-- title: Which events does an aggregate read, and which does a boundary read? -->
-<!-- desc: An aggregate folds its own stream; a boundary folds the events that its consults match; dispatch appends each decision only if what it read did not change. -->
+<!-- desc: An aggregate folds its stream, and a boundary folds the events that it consults. Dispatch appends a decision only if what it read did not change. -->
 <!-- words: log, stream, event, aggregate, dynamic consistency boundary, dispatch -->
 <!-- technical: workshop_id -->
 <!-- verbs: selects, folds, matches, appends -->

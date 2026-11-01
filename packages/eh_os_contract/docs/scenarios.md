@@ -185,8 +185,8 @@ use EhOsContract.ScenarioCase, contract: Concepts.Scenarios.Contracts.Loans
 - Each scenario becomes an ExUnit test, with its description as the name.
 - The scenario runs the module of the application that implements its target. For a contract
   outside an application, `implementations:` names the modules.
-- A target without an implementation fails its scenario. A contract without code is valid. A test
-  of it is not.
+- A target without an implementation fails its scenario, except a recording, which runs no code. A
+  contract without code is valid. A test of it is not.
 - The same line makes a test of each example of the rules of the domain services of the contract.
 - `use EhOsContract.ScenarioCase, domain:` makes a test of each example of the invariants of the
   values of a domain.
@@ -257,7 +257,7 @@ query, or an invariant of the process manager. The scenario of a command shows i
 
 ## What does the engine do for each kind of trigger?
 
-![A command goes to its unit, an event to a reaction, a recording runs no code, and a query asks its read model; the engine compares events and commands in order, and each row of an answer.](img/scenario-triggers.svg)
+![Each trigger goes to its own part. The engine compares the events and commands in order, and the rows of an answer one by one.](img/scenario-triggers.svg)
 
 1. A command goes to its unit. The unit folds the givens, and decides.
 2. An event goes to a policy or a process manager. It reacts.

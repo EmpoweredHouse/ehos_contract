@@ -187,6 +187,8 @@ rules that apply to that thing alone.
 - **Its commands.** A command says who can issue it (`by:`), which events it can produce
   (`emits:`), and which rules can refuse it (`rejects:`). A command without `by:` must have a
   policy or a process manager of the contract that issues it ([`C1`](refusals.md#refusals-c)).
+  `emits:` names at least one event of the same unit ([`A1`](refusals.md#refusals-a)). `rejects:`
+  names an invariant of the unit or a constraint of the command ([`A3`](refusals.md#refusals-a)).
 - **Its events.** An event is what the aggregate decided. If no command emits an event, an actor
   records it without a decision: `recorded_by: :front_desk`. Such an event enters the log through
   `EhOsContract.record/3`. The compiler refuses an event that is neither
@@ -240,6 +242,8 @@ the first event starts the aggregate in, and which events move it from one statu
 3. The event `called_off` moves the workshop to Called off. This status is final.
 4. In Called off, dispatch refuses `call_off` with a rejection on `only_an_open_workshop`.
 
+<a id="lifecycle-at-run-time"></a>
+
 ### What does the lifecycle allow at run time?
 
 Dispatch holds each decision to the lifecycle, one event at a time.
@@ -264,7 +268,9 @@ An aggregate can hold this rule: each seat goes into the stream of the workshop.
 of each attendee goes through that one stream. A dynamic consistency boundary reads only the events
 that the rule reads.
 
-A `dcb` declares what it reads with `consults`:
+A `dcb` declares what it reads with `consults`. The compiler refuses a boundary that consults
+nothing ([`A4`](refusals.md#refusals-a)).
+
 
 - `consults :seat_taken, match: :workshop_id` reads each `seat_taken` that has the `workshop_id` of
   the boundary. `match:` names fields of the identity of the boundary.
@@ -283,7 +289,7 @@ command gives its identity.
 
 ### Which events does each unit read?
 
-![An aggregate folds its own stream; a boundary folds the events that its consults match; dispatch appends each decision only if what it read did not change.](img/units-reads.svg)
+![An aggregate folds its stream, and a boundary folds the events that it consults. Dispatch appends a decision only if what it read did not change.](img/units-reads.svg)
 
 1. The engine selects the stream of the workshop: the events with its name and its identity.
 2. The aggregate folds its stream through `evolve/2`, and decides.
@@ -294,11 +300,19 @@ command gives its identity.
 6. Dispatch appends the decision of the boundary if no event that it read was appended after step 3.
 
 If the condition of step 5 or 6 fails, dispatch reads and decides again. It decides at most 3
-times in all. Then it returns `{:error, :conflict}`.
+times in all. Then it returns `{:error, :conflict}`. If the caller dispatches inside its own
+transaction, dispatch decides one time only.
+[Write the code that decides](deciding.md#what-can-go-wrong) tells what to do.
 
 A boundary reads, and conflicts on, only the types of event that its `evolve/2` names. This is true
-when each other clause is exactly `def evolve(state, _), do: state`.
-[Write the code that decides](deciding.md) tells the rule.
+when each other clause is exactly `def evolve(state, _), do: state`. A boundary reads each type that
+it consults in these cases:
+
+- it has no `evolve/2`;
+- its `evolve/2` names none of the consulted types;
+- its `evolve/2` has another catch-all.
+
+[Write the code that decides](deciding.md#write-evolve-2) tells the rule.
 
 ### Which one do I choose?
 
@@ -338,9 +352,10 @@ give each rule. These rules are about the declaration of a unit:
   example `workshop_offered`. Name what occurred: `places_offered`.
 - `consults-without-match`: a boundary reads each event of a type. Under load, most of its
   decisions are tried again, or refused with `:conflict`.
-- `core-unit-records-only`: a unit of a core subdomain has no command that can be refused. Its page
-  shows "Records only", in any context.
-- `core-command-never-refuses` (a notice): a command of a core subdomain rejects nothing.
+- `core-unit-records-only`: a unit of a core subdomain has no command that can be refused. The page
+  of each unit that only records shows "Records only", in each context.
+- `core-command-never-refuses` (a notice): a command of a core subdomain rejects nothing. The check
+  leaves out a command without `by:`, which only a policy or a process manager issues.
 
 ## Next steps
 

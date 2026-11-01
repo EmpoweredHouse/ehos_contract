@@ -1,6 +1,6 @@
 <!-- title: What does the engine do for each kind of trigger? -->
-<!-- desc: A command goes to its unit, an event to a reaction, a recording runs no code, and a query asks its read model; the engine compares events and commands in order, and each row of an answer. -->
-<!-- words: scenario, unit, reaction, recording, read model, query, event, command -->
+<!-- desc: Each trigger goes to its own part. The engine compares the events and commands in order, and the rows of an answer one by one. -->
+<!-- words: scenario, unit, reaction, recording, read model, query, event, command, rejection -->
 <!-- technical: on, record, expect, issues, answers -->
 <!-- verbs: compares -->
 <!-- parts: scenario = -, unit = -, reaction = -, recording = -, query = -, inorder = -, rows = - -->
@@ -95,7 +95,7 @@
   <!-- Compared in order -->
   <rect class="knock" x="740" y="60" width="220" height="304" rx="6"/>
   <rect id="scenario-triggers-inorder" class="n-shared" x="740" y="60" width="220" height="304" rx="6"/>
-  <text class="name" x="850" y="206" text-anchor="middle">Events and commands</text>
+  <text class="name" x="850" y="206" text-anchor="middle">Events, commands, rejections</text>
   <text class="sub" x="850" y="224" text-anchor="middle">in order, others between</text>
 
   <!-- Compared row by row -->

@@ -18,14 +18,16 @@ it. The rows never change. So a change to an event that has rows needs two thing
 - The contract declares the event, and the log holds rows of it.
 - The host has `eh_os_contract.lock` beside `mix.lock`. `mix eh_os_contract.schema` writes it.
 
-This page uses this contract and its implementation:
+This page uses this contract. An organiser records the places of a workshop. Version 1 of
+`places_offered` has the field `places`. The unit needs a module only for a step by a function, so
+its module is empty until then:
 
 ```elixir
 defmodule Concepts.EventVersions.Domain do
   use EhOsContract.Domain, name: :event_versions_example, language: :en
 
-  subdomain :core, "Core", type: :core
-  context :workshops, "Workshops", subdomain: :core
+  subdomain :events, "Events", type: :supporting
+  context :workshops, "Workshops", subdomain: :events
   actor :organiser, :human, "Organiser"
 end
 
@@ -38,29 +40,14 @@ defmodule Concepts.EventVersions.Contracts.Workshops do
   aggregate :workshop, "Workshop" do
     identity :workshop_id
 
-    command :offer_places, "Offer places on a workshop",
-      by: :organiser,
-      emits: :places_offered do
-      field :capacity, :integer
+    event :places_offered, "Places offered", recorded_by: :organiser do
+      field :places, :integer
     end
-
-    event :places_offered, "Places offered" do
-      field :capacity, :integer
-    end
-  end
-
-  scenario "places are offered" do
-    command :offer_places, %{capacity: 10}
-    expect :places_offered
   end
 end
 
 defmodule Concepts.EventVersions.Workshop do
   use Concepts.EventVersions.Contracts.Workshops, aggregate: :workshop
-
-  @impl true
-  def offer_places(%OfferPlaces{workshop_id: id, capacity: capacity}, _state),
-    do: emit(%PlacesOffered{workshop_id: id, capacity: capacity})
 end
 ```
 
@@ -96,7 +83,7 @@ Each of these is a new event.
 
    <!-- in: Concepts.EventVersions.Contracts.Workshops, aggregate :workshop -->
    ```elixir
-   event :places_offered, "Places offered", schema_version: 2 do
+   event :places_offered, "Places offered", schema_version: 2, recorded_by: :organiser do
      field :capacity, :integer
      field :room, :string, optional: true
 
@@ -140,11 +127,14 @@ A function can say these changes:
 - one field split in two;
 - two fields joined in one.
 
+In this example, version 1 of `places_offered` had the fields `rows` and `seats_per_row`, not
+`places`. Version 2 has `capacity`, their product.
+
 1. Name the function in the step:
 
    <!-- in: Concepts.EventVersions.Contracts.Workshops, aggregate :workshop -->
    ```elixir
-   event :places_offered, "Places offered", schema_version: 2 do
+   event :places_offered, "Places offered", schema_version: 2, recorded_by: :organiser do
      field :capacity, :integer
 
      upcast from: 1, function: :capacity_from_rows
@@ -176,6 +166,10 @@ refuses the row, and names the step but never a value, when the function did one
 - It left a field that the log tags rows with different from the field the row was written with.
   A new required `:id` is such a field. That change is a new event.
 - It raised, threw or exited, or returned something that is not a map.
+
+So write the function for each row of its version, also a row that lacks a field. A row that the
+engine refuses stops each read of its stream: each command to that unit fails. The relay stops at
+the event too, and after 3 failures it waits for a person to decide.
 
 <a id="record-the-versions-in-the-lock"></a>
 

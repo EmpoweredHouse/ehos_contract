@@ -10,8 +10,8 @@ Checked on 30 September 2026 (plan E11e) against the engine's source —
 `EhOsContract.Conformance`, `EhOsContract.Subscription` — and `docs/adr/contract-v2.md` §7, §10.6 and
 §13. Not yet run on a real change: read what it says against those before trusting it. The upcasts
 were added on 17 October 2026 (plan DD, V1, #333), checked against `EhOsContract.Upcast` and
-`packages/eh_os_contract/docs/event-versions.md` (up to engine 0.13.0,
-`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows"); the schema lock on 17 October 2026 (plan DD, V3, #340, and
+`packages/eh_os_contract/docs/concepts/units.md`, "An event that already has rows" (after engine
+0.13.0, `packages/eh_os_contract/docs/event-versions.md`); the schema lock on 17 October 2026 (plan DD, V3, #340, and
 V4, #346), against `mix eh_os_contract.schema`'s documentation.
 
 **In an application.** This skill is also the `eh-os-contract` Claude Code plugin's, which an
