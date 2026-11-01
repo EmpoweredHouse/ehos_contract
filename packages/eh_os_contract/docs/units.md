@@ -187,7 +187,7 @@ rules that apply to that thing alone.
 - **Its commands.** A command says who can issue it (`by:`), which events it can produce
   (`emits:`), and which rules can refuse it (`rejects:`). A command without `by:` must have a
   policy or a process manager of the contract that issues it ([`C1`](refusals.md#refusals-c)).
-  `emits:` names at least one event of the same unit ([`A1`](refusals.md#refusals-a)). `rejects:`
+  `emits:` names at least one event, and each event is of the same unit ([`A1`](refusals.md#refusals-a)). `rejects:`
   names an invariant of the unit or a constraint of the command ([`A3`](refusals.md#refusals-a)).
 - **Its events.** An event is what the aggregate decided. If no command emits an event, an actor
   records it without a decision: `recorded_by: :front_desk`. Such an event enters the log through
@@ -271,7 +271,6 @@ that the rule reads.
 A `dcb` declares what it reads with `consults`. The compiler refuses a boundary that consults
 nothing ([`A4`](refusals.md#refusals-a)).
 
-
 - `consults :seat_taken, match: :workshop_id` reads each `seat_taken` that has the `workshop_id` of
   the boundary. `match:` names fields of the identity of the boundary.
 - Each event of the contract that a boundary consults with `match:` must have these fields. Each
@@ -286,6 +285,8 @@ application sends ([`A4`](refusals.md#refusals-a)).
 
 A boundary has no lifecycle and no generated identity. It reads more than one stream, and the
 command gives its identity.
+
+<a id="which-events-does-each-unit-read"></a>
 
 ### Which events does each unit read?
 
@@ -305,11 +306,13 @@ transaction, dispatch decides one time only.
 [Write the code that decides](deciding.md#what-can-go-wrong) tells what to do.
 
 A boundary reads, and conflicts on, only the types of event that its `evolve/2` names. This is true
-when each other clause is exactly `def evolve(state, _), do: state`. A boundary reads each type that
-it consults in these cases:
+when each other clause is exactly `def evolve(state, _), do: state`. So name in `evolve/2` each
+consulted type that the decision needs: the boundary does not read a type that it does not name.
+
+A boundary reads its whole query, its own events and each consulted type, in these cases:
 
 - it has no `evolve/2`;
-- its `evolve/2` names none of the consulted types;
+- its `evolve/2` names no type that the boundary reads, of its own or consulted;
 - its `evolve/2` has another catch-all.
 
 [Write the code that decides](deciding.md#write-evolve-2) tells the rule.

@@ -102,7 +102,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **`docs/contract.md` said that a unit whose events are all recorded needs `evolve/2` when it keeps
   more state than its identity** (#517). Dispatch never folds such a unit, and the check asks for no
-  module. It needs one only for an upcast step by a function.
+  module. It needs a module only for an upcast step by a function. That module then has `evolve/2`
+  if the unit keeps state.
 - **The installation never said that Oban must run the queue `:events`** (#517). Without it, the jobs of
   the effects delivered `:at_least_once` and of the timers of process managers wait in the table: no
   effect runs, and no timer fires. `docs/getting-started.md`

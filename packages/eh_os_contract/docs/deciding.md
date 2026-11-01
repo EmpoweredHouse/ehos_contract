@@ -240,8 +240,10 @@ An aggregate and a boundary write `evolve/2` by the same rules:
 - Give it a clause for each event that the state is kept from, or a catch-all without a guard.
   Otherwise, the compiler refuses it ([`I3`](refusals.md#refusals-i)).
 - If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch decodes
-  only the events that the other clauses name. A boundary also reads, and conflicts on, only those
-  events. An aggregate still reads its whole stream.
+  only the events that the other clauses name. An aggregate still reads its whole stream.
+- A boundary with that catch-all also reads, and conflicts on, only the types that the other
+  clauses name. If they name none, it reads its whole query.
+  [Which events does each unit read?](units.md#which-events-does-each-unit-read) tells more.
 - Another catch-all, such as one with a guard or one that changes the state, can fold any event. Then
   dispatch decodes each event of the unit, and a boundary reads and conflicts on each of them.
 

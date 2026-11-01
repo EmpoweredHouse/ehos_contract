@@ -19,8 +19,8 @@ it. The rows never change. So a change to an event that has rows needs two thing
 - The host has `eh_os_contract.lock` beside `mix.lock`. `mix eh_os_contract.schema` writes it.
 
 This page uses this contract. An organiser records the places of a workshop. Version 1 of
-`places_offered` has the field `places`. The unit needs a module only for a step by a function, so
-its module is empty until then:
+`places_offered` has the field `places`. The unit needs no module until a step names a function.
+This page shows its empty module, for that later step:
 
 ```elixir
 defmodule Concepts.EventVersions.Domain do
@@ -127,8 +127,8 @@ A function can say these changes:
 - one field split in two;
 - two fields joined in one.
 
-In this example, version 1 of `places_offered` had the fields `rows` and `seats_per_row`, not
-`places`. Version 2 has `capacity`, their product.
+Suppose instead that version 1 of `places_offered` had the fields `rows` and `seats_per_row`.
+Version 2 has `capacity`, their product.
 
 1. Name the function in the step:
 
@@ -167,9 +167,17 @@ refuses the row, and names the step but never a value, when the function did one
   A new required `:id` is such a field. That change is a new event.
 - It raised, threw or exited, or returned something that is not a map.
 
-So write the function for each row of its version, also a row that lacks a field. A row that the
-engine refuses stops each read of its stream: each command to that unit fails. The relay stops at
-the event too, and after 3 failures it waits for a person to decide.
+So make sure that the function accepts each row of its version. A row that the engine refuses
+stops each consumer that reads it:
+
+- a unit whose `evolve/2` folds the event: each command to it fails;
+- a boundary that consults the event;
+- a policy, an effect, a process manager or a read model delivered `:at_least_once` that takes the
+  event;
+- the relay, if the contract publishes the event.
+
+A consumer that reads the log in order stops at the row. After 3 failures, it waits for a person to
+decide.
 
 <a id="record-the-versions-in-the-lock"></a>
 

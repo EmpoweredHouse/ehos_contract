@@ -96,8 +96,8 @@
   <text class="sub" x="500" y="464" text-anchor="middle">projects the givens; answers</text>
   <rect class="knock" x="740" y="60" width="220" height="304" rx="6"/>
   <rect id="scenario-triggers-inorder" class="n-shared" x="740" y="60" width="220" height="304" rx="6"/>
-  <text class="name" x="850" y="206" text-anchor="middle">Events, commands, rejections</text>
-  <text class="sub" x="850" y="224" text-anchor="middle">in order, others between</text>
+  <text class="name" x="850" y="206" text-anchor="middle">Events and commands</text>
+  <text class="sub" x="850" y="224" text-anchor="middle">in order; a rejection, alone</text>
   <rect class="knock" x="740" y="420" width="220" height="64" rx="6"/>
   <rect id="scenario-triggers-rows" class="n-shared" x="740" y="420" width="220" height="64" rx="6"/>
   <text class="name" x="850" y="446" text-anchor="middle">Rows of the query</text>

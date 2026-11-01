@@ -268,8 +268,9 @@ query, or an invariant of the process manager. The scenario of a command shows i
 7. It compares the recorded event with `expect` or `rejected`.
 8. It compares the rows with `answers`.
 
-The engine compares events and commands in order, and accepts others between them. It compares
-each row of an answer, and accepts no other row. The sections below tell each step.
+The engine compares events and commands in order, and accepts others between them. It compares a
+rejection with the one rule that `rejected` names. It compares each row of an answer, and accepts no
+other row. The sections below tell each step.
 
 ### A command
 
