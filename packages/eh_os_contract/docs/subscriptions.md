@@ -228,7 +228,8 @@ mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>
 ## What can go wrong
 
 **`<key> is not failing, so there is nothing to skip`.** The subscription is not `failing`, so it
-needs no skip and no reset. Run the task without options to see its status.
+needs no skip. Run the task without options to see its status. A `stale` read model may still
+need a rebuild: [Rebuild a read model](#rebuild-a-read-model).
 
 **`<key> defines no reset/0, so its rows cannot be emptied and it cannot be reset`.** Add `reset/0`
 to the module, and deploy it.
