@@ -48,7 +48,8 @@ contract that gives it work.
 region. Example: a command declares `scope: :shop_id`. Then dispatch gives the value of `shop_id` to
 the `EhOsContract.Authorizer`, with the capability.
 
-- If the grant of the credential holds other shops, the authorizer refuses the command.
+- If the grant of the credential does not hold the shop of the command, the authorizer refuses the
+  command. A grant can hold more than one shop.
 - If the grant of a scoped capability holds no values, the authorizer refuses it too. An empty
   grant does not mean "all shops".
 - Each actor in the `by:` of a scoped declaration must have the dimension

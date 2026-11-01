@@ -151,6 +151,10 @@ An erasure deletes the data key from the database. It does not delete it from yo
   `eh_os_contract_erasures`. Restore both with the log, from the same moment. If they do not agree,
   the engine raises on a personal field of a subject that has no key and no erasure. It does not
   read the field as erased.
+- A backup that is older than an erasure holds the data key of the subject, and no record of the
+  erasure. If you restore it, the engine reads the personal data of the subject again, and accepts
+  new personal data for it. Keep a record of each erasure outside the database. After a restore,
+  call `erase/3` again for each erasure after the backup, before the application takes requests.
 - You can keep the table of data keys out of the backups of the log, so that no backup holds a data
   key. Then you cannot restore the personal data from those backups: the engine raises on it.
 

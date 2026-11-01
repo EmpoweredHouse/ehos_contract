@@ -37,9 +37,11 @@ use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsa
 [The domain reference](../dsl/domain-dsl.md) lists each key.
 [The compile refusals](../refusals.md#refusals-d) list what the compiler refuses in a domain.
 
-An application usually has one domain. It can have more than one, each with its own contracts. A
-contract consumes only the events of its own domain ([`X5`](../refusals.md#refusals-x)). The tasks
-that read one domain then need `--domain` to name it.
+An application usually has one domain. It can have more than one, each with its own contracts. The
+tasks that read one domain then need `--domain` to name it.
+
+With `consumes`, a contract takes events only of sibling contracts of its own domain
+([`X5`](../refusals.md#refusals-x)). An event of another application arrives through `subscribe`.
 
 If the application uses `eh_os_contract_auth`, only one domain can publish: the domain whose
 `name:` is exactly the name of the application. The platform that issues the credentials accepts a

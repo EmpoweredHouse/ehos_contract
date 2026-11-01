@@ -111,7 +111,7 @@ command.
 
 - The changeset checks the shape of the input. It checks that each needed field is there, and that
   each value has its declared type. It asks the domain if a domain value keeps its invariants, as
-  dispatch does. Examples: a billing period written `YYYY-MM`, an amount that is not negative.
+  dispatch does. Example: the period of this page, written `YYYY-MM`.
 - The changeset does not check an invariant of a unit, or a constraint of a command. These need the
   history of the unit, and only dispatch reads it. The rule comes back as the refusal of dispatch,
   which `EhOsContract.Form.refused/3` puts on the changeset.
@@ -223,7 +223,7 @@ def handle_event("save", %{"issue_invoice" => params}, socket) do
 
     {:error, reason} ->
       changeset = EhOsContract.Form.refused(changeset, reason)
-      {:noreply, assign(socket, :form, to_form(changeset))}
+      {:noreply, socket |> assign(:form, to_form(changeset)) |> notice(reason)}
   end
 end
 ```
@@ -251,6 +251,23 @@ def error_message({_message, opts}) do
     _other -> "This cannot be accepted"
   end
 end
+```
+
+`refused/3` puts no error on the changeset for a refusal that belongs to no field. Tell the person
+about it from the reason. The last clause leaves a refusal that the form already shows:
+
+<!-- not compiled: functions of the host's LiveView -->
+```elixir
+defp notice(socket, reason) when reason in [:missing_capability, :unscoped_grant, :outside_scope],
+  do: put_flash(socket, :error, "You cannot issue this invoice")
+
+defp notice(socket, :idempotency_key_reused),
+  do: put_flash(socket, :error, "This form was already sent")
+
+defp notice(socket, {:not_supplied, _field}),
+  do: put_flash(socket, :error, "Try again in a moment")
+
+defp notice(socket, _shown_on_the_form), do: socket
 ```
 
 | Error | When |
@@ -369,7 +386,8 @@ input that is not there. If a command has a field with the name `base`, the fiel
 - an idempotency key that another command used;
 - a field that the host did not supply.
 
-The page tells the person about them from the reason that `dispatch/3` returned.
+The page tells the person about them from the reason that `dispatch/3` returned, as `notice/2`
+above does.
 
 ## Next steps
 
