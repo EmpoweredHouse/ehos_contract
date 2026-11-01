@@ -1,0 +1,1 @@
+c77cee82 answers CodeRabbit's comment on relays during a restore: three sentences, each checked against EhOsContract.Relay's moduledoc (reads the log, publishes its backlog, repeats under the same ids) and the publication refusal D11 (no personal field). No subagent review for a three-sentence fact check. Gate: mix check in sandbox/ EXIT=0 at c77cee82.
