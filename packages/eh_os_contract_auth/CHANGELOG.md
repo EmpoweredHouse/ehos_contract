@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-01
+
 ### Security
 
 - **Breaking:** `eh_os_contract_auth` requires `jsv` `~> 0.26.2`, not `~> 0.25.0`. 0.26.2 fixes

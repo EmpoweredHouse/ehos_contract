@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-01
+
 ### Added
 
 - **A glossary of the contract language** (#511): `docs/glossary.md` gives each word one meaning, from
