@@ -1,0 +1,4 @@
+Review of the answer to CodeRabbit on #540 (fe4ef017, 794bce04, 0b0f0ecb), by ehos-dev:pre-pr-review.
+Round 1 on fe4ef017: correctness (code-review high, ehos-dev:voice, ehos-dev:elixir) and security (ehos-dev:elixir; engineering:code-review not in this session). Found: notice/2 hid :conflict, :subject_erased and custom Authorizer reasons; :idempotency_key_reused clause unreachable; restore advice ran erase/3 after consumers had read the log; outside record order and contents; X5 sentence; per-capability grant. All fixed in 794bce04.
+Round 2 on 794bce04 (one review, both foci): type linked as a function (docs build failed), refusal list stale, retry advice for unretryable refusals, 'newer than the backup' skips an erasure, multi-node, read-model window, how-to inside a concept page. All fixed in 0b0f0ecb.
+Gate: mix check in sandbox/ EXIT=0 at 0b0f0ecb; diagrams up to date.
