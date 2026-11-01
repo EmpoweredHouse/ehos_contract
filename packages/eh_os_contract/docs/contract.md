@@ -315,7 +315,7 @@ domain declares an external system, a scenario can show that it was not availabl
 on that system, or the promise names it in `waits_on` ([`X4`](refusals.md#refusals-x)).
 
 Run these scenarios with `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan`. The result
-is one test for each scenario, without a database. [Processes](process.md) tells how the
+is one test for each scenario, without a database. [What is a process module?](process.md) tells how the
 engine judges runs, promises and deadlines.
 
 ## Do more in a contract
@@ -485,7 +485,9 @@ suspended card cannot borrow a copy.
 - [What are the units that decide?](units.md): aggregates, consistency boundaries and domain services.
 - [Write the code that decides](deciding.md): the module of each unit.
 - [What is a scenario?](scenarios.md): what each kind of scenario checks.
-- [Processes](process.md): runs, stages, promises and deadlines.
+- [What is a process module?](process.md): runs, stages, promises and deadlines.
+- [The conformance report](conformance.md): what the report prints for each contract and process
+  module.
 - [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The DSL reference: each key of [the domain](dsl/domain-dsl.md),
   [the contract](dsl/contract-dsl.md) and [the process module](dsl/process-dsl.md).
