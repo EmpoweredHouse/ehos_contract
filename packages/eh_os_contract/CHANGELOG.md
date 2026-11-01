@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-01
+
 ### Added
 
 - **A glossary of the contract language** (#511): `docs/glossary.md` gives each word one meaning, from
@@ -86,8 +88,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
   addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The diagrams of
   the domain, personal data and forms pages now show in the HTML documentation, which looked for them
-  outside its own directory. The `change-contract` skill of the `eh-os-contract` plugin names the new
-  path, in plugin 0.14.2.
+  outside its own directory.
 - **The units and scenarios pages are split by what a reader asks** (#517). `docs/units.md` tells what
   an aggregate, a dynamic consistency boundary and a domain service are, with two diagrams: the
   lifecycle of an aggregate, and which events each kind of unit reads. Writing the module of a unit is a

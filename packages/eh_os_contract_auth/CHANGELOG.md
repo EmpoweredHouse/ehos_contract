@@ -24,14 +24,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-01
+
 ### Security
 
 - **Breaking:** `eh_os_contract_auth` requires `jsv` `~> 0.26.2`, not `~> 0.25.0`. 0.26.2 fixes
   EEF-CVE-2026-117680 (CVE-2026-117680, GHSA-cvmg-hgv6-jqcp), which fails a host's `mix hex.audit` while
   its lock holds 0.25.0. `jsv` checks only the host's own `ehos.yaml` and bundle as it builds, and a release
-  holds none of it. 0.26.2 also counts `minLength` and `maxLength` in code points and reads `date-time`
-  as RFC 3339 says. A host runs `mix deps.update jsv`, and removes any `ignore_advisories:` entry it
-  added for this advisory (#543).
+  holds none of it. When a regex runs out of its backtracking budget, under `pattern`,
+  `patternProperties` or `not`, validation now stops with one error, `indeterminate_pattern`, even
+  where the value would match; 0.25.0 read it as no match. After 0.25.0, `jsv` also counts `minLength`
+  and `maxLength` in code points (0.26.2) and reads `date-time` as RFC 3339 says (0.26.1). A host runs
+  `mix deps.update jsv`, and removes any `ignore_advisories:` entry it added for this advisory (#543).
 
 ## [0.10.0] - 2026-10-29
 

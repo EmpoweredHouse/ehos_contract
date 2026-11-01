@@ -6,15 +6,14 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (29 October 2026)
+## Where things stand (1 November 2026)
 
-- **Released:** v0.13.0, with the engine 0.13.0 (a read model's table and migration from its contract, forms
-  from a command, a domain value made of fields a struct of its own), `eh_os_contract_auth` 0.10.0 (mail's
-  idempotency key), `eh_os_contract_graph` 0.9.0 (a landscape's application nothing describes, a host's
-  `select`, boxes that say they lead somewhere, the zoom in one corner, the explorer's one path and the panel's
-  folded code) and `eh_os_contract_web` 0.8.0 (the engine at `~> 0.13.0` and the renderer at `~> 0.9.0`); the
-  plugin's skills at 0.10.1. Applications install them from git. The pull request after the tag moves each
-  released package to its next patch's `-dev`.
+- **Released:** v0.13.1, with the engine 0.13.1 (the documentation rewritten by the reader's question, a
+  glossary, and an event no longer called a fact) and `eh_os_contract_auth` 0.11.0 (`jsv` required at
+  `~> 0.26.2`, which fixes how its regexes fail when they backtrack too long, EEF-CVE-2026-117680);
+  `eh_os_contract_graph` stays at 0.9.1-dev and `eh_os_contract_web` at 0.8.1-dev, last released as 0.9.0 and
+  0.8.0 at v0.13.0, and the plugin's skills at 0.14.3. Applications install them from git. The pull request
+  after the tag moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
