@@ -9,8 +9,8 @@ A unit's state is for its decisions, and nobody else reads it. Everything a pers
 the application wants to see (the copies out on loan, a day's totals, who is waiting) is a
 **read model**: rows the application keeps in its own tables, written from the events as they are
 appended. A **query** is a question asked of one read model, and like a command it is a capability an
-actor is granted. The keys are in the reference: [`read_model`](../dsl/contract-read_model.md) and
-[`query`](../dsl/contract-query.md).
+actor is granted. The keys are in the reference: [`read_model`](dsl/contract-read_model.md) and
+[`query`](dsl/contract-query.md).
 
 ## An example
 
@@ -92,7 +92,7 @@ end
 ## A read model
 
 A read model declares the shape of its rows (`field`) and the events it `projects`: events of this
-contract, or ones it `consumes` from a sibling ([`P5`](../refusals.md#refusals-p)). It is implemented by a module with one callback
+contract, or ones it `consumes` from a sibling ([`P5`](refusals.md#refusals-p)). It is implemented by a module with one callback
 per projected event, which writes the application's own tables and returns `:ok`. The application
 creates them with its own migrations.
 
@@ -106,7 +106,7 @@ precision a time comes in, a domain value the type the domain gives it, and a va
 back as the value's struct, as an event carries it, with a personal field that was erased as `nil`. A
 personal field is redacted when a row is inspected. A read model without `table:` has an embedded
 schema, with no table behind it.
-The key is required with a table and refused without one ([`P6`](../refusals.md#refusals-p)).
+The key is required with a table and refused without one ([`P6`](refusals.md#refusals-p)).
 
 **Its migration.** `mix eh_os_contract.gen.migration <Contract> <read_model>` (or `--all`) writes
 the migration that creates the table from the declaration: a column per field of the type it is
@@ -173,7 +173,7 @@ end
 - `:in_transaction`, when `delivery` is left out: dispatch projects the appended events inside the
   transaction that appends them, before it commits. A query reads the command's effect as soon as
   dispatch returns, and a projection that raises rolls the command back with it. A read model that
-  takes an event of a sibling contract in another context must declare its `delivery` ([`X10`](../refusals.md#refusals-x)).
+  takes an event of a sibling contract in another context must declare its `delivery` ([`X10`](refusals.md#refusals-x)).
 - `:at_least_once`: a subscription reads the log in order after the commit, in batches, and moves its
   position in the same transaction as the rows it wrote, so each batch's rows are committed once. A
   callback may still run more than once (a batch that raises is run again), so keep it to writes in that
@@ -183,7 +183,7 @@ end
   is a person's decision.
 
 A read model takes only events in this application's log: an event received from another application
-arrives in an inbox that only a policy takes ([`D12`](../refusals.md#refusals-d)). Project what the policy's command records
+arrives in an inbox that only a policy takes ([`D12`](refusals.md#refusals-d)). Project what the policy's command records
 instead.
 
 **Rebuilding.** A read model's version is a digest of its declaration and of every event it takes.
@@ -206,7 +206,7 @@ which is why `copy_lent` above keeps a name only when it is a string.
 
 ## A query
 
-A query names the read model it `reads`, who may ask it (`by:`, required, [`D10`](../refusals.md#refusals-d)), its parameters
+A query names the read model it `reads`, who may ask it (`by:`, required, [`D10`](refusals.md#refusals-d)), its parameters
 (`param`), and whether it answers rows or one row (`returns: :many`, the default, or `:one`). Its
 implementation is one function named after it, taking the parameters' struct and a context with the
 actor, and answering the read model's `Row` structs (a list, or one row or `nil`). With a table, it
@@ -283,28 +283,28 @@ the parameters against the declaration and go through `query/3`.
 
 **Narrowing by a grant.** A query declared `scope: :branch_id` answers only rows whose `branch_id`
 the credential grants: the scope is a parameter and a field of the read model's row of the same type,
-and every actor in `by:` carries it ([`D10`](../refusals.md#refusals-d)). A value outside the grant is refused before the
+and every actor in `by:` carries it ([`D10`](refusals.md#refusals-d)). A value outside the grant is refused before the
 implementation runs, and every row it answers is checked again, so a wrong `where` raises
 `EhOsContract.Authorizer.OutsideScopeError` instead of handing out another branch's rows. How grants
-are made is in [authorization](../authorization.md).
+are made is in [authorization](authorization.md).
 
 ## What the compiler refuses
 
 - a read model projecting an event neither of this contract nor consumed from a sibling, or a query
-  reading what is not a read model of this contract ([`P5`](../refusals.md#refusals-p));
+  reading what is not a read model of this contract ([`P5`](refusals.md#refusals-p));
 - a read model with `table:` and no `key:`, or a `key:` without `table:`; a table that is not a plain SQL
   name, is longer than the 63 bytes Postgres keeps, is the engine's or Oban's, or that another read model
   keeps its rows in, of this contract or another; a key field that is not a row field, or
-  is optional, personal, a list or a domain value made of fields ([`P6`](../refusals.md#refusals-p));
-- a read model taking an event received from another application ([`D12`](../refusals.md#refusals-d));
-- a read model of a sibling's event in another context without `delivery` ([`X10`](../refusals.md#refusals-x));
-- a query without `by:`, or a scope that is not a same-typed parameter and row field ([`D10`](../refusals.md#refusals-d));
-- a query named like a command, or like an event an actor records ([`N1`](../refusals.md#refusals-n)): each is a capability, and
+  is optional, personal, a list or a domain value made of fields ([`P6`](refusals.md#refusals-p));
+- a read model taking an event received from another application ([`D12`](refusals.md#refusals-d));
+- a read model of a sibling's event in another context without `delivery` ([`X10`](refusals.md#refusals-x));
+- a query without `by:`, or a scope that is not a same-typed parameter and row field ([`D10`](refusals.md#refusals-d));
+- a query named like a command, or like an event an actor records ([`N1`](refusals.md#refusals-n)): each is a capability, and
   their names share one namespace;
-- a query's scenario whose `given` are not events its read model projects ([`S2`](../refusals.md#refusals-s)), or without one
-  `answers` shaped as the query returns ([`S6`](../refusals.md#refusals-s)).
+- a query's scenario whose `given` are not events its read model projects ([`S2`](refusals.md#refusals-s)), or without one
+  `answers` shaped as the query returns ([`S6`](refusals.md#refusals-s)).
 
 ## What `mix eh_os_contract.check` reports
 
-- `read-model-without-query` (warning, [rules](../rules.md)): no query reads a read model, so every
+- `read-model-without-query` (warning, [rules](rules.md)): no query reads a read model, so every
   event it projects costs a write no answer ever reads. Declare the query that reads it, or remove it.

@@ -2,7 +2,7 @@
 
 This page tells how to rotate a master key, and how to keep the master keys in a key management
 service. It also tells how to restore a backup that is older than an erasure. It is for a developer or an operator of an application whose contracts declare personal
-fields. [The glossary](../glossary.md) defines each word in italics.
+fields. [The glossary](glossary.md) defines each word in italics.
 
 A *master key* wraps the *data key* of each subject.
 [How does the engine keep and erase personal data?](personal-data.md) tells why.
@@ -12,7 +12,7 @@ A *master key* wraps the *data key* of each subject.
 - You can deploy the application two or more times, one deploy after the other.
 - You can run a Mix task on the database of the application, or call a function from a release.
 - To rotate a key in the configuration, the application uses the vault `EhOsContract.Vault.Local`,
-  as [Getting started](../getting-started.md) tells.
+  as [Getting started](getting-started.md) tells.
 - To restore a backup that is older than an erasure, you keep a record of each erasure outside the
   database. Write it before you call `erase/3`. It holds the type and the id of the subject, the
   time, and who asked. It holds no value of an erased field. Keep each record as long as the oldest
@@ -238,6 +238,6 @@ it, make sure that you do not need to restore such a backup.
 
 - [How does the engine keep and erase personal data?](personal-data.md): the data keys and the
   erasure.
-- [The configuration](../configuration.md): each key of the engine.
-- [The behaviours](../behaviours.md): `EhOsContract.Vault` and the other behaviours that an
+- [The configuration](configuration.md): each key of the engine.
+- [The behaviours](behaviours.md): `EhOsContract.Vault` and the other behaviours that an
   application can implement.

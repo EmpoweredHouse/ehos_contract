@@ -146,7 +146,7 @@ end
 The scenarios of this contract need no database.
 
 **Result:** `mix test` runs 2 tests, `scenario: a copy is lent` and
-`scenario: a lent copy is not lent again`. Both pass. [Scenarios](concepts/scenarios.md) tells
+`scenario: a lent copy is not lent again`. Both pass. [Scenarios](scenarios.md) tells
 what each part of a scenario checks.
 
 <a id="create-the-tables"></a>
@@ -251,7 +251,7 @@ end
 
 For development and tests, write a separate key, which protects no real data, in `config/dev.exs`
 and `config/test.exs`.
-[Manage the keys and the backups of personal data](concepts/master-keys.md) tells how to rotate a key.
+[Manage the keys and the backups of personal data](master-keys.md) tells how to rotate a key.
 
 [The configuration](configuration.md) lists each other key. The engine does not start with a key
 that it does not know.
@@ -305,7 +305,7 @@ EhOsContract.dispatch(Loans, %Loans.Commands.LendCopy{copy_id: "c-1", member_id:
 
 Keep each consumer delivered `:in_transaction` to the database. Each append holds one lock until its
 transaction commits. While such a consumer runs, each other append to the log waits.
-[Reactions](concepts/reactions.md) tells how to choose the delivery.
+[Reactions](reactions.md) tells how to choose the delivery.
 
 
 **Result:** dispatch returns `{:ok, %EhOsContract.Receipt{}}`, with a `%CopyLent{}` struct in
@@ -367,10 +367,10 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
 - [What is eh_os_contract?](introduction.md): what the engine does, and what it does not do.
 - [Write a domain, a contract and a process module](contract.md): the full task, with a process
   module and its promises.
-- The concepts: [the domain](concepts/domain.md), [actors and values](concepts/domain-data.md),
-  [personal data](concepts/personal-data.md), [the keys and the backups of personal data](concepts/master-keys.md),
-  [units that decide](concepts/units.md), [reactions](concepts/reactions.md), [reading](concepts/reading.md),
-  [forms](concepts/forms.md), [between contracts](concepts/between-contracts.md),
-  [processes](concepts/process.md) and [scenarios](concepts/scenarios.md).
+- The concepts: [the domain](domain.md), [actors and values](domain-data.md),
+  [personal data](personal-data.md), [the keys and the backups of personal data](master-keys.md),
+  [units that decide](units.md), [reactions](reactions.md), [reading](reading.md),
+  [forms](forms.md), [between contracts](between-contracts.md),
+  [processes](process.md) and [scenarios](scenarios.md).
 - [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):
   skills that write contracts by the rules of this engine.

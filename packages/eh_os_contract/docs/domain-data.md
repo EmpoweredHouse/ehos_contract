@@ -4,11 +4,11 @@
 
 This page tells what a domain declares besides its contexts. It covers who acts, the types of the
 data, the things that the application points to, and the systems that it uses. It is for a developer who
-writes a domain. [The glossary](../glossary.md) defines each word in italics.
+writes a domain. [The glossary](glossary.md) defines each word in italics.
 
 [How does a domain divide a business into contexts?](domain.md) tells about the subdomains, the
 contexts and their relations. [How does the engine keep and erase personal data?](personal-data.md) tells about
-the subjects. [The domain reference](../dsl/domain-dsl.md) lists each key of this page.
+the subjects. [The domain reference](dsl/domain-dsl.md) lists each key of this page.
 
 ## What is an actor?
 
@@ -25,15 +25,15 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 - **A human actor is a role.** The platform that issues the credentials grants roles to people. The
   role of `:mechanic` in the domain `:shop` is `shop.mechanic`. A credential carries the capabilities
   of its roles. The engine does not know who is behind a credential: it sees an opaque subject.
-  [Authorization](../authorization.md) tells how a credential becomes an actor.
+  [Authorization](authorization.md) tells how a credential becomes an actor.
 - **A system actor is code of the application** that acts as itself, for example a job or an
   import: `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential. It can do what the
   declarations that name it permit. The engine does not ask the `EhOsContract.Authorizer` about a
   system actor. So do not build one for a request that comes from a person.
 - **`backed_by:`** names the external system that a system actor stands for. The compiler refuses
-  `backed_by:` on a human actor ([`D4`](../refusals.md#refusals-d)).
+  `backed_by:` on a human actor ([`D4`](refusals.md#refusals-d)).
 - **`context:`** puts the actor in one context. The compiler refuses the actor in a contract of
-  another context ([`X2`](../refusals.md#refusals-x)). An actor without `context:` can act in each
+  another context ([`X2`](refusals.md#refusals-x)). An actor without `context:` can act in each
   context.
 - **`responsibility`**, in the block of the actor, names what the actor answers for, in the words of
   the workshop material. The pages and the graph of the model show it. Nothing reads it at run time.
@@ -53,9 +53,9 @@ the `EhOsContract.Authorizer`, with the capability.
 - If the grant of a scoped capability holds no values, the authorizer refuses it too. An empty
   grant does not mean "all shops".
 - Each actor in the `by:` of a scoped declaration must have the dimension
-  ([`D10`](../refusals.md#refusals-d)).
+  ([`D10`](refusals.md#refusals-d)).
 
-[Authorization](../authorization.md) tells what the checks do before and after a query runs.
+[Authorization](authorization.md) tells what the checks do before and after a query runs.
 
 If an actor with a scope is in the `by:` of a command without `scope`, the check warns
 `scoped-actor-with-unscoped-command`. For this actor, the capability of that command is then valid
@@ -80,7 +80,7 @@ actor :client, :human, "Client"
 The rule goes into the manifest of the application, beside the role. The platform shows it to the
 person who approves a deployment, because a new rule makes the application ask for more.
 
-The compiler refuses these rules ([`D4`](../refusals.md#refusals-d)):
+The compiler refuses these rules ([`D4`](refusals.md#refusals-d)):
 
 - a rule on a system actor, or a rule that names a system actor: only a person grants and gets a
   role;
@@ -114,7 +114,7 @@ end
 ```
 
 A value has a type or fields. The compiler refuses a value with both, or with neither, and a `unit`
-on a value that is not an `:integer` or a `:decimal` ([`D3`](../refusals.md#refusals-d)). A field
+on a value that is not an `:integer` or a `:decimal` ([`D3`](refusals.md#refusals-d)). A field
 of a value with fields can be personal: [How does the engine keep and erase personal
 data?](personal-data.md#personal-data-in-a-value) tells how.
 
@@ -202,7 +202,7 @@ entity :shop, "Shop", context: :workshop, identity: :shop_id
 - `context:` is required. An entity belongs to one context.
 - `identity` becomes a field of the entity: a required `:id` that is not personal.
 - `issued_by:` names the external system that gives the identity, if one does.
-- The compiler refuses a personal field in an entity ([`D6`](../refusals.md#refusals-d)).
+- The compiler refuses a personal field in an entity ([`D6`](refusals.md#refusals-d)).
 
 A contract that names an entity of another context depends on that context.
 [Which context depends on which?](domain.md#which-context-depends-on-which) tells how the domain
@@ -236,14 +236,14 @@ A contract uses an external system in four ways:
 
 | Declaration | Key | When |
 | --- | --- | --- |
-| an effect | `calls: {:sms_gateway, :send_text}` | The effect calls the system. If the system declares an `operation`, each call names one ([`X4`](../refusals.md#refusals-x)). |
+| an effect | `calls: {:sms_gateway, :send_text}` | The effect calls the system. If the system declares an `operation`, each call names one ([`X4`](refusals.md#refusals-x)). |
 | an event | `depends_on:` | The event needs the answer of the system. |
 | a field | `issued_by:` | The system gives the value, for example the number of an invoice or the tracking number of a parcel. |
 | a system actor | `backed_by:` | The system acts in the application. |
 
 An external system can also be one end of a directed relation. The other end is then a context. The
 compiler refuses a name that is both a context and an external system
-([`D1`](../refusals.md#refusals-d)).
+([`D1`](refusals.md#refusals-d)).
 
 The check warns about external systems in three cases:
 
@@ -365,9 +365,9 @@ end
 
 - [How does the engine keep and erase personal data?](personal-data.md): the subjects,
   and the personal fields of this example.
-- [Authorization](../authorization.md): how a credential becomes an actor, and how a scope is
+- [Authorization](authorization.md): how a credential becomes an actor, and how a scope is
   checked.
 - [Reactions](reactions.md): the effects that call an external system.
-- [The compile refusals](../refusals.md#refusals-d): each refusal of a domain, and of a contract
-  against its domain ([`X`](../refusals.md#refusals-x)).
-- [The rules of the check](../rules.md): each warning and notice of `mix eh_os_contract.check`.
+- [The compile refusals](refusals.md#refusals-d): each refusal of a domain, and of a contract
+  against its domain ([`X`](refusals.md#refusals-x)).
+- [The rules of the check](rules.md): each warning and notice of `mix eh_os_contract.check`.

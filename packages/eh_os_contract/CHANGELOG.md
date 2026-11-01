@@ -72,16 +72,22 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
   `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
   a master key, and what an erasure does not reach in backups, moved to the concept pages
-  (`concepts/master-keys.md`, `concepts/personal-data.md`).
-- **The domain pages are split by what a reader asks** (#517). `docs/concepts/domain.md` tells how a domain
+  (`master-keys.md`, `personal-data.md`).
+- **The domain pages are split by what a reader asks** (#517). `docs/domain.md` tells how a domain
   divides a business into contexts, with the relation patterns in one table and a diagram of which context
-  depends on which. Personal data and erasure have a page of their own, `concepts/personal-data.md`, with a
+  depends on which. Personal data and erasure have a page of their own, `personal-data.md`, with a
   diagram of an erasure; rotating a master key, writing a vault for a key management service and restoring
-  a backup older than an erasure are a how-to, `concepts/master-keys.md`. `concepts/domain-data.md` keeps the actors, the values, the entities
-  and the external systems. `concepts/forms.md` is a how-to, with a diagram from a keystroke to a refusal.
-  The glossary defines "data key", "master key" and "form". Links change:
+  a backup older than an erasure are a how-to, `master-keys.md`. `domain-data.md` keeps the actors, the
+  values, the entities and the external systems. `forms.md` is a how-to, with a diagram from a keystroke
+  to a refusal. The glossary defines "data key", "master key" and "form". Links change:
   `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and the headings of the four pages
   are questions or tasks, so their anchors change.
+- **The concept pages are in `docs/`, beside the other pages** (#517). `docs/concepts/units.md` is now
+  `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
+  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The diagrams of
+  the domain, personal data and forms pages now show in the HTML documentation, which looked for them
+  outside its own directory. The `change-contract` skill of the `eh-os-contract` plugin names the new
+  path, in plugin 0.14.2.
 
 ### Fixed
 
@@ -92,9 +98,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **The opening of `docs/contract.md`** said a contract is written once per process with its promises. It
   now says what the rest of the page says: a contract belongs to one context, and a process module holds
   a run and its promises. The page no longer counts a read model among what reacts to events (#511).
-- **`docs/concepts/domain.md` and `docs/concepts/between-contracts.md` said an application has one domain.**
-  It may hold more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and
-  only the domain named after the application publishes.
+- **`docs/domain.md` and `docs/between-contracts.md` said an application has one domain.** It may hold
+  more, as the tasks' `--domain` and the sandbox show; each domain keeps its own contracts, and only the
+  domain named after the application publishes.
 - **The pages, the DSL reference and the moduledocs called an event a "fact"** (#512). They now say "event",
   as the glossary does: `idempotent_on:` names the fields that make one event, and the inbox takes one event
   once. The message of a policy or a read model that takes another context's event without declaring its
@@ -327,12 +333,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **`EhOsContract.Dependency` is part of the public API** (the publication programme, PB2, #369). A host
   using `boundary` could not call it, since the engine's boundary did not export it, and no page said how
-  to record an outage. It is exported now, and [processes](docs/concepts/process.md) says how to record one.
+  to record an outage. It is exported now, and [processes](docs/process.md) says how to record one.
 - **An actor says which roles a person in it may grant**, as agreed with EHOS.
   `actor :office_employee, :human, "Office employee", may_grant: [:client]` lets a person holding the
   office employee's role grant the client's role through the application, once EHOS grants under the rule.
   `D4` refuses the rule on a system actor, naming the actor itself, a system, an undeclared actor or one twice,
-  and rules that lead back to an actor. [Actors](docs/concepts/domain-data.md#who-may-let-whom-in) says
+  and rules that lead back to an actor. [Actors](docs/domain-data.md#who-may-let-whom-in) says
   more.
 
 ### Changed

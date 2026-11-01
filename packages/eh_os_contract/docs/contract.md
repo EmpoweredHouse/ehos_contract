@@ -90,11 +90,11 @@ end
 - The compiler refuses a zone that the time zone database does not know
   ([`D13`](refusals.md#refusals-d)).
 
-- [How does a domain divide a business into contexts?](concepts/domain.md) tells how to add the
+- [How does a domain divide a business into contexts?](domain.md) tells how to add the
   glossary of a context and the relations between contexts.
-- [What are actors, values, entities and external systems?](concepts/domain-data.md) tells how to
+- [What are actors, values, entities and external systems?](domain-data.md) tells how to
   add them.
-- [How does the engine keep and erase personal data?](concepts/personal-data.md) tells how to add
+- [How does the engine keep and erase personal data?](personal-data.md) tells how to add
   subjects and personal fields.
 
 ## Write a contract
@@ -175,7 +175,7 @@ use EhOsContract.ScenarioCase, contract: Lending.Contracts.Loans
 ```
 
 The result is one ExUnit test for each scenario, against your implementation.
-[Scenarios](concepts/scenarios.md) tells what each kind of scenario checks.
+[Scenarios](scenarios.md) tells what each kind of scenario checks.
 
 A contract describes what its units decide, not the run that they make. A loan from lending to
 return is a run. Write it in a [process module](#write-a-process-module).
@@ -221,7 +221,7 @@ end
 Tell the engine where your implementations are: `config :eh_os_contract, applications: [:lending]`.
 A unit whose events are all recorded needs no implementation if its state is only its identity. If it
 keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
-[Units](concepts/units.md) tells more about the code that decides.
+[Units](units.md) tells more about the code that decides.
 
 <a id="which-module-names-which"></a>
 
@@ -315,22 +315,22 @@ domain declares an external system, a scenario can show that it was not availabl
 on that system, or the promise names it in `waits_on` ([`X4`](refusals.md#refusals-x)).
 
 Run these scenarios with `use EhOsContract.ScenarioCase, process: Lending.Processes.Loan`. The result
-is one test for each scenario, without a database. [Processes](concepts/process.md) tells how the
+is one test for each scenario, without a database. [Processes](process.md) tells how the
 engine judges runs, promises and deadlines.
 
 ## Do more in a contract
 
 | Task | Page |
 | --- | --- |
-| Give an aggregate statuses and the transitions between them | [Units](concepts/units.md) |
-| Decide over the events of more than one stream | [Units](concepts/units.md) |
-| Change an event that already has rows in the log | [Units](concepts/units.md) |
-| React to an event with a policy, an effect or a process manager | [Reactions](concepts/reactions.md) |
-| Keep a read model and answer a query | [Reading](concepts/reading.md) |
-| Take events of another contract, or of another application | [Between contracts](concepts/between-contracts.md) |
-| Issue a command from a form | [Forms](concepts/forms.md) |
-| Mark personal data, and erase a subject | [How does the engine keep and erase personal data?](concepts/personal-data.md) |
-| Rotate a master key, or restore a backup older than an erasure | [Manage the keys and the backups of personal data](concepts/master-keys.md) |
+| Give an aggregate statuses and the transitions between them | [Units](units.md) |
+| Decide over the events of more than one stream | [Units](units.md) |
+| Change an event that already has rows in the log | [Units](units.md) |
+| React to an event with a policy, an effect or a process manager | [Reactions](reactions.md) |
+| Keep a read model and answer a query | [Reading](reading.md) |
+| Take events of another contract, or of another application | [Between contracts](between-contracts.md) |
+| Issue a command from a form | [Forms](forms.md) |
+| Mark personal data, and erase a subject | [How does the engine keep and erase personal data?](personal-data.md) |
+| Rotate a master key, or restore a backup older than an erasure | [Manage the keys and the backups of personal data](master-keys.md) |
 
 ### Let only one person issue a command
 
@@ -442,7 +442,7 @@ end
   writes nothing.
 - A call of `dispatch/3` from your own code is trusted, as each other field of the struct is. The
   engine asks the supplier only if you pass `supply: true`, as a form does
-  ([Forms](concepts/forms.md)).
+  ([Forms](forms.md)).
 - Only a field of a command, or of a recorded event, can be supplied
   ([`F10`](refusals.md#refusals-f)).
 - A node that has such a field and no supplier does not start.
@@ -480,9 +480,9 @@ suspended card cannot borrow a copy.
 
 ## Next steps
 
-- [Units](concepts/units.md): aggregates, consistency boundaries and the code that decides.
-- [Scenarios](concepts/scenarios.md): what each kind of scenario checks.
-- [Processes](concepts/process.md): runs, stages, promises and deadlines.
+- [Units](units.md): aggregates, consistency boundaries and the code that decides.
+- [Scenarios](scenarios.md): what each kind of scenario checks.
+- [Processes](process.md): runs, stages, promises and deadlines.
 - [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The DSL reference: each key of [the domain](dsl/domain-dsl.md),
   [the contract](dsl/contract-dsl.md) and [the process module](dsl/process-dsl.md).

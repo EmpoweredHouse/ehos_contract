@@ -4,7 +4,7 @@
 
 This page tells how a domain divides a business into subdomains and contexts, and how the contexts
 depend on each other. It is for a developer who writes a domain, and for a person who reviews its
-words. [The glossary](../glossary.md) defines each word in italics.
+words. [The glossary](glossary.md) defines each word in italics.
 
 ## What is a domain?
 
@@ -34,14 +34,14 @@ use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsa
   check compares the names in the code with the glossary in this language.
 - `time_zone:` is the zone of the business days.
 
-[The domain reference](../dsl/domain-dsl.md) lists each key.
-[The compile refusals](../refusals.md#refusals-d) list what the compiler refuses in a domain.
+[The domain reference](dsl/domain-dsl.md) lists each key.
+[The compile refusals](refusals.md#refusals-d) list what the compiler refuses in a domain.
 
 An application usually has one domain. It can have more than one, each with its own contracts. The
 tasks that read one domain then need `--domain` to name it.
 
 With `consumes`, a contract takes only the events that sibling contracts of its own domain declare
-([`X5`](../refusals.md#refusals-x)). An event of another domain, or of another application, arrives
+([`X5`](refusals.md#refusals-x)). An event of another domain, or of another application, arrives
 through `subscribe`.
 
 If the application uses `eh_os_contract_auth`, only one domain can publish: the domain whose
@@ -68,7 +68,7 @@ subdomain :cataloguing, "Cataloguing", type: :supporting
 
 A subdomain holds nothing itself. Each context names the subdomain that it belongs to. The compiler
 refuses a context in a subdomain that the domain does not declare
-([`D7`](../refusals.md#refusals-d)).
+([`D7`](refusals.md#refusals-d)).
 
 `mix eh_os_contract.graph --domain <domain>` writes the graph document of the domain. It holds each
 subdomain with its kind. The context map of the dashboard draws each subdomain as a group of its
@@ -106,9 +106,9 @@ end
 
 The compiler refuses these glossaries:
 
-- a term that the context defines two times ([`D1`](../refusals.md#refusals-d));
-- two translations of one term into the same language ([`D2`](../refusals.md#refusals-d));
-- a translation into the language of the context itself ([`D2`](../refusals.md#refusals-d)).
+- a term that the context defines two times ([`D1`](refusals.md#refusals-d));
+- two translations of one term into the same language ([`D2`](refusals.md#refusals-d));
+- a translation into the language of the context itself ([`D2`](refusals.md#refusals-d)).
 
 `mix eh_os_contract.glossary` prints the glossary of each context, with the words to avoid and the
 translations. With `--language en`, it prints each term in English, or says that the term has no
@@ -150,7 +150,7 @@ inflected forms.
   and no term of its own context covers it. Either the word has a meaning here too, and the glossary
   must say it, or the name borrows the meaning of the other context.
 
-[The rules of the check](../rules.md) tell which names each rule does not read.
+[The rules of the check](rules.md) tell which names each rule does not read.
 
 ## How do two contexts relate?
 
@@ -186,7 +186,7 @@ relation :separate_ways, between: [:loans, :events]
 - On the context map of the dashboard, a directed relation is an arrow from the upstream to the
   downstream. A symmetric relation is a line. `:separate_ways` is a dashed line.
 
-The compiler refuses these relations ([`D5`](../refusals.md#refusals-d)):
+The compiler refuses these relations ([`D5`](refusals.md#refusals-d)):
 
 - roles that do not fit the pattern, directed or symmetric;
 - an end that the domain does not declare;
@@ -194,7 +194,7 @@ The compiler refuses these relations ([`D5`](../refusals.md#refusals-d)):
 - a context in a relation with itself;
 - a word of `terms:` that the glossary of its context does not define.
 
-It also refuses a relation that the domain declares two times ([`D1`](../refusals.md#refusals-d)).
+It also refuses a relation that the domain declares two times ([`D1`](refusals.md#refusals-d)).
 
 ### What does a relation let through?
 
@@ -209,13 +209,13 @@ Each reference must agree with the relation between the two contexts. The compil
 references:
 
 - a reference from the upstream context into its downstream context, or across `:separate_ways`
-  ([`X11`](../refusals.md#refusals-x));
+  ([`X11`](refusals.md#refusals-x));
 - across an `:anticorruption_layer`, a read model, an effect or a process manager that takes an event
-  of the upstream ([`X12`](../refusals.md#refusals-x));
+  of the upstream ([`X12`](refusals.md#refusals-x));
 - across an `:anticorruption_layer`, a boundary that consults an event of the upstream
-  ([`X12`](../refusals.md#refusals-x));
+  ([`X12`](refusals.md#refusals-x));
 - across an `:open_host_service` or a `:published_language`, an event that the upstream contract does
-  not publish ([`X13`](../refusals.md#refusals-x)).
+  not publish ([`X13`](refusals.md#refusals-x)).
 
 In one application, a contract takes a published event from the log, with all of its fields.
 Another application takes the event by its published name, with only the fields that the
@@ -238,13 +238,13 @@ The check compares the relations with the references:
 
 Each contract names its context:
 `use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"`. The
-compiler refuses a context that the domain does not declare ([`X1`](../refusals.md#refusals-x)).
+compiler refuses a context that the domain does not declare ([`X1`](refusals.md#refusals-x)).
 
 A contract has one context because it uses one language:
 
 - its labels are the words of that context, and the check reads them against its glossary;
 - its actors are of that context. The compiler refuses an actor of another context in `by:`, in
-  `recorded_by:` or as the actor of a scenario ([`X2`](../refusals.md#refusals-x)).
+  `recorded_by:` or as the actor of a scenario ([`X2`](refusals.md#refusals-x)).
 
 A contract of one context reaches into another context in three ways. Each way is a dependency
 between the two contexts:
@@ -258,7 +258,7 @@ between the two contexts:
 A policy or a read model without `delivery` runs in the transaction of the contract that decided its
 event. An effect and a process manager run after that transaction. So a policy or a read model that
 takes an event of a sibling contract of another context must declare its `delivery`
-([`X10`](../refusals.md#refusals-x)). `:at_least_once` keeps the two contexts apart.
+([`X10`](refusals.md#refusals-x)). `:at_least_once` keeps the two contexts apart.
 `:in_transaction` couples them, on purpose.
 
 ## An example
@@ -329,7 +329,7 @@ end
 
 ### Which context depends on which?
 
-![Loans depends on the catalogue, because a loan names a copy that the catalogue owns; library events and loans go separate ways.](../img/domain-contexts.svg)
+![Loans depends on the catalogue, because a loan names a copy that the catalogue owns; library events and loans go separate ways.](img/domain-contexts.svg)
 
 1. Loans depends on the catalogue: a customer–supplier relation. It makes the catalogue the upstream
    and the loans the downstream. So a contract of the loans context can make references to the
@@ -346,7 +346,7 @@ Library events and loans go separate ways. No contract of one can make a referen
   of a domain.
 - [How does the engine keep and erase personal data?](personal-data.md): the subjects,
   and what the engine does with their personal data.
-- [Write a domain, a contract and a process module](../contract.md): the full task.
-- [The compile refusals](../refusals.md#refusals-d): each refusal of a domain, and of a contract
-  against its domain ([`X`](../refusals.md#refusals-x)).
-- [The rules of the check](../rules.md): each warning and notice of `mix eh_os_contract.check`.
+- [Write a domain, a contract and a process module](contract.md): the full task.
+- [The compile refusals](refusals.md#refusals-d): each refusal of a domain, and of a contract
+  against its domain ([`X`](refusals.md#refusals-x)).
+- [The rules of the check](rules.md): each warning and notice of `mix eh_os_contract.check`.

@@ -90,7 +90,7 @@ defmodule EhOsContract.Form do
   that is the whole form's is at `:base`, which a command with a field named `base` shares.
 
   The rule behind it, from both sides, and a LiveView page that uses it:
-  [Forms](forms.md) (`docs/concepts/forms.md` in the package).
+  [Forms](forms.md) (`docs/forms.md` in the package).
   """
 
   alias EhOsContract.{Codec, Dispatcher, EctoTypes, Model, Rejection, Supplier}

@@ -4,7 +4,7 @@
 
 This page tells how to check the input of a form against the contract. It also tells how to show
 the refusal of dispatch on the form. It is for a developer who writes the pages of an
-application. [The glossary](../glossary.md) defines each word in italics.
+application. [The glossary](glossary.md) defines each word in italics.
 
 A command declares its fields: which fields are required, their types, the enums and values of the
 domain, and the invariants of those values. Dispatch holds each command to this declaration. A
@@ -130,7 +130,7 @@ Keep these things in the application:
 
 ## What occurs from a keystroke to a refusal?
 
-![The page builds the changeset on each change; on submit, it dispatches the command, and puts the refusal of dispatch back on the form.](../img/form-refusal.svg)
+![The page builds the changeset on each change; on submit, it dispatches the command, and puts the refusal of dispatch back on the form.](img/form-refusal.svg)
 
 1. The person types in the form. The page gets a `phx-change` event.
 2. The page builds the changeset with `EhOsContract.Form.changeset/4`.
@@ -395,7 +395,7 @@ above does. `t:EhOsContract.refusal/0` lists these reasons. A rejection is an
 
 ## Next steps
 
-- [Authorization](../authorization.md): how dispatch decides if the person can issue the command.
+- [Authorization](authorization.md): how dispatch decides if the person can issue the command.
 - [Units](units.md): the invariants of a unit, and the rejections.
 - [Reading](reading.md): the queries that a search form asks.
 - [What are actors, values, entities and external systems?](domain-data.md): the values whose

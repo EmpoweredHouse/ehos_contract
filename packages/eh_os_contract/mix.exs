@@ -6,6 +6,13 @@ defmodule EhOsContract.MixProject do
   # version and gets a line in CHANGELOG.md — the rule is written there.
   @version "0.13.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
+
+  # The concept pages, in `docs/` beside the others, in the order a reader takes them. ExDoc
+  # writes every page into one directory, so a page in a subdirectory would link an image by a
+  # path that is right in the repository and wrong in the HTML. `EhOsContract.Docs.concepts/0`
+  # keeps the same list for the tests.
+  @concepts ~w(domain domain-data personal-data master-keys units reactions reading forms between-contracts process scenarios)
+  @concept_pages Enum.map(@concepts, &"docs/#{&1}.md")
   @description "Checks that deployed code does what the declared business process says it does."
 
   @moduledoc """
@@ -55,8 +62,8 @@ defmodule EhOsContract.MixProject do
         pages: ["README.md", "docs/**/*.md"],
         documents: [
           "README.md",
-          "docs/{introduction,getting-started,contract,refusals,glossary}.md",
-          "docs/concepts/*.md"
+          "docs/{introduction,getting-started,contract,refusals,glossary}.md"
+          | @concept_pages
         ]
       ]
     ]
@@ -143,10 +150,7 @@ defmodule EhOsContract.MixProject do
           "docs/getting-started.md",
           "docs/contract.md"
         ] ++
-          Enum.map(
-            ~w(domain domain-data personal-data master-keys units reactions reading forms between-contracts process scenarios),
-            &"docs/concepts/#{&1}.md"
-          ) ++
+          @concept_pages ++
           [
             "docs/authorization.md",
             "docs/glossary.md",
@@ -161,7 +165,9 @@ defmodule EhOsContract.MixProject do
           dsl_reference("process") ++ ["CHANGELOG.md"],
       groups_for_extras: [
         Introduction: ["README.md", "docs/introduction.md", "docs/getting-started.md"],
-        Concepts: [~r{docs/concepts/}, "docs/contract.md", "docs/authorization.md"],
+        Concepts:
+          ["docs/contract.md"] ++
+            @concept_pages ++ ["docs/authorization.md"],
         Reference: [
           "docs/glossary.md",
           "docs/configuration.md",

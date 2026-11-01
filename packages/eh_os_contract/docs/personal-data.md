@@ -4,7 +4,7 @@
 
 This page tells how a contract marks personal data, how the engine keeps it, and what an erasure
 does and does not reach. It is for a developer who writes a contract with personal data, and for a
-person who answers for the protection of that data. [The glossary](../glossary.md) defines each word
+person who answers for the protection of that data. [The glossary](glossary.md) defines each word
 in italics.
 
 ## What is a subject?
@@ -29,15 +29,15 @@ field :customer_phone, :string, personal: :customer_id
 ```
 
 - The identifier is a required `:id` field of the same struct, with `subject:`. It is not personal
-  itself ([`F5`](../refusals.md#refusals-f)).
-- The domain declares the subject ([`X3`](../refusals.md#refusals-x)).
+  itself ([`F5`](refusals.md#refusals-f)).
+- The domain declares the subject ([`X3`](refusals.md#refusals-x)).
 
 <a id="personal-data-in-a-value"></a>
 
 A field of a value with fields can also be personal. It names an identifier field of the same value,
 which has `subject:`. Then each field of that value type holds personal data, in each place where a
 contract uses it. The compiler refuses a personal field whose type holds personal data of its own
-([`F5`](../refusals.md#refusals-f)).
+([`F5`](refusals.md#refusals-f)).
 
 ### Which text must be personal?
 
@@ -57,10 +57,10 @@ The engine keeps personal data only where it can erase it. So the compiler refus
 these places:
 
 - a field that tells the runs of a process manager apart, a `correlate` field
-  ([`F4`](../refusals.md#refusals-f));
+  ([`F4`](refusals.md#refusals-f));
 - a state field of a process manager, or a scope field of a command or a query
-  ([`F7`](../refusals.md#refusals-f));
-- a publication ([`D11`](../refusals.md#refusals-d)): the engine cannot erase a copy on a broker.
+  ([`F7`](refusals.md#refusals-f));
+- a publication ([`D11`](refusals.md#refusals-d)): the engine cannot erase a copy on a broker.
 
 ## What does the engine do with a personal field?
 
@@ -96,7 +96,7 @@ the log. You cannot undo an erasure.
 EhOsContract.erase(:customer, "c-17", actor: actor)
 ```
 
-![Dispatch encrypts a personal field with the data key of its subject; an erasure destroys that key, records the erasure, and the read models forget the subject.](../img/personal-erasure.svg)
+![Dispatch encrypts a personal field with the data key of its subject; an erasure destroys that key, records the erasure, and the read models forget the subject.](img/personal-erasure.svg)
 
 1. The application dispatches a command that carries personal data of a subject.
 2. The vault wraps the data key of the subject with the current master key. The engine stores only
@@ -226,5 +226,5 @@ still gives the customer id and the quote. Its `customer_phone` is `%EhOsContrac
 - [What are actors, values, entities and external systems?](domain-data.md): the other declarations
   of a domain.
 - [Reading](reading.md): read models, and their `forget/2`.
-- [The compile refusals](../refusals.md#refusals-f): each refusal of a field, personal fields
+- [The compile refusals](refusals.md#refusals-f): each refusal of a field, personal fields
   included.
