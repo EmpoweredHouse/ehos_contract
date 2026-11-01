@@ -124,11 +124,12 @@ event.
    | read model delivered `:at_least_once` | `--skip` | The rows never get the event. |
    | read model delivered `:in_transaction` | `--reset` only, never `--skip` | It fails only while it is rebuilt. A skip ends the rebuild at that event. The rows never get the events that the rebuild did not read yet. |
    | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
-   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. No event gets a reaction until the replay ends. |
+   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
-   > **A skip cannot be undone, except by a reset.**
-   > A skip moves the subscription past the event. If the event erased a subject, a read model
+   > **Only a reset undoes a skip.**
+   > A reset of a read model, a policy or a relay applies the skipped event again. A reset of a
+   > process manager does not. A skip moves the subscription past the event. If the event erased a subject, a read model
    > keeps its copy of the subject until you reset it. If the skipped event is an `ends_on` event,
    > the run of a process manager stays open, and its timers still fire.
 

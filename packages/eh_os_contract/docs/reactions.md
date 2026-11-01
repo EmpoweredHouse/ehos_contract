@@ -321,7 +321,7 @@ run, and the run forgets all its timers.
 
 The firing is an event in the stream of the run. The process manager takes it in order, with the
 other events. If the job of one timer runs two times, it can append two firings. The process
-manager dispatches the command one time. When the log is read again, each firing is where it
+manager dispatches its commands one time. When the log is read again, each firing is where it
 occurred.
 
 The callback of a timer gets only the state. Put in the state what the command needs, apart from

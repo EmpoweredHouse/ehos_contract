@@ -150,7 +150,7 @@ is no outbox table.
 - If the relay stops after step 2 and before step 3, it publishes the batch again, under the same
   ids. So a message can arrive two times. It never arrives without its event in the log. It arrives
   zero times only in three cases:
-  - a person skips the event on the relay, for example after the relay is `failing` at it;
+  - a person skips the event on the relay, after the relay is `failing` at it;
   - the `publish` gets a new name;
   - a broker that keeps nothing, such as `EhOsContract.Bus.Local`, restarts.
 - **It starts at the head of the log**, as a policy does. The events in the log when the
