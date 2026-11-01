@@ -332,7 +332,7 @@ defmodule EhOsContract.MixProject do
       {:tz, "~> 0.28", only: [:dev, :test]},
       # Every graph document the suite builds is held to `priv/schema/graph.v1.json`
       # (plan E13a), with the validator and the version `eh_os_contract_auth` uses.
-      {:jsv, "~> 0.25.0", only: :test},
+      {:jsv, "~> 0.26.2", only: :test},
       {:ex_doc, "~> 0.36", only: [:dev, :test], runtime: false},
       # The diagrams of the prose pages: hand-laid sources in `docs/diagrams/`, checked and
       # written into `docs/img/` in the design system's colours and fonts by
