@@ -127,11 +127,11 @@ event.
    | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. If it failed during such a replay, a skip ends the replay, and it reacts to the rest of the log. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
-   > **Only a reset undoes a skip.**
-   > A reset of a read model, a policy or a relay applies the skipped event again. A reset of a
-   > process manager does not. A skip moves the subscription past the event. If the event erased a subject, a read model
-   > keeps its copy of the subject until you reset it. If the skipped event is an `ends_on` event,
-   > the run of a process manager stays open, and its timers still fire.
+   > **A reset of a process manager does not undo a skip.**
+   > A reset of the other kinds applies the event again. A skip moves the subscription past the
+   > event. If the event erased a subject, a read model keeps its copy of the subject until you
+   > reset it. If the skipped event is an `ends_on` event, the run of a process manager stays open,
+   > and its timers still fire.
 
 5. Run the command:
 
