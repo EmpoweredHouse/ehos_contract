@@ -1,0 +1,1 @@
+CodeRabbit's third review of #546: the skip warning's title claimed more than its body; the title now names the process manager's exception. A rewording of reviewed text, no new claim: checked against subscription.ex rebuild/2 (a process manager replays with reactions off). Gate EXIT=0.
