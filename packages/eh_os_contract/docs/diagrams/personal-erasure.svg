@@ -1,0 +1,144 @@
+<!-- title: What happens to personal data when a subject is erased? -->
+<!-- desc: Dispatch encrypts a personal field with the data key of its subject; an erasure destroys that key, records the erasure, and the read models forget the subject. -->
+<!-- words: application, dispatch, master key, data key, log, read model -->
+<!-- technical: erase/3 -->
+<!-- verbs: dispatches, wraps, appends, destroys, delivers, returns -->
+<!-- parts: application = -, dispatch = -, master = -, erase = -, log = -, key = -, readmodel = - -->
+<svg viewBox="0 0 1000 720" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="personal-erasure-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Connectors (behind the parts) -->
+  <line class="arr" x1="240" y1="104" x2="399" y2="104" marker-end="url(#personal-erasure-arrow)"/>
+  <line class="arr" x1="850" y1="136" x2="850" y2="263" marker-end="url(#personal-erasure-arrow)"/>
+  <line class="arr" x1="500" y1="136" x2="500" y2="263" marker-end="url(#personal-erasure-arrow)"/>
+  <polyline class="arr" points="150,328 150,390 850,390 850,329" marker-end="url(#personal-erasure-arrow)"/>
+  <line class="arr" x1="240" y1="296" x2="399" y2="296" marker-end="url(#personal-erasure-arrow)"/>
+  <polyline class="arr" points="100,328 100,472 399,472" marker-end="url(#personal-erasure-arrow)"/>
+  <polyline class="arr" points="420,264 420,200 200,200 200,137" marker-end="url(#personal-erasure-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="256" y="97" width="92" height="14" rx="2"/>
+  <circle class="badge" cx="266" cy="104" r="6"/>
+  <text class="badget" x="266" y="107" text-anchor="middle">1</text>
+  <text class="lbl" x="278" y="107">DISPATCHES</text>
+
+  <rect class="mask" x="862" y="183" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="872" cy="190" r="6"/>
+  <text class="badget" x="872" y="193" text-anchor="middle">2</text>
+  <text class="lbl" x="884" y="193">WRAPS</text>
+
+  <rect class="mask" x="512" y="183" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="522" cy="190" r="6"/>
+  <text class="badget" x="522" y="193" text-anchor="middle">3</text>
+  <text class="lbl" x="534" y="193">APPENDS</text>
+
+  <rect class="mask" x="640" y="383" width="84" height="14" rx="2"/>
+  <circle class="badge" cx="650" cy="390" r="6"/>
+  <text class="badget" x="650" y="393" text-anchor="middle">4</text>
+  <text class="lbl" x="662" y="393">DESTROYS</text>
+
+  <rect class="mask" x="256" y="289" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="266" cy="296" r="6"/>
+  <text class="badget" x="266" y="299" text-anchor="middle">5</text>
+  <text class="lbl" x="278" y="299">APPENDS</text>
+
+  <rect class="mask" x="180" y="465" width="84" height="14" rx="2"/>
+  <circle class="badge" cx="190" cy="472" r="6"/>
+  <text class="badget" x="190" y="475" text-anchor="middle">6</text>
+  <text class="lbl" x="202" y="475">DELIVERS</text>
+
+  <rect class="mask" x="260" y="193" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="270" cy="200" r="6"/>
+  <text class="badget" x="270" y="203" text-anchor="middle">7</text>
+  <text class="lbl" x="282" y="203">RETURNS</text>
+
+  <!-- The application -->
+  <rect class="knock" x="60" y="72" width="180" height="64" rx="6"/>
+  <rect id="personal-erasure-application" class="n-back" x="60" y="72" width="180" height="64" rx="6"/>
+  <text class="name" x="150" y="98" text-anchor="middle">Application</text>
+  <text class="sub" x="150" y="116" text-anchor="middle">your code</text>
+
+  <!-- Dispatch -->
+  <rect class="knock" x="400" y="72" width="200" height="64" rx="6"/>
+  <rect id="personal-erasure-dispatch" class="n-shared" x="400" y="72" width="200" height="64" rx="6"/>
+  <text class="name" x="500" y="98" text-anchor="middle">Dispatch</text>
+  <text class="sub" x="500" y="116" text-anchor="middle">EhOsContract.dispatch/3</text>
+
+  <!-- The master key -->
+  <rect class="knock" x="760" y="72" width="180" height="64" rx="6"/>
+  <rect id="personal-erasure-master" class="n-shared" x="760" y="72" width="180" height="64" rx="6"/>
+  <text class="name" x="850" y="98" text-anchor="middle">Master key</text>
+  <text class="sub" x="850" y="116" text-anchor="middle">EhOsContract.Vault</text>
+
+  <!-- The erasure -->
+  <rect class="knock" x="60" y="264" width="180" height="64" rx="6"/>
+  <rect id="personal-erasure-erase" class="n-shared" x="60" y="264" width="180" height="64" rx="6"/>
+  <text class="name" x="150" y="290" text-anchor="middle">erase/3</text>
+  <text class="sub" x="150" y="308" text-anchor="middle">EhOsContract.erase/3</text>
+
+  <!-- The log -->
+  <rect class="knock" x="400" y="264" width="200" height="64" rx="6"/>
+  <rect id="personal-erasure-log" class="n-store" x="400" y="264" width="200" height="64" rx="6"/>
+  <text class="name" x="500" y="290" text-anchor="middle">Log</text>
+  <text class="sub" x="500" y="308" text-anchor="middle">encrypted personal fields</text>
+
+  <!-- The data key -->
+  <rect class="knock" x="760" y="264" width="180" height="64" rx="6"/>
+  <rect id="personal-erasure-key" class="n-focal" x="760" y="264" width="180" height="64" rx="6"/>
+  <text class="name" x="850" y="290" text-anchor="middle">Data key</text>
+  <text class="sub" x="850" y="308" text-anchor="middle">one for each subject</text>
+
+  <!-- The read model -->
+  <rect class="knock" x="400" y="440" width="200" height="64" rx="6"/>
+  <rect id="personal-erasure-readmodel" class="n-back" x="400" y="440" width="200" height="64" rx="6"/>
+  <text class="name" x="500" y="466" text-anchor="middle">Read model</text>
+  <text class="sub" x="500" y="484" text-anchor="middle">forget/2</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="544" x2="960" y2="544"/>
+  <text class="eyes" x="40" y="564">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="584" r="6"/>
+  <text class="badget" x="46" y="587" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="588">The application dispatches a command with personal data.</text>
+  <circle class="badge" cx="46" cy="608" r="6"/>
+  <text class="badget" x="46" y="611" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="612">The master key wraps the data key of the subject.</text>
+  <circle class="badge" cx="46" cy="632" r="6"/>
+  <text class="badget" x="46" y="635" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="636">Dispatch encrypts each personal field, and appends the event.</text>
+  <circle class="badge" cx="46" cy="656" r="6"/>
+  <text class="badget" x="46" y="659" text-anchor="middle">4</text>
+  <text class="keyt" x="60" y="660">erase/3 destroys the data key.</text>
+
+  <circle class="badge" cx="526" cy="584" r="6"/>
+  <text class="badget" x="526" y="587" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="588">erase/3 appends subject_erased, with nothing personal.</text>
+  <circle class="badge" cx="526" cy="608" r="6"/>
+  <text class="badget" x="526" y="611" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="612">The read models get it, and forget the subject.</text>
+  <circle class="badge" cx="526" cy="632" r="6"/>
+  <text class="badget" x="526" y="635" text-anchor="middle">7</text>
+  <text class="keyt" x="540" y="636">A personal field of the subject reads back as Erased.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="680" x2="960" y2="680"/>
+  <rect class="n-focal" x="40" y="696" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="705">The data key of a subject</text>
+  <rect class="n-shared" x="240" y="696" width="14" height="10" rx="2"/>
+  <text class="legt" x="260" y="705">The engine</text>
+  <rect class="n-store" x="370" y="696" width="14" height="10" rx="2"/>
+  <text class="legt" x="390" y="705">Kept by the engine</text>
+  <rect class="n-back" x="540" y="696" width="14" height="10" rx="2"/>
+  <text class="legt" x="560" y="705">Code of your application</text>
+  <line class="arr" x1="750" y1="701" x2="777" y2="701" marker-end="url(#personal-erasure-arrow)"/>
+  <text class="legt" x="786" y="705">Data, in order</text>
+  </g>
+</svg>

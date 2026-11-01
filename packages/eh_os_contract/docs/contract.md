@@ -90,9 +90,12 @@ end
 - The compiler refuses a zone that the time zone database does not know
   ([`D13`](refusals.md#refusals-d)).
 
-[The domain](domain.md) tells how to add the glossary of a context and the relations between
-contexts. [Domain data](domain-data.md) tells how to add subjects, values, entities and
-external systems.
+- [How does a domain divide a business into contexts?](domain.md) tells how to add the
+  glossary of a context and the relations between contexts.
+- [What are actors, values, entities and external systems?](domain-data.md) tells how to
+  add them.
+- [How does the engine keep and erase personal data?](personal-data.md) tells how to add
+  subjects and personal fields.
 
 ## Write a contract
 
@@ -326,6 +329,8 @@ engine judges runs, promises and deadlines.
 | Keep a read model and answer a query | [Reading](reading.md) |
 | Take events of another contract, or of another application | [Between contracts](between-contracts.md) |
 | Issue a command from a form | [Forms](forms.md) |
+| Mark personal data, and erase a subject | [How does the engine keep and erase personal data?](personal-data.md) |
+| Rotate a master key, or restore a backup older than an erasure | [Manage the keys and the backups of personal data](master-keys.md) |
 
 ### Let only one person issue a command
 

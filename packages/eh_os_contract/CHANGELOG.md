@@ -71,11 +71,23 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   and a diagram of dispatch. The README is short and links to both. Links change: the README's sections
   are gone, `README.md#installation` among them, so link `getting-started.md`; the steps of
   `getting-started.md` have anchors of their own, such as `getting-started.md#dispatch-a-command`. Rotating
-  a master key, and what an erasure does not reach in backups, moved to `domain-data.md`.
+  a master key, and what an erasure does not reach in backups, moved to the concept pages
+  (`master-keys.md`, `personal-data.md`).
+- **The domain pages are split by what a reader asks** (#517). `docs/domain.md` tells how a domain
+  divides a business into contexts, with the relation patterns in one table and a diagram of which context
+  depends on which. Personal data and erasure have a page of their own, `personal-data.md`, with a
+  diagram of an erasure; rotating a master key, writing a vault for a key management service and restoring
+  a backup older than an erasure are a how-to, `master-keys.md`. `domain-data.md` keeps the actors, the
+  values, the entities and the external systems. `forms.md` is a how-to, with a diagram from a keystroke
+  to a refusal. The glossary defines "data key", "master key" and "form". Links change:
+  `domain-data.md#subjects-and-personal-data` is `personal-data.md`, and the headings of the four pages
+  are questions or tasks, so their anchors change.
 - **The concept pages are in `docs/`, beside the other pages** (#517). `docs/concepts/units.md` is now
   `docs/units.md`, and so for each concept page. ExDoc already published them in one directory, so their
-  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The
-  `change-contract` skill of the `eh-os-contract` plugin names the new path, in plugin 0.14.2.
+  addresses on hexdocs do not change. A link to one of them on GitHub changes its path. The diagrams of
+  the domain, personal data and forms pages now show in the HTML documentation, which looked for them
+  outside its own directory. The `change-contract` skill of the `eh-os-contract` plugin names the new
+  path, in plugin 0.14.2.
 
 ### Fixed
 

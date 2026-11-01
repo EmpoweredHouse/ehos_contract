@@ -24,6 +24,7 @@ another page uses a word in a different way, this page is correct.
 | **Context** | A part of the domain in which each word has one meaning. Each contract belongs to one context. Also called a bounded context. | `context` |
 | **Contract** | A module that describes what the units of one context decide: their commands, events, invariants and lifecycles. It also holds the consumers of their events, the queries and the scenarios. | `use EhOsContract.Contract` |
 | **Correlation** | The fields that tell the runs of one process apart. Each event that the process includes carries them. Example: `loan_id`. | `correlate` |
+| **Data key** | A key of 32 random bytes for one subject. The engine encrypts the personal fields of the subject with it. A master key wraps it. If the subject is erased, the engine destroys it. | `EhOsContract.Vault` |
 | **Deadline** | The longest time that a whole run can take, from its first event to the first event that ends it. | `deadline` |
 | **Decision** | The answer of a unit to a command: events, or a rejection. The implementation of the unit makes the decision. | the callback for each command, `emit/1`, `reject/1` |
 | **Delivery** | When a reaction or a read model runs. `:in_transaction` runs it before the event is committed, in the same transaction. `:at_least_once` runs it after the commit, and can run it again. A relay always runs after the commit. | `delivery:` |
@@ -35,6 +36,7 @@ another page uses a word in a different way, this page is correct.
 | **Entity** | A thing with an identity that the code of the application or another system keeps, outside the log. A contract points to it by its identity. | `entity`, in the domain |
 | **Event** | Something that occurred in the business, declared in a unit. A unit emits it after a decision, or an actor records it. The log keeps it. Do not call it a "fact". | `event` |
 | **External system** | A system that the application exchanges data with. Its name tells what it does for the business, not the name of its vendor. | `external`, in the domain |
+| **Form** | Input that a person sends as text, such as an HTML form or a CSV import, to issue a command, record an event or ask a query. `EhOsContract.Form` checks its shape against the contract. | `EhOsContract.Form` |
 | **Identity** | The fields that tell one unit from another. The engine adds them to the state, the commands and the events of the unit. | `identity` |
 | **Implementation** | The module that holds the code of one declaration of a contract. It points to the contract. The contract does not name it. | `use <Contract>, aggregate: :name` |
 | **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message. If the publication declares `idempotent_on:`, it also drops the same event published again with a new id. The event does not go into the log. | `EhOsContract.Inbox` |
@@ -42,6 +44,7 @@ another page uses a word in a different way, this page is correct.
 | **Invariant** | A rule that must stay true, as the business states it: of a unit, of a value, or of a process manager. A command names the invariants that it can reject on. | `invariant` |
 | **Lifecycle** | The statuses of an aggregate, and the transitions that its events make between them. A dynamic consistency boundary has no lifecycle. | `lifecycle` |
 | **Log** | The table of the engine that keeps the events of the application, in the order that they were appended. | `EhOsContract.Store` |
+| **Master key** | A key that wraps the data keys of the subjects. The vault holds it. The database keeps a data key only wrapped. | `EhOsContract.Vault` |
 | **Personal field** | A field that holds personal data of one subject. The engine encrypts it with a key for that subject. If the subject is erased, the engine destroys the key. | `personal:`, `EhOsContract.erase/3` |
 | **Policy** | A reaction without state. When it takes an event, it can issue commands. | `policy` |
 | **Process manager** | A reaction that steers one run over time. It keeps a state, sets timers, and issues commands. | `process_manager` |

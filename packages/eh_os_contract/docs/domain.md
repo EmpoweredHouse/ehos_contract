@@ -1,44 +1,64 @@
-# The domain: subdomains, contexts and how they relate
-
-How a domain module splits a business into subdomains and bounded contexts, gives each context its glossary,
-says how the contexts depend on each other, and why every contract belongs to exactly one of them.
+# How does a domain divide a business into contexts?
 
 <!-- covers: entities domain.subdomain, domain.context, domain.context.term, domain.relation; rules subdomain-without-bounded-context, bounded-context-without-content, orphan-context-mapping, label-with-avoided-term, word-without-term, term-of-another-context, cross-bounded-context-reference-without-mapping -->
 
-## A domain module
+This page tells how a domain divides a business into subdomains and contexts, and how the contexts
+depend on each other. It is for a developer who writes a domain, and for a person who reviews its
+words. [The glossary](glossary.md) defines each word in italics.
 
-A domain module is the vocabulary its contracts share: the parts the business is split into, the words each
-part uses, who acts, whose personal data is kept, the value types, and the systems the application depends on.
-Nothing in it runs. Contracts name it, `domain: Lending.Domain`, and the compiler's rules between modules check
-every contract against it.
+## What is a domain?
 
-An application usually has one domain. It may hold more, each with its own contracts: a contract consumes only
-the events of its own domain ([`X5`](refusals.md#refusals-x)), and the tasks that read one domain then need
-`--domain` to name it. Connected to EHOS through `eh_os_contract_auth`, only the domain whose `name:` equals the application's name
-exactly may publish, since EHOS lets an application publish only under its own name: `:"my-shop"` for
-`my-shop`, never `:my_shop`.
+A *domain* is a module that holds the words that its contracts share. Nothing in it runs. It
+contains these declarations:
+
+- the parts of the business: subdomains and contexts;
+- the words of each part: the glossary of each context;
+- how the contexts depend on each other: the relations;
+- the actors, the values, the entities and the external systems, which
+  [What are actors, values, entities and external systems?](domain-data.md) tells about;
+- the subjects of personal data, which
+  [How does the engine keep and erase personal data?](personal-data.md) tells about.
+
+Each contract names its domain, for example `domain: Lending.Domain`. After Elixir compiles the
+project, the compiler `:eh_os_contract` checks each contract against its domain.
 
 <!-- in: Concepts.Domain.Domain -->
 ```elixir
 use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/Warsaw"
 ```
 
-`name:` is the application's namespace towards EHOS: the first segment of every capability, role, contract id
-and published event name. `language:` is the language labels and terms are written in. `code_language:` is
-the language of identifiers, English unless given, and the glossary below is held to it. `time_zone:` is the
-zone the business's days are in. [The compile refusals](refusals.md#refusals-d) say what each refuses;
-every key is in [the domain's reference](dsl/domain-dsl.md).
+- `name:` is the namespace of the application. It is the first segment of each capability, role,
+  contract id and published event name.
+- `language:` is the language of the labels and the terms.
+- `code_language:` is the language of the identifiers. It is English if you do not give it. The
+  check compares the names in the code with the glossary in this language.
+- `time_zone:` is the zone of the business days.
 
-This page is about the first half of a domain: how the business is divided and how the parts relate. Actors,
-personal data, values, entities and external systems are in [the domain's data](domain-data.md).
+[The domain reference](dsl/domain-dsl.md) lists each key.
+[The compile refusals](refusals.md#refusals-d) list what the compiler refuses in a domain.
 
-## Subdomains
+An application usually has one domain. It can have more than one, each with its own contracts. The
+tasks that read one domain then need `--domain` to name it.
 
-A subdomain is a part of the business, named as the business names it, with its kind:
+With `consumes`, a contract takes only the events that sibling contracts of its own domain declare
+([`X5`](refusals.md#refusals-x)). An event of another domain, or of another application, arrives
+through `subscribe`.
 
-- `:core`: what the business competes on, where the model deserves the most care;
-- `:supporting`: what the core needs and nobody sells ready-made;
-- `:generic`: what any business does the same way, and could buy.
+If the application uses `eh_os_contract_auth`, only one domain can publish: the domain whose
+`name:` is exactly the name of the application. The platform that issues the credentials accepts a
+publication only under the name of the application. For the application `my-shop`, the name is
+`:"my-shop"`, not `:my_shop`.
+
+## What is a subdomain?
+
+A *subdomain* is a part of the business, with the name that the business uses. It has one of three
+kinds:
+
+| Kind | What it is |
+| --- | --- |
+| `:core` | What the business competes on. The model of a core subdomain needs the most care. |
+| `:supporting` | What the core needs, and no vendor sells ready to use. |
+| `:generic` | What each business does in the same way, and can buy. |
 
 <!-- in: Concepts.Domain.Domain -->
 ```elixir
@@ -46,16 +66,23 @@ subdomain :lending, "Lending", type: :core
 subdomain :cataloguing, "Cataloguing", type: :supporting
 ```
 
-A subdomain holds nothing itself. Contexts name the subdomain they belong to, and a context naming a
-subdomain the domain does not declare does not compile ([`D7`](refusals.md#refusals-d)). The domain's graph
-document, `mix eh_os_contract.graph --domain <domain>`, holds each subdomain with its kind, and the dashboard's
-context map draws it as a group of its contexts; nothing at run time reads the kind.
+A subdomain holds nothing itself. Each context names the subdomain that it belongs to. The compiler
+refuses a context in a subdomain that the domain does not declare
+([`D7`](refusals.md#refusals-d)).
 
-## Contexts and their glossary
+`mix eh_os_contract.graph --domain <domain>` writes the graph document of the domain. It holds each
+subdomain with its kind. The context map of the dashboard draws each subdomain as a group of its
+contexts. No code reads the kind at run time.
 
-A bounded context is a part of the domain where a word means one thing. "Copy" at the loan desk is a copy a
-member can take home; in the catalogue it may be any item on the shelf, lendable or not. Separate contexts
-let the same word mean 2 things without either being wrong.
+If no context names a subdomain, `mix eh_os_contract.check` warns
+`subdomain-without-bounded-context`. Give the subdomain a context, or remove it.
+
+## What is a context, and what is its glossary?
+
+A *context* is a part of the domain in which each word has one meaning. Also called a bounded
+context. Example: at the loan desk, "Copy" is an item that a member can take home. In the catalogue,
+an item is anything on the shelf, which the desk can lend or not. Two contexts let one word have two
+meanings, and both meanings are correct.
 
 <!-- in: Concepts.Domain.Domain -->
 ```elixir
@@ -68,64 +95,79 @@ context :loans, "Loans", subdomain: :lending do
 end
 ```
 
-A context names its subdomain (required) and may name a `language:` of its own, when its labels are not
-written in the domain's. Its block holds its glossary: one `term` per word, each with a `definition` of what it
-means in this context and, optionally, the `source` the definition comes from.
+- `subdomain:` is required. It names the subdomain of the context.
+- `language:` is optional. Give it when the labels of the context are in a language other than the
+  language of the domain.
+- The block of the context holds its glossary. Each `term` is one word, with its `definition` in
+  this context. A term can also give the `source` of the definition.
+- `avoid` names a word not to use for the term, with its reason.
+- `translation :de, "Ausleihe", definition: "…"` gives the word in another language, with its
+  meaning there. A translation can avoid words of its own language.
 
-A term may say which words must not be used for it, `avoid "Borrowing", reason: "…"`, and how it is said in
-another language, `translation :de, "Ausleihe", definition: "…"`, with what it means there; a translation
-may avoid words of its own language. A term defined twice in one context does not compile ([`D1`](refusals.md#refusals-d)), nor 2
-translations of 1 term into the same language, nor a translation into the context's own language ([`D2`](refusals.md#refusals-d)).
+The compiler refuses these glossaries:
 
-The glossary is what `mix eh_os_contract.glossary` prints, per context, with the words to avoid and the
-translations; `--language en` prints each term in English, or notes that it has none.
+- a term that the context defines two times ([`D1`](refusals.md#refusals-d));
+- two translations of one term into the same language ([`D2`](refusals.md#refusals-d));
+- a translation into the language of the context itself ([`D2`](refusals.md#refusals-d)).
 
-### The glossary in the code
+`mix eh_os_contract.glossary` prints the glossary of each context, with the words to avoid and the
+translations. With `--language en`, it prints each term in English, or says that the term has no
+English translation.
 
-Labels are in the context's language and identifiers are in the domain's `code_language:`, English unless
-`use EhOsContract.Domain` says otherwise. A term's **word in code** is its translation into that language, or
-the term itself in a context written in that language. So a term "Ausleihe" with `translation :en, "Loan"` is the
-word `loan`, and `:loan`, `:loan_id` and `:return_loan` are named with it. A term with several words is
-matched as those words in a row: "Due date" is in `:due_date_set`, not in `:date_due`. Inflected forms are not
-matched.
+If a label of a contract uses a word that its glossary avoids, the check warns
+`label-with-avoided-term`. Example: the loans contract labels an event "Borrowing recorded". The
+check reads the label of each declaration and of each member of an enum. It matches a whole word, in
+each letter case. It does not find an inflected form, so `avoid` names each form to avoid. It
+does not read the words that a translation avoids: they are of another language, and the labels are
+not in that language.
 
-`mix eh_os_contract.glossary` lists, under each term, its word in code and the declarations of the context's
-contracts named with it, then each process module that includes the context's events and whose id, stages,
-promises or `correlate` fields are named with it. `mix eh_os_contract.check` reads the names of things (units,
-read models and fields) both ways:
+If no contract names a context in `context:`, the check warns `bounded-context-without-content`.
+The values and the entities of the context do not count. In the example at the end of this page,
+the catalogue gets this warning until a contract belongs to it.
 
-- **`word-without-term`** (notice): one finding per context. It lists the words in the context's names that
-  no term covers, starting with the word used by the most names. Words of 1 or 2 letters (`id`, `at`) are left
-  out, and so are names of commands and events, whose verbs are inflected ("returned") where a term is not ("Return").
-- **`term-of-another-context`** (warning): a name uses the word in code of a term another context declares,
-  and no term of its own context covers it. Either the word means something here too and the glossary should
-  say what, or the name borrows the other context's meaning. One finding per name. The check skips a field typed
-  `{:id, entity}` or named like the identity of another context's unit (`loan_id`): it refers to that
-  declaration under its name. Neither rule reads the words of a field that name the value it is typed with:
-  a field `:office_nip` of type `:nip` says "nip" as the value's word, shared by every context that uses the
-  value, so no context has to copy another's term for it.
+### How does the check compare names with the glossary?
 
-## Relations between contexts
+The labels are in the language of the context. The identifiers are in the `code_language:` of the
+domain. The word in code of a term is its translation into that language. If the context is in
+that language, the word in code is the term itself.
 
-A relation says how two contexts depend on each other: one of the 8 context-mapping patterns. Of these, 5 are
-directed, with an upstream the other side depends on and a downstream that depends on it:
+Example: the term "Ausleihe" has `translation :en, "Loan"`, so its word in code is `loan`. The
+names `:loan`, `:loan_id` and `:return_loan` use it. A term of several words matches as those
+words in a row: "Due date" is in `:due_date_set`, but not in `:date_due`. The check does not match
+inflected forms.
 
-| Type | What it says |
-| --- | --- |
-| `:customer_supplier` | the downstream asks, the upstream plans what it supplies with it |
-| `:conformist` | the downstream takes the upstream's model as it is |
-| `:anticorruption_layer` | the downstream translates the upstream's model into its own |
-| `:open_host_service` | the upstream offers a protocol for any downstream |
-| `:published_language` | the two exchange a documented, shared language |
+`mix eh_os_contract.glossary` shows the word in code of each term. Under it, the task lists:
 
-The other 3 are symmetric and name their 2 contexts with `between:`. On the context map a directed relation is an
-arrow from upstream to downstream, a symmetric one a line, and `:separate_ways` a dashed one.
+- the declarations of the contracts of the context that use the word in their names;
+- each process module that includes events of the context and uses the word in its id, its stages,
+  its promises or its `correlate` fields.
 
-| Type | What it says |
-| --- | --- |
-| `:partnership` | the two succeed or fail together and plan together |
-| `:shared_kernel` | the two share a part of the model |
-| `:separate_ways` | the two do not depend on each other |
+`mix eh_os_contract.check` reads the names of units, read models and fields in two directions:
+
+- `word-without-term` (a notice): a word in the names of a context that no term covers. The
+  check gives one finding for each context.
+- `term-of-another-context` (a warning): a name uses the word in code of a term of another context,
+  and no term of its own context covers it. Either the word has a meaning here too, and the glossary
+  must say it, or the name borrows the meaning of the other context.
+
+[The rules of the check](rules.md) tell which names each rule does not read.
+
+## How do two contexts relate?
+
+A *relation* tells how two contexts depend on each other. It has one of 8 patterns. Five patterns
+are directed: the downstream context depends on the upstream context. Three patterns are
+symmetric.
+
+| Pattern | Direction | What it says | What a contract can consume across it |
+| --- | --- | --- | --- |
+| `:customer_supplier` | directed | The downstream asks. The upstream plans what it supplies. | each event of the upstream |
+| `:conformist` | directed | The downstream uses the model of the upstream as it is. | each event of the upstream |
+| `:anticorruption_layer` | directed | The downstream translates the model of the upstream into its own model. | an event that only a policy takes, to issue a command of its own context |
+| `:open_host_service` | directed | The upstream gives a protocol for each downstream. | only the events that the upstream contract publishes |
+| `:published_language` | directed | The two contexts exchange a documented, shared language. | only the events that the upstream contract publishes |
+| `:partnership` | symmetric | The two contexts succeed or fail together, and plan together. | each event, in both directions |
+| `:shared_kernel` | symmetric | The two contexts share a part of the model. | each event, in both directions |
+| `:separate_ways` | symmetric | The two contexts do not depend on each other. | nothing, in either direction |
 
 <!-- in: Concepts.Domain.Domain -->
 ```elixir
@@ -133,62 +175,96 @@ relation :customer_supplier, upstream: :catalogue, downstream: :loans, terms: [{
 relation :separate_ways, between: [:loans, :events]
 ```
 
-`terms:` pairs the words the two ends use for one thing: the first end's word (the upstream, or the first of
-`between:`), then the second's, each a term of its context's glossary. The glossary then shows, under a term,
-what the other end calls it.
+- A directed relation names `upstream:` and `downstream:`. A symmetric relation names its two
+  contexts in `between:`.
+- `terms:` pairs the words that the two ends use for one thing. The first word is of the upstream,
+  or of the first context in `between:`. Each word is a term of the glossary of its context. The
+  glossary then shows, under a term, the word of the other end.
+- One end of a directed relation can be an external system. Then the other end is a context:
+  `relation :anticorruption_layer, upstream: :payment_provider, downstream: :loans`. A symmetric
+  relation has only contexts.
+- On the context map of the dashboard, a directed relation is an arrow from the upstream to the
+  downstream. A symmetric relation is a line. `:separate_ways` is a dashed line.
 
-One end of a directed relation may be an external system; the other end is then a context:
-`relation :anticorruption_layer, upstream: :payment_provider, downstream: :loans`. A symmetric relation is
-between contexts only. A relation whose roles do not fit its type, an end the domain does not declare, a
-context related to itself, or a word of `terms:` its context's glossary does not define does not compile
-([`D5`](refusals.md#refusals-d)); a relation declared twice does not either ([`D1`](refusals.md#refusals-d)).
+The compiler refuses these relations ([`D5`](refusals.md#refusals-d)):
 
-### What a relation lets through
+- roles that do not fit the pattern, directed or symmetric;
+- an end that the domain does not declare;
+- an external system in a symmetric relation, or a directed relation with no context at either end;
+- a context in a relation with itself;
+- a word of `terms:` that the glossary of its context does not define.
 
-A relation is a rule the contracts are held to, not a drawing. A contract of one context depends on another
-when it consumes a contract of it, names an entity or a unit it owns (`{:id, name}`), or uses a value it
-declares (`value …, context:`). Such a reference has to follow the relation between the two:
+It also refuses a relation that the domain declares two times ([`D1`](refusals.md#refusals-d)).
 
-| Relation | What a contract of the downstream context may consume from one of the upstream |
-| --- | --- |
-| `:customer_supplier`, `:conformist`, `:partnership`, `:shared_kernel` | any event |
-| `:anticorruption_layer` | an event only a policy takes, translating it into a command of its own context |
-| `:open_host_service`, `:published_language` | only the events the upstream contract `publish`es |
-| `:separate_ways` | nothing, and nothing else crosses either |
+### What does a relation let through?
 
-A reference from the upstream context into the downstream one, or any reference across `:separate_ways`,
-does not compile ([`X11`](refusals.md#refusals-x)); nor does a read model, an effect or a process manager
-taking an event, or a boundary consulting one, across an `:anticorruption_layer` ([`X12`](refusals.md#refusals-x)), nor a contract consuming
-an event its upstream sibling does not publish across an `:open_host_service` or a `:published_language`
-([`X13`](refusals.md#refusals-x)). In one application the published event is still taken from the log, whole;
-another application takes it by its name on the wire, with only the fields it declares. Including an event in a
-process module is no reference: a process belongs to no context.
+A relation is a rule for the contracts. A contract of one context makes a reference to another
+context when it does one of these things:
 
-## A contract belongs to one context
+- it consumes a contract of the other context;
+- it names an entity or a unit that the other context owns, with a field of type `{:id, name}`;
+- it uses a value that the other context declares, with `value …, context:`.
 
-Every contract names its context,
-`use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"`, and a context the domain does not declare is refused ([`X1`](refusals.md#refusals-x)). One context, because a
-contract is written in one language: its labels are that context's words, its actors are that context's (an
-actor declared with another `context:` is refused in `by:`, [`X2`](refusals.md#refusals-x)), and its glossary is the one its labels are
-read against.
+Each reference must agree with the relation between the two contexts. The compiler refuses these
+references:
 
-A contract reaches into another context in two ways, and each is a dependency between the contexts:
+- a reference from the upstream context into its downstream context, or across `:separate_ways`
+  ([`X11`](refusals.md#refusals-x));
+- across an `:anticorruption_layer`, a read model, an effect or a process manager that takes an event
+  of the upstream ([`X12`](refusals.md#refusals-x));
+- across an `:anticorruption_layer`, a boundary that consults an event of the upstream
+  ([`X12`](refusals.md#refusals-x));
+- across an `:open_host_service` or a `:published_language`, an event that the upstream contract does
+  not publish ([`X13`](refusals.md#refusals-x)).
 
-- it **consumes** a contract of another context, `consumes Lending.Contracts.Catalogue, [:item_withdrawn]`,
-  and reacts to its events;
-- it **names an entity another context owns**, a field `{:id, :copy}` where `:copy` belongs to the
-  catalogue.
+In one application, a contract takes a published event from the log, with all of its fields.
+Another application takes the event by its published name, with only the fields that the
+publication declares.
 
-A policy or a read model left without `delivery` runs inside the transaction of the context that decided the
-event it takes (an effect and a process manager run after it). So one taking an event of a sibling of another context has to
-declare its `delivery` ([`X10`](refusals.md#refusals-x)): `:at_least_once` decouples the two, `:in_transaction` couples them on purpose.
+A process module makes no reference when it includes an event: a process belongs to no context.
 
-The relations are where these dependencies are written down, and `mix eh_os_contract.check` holds the two
-against each other (below).
+The check compares the relations with the references:
+
+- If a contract makes a reference and no relation connects the two contexts, the check warns
+  `cross-bounded-context-reference-without-mapping`. Declare the relation, so that the domain says
+  which context depends on which. The check gives one finding for each reference. You can map a
+  domain one part at a time, so this is a warning and not a refusal.
+- If no reference crosses a relation in either direction, the check warns
+  `orphan-context-mapping`. For a relation to an external system, the check looks for a contract
+  of the context that uses the system. The contract calls the system, depends on it, has a field that
+  the system issues, or acts through an actor that the system backs.
+
+## Why does a contract belong to one context?
+
+Each contract names its context:
+`use EhOsContract.Contract, domain: Lending.Domain, context: :loans, id: "lending.loans"`. The
+compiler refuses a context that the domain does not declare ([`X1`](refusals.md#refusals-x)).
+
+A contract has one context because it uses one language:
+
+- its labels are the words of that context, and the check reads them against its glossary;
+- its actors are of that context. The compiler refuses an actor of another context in `by:`, in
+  `recorded_by:` or as the actor of a scenario ([`X2`](refusals.md#refusals-x)).
+
+A contract of one context reaches into another context in three ways. Each way is a dependency
+between the two contexts:
+
+- it consumes a contract of the other context, for example
+  `consumes Lending.Contracts.Catalogue, [:item_withdrawn]`, and reacts to its events;
+- it names an entity or a unit that the other context owns, for example a field `{:id, :copy}`,
+  where the catalogue owns `:copy`;
+- it uses a value that the other context declares with `context:`.
+
+A policy or a read model without `delivery` runs in the transaction of the contract that decided its
+event. An effect and a process manager run after that transaction. So a policy or a read model that
+takes an event of a sibling contract of another context must declare its `delivery`
+([`X10`](refusals.md#refusals-x)). `:at_least_once` keeps the two contexts apart.
+`:in_transaction` couples them, on purpose.
 
 ## An example
 
-The loan desk depends on the catalogue: a loan names the copy it lends, which the catalogue owns.
+The loan desk depends on the catalogue: a loan names the copy that it lends, and the catalogue owns
+the copy.
 
 ```elixir
 defmodule Concepts.Domain.Domain do
@@ -249,50 +325,28 @@ defmodule Concepts.Domain.Contracts.Loans do
 end
 ```
 
-The loans contract names the catalogue's entity, so it depends on the catalogue, and the relation says so:
-the catalogue is upstream, the desk downstream.
+<a id="which-context-depends-on-which"></a>
 
-## What the compiler refuses
+### Which context depends on which?
 
-The domain's own rules ([`D1`](refusals.md#refusals-d) to [`D7`](refusals.md#refusals-d)) and the rules between a contract and its domain ([`X1`](refusals.md#refusals-x), [`X2`](refusals.md#refusals-x)) are in the
-table of [the compile refusals](refusals.md). The ones this page is about:
+![Loans depends on the catalogue, because a loan names a copy that the catalogue owns; library events and loans go separate ways.](img/domain-contexts.svg)
 
-- **[`D1`](refusals.md#refusals-d)**: a name not snake_case, two subdomains or contexts of one name, a term defined twice in a
-  context, a relation declared twice, a name that is both a context and an external, a blank label.
-- **[`D2`](refusals.md#refusals-d)**: two translations of one term into one language, or one into the context's own.
-- **[`D5`](refusals.md#refusals-d)**: a relation whose roles do not fit its type, an undeclared end, an external in a symmetric
-  relation, a context related to itself, a word of `terms:` not in its context's glossary.
-- **[`D7`](refusals.md#refusals-d)**: a context in a subdomain the domain does not declare.
-- **[`X1`](refusals.md#refusals-x)**: a contract's `context:` naming none of its domain's contexts.
-- **[`X2`](refusals.md#refusals-x)**: a contract's `by:`, `recorded_by:` or scenario actor naming an actor of another context.
-- **[`X10`](refusals.md#refusals-x)**: a policy or a read model taking an event of a sibling contract of another context without
-  declaring `delivery`.
-- **[`X11`](refusals.md#refusals-x)**, **[`X12`](refusals.md#refusals-x)**, **[`X13`](refusals.md#refusals-x)**: a
-  reference against the relation between two contexts, or more than its pattern lets through (above).
+1. Loans depends on the catalogue: a customer–supplier relation. It makes the catalogue the upstream
+   and the loans the downstream. So a contract of the loans context can make references to the
+   catalogue, and the catalogue cannot make references to the loans.
+2. The catalogue owns the entity copy: the domain declares `:copy` with `context: :catalogue`.
+3. A field of the loans contract names a copy: `open_loan` and `loan_opened` have a field of type
+   `{:id, :copy}`. This field is the reference that the relation lets through.
 
-## What `mix eh_os_contract.check` reports
+Library events and loans go separate ways. No contract of one can make a reference to the other.
 
-A domain that compiles may still describe a business its contracts do not have. These are warnings
-([the rules](rules.md)):
+## Next steps
 
-- **`subdomain-without-bounded-context`** (warning): no context names the subdomain with `subdomain:`. Give
-  it a context, or remove it.
-- **`bounded-context-without-content`** (warning): no contract names the context as its `context:`, so
-  nothing is decided, recorded or read there. Values and entities the context owns do not count. In the
-  example, the catalogue is reported until a contract belongs to it; that is expected until its contract is
-  written.
-- **`orphan-context-mapping`** (warning): a relation that no reference crosses: no contract of one context
-  consumes a contract of the other, names an entity or a unit it owns or uses a value it declares, in either
-  direction. For a relation to an
-  external system, no contract of the context calls it, depends on it, has a field it issues or acts through
-  an actor it backs. The relation describes a dependency the contracts do not have.
-- **`cross-bounded-context-reference-without-mapping`** (warning): the other way round: a contract consumes
-  a contract of another context, names an entity or a unit another context owns, or uses a value it declares,
-  and no relation connects the two contexts. Declare the relation, which says who depends on whom. One finding
-  per reference. A domain may be mapped a piece at a time, so this one warns; a reference against a relation
-  that is declared does not compile (above).
-- **`label-with-avoided-term`** (warning): a label of a contract uses a word its context's glossary says to
-  avoid. In the example, an event of the loans contract labelled "Borrowing recorded" is reported. Every
-  declaration's label and every enum member's label is read; a word matches whole, in any letter case, and
-  not inside the term itself. Inflected forms are not caught, so `avoid` names each form to avoid. The check skips
-  words a translation avoids: they belong to another language, and labels are not written in it.
+- [What are actors, values, entities and external systems?](domain-data.md): the other declarations
+  of a domain.
+- [How does the engine keep and erase personal data?](personal-data.md): the subjects,
+  and what the engine does with their personal data.
+- [Write a domain, a contract and a process module](contract.md): the full task.
+- [The compile refusals](refusals.md#refusals-d): each refusal of a domain, and of a contract
+  against its domain ([`X`](refusals.md#refusals-x)).
+- [The rules of the check](rules.md): each warning and notice of `mix eh_os_contract.check`.
