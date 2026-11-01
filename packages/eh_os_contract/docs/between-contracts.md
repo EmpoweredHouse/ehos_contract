@@ -90,8 +90,8 @@ A reference carries no event. It tells what a number means:
 - The pages link the field to the unit.
 - `mix eh_os_contract.check` counts the reference as a dependency of this context on the context
   of the sibling. The context map relates the two, in the direction of the reference. If no
-  relation is declared, the check warns. A relation in the other direction does not compile
-  ([`X11`](refusals.md#refusals-x)).
+  relation is declared, the check warns. A relation in the other direction, or `:separate_ways`, does
+  not compile ([`X11`](refusals.md#refusals-x)).
 - To react to what occurs to the visit, consume its events. To decide on them, consult them from a
   boundary.
 - A command does not read a unit of a sibling as it reads an entity, because the state of a unit
@@ -148,9 +148,11 @@ is no outbox table.
 
 - A step reads up to 100 events of the publication, and makes a message from each.
 - If the relay stops after step 2 and before step 3, it publishes the batch again, under the same
-  ids. So a message can arrive two times. It does not arrive zero times, and never without its event
-  in the log. Two exceptions: a person skips the event on the relay, or a broker that keeps nothing,
-  such as `EhOsContract.Bus.Local`, restarts.
+  ids. So a message can arrive two times. It never arrives without its event in the log. It arrives
+  zero times only in three cases:
+  - a person skips the event on the relay;
+  - the `publish` gets a new name;
+  - a broker that keeps nothing, such as `EhOsContract.Bus.Local`, restarts.
 - **It starts at the head of the log**, as a policy does. The events in the log when the
   publication is first deployed are history, and the relay does not publish them by itself. To
   publish them, a person resets it: [Repair or replay a subscription](subscriptions.md).

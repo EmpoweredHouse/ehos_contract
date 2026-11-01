@@ -30,9 +30,9 @@ a failure of each consumer leaves.
 > **The task starts the whole application.**
 > Run it only with the code that is deployed. The task boots the host: it records a deployment,
 > and registers each subscription with the code that you run. It also starts the subscriptions,
-> the relays and Oban, so effects can call external systems from where you run it. If your code
-> differs from the deployed code, the engine rebuilds each changed read model and process manager
-> at once.
+> the relays and Oban, so effects can call external systems from where you run it. Your code can
+> differ from the deployed code. Then the engine at once rebuilds each changed process manager,
+> and each changed read model that has `reset/0`. A rebuilt process manager forgets its runs.
 
 This page uses this contract. Its read model keeps the copies that are out on loan:
 
@@ -106,33 +106,39 @@ event.
 1. Find the cause. The engine logs only the position and the module of the exception, not its
    message, because a message can hold personal data. Do not add a log of the event or of the
    message: an erasure does not reach a log.
+
+   > **A changed declaration rebuilds the subscription at boot.**
+   > A correction can change the declaration of a failing process manager. Then the next boot
+   > resets it, with the losses in [React to history](#react-to-history-or-publish-it-again). A
+   > failing read model with `reset/0` is rebuilt the same way. A read model without `reset/0` is
+   > `stale`, and tries the event again. To keep a process manager, correct only its module.
+
 2. Correct the cause, and deploy the correction.
-3. Do the step for the kind of the subscription:
+3. Run the task without options. If the subscription is not `failing` now, stop here.
+4. Choose what to do for the kind of the subscription. Read the consequence before you run the
+   command:
 
    | Kind | Do this | What it leaves |
    | --- | --- | --- |
-   | read model | `--reset` | It empties the rows and reads the whole log again, with the event. |
-   | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. `--reset` is also possible: [React to history](#react-to-history-or-publish-it-again) tells what it costs. |
-   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset does not apply the event, and loses more. |
-   | relay | `--skip`, or `--reset` | A skip: the event never leaves the application. A reset publishes the whole log again. |
+   | read model | `--reset`, if it has `reset/0` | It empties the rows and reads the whole log again, with the event. Until it ends, queries read part of the rows: [Rebuild a read model](#rebuild-a-read-model). |
+   | read model | `--skip` | The rows never get the event. |
+   | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
+   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. A reset does not apply the event, and loses more. |
+   | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
-   > **You can undo a skip only with a reset.**
+   > **A skip cannot be undone, except by a reset.**
    > A skip moves the subscription past the event. If the event erased a subject, a read model
    > keeps its copy of the subject until you reset it. If the skipped event is an `ends_on` event,
-   > the run of a process manager stays open.
+   > the run of a process manager stays open, and its timers still fire.
+
+5. Run the command:
 
    ```bash
    mix eh_os_contract.subscriptions --skip subscriptions_example.loans:read_model:copies_out
-   mix eh_os_contract.subscriptions --reset subscriptions_example.loans:read_model:copies_out
    ```
 
 The result: after a skip, the task prints the subscription as `running`, after the event. After a
 reset, it is `running` at position 0, or `rebuilding`.
-
-> **A changed declaration can clear the failure.**
-> At the next boot, the engine rebuilds a failing process manager whose declaration changed. It
-> rebuilds such a read model only if the read model has `reset/0`. A read model without it is
-> `stale`, and tries the event again. A failing policy or relay stays failing.
 
 <a id="rebuild-a-read-model"></a>
 
@@ -141,6 +147,11 @@ reset, it is `running` at position 0, or `rebuilding`.
 The version of a read model is a digest of its declaration and of each event that it takes. If
 the version changes, the engine marks the read model `stale` at the next boot. If the read model
 has `reset/0`, the engine then rebuilds it.
+
+> **A rebuild empties the rows first.**
+> Until the rebuild ends, a query reads only part of the rows. For a read model delivered
+> `:in_transaction`, `reset/0` runs while the engine holds the append lock. Each append waits until
+> the delete ends.
 
 1. Give the module of the read model a `reset/0`. It deletes all the rows that the read model
    wrote:
@@ -166,9 +177,10 @@ has `reset/0`, the engine then rebuilds it.
    end
    ```
 
-2. Deploy the change. If the version of the read model changed, the engine rebuilds it at boot.
-   Adding `reset/0` alone does not change the version.
-3. To rebuild it at another time, reset it:
+2. Deploy the change. The engine rebuilds the read model at boot if its version changed, or if it
+   was `stale` before. Adding `reset/0` to a read model that is not `stale` does not rebuild it.
+3. Run the task. If the read model is still `stale`, or you want to rebuild it at another time,
+   reset it:
 
    ```bash
    mix eh_os_contract.subscriptions --reset subscriptions_example.loans:read_model:copies_out
@@ -180,15 +192,14 @@ The result: the task prints `emptied, and replayed from the beginning of the log
 > It reads new events over its old rows. The task cannot reset it, and stops with an error. Add
 > `reset/0` first.
 
-While the rebuild runs, the read model has only part of its rows:
+While the rebuild runs:
 
-- **Delivered `:at_least_once`**: its status is `running`, from position 0. A query without
+- **A read model delivered `:at_least_once`** is `running`, from position 0. A query without
   `min_position:` answers from the part that it has read. A query with a recent `min_position:`
   waits, and can return `{:error, :not_caught_up}`.
-- **Delivered `:in_transaction`**: its status is `rebuilding`. `reset/0` runs while the engine holds
-  the append lock, so each append waits until the delete ends. Then dispatch stops writing to the
-  read model, and a subscription reads the log into it. A query with `min_position:` waits for the
-  end.
+- **A read model delivered `:in_transaction`** is `rebuilding`. Dispatch stops writing to it, and a
+  subscription reads the log into it. A query with `min_position:` waits for up to `wait:`, and
+  then returns `{:error, :not_caught_up}`.
 
 Rebuild a new read model by hand in one case: it is delivered `:in_transaction`, and the log
 already holds its events. A new read model delivered `:at_least_once` reads the whole log by
@@ -199,20 +210,18 @@ itself.
 ## React to history, or publish it again
 
 A new policy or relay starts at the head of the log. The events before it are history. A reset
-makes it read the whole log, from position 0:
+makes a consumer read the whole log, from position 0. Read what it does before you run it:
+
+| Kind | What `--reset` does |
+| --- | --- |
+| policy | It reacts to each event from the start of the log. The keys stop a second accepted command. The unit decides again each command that it rejected before. A command that it accepts now runs its consumers, and its effects run. Each step holds the append lock, so the reset slows every append until it ends. You cannot undo it. If the policy now issues another command for an event, the reset stops with `:idempotency_key_reused`, and the policy is `failing`. |
+| relay | It publishes the whole log again, under the same ids. An inbox drops each message that it already took. An application that subscribed later takes the history as new events. Identities go out in clear text, also those of subjects erased since. |
+| process manager | It forgets each run, and reads the log to the head with its reactions turned off. No event gets a reaction until the replay ends, also an event appended during it. A timer that was due in that time is dropped, unless its job is still in the queue. |
+| read model | It calls `reset/0`, and reads the whole log again. |
 
 ```bash
 mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>
 ```
-
-Read what a reset does before you run it:
-
-| Kind | What `--reset` does |
-| --- | --- |
-| policy | It reacts to each event from the start of the log. The keys stop a second accepted command. The unit decides again each command that it rejected before. A command that it accepts now runs its consumers, and its effects run. Each step holds the append lock, so the reset slows every append until it ends. |
-| relay | It publishes the whole log again, under the same ids. An inbox drops each message that it already took. An application that subscribed later takes the history as new events. Identities go out in clear text, also those of subjects erased since. |
-| process manager | It forgets each run, and reads the log again with its reactions turned off. It issues nothing for the history. Each event after the failure gets no reaction, and each timer that was due in that time is dropped. |
-| read model | It calls `reset/0`, and reads the whole log again. |
 
 ## What can go wrong
 

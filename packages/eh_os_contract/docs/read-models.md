@@ -231,7 +231,12 @@ The result: `{:ok, rows}`, or `{:ok, row_or_nil}` for `returns: :one`. The secti
 ### Read your own write
 
 A read model delivered `:at_least_once` can be behind when a command returns. To wait for it,
-give the position of the receipt to the query, after the commit:
+give the position of the receipt to the query, after the commit.
+
+> **Do not wait inside your own transaction.**
+> If you dispatch in your own transaction, the read model cannot see the event yet. The query
+> waits for all of `wait:`, while the transaction holds the append lock. Every other append waits
+> too.
 
 <!-- not compiled: a call in the host's code -->
 ```elixir
@@ -242,11 +247,6 @@ EhOsContract.query(Loans, params, actor: actor, min_position: receipt.position)
 The query waits until the read model took that position. It looks again each 25 milliseconds,
 for up to `wait:` milliseconds (5000 if you leave it out). Then it returns
 `{:error, :not_caught_up}`. It does not answer from before the write.
-
-> **Do not wait inside your own transaction.**
-> If you dispatch in your own transaction, the read model cannot see the event yet. The query
-> waits for all of `wait:`, while the transaction holds the append lock. Every other append waits
-> too.
 
 ### Ask from outside the application
 

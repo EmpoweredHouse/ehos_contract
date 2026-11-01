@@ -140,7 +140,7 @@
   <text class="keyt" x="540" y="576">After 3 attempts on one event, the subscription stops.</text>
   <circle class="badge" cx="526" cy="596" r="6"/>
   <text class="badget" x="526" y="599" text-anchor="middle">6</text>
-  <text class="keyt" x="540" y="600">Dispatch inserts a job for each effect :at_least_once.</text>
+  <text class="keyt" x="540" y="600">In the transaction, dispatch inserts a job for each effect :at_least_once.</text>
   <circle class="badge" cx="526" cy="620" r="6"/>
   <text class="badget" x="526" y="623" text-anchor="middle">7</text>
   <text class="keyt" x="540" y="624">After 3 attempts, Oban discards the job.</text>

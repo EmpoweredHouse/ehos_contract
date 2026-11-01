@@ -103,8 +103,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   answer, and what occurs from a publication to the policy's command. Writing the modules of a read
   model and a query, and asking the query, is a how-to, `read-models.md`. Moving a subscription past an
   event, rebuilding a read model and replaying the log is a how-to, `subscriptions.md`. The pages now
-  say that a `failing` subscription never tries again, also after a restart, and that a reset of a
-  read model without `reset/0` fails. Links change: the sections of `reading.md` on the modules and on
+  say that a `failing` subscription does not try again by itself, and that a reset is not a retry:
+  what a reset of a policy, a relay and a process manager costs, and that it fails for a read model
+  without `reset/0`. Links change: the sections of `reading.md` on the modules and on
   asking a query are now in `read-models.md`.
 
 ### Fixed
