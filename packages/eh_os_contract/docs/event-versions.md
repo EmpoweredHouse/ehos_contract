@@ -8,10 +8,15 @@ each word in italics.
 
 The log keeps each event as it was written. The engine reads each row again with the declaration
 of today. It does this to fold the state of a unit, to give the event to a reaction, and to publish
-it. The rows never change. So a change to an event that has rows needs two things:
+it. The rows never change. So a change that old rows cannot read needs two things:
 
 - a new *schema version* of the event: `schema_version: 2`;
 - an *upcast*: a step that tells how a row of the version before reads in the new version.
+
+Some changes need no new version, because the engine can still read old rows. For example, you add
+an optional field. [Record the versions in the lock](#record-the-versions-in-the-lock) lists them.
+Other changes need a new event. [Know what a step cannot carry](#know-what-a-step-cannot-carry)
+lists them.
 
 ## Before you start
 
@@ -51,14 +56,17 @@ defmodule Concepts.EventVersions.Workshop do
 end
 ```
 
+<a id="know-what-a-step-cannot-carry"></a>
+
 ## Know what a step cannot carry
 
 The log keeps some fields beside the payload of a row, by their names. A step cannot carry them to
 a new name or a new value:
 
 - the identity of the unit;
-- each field that the log tags each row with: a required `:id`, `:date` or `:timestamp` that is
-  not personal. A boundary, a process and the report find rows by these fields.
+- each field that the log tags each row with. It is a required field that is not personal. Its
+  type is `:id`, `:date` or `:timestamp`, or a domain value that rests on one of them. A boundary,
+  a process and the report find rows by these fields.
 
 A change to one of these fields is a new event, not a new version. The compiler refuses a step that
 renames the identity, or that renames onto a tagged field or gives it a default
