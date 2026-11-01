@@ -76,8 +76,9 @@ renames the identity, or that renames onto a tagged field or gives it a default
 keep what they were written with:
 
 - a field that becomes personal, stops being personal, or is sealed by another identifier;
-- a personal field whose type changes, or a value with personal data whose shape changes. A sealed
-  value cannot be converted, and its seal cannot move;
+- a personal field whose type changes in a way that old rows cannot read, or a value with personal
+  data whose shape changes. No step converts a sealed value or moves its seal. An `:integer` made a
+  `:decimal` still reads, so the lock records it in place;
 - a required personal field that old rows can lack: added, made required, or added or changed
   inside a value. A default is clear text, and a function makes no seal;
 - an identifier that seals a field, given another `subject:`;

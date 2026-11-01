@@ -161,7 +161,8 @@ end
    **Result:** the module gets the behaviour of the unit, and the macros `emit/1` and `reject/1`.
    It can name the commands, the events and `State` of the unit by their short names.
 
-2. Write one callback for each command. It takes the command and the state. It returns `emit/1`
+2. Write one callback for each command. It takes the command and the state. A command that declares
+   `reads:` also gets the rows of those entities, as a third argument. The callback returns `emit/1`
    of the events that the command `emits:`, or `reject/1` of a rule that the command `rejects:`.
 
    ```elixir
@@ -236,7 +237,10 @@ An aggregate and a boundary write `evolve/2` by the same rules:
 
 - A unit needs `evolve/2` only when it declares a state, beyond its identity.
 - `evolve/2` folds each event into the state. It makes no decision.
-- It runs over each event that the stream will ever hold. So it does not raise on data.
+- It runs over each event of the stream that it folds, the oldest rows included. So it does not
+  raise on data.
+- Dispatch also decodes a row whose type no contract declares now, and raises on it. Do not remove an
+  event that the log holds rows of. `mix eh_os_contract.schema --check` refuses that.
 - Give it a clause for each event that the state is kept from, or a catch-all without a guard.
   Otherwise, the compiler refuses it ([`I3`](refusals.md#refusals-i)).
 - If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch decodes
@@ -270,6 +274,7 @@ A decision reads only these things:
 - the command;
 - its `__meta__`: the actor and `occurred_at`;
 - the state;
+- the rows of the entities that the command `reads:`;
 - the domain services.
 
 Do not read the database, the clock or another service in a callback. On a conflict, dispatch
