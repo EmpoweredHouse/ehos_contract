@@ -248,7 +248,7 @@ Dispatch holds each decision to the lifecycle, one event at a time.
   raises. It appends nothing.
 - Before the first event, the lifecycle allows only an event that `initial` names.
 - After the first event, it allows an event that no transition names, in each status that is not
-  final. The status does not change.
+  final. The status does not change. An `initial` event is not allowed again.
 - In a final status, it allows no event.
 - A recorded event that does not fit the lifecycle is appended. It does not change the status.
 
@@ -296,7 +296,9 @@ command gives its identity.
 If the condition of step 5 or 6 fails, dispatch reads and decides again. It decides at most 3
 times in all. Then it returns `{:error, :conflict}`.
 
-A boundary reads, and conflicts on, only the types of event that its `evolve/2` folds.
+A boundary reads, and conflicts on, only the types of event that its `evolve/2` names. This is true
+when each other clause is exactly `def evolve(state, _), do: state`.
+[Write the code that decides](deciding.md) tells the rule.
 
 ### Which one do I choose?
 
@@ -334,9 +336,10 @@ give each rule. These rules are about the declaration of a unit:
 - `aggregate-without-events`: a unit has no event, so it decides nothing.
 - `event-name-with-aggregate-prefix`: the name of an event starts with the name of its unit, for
   example `workshop_offered`. Name what occurred: `places_offered`.
-- `consults-without-match`: a boundary reads each event of a type.
+- `consults-without-match`: a boundary reads each event of a type. Under load, most of its
+  decisions are tried again, or refused with `:conflict`.
 - `core-unit-records-only`: a unit of a core subdomain has no command that can be refused. Its page
-  shows "Records only".
+  shows "Records only", in any context.
 - `core-command-never-refuses` (a notice): a command of a core subdomain rejects nothing.
 
 ## Next steps

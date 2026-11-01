@@ -219,8 +219,8 @@ end
   `b Lending.Contracts.Loans.Aggregates.Loan.open_loan` in IEx.
 
 Tell the engine where your implementations are: `config :eh_os_contract, applications: [:lending]`.
-A unit whose events are all recorded needs no implementation if its state is only its identity. If it
-keeps more state, its implementation has only `evolve/2`, to fold the recorded events.
+A unit whose events are all recorded needs no implementation: nothing decides it, so dispatch never
+folds its state. It needs one only for an upcast step by a function.
 [Write the code that decides](deciding.md) tells more.
 
 <a id="which-module-names-which"></a>

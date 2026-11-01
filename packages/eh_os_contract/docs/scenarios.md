@@ -291,8 +291,8 @@ The expected events must be among the decided events, **in the same order, as a 
 Other events can come between them. Each event has at least the fields that its data names. So a
 scenario about one rule does not fail when the decision gets one more event.
 
-- An event outside the `emits:` of the command fails the scenario.
-- An event that the lifecycle does not allow from the status fails the scenario.
+- An event outside the `emits:` of the command fails the scenario, whatever the scenario expects.
+- An event that the lifecycle does not allow from the status also fails it, whatever it expects.
 - `rejected` passes only on a rejection on exactly that rule.
 
 ### A reaction

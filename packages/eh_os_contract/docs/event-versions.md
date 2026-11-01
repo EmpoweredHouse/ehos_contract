@@ -73,12 +73,12 @@ a new name or a new value:
 - each field that the log tags each row with: a required `:id`, `:date` or `:timestamp` that is
   not personal. A boundary, a process and the report find rows by these fields.
 
-A change to one of these fields is a new event, not a new version. The compiler refuses a step
-that renames such a field, or renames onto it, or gives it a default
+A change to one of these fields is a new event, not a new version. The compiler refuses a step that
+renames the identity, or that renames onto a tagged field or gives it a default
 ([`U3`](refusals.md#refusals-u)).
 
-The engine also refuses these changes with a step, because the rows keep what they were written
-with:
+[The lock](#record-the-versions-in-the-lock) refuses the changes below, even with a step. The rows
+keep what they were written with:
 
 - a field that becomes personal, stops being personal, or is sealed by another identifier;
 - a personal field whose type changes, or a value with personal data whose shape changes. A sealed
@@ -176,6 +176,8 @@ refuses the row, and names the step but never a value, when the function did one
 - It left a field that the log tags rows with different from the field the row was written with.
   A new required `:id` is such a field. That change is a new event.
 - It raised, threw or exited, or returned something that is not a map.
+
+<a id="record-the-versions-in-the-lock"></a>
 
 ## Record the versions in the lock
 

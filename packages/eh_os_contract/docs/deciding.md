@@ -195,8 +195,8 @@ other status, before the callback runs.
 
 ## Write the module of a boundary
 
-A boundary has the same callbacks as an aggregate. It also needs `evolve/2`, because it keeps a
-state. Its module can name the events that it consults by their short names.
+A boundary has the same callbacks as an aggregate. Its module can also name the events that it
+consults by their short names. The seat declares a state, so its module also has `evolve/2`.
 
 ```elixir
 defmodule Concepts.Deciding.Seat do
@@ -221,15 +221,20 @@ defmodule Concepts.Deciding.Seat do
 end
 ```
 
-Write `evolve/2` by these rules:
+## Write `evolve/2`
 
-- A unit needs `evolve/2` only when its state has more than its identity.
+An aggregate and a boundary write `evolve/2` by the same rules:
+
+- A unit needs `evolve/2` only when it declares a state, beyond its identity.
 - `evolve/2` folds each event into the state. It makes no decision.
 - It runs over each event that the stream will ever hold. So it does not raise on data.
 - Give it a clause for each event that the state is kept from. Otherwise, the compiler refuses it
   ([`I3`](refusals.md#refusals-i)).
 - If you need a catch-all, write exactly `def evolve(state, _), do: state`. Then dispatch reads and
   decodes only the events that the other clauses name.
+- Another catch-all, such as one with a guard or one that changes the state, can fold any event. Then
+  dispatch reads and decodes each event of the unit. A boundary then also conflicts on each of
+  them.
 
 ## Write the module of a domain service
 
@@ -276,8 +281,9 @@ A refusal is an answer of the business. Anything else is a defect.
 The engine finds the implementations in the running code of the applications in its
 configuration. Each declaration has one module or none ([`X8`](refusals.md#refusals-x)).
 
-A unit needs no module when each of its events is `recorded_by:` and its state is only its
-identity. If it keeps more state, its module has only `evolve/2`, to fold the recorded events.
+A unit needs no module when each of its events is `recorded_by:`. Nothing decides such a unit, so
+dispatch never folds its state. It needs a module only when an upcast of its events names a
+function ([Change an event that already has rows](event-versions.md)).
 
 `mix eh_os_contract.check` tells what is missing. [The rules of the check](rules.md) give each
 rule:
