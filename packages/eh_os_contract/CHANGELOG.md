@@ -104,6 +104,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   more state than its identity** (#517). Dispatch never folds such a unit, and the check asks for no
   module. It needs a module only for an upcast step by a function. That module then has `evolve/2`
   if the unit keeps state.
+- **`mix eh_os_contract.schema`'s documentation said that a personal field may never change its type**
+  (#517). A change that old rows still read, an `:integer` made a `:decimal`, is recorded in place, as
+  for any field. Its list of tagged fields now names a domain value resting on an `:id`, a `:date` or
+  a `:timestamp` too. `docs/cli.md` follows.
 - **The installation never said that Oban must run the queue `:events`** (#517). Without it, the jobs of
   the effects delivered `:at_least_once` and of the timers of process managers wait in the table: no
   effect runs, and no timer fires. `docs/getting-started.md`
