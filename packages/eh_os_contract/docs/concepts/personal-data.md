@@ -153,8 +153,8 @@ An erasure deletes the data key from the database. It does not delete it from yo
   read the field as erased.
 - A backup that is older than an erasure holds the data key of the subject, and no record of the
   erasure. If you restore it, the engine reads the personal data of the subject again, and accepts
-  new personal data for it. Keep a record of each erasure outside the database. After a restore,
-  call `erase/3` again for each erasure after the backup, before the application takes requests.
+  new personal data for it. [Restore a backup older than an erasure](#restore-a-backup-older-than-an-erasure)
+  tells what to do.
 - You can keep the table of data keys out of the backups of the log, so that no backup holds a data
   key. Then you cannot restore the personal data from those backups: the engine raises on it.
 
@@ -169,6 +169,26 @@ An erasure also does not reach these copies:
   `--reset` rebuilds it, and the replay forgets.
 - An effect that already sent personal data to an external system, such as a text message gateway,
   cannot take it back.
+
+<a id="restore-a-backup-older-than-an-erasure"></a>
+
+### Restore a backup older than an erasure
+
+A restored backup can hold queued effect jobs and subscriptions that are behind. If they run, they
+can read the personal data of an erased subject and send it out. So repeat the erasures before
+anything reads the log.
+
+1. Keep a record of each erasure outside the database. Write the type and the id of the subject, the
+   time, and who asked. Write nothing personal in it. Write the record before you call `erase/3`.
+2. After the restore, start the application without its consumers: with
+   `config :eh_os_contract, subscriptions: :manual`, with `queues: false` for Oban, and without its
+   endpoint.
+3. Call `erase/3` for each erasure in the record that is newer than the backup.
+4. Start the application with its normal configuration.
+
+**Result:** the engine deletes the restored data keys and records the erasures again. The read
+models delivered `:in_transaction` forget the subjects at once. The other read models forget them
+when they read the events of the erasures, after step 4.
 
 ## An example
 

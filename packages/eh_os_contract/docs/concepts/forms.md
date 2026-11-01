@@ -253,21 +253,20 @@ def error_message({_message, opts}) do
 end
 ```
 
-`refused/3` puts no error on the changeset for a refusal that belongs to no field. Tell the person
-about it from the reason. The last clause leaves a refusal that the form already shows:
+`refused/3` puts an error on the changeset only for a problem of a field and for a rejection. Tell
+the person about each other refusal from its reason. The first two clauses leave what the form
+already shows:
 
 <!-- not compiled: functions of the host's LiveView -->
 ```elixir
+defp notice(socket, {:invalid, _problems}), do: socket
+defp notice(socket, %EhOsContract.Rejection{}), do: socket
+
 defp notice(socket, reason) when reason in [:missing_capability, :unscoped_grant, :outside_scope],
-  do: put_flash(socket, :error, "You cannot issue this invoice")
+  do: put_flash(socket, :error, "You cannot issue this invoice. Ask for access.")
 
-defp notice(socket, :idempotency_key_reused),
-  do: put_flash(socket, :error, "This form was already sent")
-
-defp notice(socket, {:not_supplied, _field}),
-  do: put_flash(socket, :error, "Try again in a moment")
-
-defp notice(socket, _shown_on_the_form), do: socket
+defp notice(socket, _other),
+  do: put_flash(socket, :error, "The invoice was not issued. Try again.")
 ```
 
 | Error | When |
@@ -387,7 +386,7 @@ input that is not there. If a command has a field with the name `base`, the fiel
 - a field that the host did not supply.
 
 The page tells the person about them from the reason that `dispatch/3` returned, as `notice/2`
-above does.
+above does. `EhOsContract.refusal/0` lists each reason.
 
 ## Next steps
 
