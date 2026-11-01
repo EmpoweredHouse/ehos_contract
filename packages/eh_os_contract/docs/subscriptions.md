@@ -124,7 +124,7 @@ event.
    | read model delivered `:at_least_once` | `--skip` | The rows never get the event. |
    | read model delivered `:in_transaction` | `--reset` only, never `--skip` | It fails only while it is rebuilt. A skip ends the rebuild at that event. The rows never get the events that the rebuild did not read yet. |
    | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
-   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. |
+   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. If it failed during such a replay, a skip ends the replay, and it reacts to the rest of the log. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
    > **Only a reset undoes a skip.**
@@ -227,9 +227,10 @@ mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>
 
 ## What can go wrong
 
-**`<key> is not failing, so there is nothing to skip`.** The subscription is not `failing`, so it
-needs no skip. Run the task without options to see its status. A `stale` read model may still
-need a rebuild: [Rebuild a read model](#rebuild-a-read-model).
+**`<key> is not failing, so there is nothing to skip`.** The subscription is not `failing`, or the
+key is wrong. Run the task without options to see the keys and the status of each. A
+subscription that is not `failing` needs no skip. If a read model is `stale`, rebuild it:
+[Rebuild a read model](#rebuild-a-read-model).
 
 **`<key> defines no reset/0, so its rows cannot be emptied and it cannot be reset`.** Add `reset/0`
 to the module, and deploy it.
