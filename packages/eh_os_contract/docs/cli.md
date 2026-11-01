@@ -331,9 +331,9 @@ refuses, writing nothing, when:
     field changes its type otherwise than in place (an `:integer` made a `:decimal` still
     reads, and is recorded in place), or a value holding personal data its shape; a required
     personal field, at any depth, is one old rows may lack; an identifier that seals a field
-    changes its `subject:`; or a field the log tags rows with (a required,
-    non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one) was not tagged so under that name in
-    the version before. Inside a domain value too. No step carries those: rows already
+    changes its `subject:`; or a field the log tags rows with (a required, non-personal
+    `:id`, `:date` or `:timestamp`, or a domain value resting on one) was not tagged so
+    under that name in the version before. Inside a domain value too. No step carries those: rows already
     sealed or tagged keep what they were written with. Declare a new event.
   * the file holds a version newer than the one declared, whose rows would not read.
   * the file holds an event no contract declares any more, renamed or removed, whose

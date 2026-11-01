@@ -61,7 +61,8 @@ that sends one is refused, so the decision can charge it without trusting the ca
 
 The `use` gives the module the behaviour the contract generated (`C.Aggregates.<Name>` or
 `C.Dcbs.<Name>`), the commands, events and `State` by their short names, and `emit/1` and
-`reject/1`. One callback per command, `(command, state) :: {:ok, [event]} | {:error,
+`reject/1`. One callback per command, `(command, state)`, or `(command, state, reads)` for a
+command with `reads:`, returning `{:ok, [event]} | {:error,
 %EhOsContract.Rejection{}}`. `evolve/2` only when the state declares more than the unit's
 identity.
 
@@ -90,7 +91,7 @@ or the event is returned around `emit/1`. Both are worth a look, and neither fai
 A decision may read five things: the command, including its `__meta__` (actor, `occurred_at`,
 correlation); the state `evolve/2` folded from the stream, and for a boundary also from what it
 consults; for a command with `reads:`, the entities it reads, the callback's third argument (a map
-with each entity under its `reads:` name, as the host's `EhOsContract.Entities` returned it); a
+with each entity under its `reads:` name, itself a plain map of the entity's declared fields); a
 domain service's function (`C.DomainServices.<Name>`, which holds its arguments and
 result to their types); and constants. **Nothing else**: no `Repo`, no HTTP, no
 `DateTime.utc_now/0`, no process dictionary, no ETS. The reasons are mechanical, not stylistic:
@@ -99,7 +100,8 @@ result to their types); and constants. **Nothing else**: no `Repo`, no HTTP, no
   again and decides again, up to three times (`EhOsContract.dispatch/3`, "Conflicts"). A side
   effect in a decision happens up to three times and is never rolled back with the append.
 - **A scenario is the decision's test**, and it gives only events and a command, and for a command
-  with `reads:` a `given_entity` of each entity (`EhOsContract.ScenarioCase`). A decision that reads the database is not what its scenarios test.
+  with `reads:` a `given_entity` of each entity (`EhOsContract.ScenarioCase`). A decision that
+  reads the database is not what its scenarios test.
 - **The log is the truth.** A decision that depends on a table outside the log decides differently
   on replay, and nothing records why.
 
