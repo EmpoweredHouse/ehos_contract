@@ -81,7 +81,7 @@ defmodule EhOsContractHost.MixProject do
       # reasoning as `:telemetry` above. Not `only: :test`, which Mix refuses for a
       # dependency `:eh_os_contract_auth` declares for every environment; `runtime:
       # false` as there, so it is not started with the host.
-      {:jsv, "~> 0.25.0", runtime: false},
+      {:jsv, "~> 0.26.2", runtime: false},
       # The test material's units are tried on legal histories of their contracts
       # (`EhOsContract.PropertyCase`, plan DD, PC2), which exists only where StreamData is.
       {:stream_data, "~> 1.1", only: :test}
