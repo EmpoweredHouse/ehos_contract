@@ -367,7 +367,7 @@ end
   and the personal fields of this example.
 - [Authorization](authorization.md): how a credential becomes an actor, and how a scope is
   checked.
-- [Reactions](reactions.md): the effects that call an external system.
+- [What is a reaction?](reactions.md): the effects that call an external system.
 - [The compile refusals](refusals.md#refusals-d): each refusal of a domain, and of a contract
   against its domain ([`X`](refusals.md#refusals-x)).
 - [The rules of the check](rules.md): each warning and notice of `mix eh_os_contract.check`.

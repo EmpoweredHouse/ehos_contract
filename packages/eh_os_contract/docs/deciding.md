@@ -340,5 +340,5 @@ module, or name it with `implementations:` in `use EhOsContract.ScenarioCase`.
 - [What is a scenario?](scenarios.md): how the scenarios test the code.
 - [Change an event that already has rows](event-versions.md): what `evolve/2` reads when an event
   changes.
-- [Reactions](reactions.md): the code that takes the events.
+- [What is a reaction?](reactions.md): the code that takes the events.
 - [The compile refusals](refusals.md#refusals-i): each refusal of an implementation.

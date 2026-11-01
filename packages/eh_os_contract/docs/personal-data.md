@@ -225,6 +225,6 @@ still gives the customer id and the quote. Its `customer_phone` is `%EhOsContrac
   management service.
 - [What are actors, values, entities and external systems?](domain-data.md): the other declarations
   of a domain.
-- [Reading](reading.md): read models, and their `forget/2`.
+- [Write a read model and its query](read-models.md): a read model, and its `forget/2`.
 - [The compile refusals](refusals.md#refusals-f): each refusal of a field, personal fields
   included.

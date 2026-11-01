@@ -419,13 +419,13 @@ For other declarations, a missing scenario is a warning of `mix eh_os_contract.c
   invariant of a value that it breaks. For an integration, it shows what the outside system can write into the
   log.
 - `in-transaction-policy-fan-out`: a scenario shows a policy, delivered `:in_transaction`, that
-  issues more than one command. [Reactions](reactions.md) tells why.
+  issues more than one command. [What is a reaction?](reactions.md) tells why.
 
 ## Next steps
 
 - [What are the units that decide?](units.md): the invariants and the lifecycles that scenarios
   prove.
 - [Write the code that decides](deciding.md): the code that the scenarios of commands run.
-- [Reactions](reactions.md): the policies and process managers that scenarios run.
+- [What is a reaction?](reactions.md): the policies and process managers that scenarios run.
 - [The scenario reference](dsl/contract-scenario.md): each key of a scenario.
 - [The compile refusals](refusals.md#refusals-s): each refusal of a scenario.
