@@ -1,0 +1,1 @@
+CodeRabbit's review outside the diff of #546: three wordings checked against lib/ (dispatcher.ex idempotent/2 matches only accepted commands; supervisor.ex starts no inbox keeper without a configured bus; a relay starts at the head). Fixed as rewordings; no new claim beyond what the pages and the earlier reviews hold. Gate EXIT=0.
