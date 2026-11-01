@@ -122,7 +122,7 @@ event.
    | --- | --- | --- |
    | read model | `--reset`, if it has `reset/0` | It empties the rows and reads the whole log again, with the event. Until it ends, queries read part of the rows: [Rebuild a read model](#rebuild-a-read-model). |
    | read model delivered `:at_least_once` | `--skip` | The rows never get the event. |
-   | read model delivered `:in_transaction` | `--reset` only, never `--skip` | It fails only while it is rebuilt. A skip ends the rebuild at that event, so the rows never get the rest of the log. |
+   | read model delivered `:in_transaction` | `--reset` only, never `--skip` | It fails only while it is rebuilt. A skip ends the rebuild at that event. The rows never get the events that the rebuild did not read yet. |
    | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
    | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. A reset does not apply the event, and loses more. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
@@ -218,7 +218,7 @@ makes a consumer read the whole log, from position 0. Read what it does before y
 | policy | It reacts to each event from the start of the log. The keys stop a second accepted command. The unit decides again each command that it rejected before. A command that it accepts now runs its consumers, and its effects run. Each step holds the append lock, so the reset slows every append until it ends. You cannot undo it. If the policy now issues another command for an event, the reset stops with `:idempotency_key_reused`, and the policy is `failing`. |
 | relay | It publishes the whole log again, under the same ids. An inbox drops each message that it already took. An application that subscribed later takes the history as new events. Identities go out in clear text, also those of subjects erased since. |
 | process manager | It forgets each run, and reads the log to the head with its reactions turned off. No event gets a reaction until the replay ends, also an event appended during it. A timer that was due in that time is dropped, unless its job is still in the queue. |
-| read model | It calls `reset/0`, and reads the whole log again. |
+| read model | It calls `reset/0`, and reads the whole log again. Until it ends, queries read part of the rows, and for `:in_transaction` each append waits for the delete: [Rebuild a read model](#rebuild-a-read-model). |
 
 ```bash
 mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>
@@ -227,8 +227,7 @@ mix eh_os_contract.subscriptions --reset <contract id>:policy:<name>
 ## What can go wrong
 
 **`<key> is not failing, so there is nothing to skip`.** The subscription is not `failing`, so it
-needs no skip. Before you reset it, read what a reset does to its kind:
-[React to history](#react-to-history-or-publish-it-again).
+needs no skip and no reset. Run the task without options to see its status.
 
 **`<key> defines no reset/0, so its rows cannot be emptied and it cannot be reset`.** Add `reset/0`
 to the module, and deploy it.
