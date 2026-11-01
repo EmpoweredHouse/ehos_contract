@@ -2,7 +2,7 @@
 
 This page tells how to write the table and the modules of a read model and a query. It also tells
 how the application asks the query. It is for a developer who implements a contract.
-[The glossary](glossary.md) defines each word in italics.
+[The glossary](glossary.md) defines the words of the contract.
 
 ## Before you start
 
@@ -224,14 +224,14 @@ EhOsContract.query(Loans, %Loans.Queries.LoansOfMember{member_id: member}, actor
 ```
 
 The result: `{:ok, rows}`, or `{:ok, row_or_nil}` for `returns: :one`. The section
-[What can go wrong](#what-can-go-wrong) lists each `{:error, reason}`.
+[What can go wrong](#what-can-go-wrong) lists the errors of `EhOsContract.query/3`.
 
 <a id="read-your-own-write"></a>
 
 ### Read your own write
 
 A read model delivered `:at_least_once` can be behind when a command returns. To wait for it,
-give the position of the receipt to the query:
+give the position of the receipt to the query, after the commit:
 
 <!-- not compiled: a call in the host's code -->
 ```elixir
@@ -242,6 +242,11 @@ EhOsContract.query(Loans, params, actor: actor, min_position: receipt.position)
 The query waits until the read model took that position. It looks again each 25 milliseconds,
 for up to `wait:` milliseconds (5000 if you leave it out). Then it returns
 `{:error, :not_caught_up}`. It does not answer from before the write.
+
+> **Do not wait inside your own transaction.**
+> If the application dispatches in its own transaction, the read model cannot take the event
+> yet. The query waits for all of `wait:`, while the transaction holds the append lock. Every
+> other append waits too.
 
 ### Ask from outside the application
 
@@ -286,7 +291,7 @@ model, in the number that `returns:` declares. Return the `Row` structs.
 module answered a row that the credential does not grant. The `where` of the query is wrong. The
 caller gets no row.
 
-**A query reads part of the rows.** The read model is `rebuilding`. Give `min_position:` to wait for
+**A query reads part of the rows.** The read model is being rebuilt. Give `min_position:` to wait for
 it.
 
 ## Next steps

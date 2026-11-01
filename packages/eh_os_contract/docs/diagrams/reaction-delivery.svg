@@ -97,7 +97,7 @@
   <rect class="knock" x="400" y="248" width="200" height="64" rx="6"/>
   <rect id="reaction-delivery-subscription" class="n-back" x="400" y="248" width="200" height="64" rx="6"/>
   <text class="name" x="500" y="276" text-anchor="middle">Subscription</text>
-  <text class="sub" x="500" y="294" text-anchor="middle">one event at a time</text>
+  <text class="sub" x="500" y="294" text-anchor="middle">reads in order</text>
 
   <!-- The subscription that stopped -->
   <rect class="knock" x="700" y="248" width="200" height="64" rx="6"/>
@@ -140,7 +140,7 @@
   <text class="keyt" x="540" y="576">After 3 attempts on one event, the subscription stops.</text>
   <circle class="badge" cx="526" cy="596" r="6"/>
   <text class="badget" x="526" y="599" text-anchor="middle">6</text>
-  <text class="keyt" x="540" y="600">In the transaction, dispatch inserts a job for each effect.</text>
+  <text class="keyt" x="540" y="600">Dispatch inserts a job for each effect :at_least_once.</text>
   <circle class="badge" cx="526" cy="620" r="6"/>
   <text class="badget" x="526" y="623" text-anchor="middle">7</text>
   <text class="keyt" x="540" y="624">After 3 attempts, Oban discards the job.</text>

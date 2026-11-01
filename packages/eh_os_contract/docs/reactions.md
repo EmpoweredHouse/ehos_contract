@@ -13,7 +13,7 @@ reaction beside its units, and a module of its own implements it:
 `use <Contract>, policy: :name`.
 
 A reaction takes the events of its own contract. It can also take the events of another contract
-of the same application, if its contract `consumes` them. A policy can also take an event of
+of the same domain, if its contract `consumes` them. A policy can also take an event of
 another application from the inbox. [How does an event reach another contract?](between-contracts.md)
 tells how.
 
@@ -217,7 +217,8 @@ reaction does.
 If a subscription fails on an event, it tries the event again, after a pause of up to 30 seconds.
 After 3 attempts, the status of the subscription is `failing`. It stops at that event.
 
-- A `failing` subscription does not try again. A restart of the host does not start it.
+- A `failing` subscription does not try again by itself. A restart of the host does not start it,
+  unless the declaration of a read model or a process manager changed.
 - It never skips the event by itself. A person decides what to do.
   [Repair or replay a subscription](subscriptions.md) tells how.
 
@@ -239,7 +240,7 @@ Use `:at_least_once` if a failure of the reaction must not fail the command. Thi
 that calls a system, issues many commands, or can be slow. An effect that calls an external system
 is always `:at_least_once`, because the engine cannot roll back a call.
 
-A reaction to an event of another context must say its delivery.
+A policy that takes an event of another context must say its delivery.
 [How does an event reach another contract?](between-contracts.md#delivery-across-contexts) tells
 why.
 
@@ -294,9 +295,10 @@ reaction does not react to history by itself.
 - **An effect has no position.** Dispatch inserts its job when it appends the event. The effect
   acts only on events appended after the deploy.
 
-To react to history, a person resets the subscription:
-[Repair or replay a subscription](subscriptions.md). A policy that reads the log again makes the
-same keys from each event. So it issues no accepted command two times.
+To make a new policy react to history, a person resets it:
+[Repair or replay a subscription](subscriptions.md). The policy makes the same keys from each event
+again, so it issues no accepted command two times. A reset of a process manager issues nothing for
+history.
 
 > **A change to a process manager forgets its runs.**
 > If you change its declaration, the engine marks it `stale` at the next boot. It then forgets every run and reads the log again, with its reactions turned off. It

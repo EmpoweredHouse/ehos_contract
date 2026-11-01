@@ -142,7 +142,7 @@ A query of a read model delivered `:at_least_once` can come before the read mode
 ## Which events can a read model take?
 
 A read model `projects` the events of its own contract, and the events that its contract
-`consumes` from another contract of the same application ([`P5`](refusals.md#refusals-p)).
+`consumes` from another contract of the same domain ([`P5`](refusals.md#refusals-p)).
 
 A read model takes only the events of this log. An event of another application arrives in an
 inbox, and only a policy takes it ([`D12`](refusals.md#refusals-d)). To show such an event, project

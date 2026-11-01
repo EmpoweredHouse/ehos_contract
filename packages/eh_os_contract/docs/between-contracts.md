@@ -89,8 +89,9 @@ A reference carries no event. It tells what a number means:
 
 - The pages link the field to the unit.
 - `mix eh_os_contract.check` counts the reference as a dependency of this context on the context
-  of the sibling. The context map relates the two, in the direction of the reference. If it does
-  not, the check warns.
+  of the sibling. The context map relates the two, in the direction of the reference. If no
+  relation is declared, the check warns. A relation in the other direction does not compile
+  ([`X11`](refusals.md#refusals-x)).
 - To react to what occurs to the visit, consume its events. To decide on them, consult them from a
   boundary.
 - A command does not read a unit of a sibling as it reads an entity, because the state of a unit
@@ -147,8 +148,9 @@ is no outbox table.
 
 - A step reads up to 100 events of the publication, and makes a message from each.
 - If the relay stops after step 2 and before step 3, it publishes the batch again, under the same
-  ids. So a message can arrive two times. It never arrives zero times, and never without its event
-  in the log.
+  ids. So a message can arrive two times. It does not arrive zero times, and never without its event
+  in the log. Two exceptions: a person skips the event on the relay, or a broker that keeps nothing,
+  such as `EhOsContract.Bus.Local`, restarts.
 - **It starts at the head of the log**, as a policy does. The events in the log when the
   publication is first deployed are history, and the relay does not publish them by itself. To
   publish them, a person resets it: [Repair or replay a subscription](subscriptions.md).
@@ -160,7 +162,8 @@ is no outbox table.
   a new relay at the head. What the old relay did not publish never
   leaves.
 - The relay sends each field as the log keeps it. A field that was personal in an older version
-  of the event leaves encrypted.
+  of the event leaves encrypted. An identity leaves in clear text, also after its subject is
+  erased.
 - If the relay raises on an event 3 times, it is `failing`, and it stops at that event.
 
 Configure the bus in the host:
@@ -195,11 +198,12 @@ never is. So the contract does not compile if one of them takes a subscribed eve
 
 - **One event, one reaction.** The row of the inbox has the key of the message. The inbox drops a
   second delivery of a message, and acknowledges it. If the publisher declares `idempotent_on:`, the
-  inbox also drops the same event published again with a new id. The inbox keeps its rows.
+  inbox also drops the same event published again with a new id. The inbox keeps its rows for good.
 - **A message that does not fit comes again.** The data must fit the fields of the subscribed
   event. If it does not, or the policy raises, the transaction rolls back. The inbox answers `:nack`, and the bus
   delivers the message again. Nothing is lost while you correct the declaration or the code. The
-  limit of the transport on deliveries stops a message that never succeeds.
+  limit of the transport on deliveries stops a message that never succeeds. `EhOsContract.Bus.Local`
+  has no limit: by default, it delivers such a message again each second.
 - **A rejection is an answer.** If the unit rejects the command of the policy, the inbox takes the
   message.
 - **The `delivery` of the policy does not apply.** The inbox runs the policy in the transaction
@@ -207,7 +211,8 @@ never is. So the contract does not compile if one of them takes a subscribed eve
 - **The policy gets the run.** The `__meta__` of the struct carries the correlation of the message.
   So what the subscriber decides joins the run of the publisher.
 - **Only what is published after the subscription arrives.** To get older events, ask their owner,
-  not the bus.
+  not the bus. If the publisher resets its relay, the whole log arrives again, and the inbox takes
+  each event that it did not take before.
 - **Without a bus, no inbox starts**, and no subscribed event arrives.
 
 A contract that subscribes asks for a capability: the published name without its version, and
