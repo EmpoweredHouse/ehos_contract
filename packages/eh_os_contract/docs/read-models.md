@@ -244,9 +244,9 @@ for up to `wait:` milliseconds (5000 if you leave it out). Then it returns
 `{:error, :not_caught_up}`. It does not answer from before the write.
 
 > **Do not wait inside your own transaction.**
-> If the application dispatches in its own transaction, the read model cannot take the event
-> yet. The query waits for all of `wait:`, while the transaction holds the append lock. Every
-> other append waits too.
+> If you dispatch in your own transaction, the read model cannot see the event yet. The query
+> waits for all of `wait:`, while the transaction holds the append lock. Every other append waits
+> too.
 
 ### Ask from outside the application
 
