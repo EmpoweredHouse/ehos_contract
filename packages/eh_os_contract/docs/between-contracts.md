@@ -150,7 +150,7 @@ is no outbox table.
 - If the relay stops after step 2 and before step 3, it publishes the batch again, under the same
   ids. So a message can arrive two times. It never arrives without its event in the log. It arrives
   zero times only in three cases:
-  - a person skips the event on the relay;
+  - a person skips the event on the relay, for example after the relay is `failing` at it;
   - the `publish` gets a new name;
   - a broker that keeps nothing, such as `EhOsContract.Bus.Local`, restarts.
 - **It starts at the head of the log**, as a policy does. The events in the log when the
@@ -202,9 +202,10 @@ never is. So the contract does not compile if one of them takes a subscribed eve
   second delivery of a message, and acknowledges it. If the publisher declares `idempotent_on:`, the
   inbox also drops the same event published again with a new id. The inbox keeps its rows for good.
 - **A message that does not fit comes again.** The data must fit the fields of the subscribed
-  event. If it does not, or the policy raises, the transaction rolls back. The inbox answers `:nack`, and the bus
-  delivers the message again. Nothing is lost while you correct the declaration or the code. The
-  limit of the transport on deliveries stops a message that never succeeds. `EhOsContract.Bus.Local`
+  event. If it does not, or the policy raises, the transaction rolls back. The inbox answers
+  `:nack`, and the bus delivers the message again. The limit of the transport on deliveries stops a
+  message that never succeeds. Correct the declaration or the code before the transport reaches that
+  limit, or the message does not come again. `EhOsContract.Bus.Local`
   has no limit: by default, it delivers such a message again each second.
 - **A rejection is an answer.** If the unit rejects the command of the policy, the inbox takes the
   message.

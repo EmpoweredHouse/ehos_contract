@@ -124,7 +124,7 @@ event.
    | read model delivered `:at_least_once` | `--skip` | The rows never get the event. |
    | read model delivered `:in_transaction` | `--reset` only, never `--skip` | It fails only while it is rebuilt. A skip ends the rebuild at that event. The rows never get the events that the rebuild did not read yet. |
    | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
-   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. A reset does not apply the event, and loses more. |
+   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. No event gets a reaction until the replay ends. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
    > **A skip cannot be undone, except by a reset.**

@@ -260,6 +260,11 @@ sent them:
 
 Both decode the parameters against the declaration, and then call `EhOsContract.query/3`.
 
+> **A parameter of a `GET` stays in logs.**
+> Browsers, proxies and servers can keep the URL, with its parameters. An erasure does not reach
+> these logs. If a parameter identifies a person, such as `member_id`, keep these logs as personal
+> data.
+
 <a id="what-can-go-wrong"></a>
 
 ## What can go wrong
