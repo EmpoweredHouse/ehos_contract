@@ -1,0 +1,5 @@
+Review of the answer to CodeRabbit's second review on #540 (06b5c6c0, fa402ecb, 3061aa41).
+Round 1 on 06b5c6c0 (code-review high, ehos-dev:voice; both foci): 10 findings (consumers that never reach the erasure, stale status, no position from erase/3, Oban started early, reset starting the endpoint, no release path, absolute result), all fixed in fa402ecb.
+Round 2 on fa402ecb: 6 findings (shortcut skipped the wait, reset needs mix and can start queues, failing read model dead end, which read models must catch up, rebuilding read model, what runs from step 3), all fixed in 3061aa41.
+Not filed: a public function answering whether every forgetting read model has passed a position (design, told to the user).
+Gate: mix check in sandbox/ EXIT=0 at 3061aa41.
