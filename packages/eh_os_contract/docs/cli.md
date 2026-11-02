@@ -318,9 +318,9 @@ The task reads and changes nothing outside `--output`.
   task gives it. So the pages of another domain in the same directory stay.
 - It never writes a page over a file without the marker, or through a symbolic link
   inside `--output`. Then it writes nothing, and names what is in the way.
-- It looks for these links one time, before it writes. It does not see a link that
-  another process makes during the run. So do not change `--output` while the task
-  runs.
+- It looks for these links and files one time, before it writes. If another process
+  makes a link or a file during the run, the task writes through it or over it,
+  also outside `--output`. So do not change `--output` while the task runs.
 - If `--output`, or a directory above it, is a symbolic link, the task follows it.
   It then writes and deletes pages in the directory that the link names.
 

@@ -63,14 +63,17 @@ defmodule EhOsContract.Vault do
 
   ## What does the engine check at boot?
 
-  If a contract declares a personal field and `c:check/0` of the vault returns an
-  error, the engine does not start. The engine does not try a wrap or an unwrap at
-  boot. With such a contract, a configured vault that does not
-  export `check/0` also stops the boot. So a vault with no master key stops the deployment, not the first
-  command with a personal field.
+  If a contract declares a personal field, the engine calls `c:check/0` of the vault
+  at boot. The engine does not start if it returns an error, or if the vault does not
+  export `check/0`. So the default vault with no master key stops the deployment, not
+  the first command with a personal field.
 
-  This check reads only the configured keys, not the data keys. It does not find a
-  data key whose master key you removed. The first read of that subject raises.
+  The engine does not try a wrap or an unwrap at boot. So a vault whose `c:check/0`
+  returns `:ok` starts, even if its wrap fails.
+
+  The check of the default vault reads only the configured keys, not the data keys.
+  It does not find a data key whose master key you removed. The first read of that
+  subject raises.
   """
 
   @typedoc "What names a master key, stored beside each data key it wraps."
