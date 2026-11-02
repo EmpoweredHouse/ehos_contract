@@ -1,0 +1,1 @@
+Documentation alone. CodeRabbit review 5737609729 (outside the diff) fixed in 15ba6766: the key reaches the log only for an accepted command (dispatcher.ex:1273). Gate EXIT=0 on 15ba6766; measure-prose 0 long.
