@@ -395,7 +395,7 @@ above does. `t:EhOsContract.refusal/0` lists these reasons. A rejection is an
 
 ## Next steps
 
-- [Authorization](authorization.md): how dispatch decides if the person can issue the command.
+- [How is a call authorized?](authorization.md): how dispatch decides if the person can issue the command.
 - [What are the units that decide?](units.md): the invariants of a unit, and the rejections.
 - [What are read models and queries?](reading.md): the queries that a search form asks.
 - [What are actors, values, entities and external systems?](domain-data.md): the values whose

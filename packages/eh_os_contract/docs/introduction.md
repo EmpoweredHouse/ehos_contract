@@ -141,7 +141,8 @@ the rest:
 The engine also does not supply these things:
 
 - **An identity.** An actor is an opaque subject with the capabilities that its verified
-  credential grants. [Authorization](authorization.md) tells how a credential becomes an actor.
+  credential grants. [How is a call authorized?](authorization.md) tells how a credential becomes
+  an actor.
 - **A message broker.** The library defines the bus, `EhOsContract.Bus`, and supplies only a local
   bus for tests and one node.
 - **An API layer.** The engine generates OpenAPI and AsyncAPI documents from the contract. It has no

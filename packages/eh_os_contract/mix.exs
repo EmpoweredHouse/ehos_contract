@@ -11,7 +11,7 @@ defmodule EhOsContract.MixProject do
   # writes every page into one directory, so a page in a subdirectory would link an image by a
   # path that is right in the repository and wrong in the HTML. `EhOsContract.Docs.concepts/0`
   # keeps the same list for the tests.
-  @concepts ~w(domain domain-data personal-data master-keys units deciding event-versions reactions reading read-models subscriptions forms between-contracts process outages conformance scenarios)
+  @concepts ~w(domain domain-data personal-data master-keys units deciding event-versions reactions reading read-models subscriptions forms between-contracts process outages conformance scenarios authorization scope authorizer calls)
   @concept_pages Enum.map(@concepts, &"docs/#{&1}.md")
   @description "Checks that deployed code does what the declared business process says it does."
 
@@ -53,8 +53,6 @@ defmodule EhOsContract.MixProject do
       deps: deps(),
       # `mix ehos_diagrams.gen [--check]`, in `:dev` only: the sandbox's gate runs the check
       # when the generator is fetched, and CI in a job of its own (#520).
-      # `docs/authorization.md` is left out of the documents that may hold no Mermaid block
-      # until its two blocks become diagrams (#517).
       ehos_diagrams: [
         sources: "docs/diagrams",
         out: "docs/img",
@@ -152,7 +150,6 @@ defmodule EhOsContract.MixProject do
         ] ++
           @concept_pages ++
           [
-            "docs/authorization.md",
             "docs/glossary.md",
             "docs/configuration.md",
             "docs/cli.md",
@@ -167,7 +164,7 @@ defmodule EhOsContract.MixProject do
         Introduction: ["README.md", "docs/introduction.md", "docs/getting-started.md"],
         Concepts:
           ["docs/contract.md"] ++
-            @concept_pages ++ ["docs/authorization.md"],
+            @concept_pages,
         Reference: [
           "docs/glossary.md",
           "docs/configuration.md",

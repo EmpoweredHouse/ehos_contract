@@ -252,7 +252,7 @@ EhOsContract.dispatch(Loans, command, actor: actor)
 
 If the unit accepts the command, the result is `{:ok, receipt}`. The receipt holds the events that the
 engine appended. If the unit rejects the command, the result is `{:error, %EhOsContract.Rejection{}}`,
-and the log gets no event. [Authorization](authorization.md) tells how a credential becomes an actor.
+and the log gets no event. [How is a call authorized?](authorization.md) tells how a credential becomes an actor.
 
 <a id="write-a-process-module"></a>
 
@@ -488,6 +488,7 @@ suspended card cannot borrow a copy.
 - [What is a process module?](process.md): runs, stages, promises and deadlines.
 - [The conformance report](conformance.md): what the report prints for each contract and process
   module.
+- [How is a call authorized?](authorization.md): the capabilities and roles that a contract gives.
 - [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The DSL reference: each key of [the domain](dsl/domain-dsl.md),
   [the contract](dsl/contract-dsl.md) and [the process module](dsl/process-dsl.md).

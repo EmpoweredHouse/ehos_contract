@@ -303,4 +303,4 @@ it.
 
 - [Repair or replay a subscription](subscriptions.md): rebuild the read model after a change.
 - [What is a scenario?](scenarios.md): how a scenario of a query runs.
-- [Authorization](authorization.md): the capabilities and grants that a query asks for.
+- [How is a call authorized?](authorization.md): the capabilities and grants that a query asks for.

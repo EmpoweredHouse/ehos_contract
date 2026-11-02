@@ -270,7 +270,7 @@ Send the command from your own code, with an *actor*. An actor of a person carri
 Build an actor by hand only to try the engine, or in a test.
 `EhOsContract.Actor.credential/3` verifies nothing. In production, a verified credential gives the
 actor: `EhOsContract.call/3` and `EhOsContract.Plug` take one.
-[Authorization](authorization.md) tells how.
+[How is a call authorized?](authorization.md) tells how.
 
 <!-- not compiled: a call in the host's code -->
 ```elixir
@@ -374,7 +374,8 @@ says. [The command-line tasks](cli.md) list each task and its options.
   [a change to an event with rows](event-versions.md), [reactions](reactions.md), [reading](reading.md),
   [a read model and its query](read-models.md), [a subscription to repair](subscriptions.md),
   [forms](forms.md), [between contracts](between-contracts.md),
-  [process modules](process.md), [an outage to record](outages.md), [the conformance report](conformance.md)
-  and [scenarios](scenarios.md).
+  [process modules](process.md), [an outage to record](outages.md), [the conformance report](conformance.md),
+  [scenarios](scenarios.md), [authorization](authorization.md), [a scope](scope.md),
+  [an Authorizer of your own](authorizer.md) and [calls with a credential](calls.md).
 - [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):
   skills that write contracts by the rules of this engine.
