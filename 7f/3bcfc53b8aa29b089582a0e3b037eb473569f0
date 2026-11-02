@@ -1,0 +1,1 @@
+Doc-only fix for a CodeRabbit comment (no internal column in host docs); docs --check and ExDoc pass. Reviewed by the author inline.
