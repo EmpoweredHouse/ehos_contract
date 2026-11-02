@@ -1,0 +1,6 @@
+pre-pr-review of #517 step 6 (process pages), range origin/main..14c309d2.
+Correctness (code-review high, ehos-dev:voice, ehos-dev:diagrams, ehos-dev:elixir) and security/performance (ehos-dev:elixir; engineering:code-review not in this session, worked by .claude/review.md), two rounds each.
+R1 correctness: 12 fixed (broken anchor, outage-before-period, Met in all N, header lines, boundary in a period, lost R2/R3/R5 refusals, week reason, as_data now:/instance:, engine version, version day, duration line, link text and diagram key); 1 no change needed (hexdocs group, as earlier steps).
+R1 security: 6 fixed (boot warning, one observation suspends many runs, reason is plain text, backdated outage, cost without period, API resolver/403/no redaction, Clock.at scope).
+R2: fixed boot warning (rebuild forgets runs; JSON API as safe way), version day, which runs an observation suspends, Met in S of N, duration line, UTC day, Clock.at wording, week reason. Skipped, to file: promises judged on the period's events (issue A); report task moduledoc on what it boots (issue B).
+Gate: mix check EXIT=0 at e0fe88a6; ehos_diagrams.gen --check up to date; docs tests 0 failures. Notes: 517-step6-*.md in the session notes folder.
