@@ -11,7 +11,8 @@ defmodule EhOsContract.Auth.Testing do
           "clinic.record_payment" => fn token ->
             build_conn()
             |> put_req_header("authorization", "Bearer " <> token)
-            |> post("/api/commands/clinic.record_payment", %{visit_id: "visit-anna"})
+            |> put_req_header("content-type", "application/json")
+            |> post("/api/commands/clinic.record_payment", ~s({"visit_id": "visit-anna"}))
           end,
           # … one entry per capability the contracts declare
         })
