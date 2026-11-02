@@ -429,8 +429,7 @@ defmodule EhOsContract.Check.Catalog do
       id: "orphan-context-mapping",
       level: :warn,
       esdm: "esdm/modeling/orphan-context-mapping",
-      summary:
-        "A relation between two contexts, other than separate ways, is crossed by no reference.",
+      summary: "A relation other than `:separate_ways` is crossed by no reference.",
       text: """
       No contract of one context consumes a contract of the other, names an entity or a unit the
       other owns (`{:id, name}`) or uses a value it declares (`context:`), in either direction; for a relation to an external system, no contract
