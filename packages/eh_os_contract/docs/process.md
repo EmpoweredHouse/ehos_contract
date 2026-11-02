@@ -233,7 +233,7 @@ follows.
 `from`, `eventually` and `or_else` are events that the process module includes
 ([`R5`](refusals.md#refusals-r)). `within` accepts only seconds, minutes, hours and days. It
 refuses a calendar unit, such as a week, a month or a year ([`R6`](refusals.md#refusals-r)). The
-engine measures the time that passed, and a month has no fixed length. A window is from 0 up to
+engine measures a window in seconds, with no calendar, and a month has no fixed length. A window is from 0 up to
 100 years ([`R6`](refusals.md#refusals-r)).
 
 The window opens at the first `from` that the engine reads. A report with a period reads only the

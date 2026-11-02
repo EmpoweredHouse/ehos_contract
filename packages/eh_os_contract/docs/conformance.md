@@ -23,8 +23,11 @@ application, which keeps the state of the business.
 > **The task starts the whole application.**
 > Run it only with the code that is deployed. The task boots the host: it records a deployment,
 > and starts the subscriptions, the relays and Oban. So effects can call external systems from
-> where you run it. If your code differs from the deployed code, the recorded deployment changes
-> the answer to question 4, and the boundary of a changed promise.
+> where you run it. Your code can differ from the deployed code. Then the recorded deployment
+> changes the answer to question 4, and the boundary of a changed promise. The engine also at once
+> rebuilds each changed process manager, and each changed read model that has `reset/0`. A rebuilt
+> process manager forgets its runs. To read the report of a running host without this, use its
+> [JSON API](#the-dashboard).
 
 ```bash
 mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
@@ -64,7 +67,7 @@ So a report with a period judges a promise only on the events inside the period:
   inside the window.
 
 To judge each promise over the whole log, leave out `--since` and `--until`. The work of the report
-then grows with the log: it reads each included event of each run into memory.
+then grows with the log.
 
 ## The header of each section
 
@@ -76,7 +79,8 @@ Whether the deployed code does what the agreed process says.
 Computed by EhOsContract <engine version>.
 ```
 
-The period is "the whole log", "since <day>", "until <day>", or both days.
+The period is "the whole log", "since <day>", "until <day>", or both days. Each day is a date in
+UTC.
 
 ## The section of a contract
 
@@ -180,12 +184,12 @@ Each line after the header, in order:
 | Line | What it says |
 | --- | --- |
 | `PROCESS MODULE: <id>` | the `id:` of the process module |
-| `Version …` | a hash of the declarations, and the day that the engine first recorded the current deployment of this version. A deploy of new code under the same version moves the day. Without a recorded deployment: "not recorded as deployed". Then what changed since the previous version. |
+| `Version …` | a hash of the declarations, and the day that the engine first recorded the current deployment of this version. A change of the labels, or of the stored types of the included events, keeps the version but records a new deployment, and moves the day. Without a recorded deployment: "not recorded as deployed". Then what changed since the previous version. |
 | `PROCESS: <label>` | the `label:` of the process module |
 | `Accountable: …` | the label of the actor in `accountable`. No line without one. |
 | `Runs in this period: …` | the count of runs, and the correlation fields |
 | `Deadline: …` | the confirmed deadline. No line for an unverified deadline. |
-| the duration | "The agreed duration was kept in all N runs that finished", "…was exceeded in X of N runs that finished", or "No run finished in this period, so the agreed duration cannot be judged". Then the overdue runs: "N runs still open and already past it." No line if no run started in the period. |
+| the duration | "The agreed duration was kept in all N runs that finished", "…was exceeded in X of N runs that finished", or "No run finished in this period, so the agreed duration cannot be judged". Then the overdue runs: "N runs still open and already past it." No line if no run started in the period, or if the deadline is not confirmed. |
 | `Stages out of order in N runs:` | each pair of stages, as "Later before Earlier: N runs". No line if each run kept the order. |
 | `Rule: …` | one confirmed promise, in the labels of its events |
 | the verdict | see the next table, and then the qualifications |
@@ -195,7 +199,7 @@ The verdict of a promise is one sentence:
 | Case | Sentence |
 | --- | --- |
 | a run is violated | `BREACHED in V of N runs.` |
-| no run is violated, a run is pending | `Met in S of N, P still in progress.` |
+| no run is violated, a run is pending | `Met in S of N, P still in progress.` N also counts the suspended runs. |
 | no run is violated or pending | `Met in all N runs.` N also counts the suspended runs. |
 | no run to judge | `There was no run in this period on which this could be judged.` |
 | each run started before the promise changed | `No run in this period was judged under the rule as it now stands.` |
@@ -295,6 +299,8 @@ document of a process module has this shape:
 - `"duration"` is `null` if the process module has no confirmed deadline.
 - `"duration"` counts each run that started in the period: `within`, `exceeded`, `overdue` and
   `open` add up to `runs`.
+
+<a id="the-dashboard"></a>
 
 ## The dashboard
 

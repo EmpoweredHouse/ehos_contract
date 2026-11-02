@@ -145,8 +145,9 @@ adapter states.
 
 > **One observation can suspend many runs.**
 > Return `{:error, :unavailable}` only for an outage that you know of. An observation belongs to the
-> contract and the system, not to one run. It suspends each run whose window holds its moment, for
-> each customer. One short timeout that you record as an outage can hide a week of real violations.
+> contract and the system, not to one run. Take each promise that waits for the system. Each of its
+> runs that would be violated, and whose window holds the moment, is suspended instead. One short
+> timeout that you record as an outage can hide a week of real violations.
 
 The result: each `{:error, :unavailable}` adds one observation, at one moment, for the contract
 and the system.
@@ -190,8 +191,8 @@ only through `waits_on`. The engine records it all the same.
   scenario of a process module.
 - **In a test that uses the log**, run the code in `EhOsContract.Clock.at/2`. `observe/3` stamps
   the observation with `EhOsContract.Clock.now/0`, so the outage is at the moment that the test
-  sets, as the events are. `Clock.at/2` applies only in the process that calls it. An adapter that
-  runs in another process stamps the current time. `Clock.at/2` accepts only a time in UTC.
+  sets, as the events are. `Clock.at/2` applies only in the process that calls it. A call of
+  `observe/3` or `unavailable!/4` in another process stamps the current time. `Clock.at/2` accepts only a time in UTC.
 
 The result: the verdict of the promise is `:suspended` for a run whose window ended empty with the
 outage inside it.
