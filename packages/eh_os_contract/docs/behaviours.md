@@ -103,7 +103,7 @@ transport.
 9. The consumer acknowledges the message to the transport. After `:nack`, the
    transport delivers the message again later.
 
-[How does an event leave the application?](between-contracts.md#how-does-an-event-leave-the-application)
+[How does an event reach another contract?](between-contracts.md)
 tells the same path from the side of the contracts.
 
 ### What an adapter promises
@@ -535,8 +535,8 @@ implements this behaviour. Then name it in the configuration:
 ### Rotate a master key
 
 You rotate a master key in four steps, with three deploys.
-[Rotate a master key](master-keys.md#rotate-a-master-key) gives the result of each
-step.
+[Manage the keys and the backups of personal data](master-keys.md) gives the
+result of each step.
 
 Do not put the new key first in one deploy. If you do, the nodes with the old list
 cannot read what the nodes with the new list write, until the rollout ends.

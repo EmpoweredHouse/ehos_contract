@@ -385,7 +385,7 @@ Rewraps the data keys of the subjects with the current master key
 
 Rewraps each data key that an old master key wraps, with the current master key
 of the vault. Run it in step 3 of
-[a rotation](master-keys.md#rotate-a-master-key), before you remove the old key.
+[a rotation](master-keys.md), before you remove the old key.
 
 > **The task starts the whole application.**
 > Run it only with the code that is deployed. The task records a deployment, and
@@ -407,7 +407,8 @@ key that it used:
 > With the configuration of before the rotation, it wraps each data key with the old
 > key again, and ends without an error. Remove the old key only when the printed id
 > is the id of the new key, and each row of `eh_os_contract_subject_keys` names it.
-> [Rotate a master key](master-keys.md#rotate-a-master-key) gives each step.
+> [Manage the keys and the backups of personal data](master-keys.md) gives each step
+> of a rotation.
 
 - The task works in batches of 500 data keys. Each batch is a transaction of its
   own. If the task stops, run it again.
@@ -418,7 +419,8 @@ key that it used:
 - If the vault does not hold the key that wraps a row, the task raises. Put that
   key back in the list, deploy, and run the task again.
 - Do not remove the old key while the task raises.
-  [What can go wrong](master-keys.md#what-can-go-wrong) gives each message.
+  [Manage the keys and the backups of personal data](master-keys.md) gives each
+  message, and what to do.
 - An erasure of a subject in the current batch waits for that batch. It holds the
   append lock while it waits, so each other append waits too. Run the task at a
   quiet time.

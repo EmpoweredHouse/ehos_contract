@@ -34,7 +34,7 @@ defmodule EhOsContract.Bus do
   9. The consumer acknowledges the message to the transport. After `:nack`, the
      transport delivers the message again later.
 
-  [How does an event leave the application?](between-contracts.md#how-does-an-event-leave-the-application)
+  [How does an event reach another contract?](between-contracts.md)
   tells the same path from the side of the contracts.
 
   ## What an adapter promises
