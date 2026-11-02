@@ -1,0 +1,5 @@
+Step 7 of #517 (authorization pages). Gate EXIT=0 at 84964595; ehos_diagrams --check: 17 up to date; docs/prose tests 83/0.
+Fact check vs lib/ and eh_os_contract_auth: sign-in shipped by the auth package, key kept while fetches fail, 15-minute ceiling, request kind :record, bodies, what each answer writes, idempotency by type, recorded events unscoped - fixed.
+R1 correctness (code-review high, voice, diagrams, elixir): calls.md example+anchor (docs_test), Auth needs config, kind of actor decides, headers, D10, actor_is, accent, maintenance pages - fixed.
+R1 security (elixir; engineering:code-review absent): key window, example dropping decision rows, hand-built actor, unscoped command, :system bypass, 15 min, no-capability row, pin_keys, GET logs, INSERT/retention, server session - fixed; cookie session + Plug cross-site POST - skipped, to file.
+R2 both: pin_keys guard claim false, row-writing instruction, 'always asks', door, small points - fixed; unscoped-query check, pin_keys not bound to test - skipped, to file.
