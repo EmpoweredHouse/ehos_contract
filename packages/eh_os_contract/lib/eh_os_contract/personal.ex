@@ -655,22 +655,23 @@ defmodule EhOsContract.Personal do
 
         raise ArgumentError,
               "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
-                "unwrap the one that the engine tried, so the engine may not read the personal " <>
-                "data of their subjects. " <> remedy(kek_id, Vault.current())
+                "unwrap the data key that the engine tried, so the engine cannot read the " <>
+                "personal data of its subject. " <> remedy(kek_id, Vault.current())
     end
   end
 
   # The vault wraps with the id it cannot unwrap with, so its bytes under that id are
   # likely not the ones that wrapped the row; a rewrap would move nothing, since it
-  # skips the current key's rows. Only one row was tried, so the text does not say
-  # that putting old bytes back is the fix: data keys wrapped since may need the new.
+  # skips the current key's rows. Only one row was tried, so the text names that row's
+  # bytes, not those of every row under the id: rows wrapped since a change need the new.
   defp remedy(current, current) do
     "The vault wraps with #{inspect(current)}. Check that its bytes are the bytes that " <>
-      "wrapped these data keys. Data keys wrapped since a change of the bytes need the new bytes"
+      "wrapped that data key"
   end
 
   defp remedy(kek_id, current) do
-    "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped them. Then run " <>
+    "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped its data keys. " <>
+      "Then run " <>
       "`mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it"
   end
 
