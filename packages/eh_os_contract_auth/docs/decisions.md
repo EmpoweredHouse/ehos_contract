@@ -43,13 +43,14 @@ this row is the only record of it.
 
 A scope value is text that the caller sends, so the row does not always keep it as sent:
 
-- **The engine passes no value that a grant cannot hold.** Such a value is not text, has a NUL,
-  is not valid UTF-8, or is longer than 255 bytes. The row then has `NULL` in
-  `scope_value`, as for a call without the value. The call gets a refusal.
-- **The package digests a value that starts with `sha256:`.** It records `sha256:` and the hex
-  digest of the value. So each `sha256:` value in the table is a digest that the package wrote.
-- **Code can call `EhOsContract.Auth.authorize/2` directly.** Then the package also digests a
-  value that a text column cannot hold, or that is longer than 256 bytes.
+- **The engine passes no value that does not fit the type of the scope field.** Then the row has
+  `NULL` in `scope_value`. The call gets a refusal.
+- **The engine cannot decode some requests.** For these, it passes the value as sent. But it
+  passes no value with a NUL, no value that is not valid UTF-8, and no value over 255 bytes.
+- **The package records some values as a digest**: `sha256:` and the hex digest of the value.
+  It does this for a value with a NUL, a value that is not valid UTF-8, and a value over 256
+  bytes. It also does this for a value that starts with `sha256:`. So each `sha256:` value in the
+  table is a digest that the package wrote.
 
 So a value that an attacker made is refused like each other value, and does not make the request
 fail. The decision is the same: only the record changes.
@@ -77,13 +78,13 @@ the call is on:
   `EhOsContract.Plug` calls this way.
 - **If the caller wraps `EhOsContract.dispatch/3` in its own transaction and rolls it back**, the
   row goes too. A refusal then leaves no record at all.
-- **If the package cannot write the row, the call raises.** `EhOsContract.Plug` does not catch the exception, so
-  Phoenix answers 500. The
-  package makes no decision that it did not record.
+- **If the package cannot write the row, the call raises.** `EhOsContract.Plug` does not catch the
+  exception, so the server of the host answers 500. The package makes no decision that it did not
+  record.
 
-> **Do not roll back a transaction on a refusal.**
-> Your code can roll back its transaction for each `{:error, _}` of `dispatch/3`. Then each
-> refusal loses its only record. Call `dispatch/3` outside your transaction, or commit after a refusal.
+> **Do not call `dispatch/3` in a transaction that a refusal rolls back.**
+> If your code rolls back for each `{:error, _}`, each refusal loses its only record. Call
+> `dispatch/3` outside that transaction.
 
 ## What does it cost?
 
@@ -110,6 +111,7 @@ defmodule MyApp.PruneDecisions do
     WHERE decided_at < now() - interval '400 days'
     ORDER BY decided_at
     LIMIT 10000
+    FOR UPDATE SKIP LOCKED
   )
   """
 
@@ -122,7 +124,7 @@ defmodule MyApp.PruneDecisions do
 end
 ```
 
-Each batch is one short transaction. One `DELETE` of all old rows can take longer than the timeout
+Call `run/0` outside a transaction, so that each batch is one short transaction. One `DELETE` of all old rows can take longer than the timeout
 of the repo, and then it deletes nothing.
 
 ## Next steps

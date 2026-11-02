@@ -41,6 +41,9 @@ Run `mix deps.get`.
 
 **Result:** `mix deps.get` fetches the two packages.
 
+Declare `eh_os_contract` with the same `git:` and `sparse:` as the example. The package declares
+the engine in this form, and Mix refuses two different declarations of one dependency.
+
 ## 2. Configure the package
 
 Make the package the Authorizer of the engine, and give it the issuer and the audience:
@@ -115,16 +118,17 @@ The application does not start, and the message tells what to fix, in these case
 - `issuer` or `audience` is missing;
 - `issuer` is not an address that EHOS accepts as its issuer;
 - the address of the keys breaks the rules of step 2;
-- the child gets an option that it does not take, `url:` included;
+- the child gets an option that it does not take;
+- the child gets `url:`: the address of the keys comes only from the configuration;
 - `audience` is not `<application>/<environment>` with both parts, or its application part is not
   a name that EHOS gives an application;
 - the application part of `audience` is not exactly the `name:` of a domain with contracts;
 - another domain with contracts in the application declares a `publish`;
 - the domain of a contract is not loaded, so the package cannot compare its name.
 
-If EHOS does not answer, the application starts anyway, with the keys in its table. If the table
-has no key, as at the first start, the application refuses each credential with `:no_keys` until
-a fetch succeeds. It logs this at start.
+If EHOS does not answer, the application starts anyway, with the keys in its table. The table can
+have no key, as at the first start, or the application cannot read it. Then the application
+refuses each credential with `:no_keys` until a fetch succeeds. It logs this at start.
 
 ## 5. Verify a credential
 

@@ -71,7 +71,7 @@ An accepted credential becomes an `EhOsContract.Actor`:
 | Order | The check fails when | Refusal |
 | --- | --- | --- |
 | 1 | the token is not a JWT, the header has `crit` or no `kid`, or `alg` is anything but `"Ed25519"`, `"EdDSA"` included | `:bad_signature` |
-| 2 | the application holds no key: its table had none and no fetch succeeded, or the key process does not run | `:no_keys` |
+| 2 | the application holds no key: its table had none or could not be read, and no fetch succeeded, or the key process does not run | `:no_keys` |
 | 2 | no key in force has the thumbprint of `kid` | `:unknown_key` |
 | 3 | the signature does not match the key | `:bad_signature` |
 | 4 | `iss` is not the configured issuer | `:wrong_issuer` |
@@ -86,8 +86,7 @@ An accepted credential becomes an `EhOsContract.Actor`:
   without a restart.
 - **Each fetch closes the window for 30 seconds**: the scheduled fetch, an early fetch and a failed
   fetch. In that window, a credential with a key that the application does not hold yet gets
-  `:unknown_key`. The next scheduled fetch
-  comes within 5 minutes.
+  `:unknown_key`. After the window, the next unknown `kid` starts an early fetch again.
 - **A credential that claims a longer life is not one that EHOS issues**, whoever signed it. The
   limit is the 10 minutes of EHOS, and 5 minutes for clocks that do not agree. So a key that
   leaked cannot make a credential that works for a year.

@@ -12,8 +12,9 @@ engine verifies no credential. It asks an *Authorizer* what the actor of a crede
 package is that Authorizer for the credentials of EHOS. The engine does not depend on it.
 
 The package verifies each credential in the application, against the public keys of EHOS. It keeps
-the keys in the database of the application. After its first fetch, the application accepts
-credentials while EHOS is down, also after a restart. The package then writes a row for each decision, a refusal too.
+the keys in the database of the application. After one fetch succeeds, the application accepts
+credentials while EHOS is down, also after a restart. The package then writes a row for each
+decision, a refusal too.
 
 The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
 defines each word of the contract language that these pages use. The words of the platform, such as

@@ -33,10 +33,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   Hexdocs shows the three pages. The pages and the doc of `EhOsContract.Auth.Plug` now say that
   `www-authenticate` is `Bearer error="invalid_token"` for a refused credential. The pages also say
   that a recorded event gets a decision row too, and that `verify/2` does not read `iat` or `jti`.
-  A scope value that the engine cannot pass on, such as one past 255 bytes, is recorded as `NULL`,
-  not as its digest. A host's own Authorizer that refuses first leaves no row, and a rollback of
-  the caller's transaction removes the record of a refusal. The retention example now deletes in
-  batches. Links change: `#installation`, `#wiring-it`,
+  They say which scope values a row records as `NULL` and which as a digest, that a host's own
+  Authorizer that refuses first leaves no row, and that a rollback of the caller's transaction
+  removes the record of a refusal. The retention example now deletes in batches. Links change: `#installation`, `#wiring-it`,
   `#deciding-and-recording-every-decision`, `#over-http` and `#the-credential` of the README are
   now the three pages. The other sections of the README stay, and move in later pull requests.
 
