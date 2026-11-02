@@ -150,6 +150,8 @@ The contracts know nothing of the run. They decide loans and fines, and declare 
 ## How does the engine file an event into a run?
 
 The *correlation* is the list of fields that tell one run from another. `correlate` declares it.
+A module declares `correlate` once, with one field or more, and each field once
+([`R2`](refusals.md#refusals-r)).
 
 When the engine appends an event that a process module includes, it reads the correlation
 fields from the event. The values and the `id:` of the process module make the key of the run.
@@ -191,8 +193,8 @@ then does not find the runs that are already in the log.
 `{Contract, :event}` or `{Contract, [:event, …]}`:
 
 - The stages have an order: the order in the module.
-- A module has one stage or more, and each stage includes one event or more
-  ([`R3`](refusals.md#refusals-r)).
+- A module has one stage or more, and each stage includes one event or more. Each entry of
+  `include:` names a contract module and an event ([`R3`](refusals.md#refusals-r)).
 - An included event is one that the contract declares. It is not an event that the contract
   consumes or receives ([`X5`](refusals.md#refusals-x)).
 - `include:` makes no compile dependency on the contract.
@@ -202,7 +204,8 @@ then does not find the runs that are already in the log.
 The engine does not hold a run to the order of its stages. The report counts the runs that entered
 them out of order.
 
-**`ends_on`** lists the events that end a run. The first of them ends it. A run without one of
+**`ends_on`** lists the events that end a run. A module declares it once, and each event is one
+that a stage includes ([`R5`](refusals.md#refusals-r)). The first of them ends it. A run without one of
 these events is open. The contracts do not mark an event as the end of anything. A settled fine
 ends a loan only for this process.
 
@@ -228,9 +231,10 @@ follows.
 - **`source`** tells where the promise comes from, in the words of the business.
 
 `from`, `eventually` and `or_else` are events that the process module includes
-([`R5`](refusals.md#refusals-r)). A week or a month is not a fixed unit, so `within` does not accept
-it ([`R6`](refusals.md#refusals-r)). The engine measures the time that passed, and a month has no
-fixed length. A window is from 0 up to 100 years ([`R6`](refusals.md#refusals-r)).
+([`R5`](refusals.md#refusals-r)). `within` accepts only seconds, minutes, hours and days. It
+refuses a calendar unit, such as a week, a month or a year ([`R6`](refusals.md#refusals-r)). The
+engine measures the time that passed, and a month has no fixed length. A window is from 0 up to
+100 years ([`R6`](refusals.md#refusals-r)).
 
 The window opens at the first `from` that the engine reads. A report with a period reads only the
 events inside the period: [The conformance report](conformance.md#which-events-does-each-number-read)
@@ -241,14 +245,14 @@ tells what follows.
 A *verdict* is the result of one promise for one run at one moment. Only a run in which `from`
 occurred gets a verdict. Before `from`, the promise has nothing to judge.
 
-![The from event opens the window and makes the verdict pending; eventually or or_else inside the window satisfies it; at the end of the window it is suspended if a system it waits for was unavailable, and violated if not.](img/promise-verdicts.svg)
+![The from event opens the window and makes the verdict pending; eventually or or_else inside the window satisfies it; at the end of the window it is suspended if a system it waits for was unavailable inside the window, and violated if not.](img/promise-verdicts.svg)
 
 1. The first `from` of the run opens the window. The verdict is `pending`.
 2. `eventually` occurs inside the window. The verdict is `satisfied`, by the route `eventually`.
 3. `or_else` occurs inside the window. The verdict is `satisfied`, by the route `or_else`.
 4. The window ends, and neither event occurred. The verdict is `violated`.
 5. The window ends, and neither event occurred. But a system that the promise waits for was
-   unavailable inside the window. The verdict is `suspended`.
+   unavailable inside the window. The verdict is `suspended`, never `violated`.
 
 | Verdict | When | The report says |
 | --- | --- | --- |

@@ -20,6 +20,12 @@ application, which keeps the state of the business.
 
 ## The command
 
+> **The task starts the whole application.**
+> Run it only with the code that is deployed. The task boots the host: it records a deployment,
+> and starts the subscriptions, the relays and Oban. So effects can call external systems from
+> where you run it. If your code differs from the deployed code, the recorded deployment changes
+> the answer to question 4, and the boundary of a changed promise.
+
 ```bash
 mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
 ```
@@ -31,11 +37,12 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:
 | `--output` | a file | the report goes to the terminal |
 
 - A time without an offset stops the task with an error.
-- The task starts the application, because it reads the log through the repo.
 - The report has a section for each contract, then a section for each process module.
 - The moment of judgement is always the current time. The task has no option to change it.
 
 [The tasks](cli.md) give the task in full.
+
+<a id="which-events-does-each-number-read"></a>
 
 ## Which events does each number read?
 
@@ -53,14 +60,27 @@ So a report with a period judges a promise only on the events inside the period:
 - If the first `from` of a run is before the period, a later `from` in the period opens the window.
 - The report does not read an `eventually` or an `or_else` after the end of the period. A run kept
   after the period can show as violated.
-- Outages are not limited to the period. An outage in the window counts, also if it was before the
-  period.
+- Outages are not limited to the period. An outage after the end of the period counts, if it is
+  inside the window.
 
-To judge each promise over the whole log, leave out `--since` and `--until`.
+To judge each promise over the whole log, leave out `--since` and `--until`. The work of the report
+then grows with the log: it reads each included event of each run into memory.
+
+## The header of each section
+
+Each section, of a contract or of a process module, starts with three lines:
+
+```text
+CONFORMANCE REPORT — 2026-07-01 – 2026-07-31
+Whether the deployed code does what the agreed process says.
+Computed by EhOsContract <engine version>.
+```
+
+The period is "the whole log", "since <day>", "until <day>", or both days.
 
 ## The section of a contract
 
-The section of a contract has these parts, in this order:
+After the header, the section of a contract has these parts, in this order:
 
 | Part | What it says | Question |
 | --- | --- | --- |
@@ -136,6 +156,10 @@ end
 For July, its section can read like this. The numbers are an example:
 
 ```text
+CONFORMANCE REPORT — 2026-07-01 – 2026-07-31
+Whether the deployed code does what the agreed process says.
+Computed by EhOsContract <engine version>.
+
 PROCESS MODULE: conformance_example.loan
   Version <version>, deployed since 2026-06-12.
 
@@ -151,17 +175,17 @@ PROCESS: A loan, until the copy is back
     BREACHED in 2 of 38 runs. Of those that were met, 4 runs reached the fallback ending, which conforms to the rule.
 ```
 
-Each line, in order:
+Each line after the header, in order:
 
 | Line | What it says |
 | --- | --- |
 | `PROCESS MODULE: <id>` | the `id:` of the process module |
-| `Version …` | a hash of the declarations, and the day that a deployment with this version was first recorded. Without a recorded deployment: "not recorded as deployed". Then what changed since the previous version. |
+| `Version …` | a hash of the declarations, and the day that the engine first recorded the current deployment of this version. A deploy of new code under the same version moves the day. Without a recorded deployment: "not recorded as deployed". Then what changed since the previous version. |
 | `PROCESS: <label>` | the `label:` of the process module |
 | `Accountable: …` | the label of the actor in `accountable`. No line without one. |
 | `Runs in this period: …` | the count of runs, and the correlation fields |
 | `Deadline: …` | the confirmed deadline. No line for an unverified deadline. |
-| the duration | "The agreed duration was kept in all N runs that finished", "…was exceeded in X of N runs that finished", or "No run finished in this period, so the agreed duration cannot be judged". Then the overdue runs: "N runs still open and already past it." |
+| the duration | "The agreed duration was kept in all N runs that finished", "…was exceeded in X of N runs that finished", or "No run finished in this period, so the agreed duration cannot be judged". Then the overdue runs: "N runs still open and already past it." No line if no run started in the period. |
 | `Stages out of order in N runs:` | each pair of stages, as "Later before Earlier: N runs". No line if each run kept the order. |
 | `Rule: …` | one confirmed promise, in the labels of its events |
 | the verdict | see the next table, and then the qualifications |
@@ -172,7 +196,7 @@ The verdict of a promise is one sentence:
 | --- | --- |
 | a run is violated | `BREACHED in V of N runs.` |
 | no run is violated, a run is pending | `Met in S of N, P still in progress.` |
-| each run is satisfied | `Met in all N runs.` |
+| no run is violated or pending | `Met in all N runs.` N also counts the suspended runs. |
 | no run to judge | `There was no run in this period on which this could be judged.` |
 | each run started before the promise changed | `No run in this period was judged under the rule as it now stands.` |
 
@@ -213,6 +237,7 @@ to a promise that is no longer declared:
 - A run whose first `from` is before the boundary is not counted among the verdicts. The report
   gives a count of these runs, with the date of the boundary.
 - A run whose first `from` is at or after the boundary gets a verdict under the new promise.
+- In a report with a period, the first `from` is the first one inside the period.
 - A promise that a deploy adds is not a change.
 - A changed deadline has no boundary. The report measures each run against the deadline of today.
 
@@ -228,7 +253,7 @@ document of a process module has this shape:
   "report": {
     "process": "conformance_example.loan",
     "module": "Concepts.Conformance.Processes.Loan",
-    "engine": "0.13.2",
+    "engine": "…",
     "period": {"since": "2026-07-01T00:00:00Z", "until": "2026-07-31T23:59:59Z"},
     "deployment": {"process": "…", "deployed": {"version": "…", "wiring_version": "…", "since": "…"}, "changed": null},
     "processes": [
@@ -280,6 +305,10 @@ Its JSON API, which the host mounts with `eh_os_contract_api`, gives the documen
 `GET <path>/conformance?process=<id>`, with `since` and `until` if necessary. A request that names
 both `contract` and `process` is refused as a bad request.
 
+The resolver of the host decides who can call the API, as for the dashboard. A caller that the
+resolver refuses gets 403. The document is not redacted: it shows the volume of the business, with
+counts and dates.
+
 ## The functions
 
 | Function | Gives |
@@ -291,8 +320,9 @@ both `contract` and `process` is refused as a bad request.
 | `EhOsContract.Trace.judge/3` | the verdicts for events that you give, with no database |
 | `EhOsContract.StageOrder.evaluate/2` | the count of runs out of order, and the pairs of stages |
 
-Each function except `Trace.judge/3` takes `since:` and `until:`. `report/2`, `promise_verdicts/2`
-and `Trace.evaluate/3` also take `now:`, the moment of judgement. `Trace.judge/3` requires `now:`.
+Each function except `Trace.judge/3` takes `since:` and `until:`. `report/2`, `as_data/2`,
+`promise_verdicts/2` and `Trace.evaluate/3` also take `now:`, the moment of judgement.
+`Trace.judge/3` requires `now:`. `Trace.evaluate/3` also takes `instance:`, the key of one run.
 
 ## Next steps
 

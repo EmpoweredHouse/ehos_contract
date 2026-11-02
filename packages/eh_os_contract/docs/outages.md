@@ -141,8 +141,12 @@ end
   such as `{:error, :timeout}`.
 
 An outage removes a violation from the report. So the engine records only an outage that your
-adapter states. To count a timeout as an outage, return `{:error, :unavailable}` for it in the
-adapter.
+adapter states.
+
+> **One observation can suspend many runs.**
+> Return `{:error, :unavailable}` only for an outage that you know of. An observation belongs to the
+> contract and the system, not to one run. It suspends each run whose window holds its moment, for
+> each customer. One short timeout that you record as an outage can hide a week of real violations.
 
 The result: each `{:error, :unavailable}` adds one observation, at one moment, for the contract
 and the system.
@@ -156,8 +160,13 @@ If your code learns of an outage in another way, record it directly:
 EhOsContract.Dependency.unavailable!(Concepts.Outages.Contracts.Loans, :catalogue, "status page: down")
 ```
 
-The third argument is the reason, and it is optional. A fourth argument gives the moment of the
-outage. Without it, the moment is `EhOsContract.Clock.now/0`.
+The third argument is the reason, and it is optional. Write a fixed description in it, never an
+error or a response of the system. The engine keeps the reason as plain text, and an erasure does
+not reach it.
+
+A fourth argument gives the moment of the outage. Without it, the moment is
+`EhOsContract.Clock.now/0`. A moment in the past changes the verdicts of runs that a report already
+judged.
 
 The result: the engine records one observation, as in step 2.
 
@@ -181,7 +190,8 @@ only through `waits_on`. The engine records it all the same.
   scenario of a process module.
 - **In a test that uses the log**, run the code in `EhOsContract.Clock.at/2`. `observe/3` stamps
   the observation with `EhOsContract.Clock.now/0`, so the outage is at the moment that the test
-  sets, as the events are. `Clock.at/2` accepts only a time in UTC.
+  sets, as the events are. `Clock.at/2` applies only in the process that calls it. An adapter that
+  runs in another process stamps the current time. `Clock.at/2` accepts only a time in UTC.
 
 The result: the verdict of the promise is `:suspended` for a run whose window ended empty with the
 outage inside it.
