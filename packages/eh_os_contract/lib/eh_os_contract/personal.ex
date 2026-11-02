@@ -662,8 +662,8 @@ defmodule EhOsContract.Personal do
 
   # The vault wraps with the id it cannot unwrap with, so its bytes under that id are
   # likely not the ones that wrapped the row; a rewrap would move nothing, since it
-  # skips the current key's rows. Only one row was tried, so the text names that row's
-  # bytes, not those of every row under the id: rows wrapped since a change need the new.
+  # skips the current key's rows. Only one row was tried, so the text asks for the bytes
+  # of that row, not of every row under the id: rows wrapped since a change need the new.
   defp remedy(current, current) do
     "The vault wraps with #{inspect(current)}. Check that its bytes are the bytes that " <>
       "wrapped that data key"
@@ -671,8 +671,7 @@ defmodule EhOsContract.Personal do
 
   defp remedy(kek_id, current) do
     "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped its data keys. " <>
-      "Then run " <>
-      "`mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it"
+      "Then run `mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it"
   end
 
   defp data_keys(1), do: "1 data key is"

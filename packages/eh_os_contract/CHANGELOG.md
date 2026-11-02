@@ -107,7 +107,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   does not unwrap, it raises with the id of that master key and the count of its data keys. Before,
   the vault checked only its configured keys. A host that removed a master key that still wraps data
   keys, or changed the bytes of a key and kept its id, started, and the first read of each such
-  subject raised. Such a host now stops at boot: put the key back, and run
+  subject raised. Such a host now stops at boot, unless the data key that the engine tries still
+  unwraps, as one from after a change of bytes does: put the key back, and run
   `mix eh_os_contract.rewrap --expect <id of the current key>` before you remove it. If the data
   keys of a restored backup name a destroyed master key, the engine does not start either.
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
