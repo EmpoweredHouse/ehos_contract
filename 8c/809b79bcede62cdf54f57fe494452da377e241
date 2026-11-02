@@ -1,0 +1,1 @@
+Documentation alone (docs/master-keys.md): the example key id checked against MyApp.KmsVault.current/0 on the same page; test/docs_test.exs EXIT=0. From CodeRabbit's comment on #572.
