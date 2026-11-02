@@ -247,7 +247,11 @@ one does not unwrap, the engine does not start, and raises with this message:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| `… wrapped by master key …, and the vault cannot unwrap with that key` | You removed a master key that still wraps data keys, or you changed the bytes of a key and kept its id. | Put that key back in the list, and deploy. Then run the rewrap before you remove the key. |
+| `… wrapped by master key …, and the vault cannot unwrap with that key` | You removed a master key that still wraps data keys, or you changed the bytes of a key and kept its id. | Put that key back in the list, with the bytes that wrapped the data keys, and deploy. Then run the rewrap before you remove the key. |
+
+The engine checks one data key of each master key, not each data key. A master key that you
+destroyed cannot come back. If you restore a backup that is older than the rewrap, its data keys
+name the destroyed key, and the engine does not start.
 
 A destroyed master key cannot unwrap a data key that it wraps, also in a backup. Before you destroy
 it, make sure that you do not need to restore such a backup.

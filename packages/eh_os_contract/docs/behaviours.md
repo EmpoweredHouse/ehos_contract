@@ -586,8 +586,13 @@ start. Its error gives the id of that master key and the count of its data keys.
 This occurs when you remove a master key that still wraps data keys, or when you
 change the bytes of a key and keep its id.
 
-To start again, put that master key back in the vault, and deploy. Then rewrap
-its data keys with `mix eh_os_contract.rewrap` before you remove it.
+To start again, put that master key back in the vault, with the bytes that wrapped
+its data keys, and deploy. To remove it, first run
+`mix eh_os_contract.rewrap --expect <id of the current key>`.
+
+A master key that you destroyed cannot come back. While a data key names it, the
+engine does not start. This occurs when you restore a backup that is older than the
+rewrap. The engine gives no way to start past this check.
 
 The engine does not try a wrap at boot. So a vault whose `c:EhOsContract.Vault.check/0` returns `:ok`
 starts, even if its wrap fails. The engine unwraps one data key of each master
@@ -613,6 +618,10 @@ wrapped key does not unwrap in the row of another subject.
 Unwraps a key that `c:EhOsContract.Vault.wrap/2` returned, with the master key that `kek_id` names and
 the same `context`. Returns `:error` if the vault does not hold that master key, or
 if the context or the wrapped key is not the same.
+
+The engine also calls it at boot, one time for each master key that a stored data
+key names. At boot, `:error` stops the engine. If the vault cannot answer now, for
+example because a key management service is down, raise. Do not return `:error`.
 
 ```elixir
 @callback current() :: EhOsContract.Vault.kek_id()

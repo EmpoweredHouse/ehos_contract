@@ -108,7 +108,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the vault checked only its configured keys. A host that removed a master key that still wraps data
   keys, or changed the bytes of a key and kept its id, started, and the first read of each such
   subject raised. Such a host now stops at boot: put the key back, and run
-  `mix eh_os_contract.rewrap` before you remove it.
+  `mix eh_os_contract.rewrap --expect <id of the current key>` before you remove it. A restored
+  backup whose data keys name a destroyed master key does not start either.
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
   does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
