@@ -79,6 +79,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `fetch()` with no content type, with the cookie of a person signed in, and issue a command as that
   person. A browser cannot send `application/json` to another site without asking it first. Clients
   that send no content type, or another one, must send `application/json`, also for an empty body.
+  The OpenAPI document lists the 415 for each command, so the digest of each document changes.
 - **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
   `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
   model delivered `:in_transaction` then never got the events after the skipped one, and a process
