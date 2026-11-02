@@ -1,0 +1,27 @@
+Review of #558 (EhOsContract.Plug refuses a POST that is not application/json, 415).
+
+Round 1, correctness (code-review high, ehos-dev:elixir):
+- Auth.Testing example posted a map (multipart), now 415: fixed (882ed841).
+- Moduledoc/comment said a browser posts "any other type" without a preflight: fixed (3f848d46).
+- calls.md gave the 415 without its condition (401/403 first): fixed (3f848d46).
+- OpenAPI did not list 415: fixed, test reverse-checked (99ceeeaf).
+- application/*+json refused: no change; the docs say application/json, and the narrow check is deliberate.
+- "before it is read" not true for a parsed form: fixed (3f848d46).
+- Record case asserted status only; helper inside describe: fixed (3f848d46).
+Round 1, security (engineering:code-review not in session, done by hand; ehos-dev:elixir):
+- "site" where CORS works per origin: fixed (3f848d46).
+- CORS with credentials reopens the way: fixed, sentence in calls.md (3f848d46).
+- Auth README says nothing on forgery for host routes behind the session, no same_site in its example: skipped, to file as an issue (the maintainer chose the option without the README).
+- A forged request records an Authorizer decision: no change; every request is one decision by design.
+- GET /queries reachable by navigation: no change; existed before, response not readable cross-origin.
+- Test gaps (two types, two headers, recording with text/plain): fixed (3f848d46).
+Round 2, correctness (code-review, ehos-dev:elixir, ehos-dev:voice):
+- A scoped command gets 403 outside_scope, not 415: fixed in docs, test pins it (d-final commit).
+- No stranger test on a recording: fixed.
+- Digest note too broad: fixed.
+- Absolute "only if CORS allows": fixed.
+Round 2, security (by hand; ehos-dev:elixir):
+- Test comment on no-cors fetch wrong for a string body: fixed.
+- SameSite=Lax nuance: no change; "can" is true and SameSite is the host's cookie.
+Reverse check of the fix: on the old plug, the text/plain form body dispatched (200).
+Gate: mix check in sandbox/, EXIT=0; check counts 0/3/7 and 0/109/96 as on main.
