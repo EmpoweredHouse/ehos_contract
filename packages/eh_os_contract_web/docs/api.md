@@ -91,9 +91,9 @@ The JSON Schemas ship with `eh_os_contract`: `priv/schema/graph.v1.json` and
 
 | Status | Body | When |
 | --- | --- | --- |
-| 400 | `{"error": "bad_request", "detail": …}` | On `/api/conformance`: an unknown contract or process module, both given, or a parameter that does not parse. On an overlay: a time that does not parse, or a `since` after its `until`. |
+| 400 | `{"error": "bad_request", "detail": …}` | On `/api/conformance`: an unknown contract or process module, both given, no `contract` when the application has 0 or more than 1 contract, or a parameter that does not parse. On an overlay: a time that does not parse, or a `since` after its `until`. |
 | 403 | `{"error": "forbidden"}` | The resolver refused the caller, on any route. |
-| 404 | `{"error": "not_found", "detail": …}` | A contract, process module or domain that the application does not have, on a route of a document. The API never answers an empty graph. |
+| 404 | `{"error": "not_found", "detail": …}` | A contract, process module or domain that the application does not have, on each route except `/api/conformance`, the overlays included. The API never answers an empty graph. |
 
 ## Who sees it
 

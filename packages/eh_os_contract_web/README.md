@@ -14,7 +14,7 @@ defines each word of the contract language that these pages use.
 
 The dashboard has 2 screens, and no more:
 
-- **Conformance:** the conformance of each contract and each process module.
+- **Contract status:** the conformance of each contract and each process module.
 - **Graph:** the pictures of each domain, contract and process module:
   - for a domain: its context map, and its system of contracts;
   - for a contract: its full graph with the numbers of the log over it, and its units with their

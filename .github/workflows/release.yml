@@ -94,7 +94,7 @@ jobs:
           elixir-version: "1.18.4"
 
       # sandbox/ takes the four packages by path, and fetches what they need for every
-      # environment; the dashboard's `:dev` dependency, which is private, is not among them.
+      # environment; the packages' private `:dev` dependencies are not among them.
       - name: Fetch the dependencies
         working-directory: sandbox
         run: mix deps.get

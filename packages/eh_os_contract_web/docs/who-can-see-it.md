@@ -65,6 +65,7 @@ of the business. The package does not redact anything. The resolver decides who 
 | `:read_only` | shows the page | answers the request |
 | `{:forbidden, path}` | sends the browser to `path` | answers 403 with `{"error": "forbidden"}`, and does not use `path` |
 
+Return only one of these. Any other return makes the page or the request fail with an error.
 `:all` and `:read_only` show the same thing, because the dashboard changes nothing. The screens
 show which one applies.
 

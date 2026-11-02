@@ -57,7 +57,7 @@ conformance and the graphs of your contracts at a path that you choose.
    JavaScript, so the assets need a route outside the router. The test host of this package has
    the same line, so its tests check this step.
 
-**Result:** open `/dashboard`. It sends you to `/dashboard/contract`, the conformance screen, and
+**Result:** open `/dashboard`. It sends you to `/dashboard/contract`, the screen "Contract status", and
 keeps the query string. The graph screen is `/dashboard/graph`.
 
 ## Options of the macro
@@ -86,7 +86,7 @@ system of the reader prefers light.
   `priv/static/assets/fonts/`, and step 3 serves them too. The dashboard loads no Google Fonts
   and uses no CDN, so it works without internet.
 - **It works under a strict Content-Security-Policy**, `default-src 'self'`. No page has an
-  inline style, and the graph renderer sets none. The development host of this repository
+  inline style. The graph renderer sets one style only, through the CSSOM, which the policy allows. The development host of this repository
   serves the dashboard under this policy.
 
 ## What can go wrong

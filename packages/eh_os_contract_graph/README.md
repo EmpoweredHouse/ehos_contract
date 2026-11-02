@@ -51,7 +51,7 @@ The panel says what the reader selected, from the document alone. Some examples:
 ## What does it need?
 
 - **At run time**, the package needs `phoenix_live_view`, and `phoenix`, which LiveView needs too.
-  `boundary` and `esbuild` are tools of its own build.
+  It also brings `boundary`, a tool of its own build.
 - **It does not need the engine.** A graph document is plain data. A document from
   `EhOsContract.Graph.Document` in the same application and a document decoded from
   `GET <mount>/graph/<id>` of another application are the same data.
@@ -71,8 +71,9 @@ Add the package from git, as the other packages of this repository:
  sparse: "packages/eh_os_contract_graph"}
 ```
 
-If your application mounts the dashboard of `eh_os_contract_web`, do not add this package. The
-dashboard declares it, and carries its script and its stylesheet in its own. The script of the
+If your application only mounts the dashboard of `eh_os_contract_web`, you do not need to add this
+package. The dashboard declares it, and carries its script and its stylesheet in its own. If your
+own pages also render a component of this package, declare it too. The script of the
 dashboard reads the markup that this package renders, so update the two packages together:
 
 ```bash

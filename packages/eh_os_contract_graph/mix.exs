@@ -105,7 +105,7 @@ defmodule EhOsContract.GraphRenderer.MixProject do
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_graph/CHANGELOG.md"
       },
       files:
-        ~w(lib priv/static priv/schema .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
+        ~w(lib priv/static priv/schema docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
     ]
   end
 

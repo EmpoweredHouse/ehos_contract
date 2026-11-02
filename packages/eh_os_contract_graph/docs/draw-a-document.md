@@ -31,7 +31,7 @@ defines both.
 
 2. Add the stylesheet of the package, `priv/static/eh_os_contract_graph.css`. Import it into your
    own stylesheet, or serve it beside it. It uses the tokens of the EmpoweredHouse design system,
-   such as `--surface-*`, `--border-*` and `--text-*`. Define them in your page: the picture then
+   `--surface-*`, `--border-*`, `--text-*`, `--accent-*`, `--error-*` and `--radius-*`. Define them in your page: the picture then
    follows the theme of your page.
 
 3. Render the canvas, with the document, the overlay and the view:
@@ -102,6 +102,11 @@ lists the views that a document has, with their titles.
 - **Focus.** "Focus on the selection" draws only the selection and what its relations reach.
   "Show the whole picture" draws all of it again.
 - **Follow a name.** A name in the panel selects that node, also if the picture does not draw it.
+- **Read the facts of the code.** The panel says the business first. The facts of the code, such
+  as a grant or a stored type, are under "Technical details", which the reader unfolds.
+
+A picture starts at a size that the reader can read. If it does not fit at that size, it starts
+at its left or top edge. The reader then pans to the rest, or asks for the whole picture.
 
 The panel is a sidebar at the right of the window, as tall as the window. It lies over the page,
 so it does not change the size of a canvas. Only one panel is open on a page: a selection in one

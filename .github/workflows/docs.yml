@@ -124,7 +124,9 @@ jobs:
       - name: Restore graph renderer deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract_graph/deps
+          path: |
+            packages/eh_os_contract_graph/deps/*
+            !packages/eh_os_contract_graph/deps/ehos_*
           key: eh-os-contract-graph-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
       # `--only test`, as in ci.yml: the engine's `:dev` dependencies, which draw its
