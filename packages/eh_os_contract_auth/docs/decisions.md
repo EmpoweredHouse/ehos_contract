@@ -52,8 +52,8 @@ A scope value is text that the caller sends, so the row does not always keep it 
   bytes. It also does this for a value that starts with `sha256:`. So each `sha256:` value in the
   table is a digest that the package wrote.
 
-So a value that an attacker made is refused like each other value, and does not make the request
-fail. The decision is the same: only the record changes.
+So a value that an attacker made gets the decision of `check/2`, as each other value does, and
+does not make the request fail. Only the record changes, not the decision.
 
 ## What does the row not record?
 

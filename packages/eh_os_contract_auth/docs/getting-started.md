@@ -54,16 +54,17 @@ config :eh_os_contract, authorizer: EhOsContract.Auth
 
 config :eh_os_contract_auth,
   issuer: "https://ehos.example.com",
+  # jwks_url: "https://keys.ehos.example.com/jwks.json",
   audience: "clinic/production"
-  # jwks_url: defaults to the issuer's "/.well-known/jwks.json"
 ```
 
 - `issuer` must be exactly the `iss` that EHOS writes: `https://<host>[:port]`. The host is in
   lowercase. The address has no path, no trailing slash, no user, no query and no fragment. Plain `http` is allowed
   only for `localhost`, `127.0.0.1` and `::1`.
 - `audience` must be exactly the `aud` that EHOS issues for this application.
-- Set `jwks_url` only if EHOS publishes its keys at another address. It has the same rules as
-  `issuer`, but it can have a path.
+- Set `jwks_url` only if EHOS publishes its keys at another address. The default is the
+  `/.well-known/jwks.json` of the issuer. It has the same rules as `issuer`, but it can have a
+  path.
 
 In a release, read the two values from the environment that EHOS gives the workload. The section
 "Configuration from EHOS's environment" of the [README](../README.md) tells how.

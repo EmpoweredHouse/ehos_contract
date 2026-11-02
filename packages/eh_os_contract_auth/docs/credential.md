@@ -86,7 +86,7 @@ An accepted credential becomes an `EhOsContract.Actor`:
   without a restart.
 - **Each fetch closes the window for 30 seconds**: the scheduled fetch, an early fetch and a failed
   fetch. In that window, a credential with a key that the application does not hold yet gets
-  `:unknown_key`. After the window, the next unknown `kid` starts an early fetch again.
+  `:unknown_key`. If the application holds no key at all, the credential gets `:no_keys`. After the window, the next unknown `kid` starts an early fetch again.
 - **A credential that claims a longer life is not one that EHOS issues**, whoever signed it. The
   limit is the 10 minutes of EHOS, and 5 minutes for clocks that do not agree. So a key that
   leaked cannot make a credential that works for a year.
