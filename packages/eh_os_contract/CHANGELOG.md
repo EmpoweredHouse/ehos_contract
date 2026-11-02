@@ -72,6 +72,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
+  A `POST` must have the header `content-type: application/json`, with or without parameters such as
+  `charset`. Otherwise the answer is 415, `{"error": "unsupported_media_type"}`, and nothing is
+  dispatched. Before, the plug read any body. A page on another site could then post a form, or a
+  `fetch()` with no content type, with the cookie of a person signed in, and issue a command as that
+  person. A browser cannot send `application/json` to another site without asking it first. Clients
+  that send no content type, or another one, must send `application/json`, also for an empty body.
 - **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
   `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
   model delivered `:in_transaction` then never got the events after the skipped one, and a process

@@ -19,6 +19,13 @@ if Code.ensure_loaded?(Plug.Conn) do
     answer is 401. A `:system` actor is the application's own code and never comes
     over HTTP, so one found there is refused too.
 
+    **A command or a recording takes only JSON**: a `POST` without
+    `content-type: application/json` answers 415, whatever its body, even an empty
+    one. A browser posts any other type, or none, to another site without asking it
+    first, so with a cookie session in front (`eh_os_contract_auth`'s
+    `EhOsContract.Auth.Session`, `assign_actor: true`) a page elsewhere could
+    otherwise post as the person.
+
     It reads the body, or the query string, and the headers, and hands them to
     `EhOsContract.call/3`, which decodes them against the declaration's fields and
     goes through `EhOsContract.dispatch/3`, `EhOsContract.record/3` or
@@ -42,6 +49,7 @@ if Code.ensure_loaded?(Plug.Conn) do
     | rejected on an invariant | 422 | `{"rejected": "<invariant>"}` |
     | fields that do not fit | 422 | `{"invalid": {"<field>": "required" \\| "type" \\| "generated" \\| "supplied" \\| "unknown" \\| "<invariant>"}}` — `generated` for an identity sent with a command that creates its aggregate, which the library gives; `supplied` for a field the host supplies (`supplied_by: :host`), sent at all; `unknown` for a field naming an entity the command `reads:` that the host does not have (`EhOsContract.Entities`); an invariant's name for a value that breaks it; `type` also for text holding a NUL (`"\\u0000"`, `%00`) |
     | a body that is not a JSON object, or cannot be read | 400 | `{"error": "body_is_not_a_json_object"}`, `{"error": "unreadable_body"}` |
+    | a command or a recording without `content-type: application/json` | 415 | `{"error": "unsupported_media_type"}` |
     | a query string Plug cannot read: not UTF-8, nested too deep | 400 | `{"error": "invalid_query_string"}` |
     | a query string past Plug's length | 414 | `{"error": "invalid_query_string"}` |
     | an `x-correlation-id` that is not a UUID's text | 400 | `{"error": "correlation_id_is_not_a_uuid"}` |
@@ -233,7 +241,26 @@ if Code.ensure_loaded?(Plug.Conn) do
         {conn, nil, {error.plug_status || 400, "invalid_query_string"}}
     end
 
-    defp input(%{body_params: %Plug.Conn.Unfetched{}} = conn, :command, _fields, _values) do
+    # Only a JSON body: a browser sends any other type, or none, across sites without asking
+    # first, so with a cookie session in front a page elsewhere could post as the person.
+    # Checked before the body, whether read here or parsed by a plug in front.
+    defp input(conn, kind, _fields, _values) when kind in [:command, :record] do
+      if json?(conn),
+        do: read_input(conn),
+        else: {conn, nil, {415, "unsupported_media_type"}}
+    end
+
+    defp json?(conn) do
+      case get_req_header(conn, "content-type") do
+        [content_type] ->
+          match?({:ok, "application", "json", _params}, Plug.Conn.Utils.media_type(content_type))
+
+        _none_or_many ->
+          false
+      end
+    end
+
+    defp read_input(%{body_params: %Plug.Conn.Unfetched{}} = conn) do
       case read_body(conn) do
         {:ok, "", conn} ->
           {conn, %{}, nil}
@@ -249,8 +276,7 @@ if Code.ensure_loaded?(Plug.Conn) do
       end
     end
 
-    defp input(conn, :command, _fields, _values), do: {conn, conn.body_params, nil}
-    defp input(conn, :record, fields, values), do: input(conn, :command, fields, values)
+    defp read_input(conn), do: {conn, conn.body_params, nil}
 
     @doc false
     @spec decode_query_params(Plug.Conn.t(), [map()], map()) :: {Plug.Conn.t(), map()}

@@ -265,6 +265,8 @@ defmodule EhOsContract.PlugTest do
             post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: "a lot"}),
             conn(:post, "/commands/dispatch_rig.deposit", "[1]")
             |> put_req_header("content-type", "application/json"),
+            conn(:post, "/commands/dispatch_rig.deposit", ~s({"account_id": "a-1"}))
+            |> put_req_header("content-type", "text/plain"),
             post("/commands/dispatch_rig.deposit", %{account_id: "a-1", amount: 1})
             |> put_req_header("x-correlation-id", "not-a-uuid")
           ] do
@@ -339,5 +341,50 @@ defmodule EhOsContract.PlugTest do
 
     assert conn.status == 400
     assert Repo.aggregate(Event, :count) == 1
+  end
+
+  describe "a body that is not JSON, as a page on another site can post one with the person's cookie" do
+    @deposit "/commands/dispatch_rig.deposit"
+    @body ~s({"account_id": "a-1", "amount": 1})
+
+    defp parsed_form(path) do
+      conn(:post, path, "account_id=a-1&amount=1")
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> Plug.Parsers.call(Plug.Parsers.init(parsers: [:urlencoded]))
+    end
+
+    test "is refused with 415 before it is read, and nothing is written" do
+      for conn <- [
+            # A form with enctype="text/plain" whose field spells a JSON object.
+            conn(:post, @deposit, @body) |> put_req_header("content-type", "text/plain"),
+            # A form a parser in front of the plug has already read.
+            parsed_form(@deposit),
+            # fetch() with mode: "no-cors" sends no content type, with or without a body.
+            conn(:post, @deposit, @body),
+            conn(:post, @deposit, "")
+          ] do
+        refused = call(conn)
+
+        assert {refused.status, json(refused)} ==
+                 {415, %{"error" => "unsupported_media_type"}}
+      end
+
+      auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
+      recording = call(conn(:post, "/records/dispatch_rig.balance_confirmed", ""), auditor)
+      assert recording.status == 415
+
+      assert Repo.aggregate(Event, :count) == 1
+    end
+
+    test "the control: JSON with parameters or in capitals is read" do
+      for content_type <- ["application/json; charset=utf-8", "Application/JSON"] do
+        accepted =
+          conn(:post, @deposit, @body)
+          |> put_req_header("content-type", content_type)
+          |> call()
+
+        assert accepted.status == 200
+      end
+    end
   end
 end
