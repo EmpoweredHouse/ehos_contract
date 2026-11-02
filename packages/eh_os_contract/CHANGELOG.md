@@ -50,6 +50,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The docs of the behaviours and the Mix tasks are rewritten by the shared writing rules** (#517).
+  They generate `docs/behaviours.md` and `docs/cli.md`, and hexdocs shows the same text. Each page now
+  starts with its scope and ends with "Next steps". `EhOsContract.Bus` has a diagram of what occurs
+  between the relay, the bus and the inbox. The docs now say that `mix eh_os_contract.report`,
+  `mix eh_os_contract.subscriptions`, `mix eh_os_contract.rewrap` and `mix eh_os_contract.graph
+  --overlay` start the whole application. A rotation of a master key now checks the id that the
+  rewrap prints, and the key of each data key, before the old key goes (#541). Corrected facts: the
+  supplier is asked by `dispatch/3` and `record/3` with `supply: true`, and its refusal is 503 over
+  HTTP; a raise in `publish/2` makes the relay `failing` after three attempts, not at once; the
+  report's contract section answers questions 1, 2 and 4, and a process module's section question 3;
+  a name of a command, a query or a recorded event is unique in its domain, not in the application.
 - **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
   Concept page, "How is a call authorized?", with two diagrams: the order of a call from sign-in to
   the answer, and which calls the Authorizer checks. Three how-tos take the rest: `scope.md` narrows a
