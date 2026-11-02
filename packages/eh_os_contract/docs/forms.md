@@ -209,7 +209,7 @@ def handle_event("validate", %{"issue_invoice" => params} = event, socket) do
   {:noreply, keep_key(socket, event["form_key"])}
 end
 
-# After a reconnect, take back the key of the form. Accept only a key that the page made.
+# After a reconnect, take back the key of the form. Accept only a UUID, as mount/3 makes it.
 defp keep_key(socket, key) do
   case Ecto.UUID.cast(key) do
     {:ok, key} -> assign(socket, :form_key, key)
@@ -226,8 +226,8 @@ UUID, as `mount/3` makes it.
 ## Send the command, and put the refusal on the form
 
 On `phx-submit`, convert the changeset into the command, and dispatch it. Give dispatch the key of
-the form, so that a second submit of the same form is the same command. Dispatch then returns the
-receipt of the first command, also if the person changed the form.
+the form, so that a second submit of the same form is the same command. If dispatch accepted the
+first command, it returns the receipt of that command, also if the person changed the form.
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
