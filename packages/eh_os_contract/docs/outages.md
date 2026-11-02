@@ -2,8 +2,9 @@
 
 <!-- covers: keys process.promise.waits_on -->
 
-This page tells how to record that an external system was unavailable. A promise that waits for
-the system then gets the verdict `suspended`, not `violated`. It is for a developer who writes the
+This page tells how to record that an external system was unavailable. A promise can wait for the
+system. If its window ends empty with the outage inside it, its verdict is `suspended`, not
+`violated`. It is for a developer who writes the
 adapter that calls an external system. [The glossary](glossary.md) defines each word in italics.
 
 An *external system* is a system that the application exchanges data with. If it does not answer,
