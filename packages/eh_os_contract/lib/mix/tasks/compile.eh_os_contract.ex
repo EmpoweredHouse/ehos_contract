@@ -35,7 +35,7 @@ defmodule Mix.Tasks.Compile.EhOsContract do
   - a declaration with no implementation;
   - a reaction to an event of another context with `delivery: :in_transaction`.
 
-  ## A violation
+  ## What does a violation do?
 
   A violation is an error at the file and the line of the declaration at fault. It
   fails the compile. In a project without this compiler, `mix eh_os_contract.check`

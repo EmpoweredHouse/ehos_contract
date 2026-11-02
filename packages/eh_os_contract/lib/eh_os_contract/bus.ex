@@ -19,19 +19,19 @@ defmodule EhOsContract.Bus do
 
   ## What occurs between the relay, the bus and the inbox?
 
-  ![The engine starts a consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
+  ![The engine starts a durable consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
 
-  1. At boot, the engine starts the consumer of each inbox with `c:consumer/2`. It
-     starts each inbox before any relay.
-  2. The consumer subscribes to the transport under its name.
-  3. In a transaction, the relay hands a batch of messages to `c:publish/2`.
+  1. At boot, the engine starts the durable consumer of each inbox with
+     `c:consumer/2`. It starts each inbox before any relay.
+  2. The durable consumer subscribes to the transport under its name.
+  3. In a transaction, the relay publishes a batch of messages through `c:publish/2`.
   4. The adapter hands the batch to the transport.
-  5. The adapter returns `:ok` when the transport holds each message. The relay then
-     moves its position, in the same transaction.
-  6. Later, the transport delivers each message to the consumer.
-  7. The consumer calls the handler of the inbox with the message.
+  5. The adapter confirms with `:ok` when the transport holds each message. The relay
+     then moves its position, in the same transaction.
+  6. Later, the transport delivers each message to the durable consumer.
+  7. The durable consumer calls the handler of the inbox with the message.
   8. The handler answers `:ack` after its commit, or `:nack`.
-  9. The consumer acknowledges the message to the transport. After `:nack`, the
+  9. The durable consumer acknowledges the message to the transport. After `:nack`, the
      transport delivers the message again later.
 
   [How does an event reach another contract?](between-contracts.md)
@@ -51,8 +51,8 @@ defmodule EhOsContract.Bus do
     that consumer returns `:ack`.
     - A handler that returns `:nack`, raises, exits or throws gets the message again
       later.
-    - A consumer that stops with a message in hand gets it again later.
-    - A consumer that comes back under the same name gets what was published while
+    - A durable consumer that stops with a message in hand gets it again later.
+    - A durable consumer that comes back under the same name gets what was published while
       it was down.
   - **No order.** Messages can arrive in any order, and a message delivered again can
     arrive after a later one. The relay publishes in the order of the log, but nothing
@@ -60,15 +60,15 @@ defmodule EhOsContract.Bus do
   - **No deduplication is necessary.** A message published two times can arrive two
     times. The inbox drops the second one by its key. A transport that deduplicates,
     such as JetStream with `Nats-Msg-Id`, saves work, and changes no result.
-  - **Where a new consumer starts** is for the adapter to decide, with one rule: the
-    consumer gets what is published after it first subscribed.
+  - **The adapter decides where a new durable consumer starts.** One rule holds: it
+    gets what is published after it first subscribed.
     `EhOsContract.Bus.Local` gives it nothing older.
   - **No limit on deliveries.** A message whose handler never succeeds comes again for
     as long as the transport keeps it. Only a limit of the transport stops it, such as
     `MaxDeliver` of JetStream. The inbox answers `:nack` to what it cannot take, so
     that nothing is lost while a person corrects the cause (`EhOsContract.Inbox`).
 
-  ## Who can consume a name
+  ## Who can consume a name?
 
   The engine does not decide who can consume a name. The `subscribe` of the
   subscriber derives the capability `<name>.subscribe`, where the name has no version.
@@ -77,7 +77,7 @@ defmodule EhOsContract.Bus do
   grant. An adapter that cannot refuse a consumer without the grant lets each
   consumer in.
 
-  ## A message
+  ## What does a message carry?
 
   `EhOsContract.Bus.Message` carries five things:
 

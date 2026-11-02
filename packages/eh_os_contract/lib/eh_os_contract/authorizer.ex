@@ -12,7 +12,7 @@ defmodule EhOsContract.Authorizer do
   A declaration that no person can use has no capability. The engine refuses a call
   to it with `:missing_capability`, and does not ask the Authorizer.
 
-  ## The check
+  ## What does the check refuse?
 
   `check/2` is the decision. It reads only the actor and the request. It returns
   `:ok`, or refuses with one of these reasons:
@@ -26,7 +26,7 @@ defmodule EhOsContract.Authorizer do
   `check/2` compares the values as the strings that the credential carries. So a
   granted value that is not of the type of the field matches nothing.
 
-  ## An implementation of your own
+  ## What can an implementation of your own do?
 
   An implementation can narrow what a credential grants. It can never widen it.
 

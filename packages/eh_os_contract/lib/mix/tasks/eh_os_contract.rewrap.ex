@@ -26,20 +26,21 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
 
   > **The printed id must be the id of the new key.**
   > The task wraps with the first key of the list that it reads.
-  > With the configuration of before the rotation, it wraps each data key with the old
-  > key again, and ends without an error. Remove the old key only when the printed id
+  > With the configuration of step 1, it wraps the data keys of the new key with the
+  > old key again. It ends without an error. Remove the old key only when the printed id
   > is the id of the new key, and each row of `eh_os_contract_subject_keys` names it.
   > [Manage the keys and the backups of personal data](master-keys.md) gives each step
   > of a rotation.
 
   - The task works in batches of 500 data keys. Each batch is a transaction of its
     own. If the task stops, run it again.
-  - Each batch skips the rows that another run holds.
+  - Each batch skips the rows that another run or an erasure holds.
   - If a data key of another master key is left at the end, the task raises. Another
     run holds that key, or a node wrote it with the old key during the run. Run the
     task again when each node runs the new configuration.
   - If the vault does not hold the key that wraps a row, the task raises. Put that
     key back in the list, deploy, and run the task again.
+  - If a vault of your own wraps with a key other than `current/0`, the task raises.
   - Do not remove the old key while the task raises.
     [Manage the keys and the backups of personal data](master-keys.md) gives each
     message, and what to do.

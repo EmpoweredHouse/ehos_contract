@@ -25,7 +25,7 @@ defmodule Mix.Tasks.EhOsContract.Check do
   If these applications hold no contract, the task reports the error `no-contracts`.
   An empty report then does not mean a model with no problems.
 
-  ## A finding
+  ## What does a finding hold?
 
   Each finding names its rule. If the task knows the declaration, the finding also
   names its file and line. [The rules](rules.md) (`docs/rules.md` in the package)

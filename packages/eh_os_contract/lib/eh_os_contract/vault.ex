@@ -8,7 +8,7 @@ defmodule EhOsContract.Vault do
   `eh_os_contract_subject_keys`, only in its wrapped form. So the database alone
   cannot decrypt a personal field.
 
-  ## The default vault
+  ## Where are the master keys?
 
   `EhOsContract.Vault.Local` is the default vault. It reads the master keys from the
   configuration:
@@ -55,17 +55,18 @@ defmodule EhOsContract.Vault do
      Then remove the old key from the list, and deploy.
 
   The check of step 4 is necessary. The rewrap wraps with the first key of the list
-  of the node where it runs. With the configuration of step 1, it wraps each data
-  key with the old key again, and ends without an error. After you remove the old
+  of the node where it runs. With the configuration of step 1, it wraps the data keys
+  of the new key with the old key again, and ends without an error. After you remove the old
   key, nothing can unwrap those data keys.
 
   A rotation does not rewrite an event.
 
-  ## At boot
+  ## What does the engine check at boot?
 
   If a contract declares a personal field and the vault cannot wrap and unwrap, the
-  engine does not start. So a vault with no master key stops the deployment, not the
-  first command with a personal field.
+  engine does not start. A configured vault that does not export `check/0` also
+  stops the boot. So a vault with no master key stops the deployment, not the first
+  command with a personal field.
 
   This check reads only the configured keys, not the data keys. It does not find a
   data key whose master key you removed. The first read of that subject raises.
@@ -95,7 +96,7 @@ defmodule EhOsContract.Vault do
 
   @doc """
   Tells if the vault can wrap and unwrap. Returns `:ok`, or the reason as a sentence.
-  The sentence names no key.
+  The sentence can name the id of a key, never the key itself.
   """
   @callback check() :: :ok | {:error, String.t()}
 

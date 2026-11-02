@@ -1,7 +1,7 @@
 defmodule EhOsContract.Supplier do
   @moduledoc """
-  Gives the values of the fields that a contract declares `supplied_by: :host`. The
-  caller of a command or a recording cannot send these fields.
+  Gives the values of the fields that a contract declares `supplied_by: :host`. A
+  caller through `EhOsContract.call/3` cannot send these fields.
 
       config :eh_os_contract, supplier: MyApp.Supplier
 

@@ -1,5 +1,5 @@
 <!-- title: What occurs between the relay, the bus and the inbox? -->
-<!-- desc: The engine starts a consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit. -->
+<!-- desc: The engine starts a durable consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit. -->
 <!-- words: relay, bus, inbox -->
 <!-- technical: Transport -->
 <!-- verbs: starts, subscribes, publishes, hands, confirms, delivers, calls, answers, acknowledges -->
@@ -110,32 +110,32 @@
 
   <circle class="badge" cx="46" cy="628" r="6"/>
   <text class="badget" x="46" y="631" text-anchor="middle">1</text>
-  <text class="keyt" x="60" y="632">At boot, the engine starts the consumer of each inbox.</text>
+  <text class="keyt" x="60" y="632">At boot, the engine starts the durable consumer of each inbox.</text>
   <circle class="badge" cx="46" cy="652" r="6"/>
   <text class="badget" x="46" y="655" text-anchor="middle">2</text>
-  <text class="keyt" x="60" y="656">The consumer subscribes to the transport under its name.</text>
+  <text class="keyt" x="60" y="656">The durable consumer subscribes to the transport under its name.</text>
   <circle class="badge" cx="46" cy="676" r="6"/>
   <text class="badget" x="46" y="679" text-anchor="middle">3</text>
-  <text class="keyt" x="60" y="680">In a transaction, the relay hands a batch to publish/2.</text>
+  <text class="keyt" x="60" y="680">In a transaction, the relay publishes a batch through publish/2.</text>
   <circle class="badge" cx="46" cy="700" r="6"/>
   <text class="badget" x="46" y="703" text-anchor="middle">4</text>
   <text class="keyt" x="60" y="704">The adapter hands the batch to the transport.</text>
   <circle class="badge" cx="46" cy="724" r="6"/>
   <text class="badget" x="46" y="727" text-anchor="middle">5</text>
-  <text class="keyt" x="60" y="728">The adapter returns :ok. The relay moves its position.</text>
+  <text class="keyt" x="60" y="728">The adapter confirms with :ok. The relay moves its position.</text>
 
   <circle class="badge" cx="526" cy="628" r="6"/>
   <text class="badget" x="526" y="631" text-anchor="middle">6</text>
-  <text class="keyt" x="540" y="632">Later, the transport delivers each message to the consumer.</text>
+  <text class="keyt" x="540" y="632">Later, the transport delivers each message to the durable consumer.</text>
   <circle class="badge" cx="526" cy="652" r="6"/>
   <text class="badget" x="526" y="655" text-anchor="middle">7</text>
-  <text class="keyt" x="540" y="656">The consumer calls the handler of the inbox.</text>
+  <text class="keyt" x="540" y="656">The durable consumer calls the handler of the inbox.</text>
   <circle class="badge" cx="526" cy="676" r="6"/>
   <text class="badget" x="526" y="679" text-anchor="middle">8</text>
   <text class="keyt" x="540" y="680">The handler answers :ack after its commit, or :nack.</text>
   <circle class="badge" cx="526" cy="700" r="6"/>
   <text class="badget" x="526" y="703" text-anchor="middle">9</text>
-  <text class="keyt" x="540" y="704">The consumer acknowledges the message to the transport.</text>
+  <text class="keyt" x="540" y="704">The durable consumer acknowledges the message to the transport.</text>
   </g>
 
   <!-- Legend strip -->

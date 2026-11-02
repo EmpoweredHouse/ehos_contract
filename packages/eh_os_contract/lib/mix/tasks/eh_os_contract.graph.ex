@@ -39,7 +39,7 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   - The bytes are the bytes that the API serves, with the keys of each object in
     order. So you can compare two documents with `diff`.
 
-  ## The overlay
+  ## Add what the log says
 
   > **`--overlay` starts the whole application.**
   > Run it only with the code that is deployed. The task records a deployment. It

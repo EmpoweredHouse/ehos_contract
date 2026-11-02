@@ -42,7 +42,7 @@ defmodule Mix.Tasks.EhOsContract.Pages do
   `--check` writes nothing. It fails, and names each page that is missing, different
   or left over, and each file in the way.
 
-  ## The pages for the business owner
+  ## Write the pages for the business owner
 
   `--audience owner` writes the pages that a business owner reads. They have the same
   tree, with each declaration by its label. They leave out the names of modules,

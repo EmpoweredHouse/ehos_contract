@@ -58,8 +58,9 @@ defmodule EhOsContract.Entities do
 
   ## When the engine asks
 
-  The engine asks one time for each command. It asks after it authorizes the caller
-  and checks the fields of the command, and before the transaction of the decision.
+  The engine asks one time for each entry of `reads:` of the command. It stops at the
+  first `:not_found`. It asks after it authorizes the caller and checks the fields of
+  the command, and before the transaction of the decision.
 
   - If the decision meets a conflict and runs again, it decides on the same rows.
   - A retry of a command that the engine accepted under its idempotency key gets its

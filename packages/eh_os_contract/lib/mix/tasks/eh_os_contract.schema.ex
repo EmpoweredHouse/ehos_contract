@@ -108,7 +108,7 @@ defmodule Mix.Tasks.EhOsContract.Schema do
   No step carries a change of personal data or of tags. The rows already sealed or
   tagged keep what they were written with. Declare a new event instead.
 
-  ## The options
+  ## Forget a version, or check the file
 
   `--forget TYPE` drops versions of the event: the declared version and the versions
   after it. For an event that no contract declares, it drops each version. Then it

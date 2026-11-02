@@ -8,8 +8,8 @@ defmodule Mix.Tasks.EhOsContract.Report do
   > **The task starts the whole application.**
   > The report reads the log through the repo of the application, so the task starts
   > the application. Run it only with the code that is deployed. The task records a
-  > deployment, which changes the answer to question 4 if your code differs from the
-  > deployed code. It starts the subscriptions, the relays, the inboxes and Oban. So
+  > deployment. If your code differs from the deployed code, that deployment changes
+  > which version the report calls deployed, and the boundary of a changed promise. It starts the subscriptions, the relays, the inboxes and Oban. So
   > effects can call external systems from where you run it, and an inbox can take
   > messages from the transport. If your code differs from the deployed code, the
   > engine rebuilds each changed process manager at once. It also rebuilds each

@@ -44,7 +44,7 @@ does not refuse them:
 - a declaration with no implementation;
 - a reaction to an event of another context with `delivery: :in_transaction`.
 
-### A violation
+### What does a violation do?
 
 A violation is an error at the file and the line of the declaration at fault. It
 fails the compile. In a project without this compiler, `mix eh_os_contract.check`
@@ -90,7 +90,7 @@ task also reports the violations of that compiler, as errors.
 If these applications hold no contract, the task reports the error `no-contracts`.
 An empty report then does not mean a model with no problems.
 
-### A finding
+### What does a finding hold?
 
 Each finding names its rule. If the task knows the declaration, the finding also
 names its file and line. [The rules](rules.md) (`docs/rules.md` in the package)
@@ -229,7 +229,7 @@ shows the code that runs.
 - The bytes are the bytes that the API serves, with the keys of each object in
   order. So you can compare two documents with `diff`.
 
-### The overlay
+### Add what the log says
 
 > **`--overlay` starts the whole application.**
 > Run it only with the code that is deployed. The task records a deployment. It
@@ -316,7 +316,7 @@ The task reads and changes nothing outside `--output`.
 `--check` writes nothing. It fails, and names each page that is missing, different
 or left over, and each file in the way.
 
-### The pages for the business owner
+### Write the pages for the business owner
 
 `--audience owner` writes the pages that a business owner reads. They have the same
 tree, with each declaration by its label. They leave out the names of modules,
@@ -341,8 +341,8 @@ section for each contract, then a section for each process module.
 > **The task starts the whole application.**
 > The report reads the log through the repo of the application, so the task starts
 > the application. Run it only with the code that is deployed. The task records a
-> deployment, which changes the answer to question 4 if your code differs from the
-> deployed code. It starts the subscriptions, the relays, the inboxes and Oban. So
+> deployment. If your code differs from the deployed code, that deployment changes
+> which version the report calls deployed, and the boundary of a changed promise. It starts the subscriptions, the relays, the inboxes and Oban. So
 > effects can call external systems from where you run it, and an inbox can take
 > messages from the transport. If your code differs from the deployed code, the
 > engine rebuilds each changed process manager at once. It also rebuilds each
@@ -412,20 +412,21 @@ key that it used:
 
 > **The printed id must be the id of the new key.**
 > The task wraps with the first key of the list that it reads.
-> With the configuration of before the rotation, it wraps each data key with the old
-> key again, and ends without an error. Remove the old key only when the printed id
+> With the configuration of step 1, it wraps the data keys of the new key with the
+> old key again. It ends without an error. Remove the old key only when the printed id
 > is the id of the new key, and each row of `eh_os_contract_subject_keys` names it.
 > [Manage the keys and the backups of personal data](master-keys.md) gives each step
 > of a rotation.
 
 - The task works in batches of 500 data keys. Each batch is a transaction of its
   own. If the task stops, run it again.
-- Each batch skips the rows that another run holds.
+- Each batch skips the rows that another run or an erasure holds.
 - If a data key of another master key is left at the end, the task raises. Another
   run holds that key, or a node wrote it with the old key during the run. Run the
   task again when each node runs the new configuration.
 - If the vault does not hold the key that wraps a row, the task raises. Put that
   key back in the list, deploy, and run the task again.
+- If a vault of your own wraps with a key other than `current/0`, the task raises.
 - Do not remove the old key while the task raises.
   [Manage the keys and the backups of personal data](master-keys.md) gives each
   message, and what to do.
@@ -544,7 +545,7 @@ The task refuses, and writes nothing, in these cases:
 No step carries a change of personal data or of tags. The rows already sealed or
 tagged keep what they were written with. Declare a new event instead.
 
-### The options
+### Forget a version, or check the file
 
 `--forget TYPE` drops versions of the event: the declared version and the versions
 after it. For an event that no contract declares, it drops each version. Then it
@@ -579,7 +580,7 @@ status. It also moves one subscription past a failure, when a person decides to.
 The consumers are the read models, the process managers, the policies delivered
 `:at_least_once`, and the relays. The task prints a line for each of them, with its
 status and its position: `running`, `stale`, `rebuilding` or `failing`. A line of a
-failing subscription also gives the position where it fails, the module of the
+subscription that failed at a position also gives that position, the module of the
 exception and the count of attempts. A consumer with no row is `not registered`.
 
 ### Move a subscription past a failure
@@ -618,9 +619,9 @@ consumer never applies that event.
 | Consumer | What `--reset` does |
 | --- | --- |
 | A read model | Empties it through its `reset/0`, and replays the whole log into it. A read model without `reset/0` cannot be reset. |
-| A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. |
-| A policy | Moves it back to the start of the log. It reacts to each event from there, also to the events from before it was deployed. The keys that it derives from each event stop it from issuing again what it issued before. |
-| A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) | Publishes the whole log again, under the same ids. |
+| A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. No event gets a reaction until the replay ends, also an event appended during it. A timer that is due in that time is dropped. |
+| A policy | Moves it back to the start of the log. It reacts to each event from there, also to the events from before it was deployed. The keys that it derives from each event stop it from issuing again what it issued before. The unit decides again each command that it rejected before, and the effects of a command that it accepts now run. You cannot undo it. If the policy now issues another command for an event, it fails with `:idempotency_key_reused`. |
+| A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) | Publishes the whole log again, under the same ids. The identities go out in clear text, also those of the subjects erased since. |
 
 For a relay, `--skip` means that the event never leaves the application.
 
