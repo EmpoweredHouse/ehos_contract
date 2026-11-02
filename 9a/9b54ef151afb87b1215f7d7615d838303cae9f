@@ -1,0 +1,1 @@
+Documentation alone. CodeRabbit r4442745045 fixed in 012e0ebc: keep_key/2 took any 16-byte binary through Ecto.UUID.cast/1 (checked in ecto/lib/ecto/uuid.ex:87-101); now a 36-byte guard. Checked by running the clauses with 'warehouse worker', a mixed-case UUID, nil and a non-hex 36-byte string. Merged origin/main (storage v5). Gate EXIT=0 on 9a9b54ef; measure-prose 0 long.
