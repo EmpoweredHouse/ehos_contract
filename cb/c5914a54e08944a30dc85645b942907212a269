@@ -1,0 +1,25 @@
+Review of origin/main..cbc5914a (#559), two rounds.
+
+Skills: correctness review invoked code-review (high) and ehos-dev:elixir; security review invoked ehos-dev:elixir, and engineering:code-review is not in this session, so it worked by .claude/review.md, "Security and performance".
+
+Round 1 (6c68562d):
+- A scoped :system actor (D10 forces the scope when it shares a scoped declaration with a person) got both warnings, though dispatch never narrows it: fixed in a8114b47, scoped_people/1 keeps people only for both rules; tests fail without it.
+- Mixed by: [:lead, :manager] cannot take scope: (D10), and the advice led into the refusal: fixed, rule text and pages say to split the query.
+- scope.md said the row check keeps a call to the warehouse asked; it keeps it to the warehouses granted: fixed.
+- scope.md's query paragraph required a scoped command: fixed.
+- Changelog lacked the --warnings-as-errors consequence: fixed.
+- Query message said "grants it": fixed ("answers it").
+- Duplicated scoped map: fixed with the shared helper.
+- Warning when the read model lacks the actor's dimension: no change needed; a read model keyed by order can still hold one warehouse's rows, the rule names a different actor as the fix, as the command rule does.
+- Recorded events have no scope and no warning: skipped, out of scope, filed as #562.
+- The check is a lint, not a refusal: no change needed, the issue asks for a check.
+
+Round 2 (a8114b47):
+- Committed changelog still said "each scoped actor", and wrong single remedy: fixed in cbc5914a.
+- domain-data.md paragraphs said "an actor with a scope": fixed ("a :human actor").
+- Command rule's system-actor behaviour tested only from the query test: fixed, the command test has a scoped system actor; both fail without the filter.
+- "had no fix" wording: fixed.
+- New warning without **Breaking:**: no change needed, the changelog's precedent for a new check warning (#430) carries none.
+- a8114b47's message names D10 before its meaning: skipped, a nit in an unpushed message; not rewritten.
+
+Gate: mix check in sandbox/, EXIT=0. Sandbox check 0 errors, 3 warnings, 7 notices, as pinned in e10_outputs_test.exs. Engine check 108 warnings (main 109): :deposit of DispatchRig.Ledger names [:clerk, :nightly_import] and no longer warns for the :system importer. No new query warning in the sandbox or the engine's fixtures.
