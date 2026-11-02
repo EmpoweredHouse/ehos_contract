@@ -306,7 +306,8 @@ defmodule EhOsContract.Personal do
 
   # Ecto's nested transaction takes no savepoint, and a raise in one fails the
   # erasure's, so the savepoint is taken by hand. Rolling back to it also clears an
-  # error Postgres raised. The row stays failing where it was: its runner takes the
+  # error Postgres raised; it keeps the savepoint, so it is released after, and
+  # several failing read models in one erasure leave none behind. The row stays failing where it was: its runner takes the
   # erasure again after a skip or a reset, and `forget/2` deletes nothing twice.
   defp forget_failing(repo, consumer, erased) do
     repo.query!("SAVEPOINT eh_os_contract_forget")
@@ -316,11 +317,13 @@ defmodule EhOsContract.Personal do
     rescue
       exception ->
         repo.query!("ROLLBACK TO SAVEPOINT eh_os_contract_forget")
+        repo.query!("RELEASE SAVEPOINT eh_os_contract_forget")
 
         Logger.warning(
           "subscription #{consumer.key}: it is failing, and its forget/2 raised " <>
             "#{inspect(exception.__struct__)} on an erasure of subject type " <>
-            "#{erased.subject}, so its rows keep the subject until it is reset"
+            "#{erased.subject}, so its rows keep the subject until it is reset, or until " <>
+            "it is skipped and its runner's forget/2 succeeds at the erasure"
         )
     else
       :ok -> repo.query!("RELEASE SAVEPOINT eh_os_contract_forget")

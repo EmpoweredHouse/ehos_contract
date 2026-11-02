@@ -88,17 +88,24 @@ defmodule EhOsContract.ErasureTest do
     )
   end
 
-  # The members read model, failing on the second event while it was rebuilt.
+  # The members read model, failing on Anna's rename while it was rebuilt: its key, and
+  # the position it stopped at.
   defp fail_members! do
     Subscription.register!(Repo, Implementations.subscribed())
     key = "shredding_rig.members:read_model:members"
+    [joined, renamed | _] = log()
 
     {1, _} =
       Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == ^key),
-        set: [status: "failing", position: 1, failed_position: 2, resume_status: "rebuilding"]
+        set: [
+          status: "failing",
+          position: joined.position,
+          failed_position: renamed.position,
+          resume_status: "rebuilding"
+        ]
       )
 
-    key
+    {key, joined.position}
   end
 
   describe "erase/3" do
@@ -139,17 +146,19 @@ defmodule EhOsContract.ErasureTest do
 
     test "a read model projected in the transaction that failed while it was rebuilt forgets at once" do
       two_members!()
-      key = fail_members!()
+      {key, position} = fail_members!()
 
       {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
       assert members() == [{"member-anna", nil}, {"member-bartek", "Bartek Nowak"}]
-      assert %{status: "failing", position: 1} = Repo.get!(EhOsContract.SubscriptionRecord, key)
+
+      assert %{status: "failing", position: ^position} =
+               Repo.get!(EhOsContract.SubscriptionRecord, key)
     end
 
     test "a failing read model whose forget/2 raises is left to its runner, and the erasure stands" do
       two_members!()
-      key = fail_members!()
+      {key, position} = fail_members!()
       Process.put(:shredding_rig_forget_fails, true)
 
       log =
@@ -168,7 +177,31 @@ defmodule EhOsContract.ErasureTest do
       assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
       assert keys() == []
       assert length(erasures()) == 2
-      assert %{status: "failing", position: 1} = Repo.get!(EhOsContract.SubscriptionRecord, key)
+
+      assert %{status: "failing", position: ^position} =
+               Repo.get!(EhOsContract.SubscriptionRecord, key)
+    end
+
+    test "a failing read model whose forget/2 raised forgets when its runner reaches the erasure after a skip" do
+      two_members!()
+      {key, _position} = fail_members!()
+      Process.put(:shredding_rig_forget_fails, true)
+
+      ExUnit.CaptureLog.capture_log(fn ->
+        {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+      end)
+
+      assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
+
+      # The rebuild continues after the skipped rename, at Bartek's join, so his row
+      # goes first: its rows are the partial ones a rebuild would have written.
+      Process.delete(:shredding_rig_forget_fails)
+      Repo.delete_all(from(m in "shredding_rig_members", where: m.member_id == "member-bartek"))
+      assert :ok = Subscription.skip(Repo, key)
+      Testing.drain(only: key)
+
+      assert members() == [{"member-anna", nil}, {"member-bartek", "Bartek Nowak"}]
+      assert %{status: "running"} = Repo.get!(EhOsContract.SubscriptionRecord, key)
     end
 
     test "a second erasure is {:ok, :already_erased} and appends nothing" do
