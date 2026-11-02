@@ -1,39 +1,70 @@
 defmodule Mix.Tasks.EhOsContract.Subscriptions do
-  @shortdoc "Where each subscription stands, and a person's way past a poison event"
+  @shortdoc "Shows where each subscription stands, and moves one past an event that fails"
 
   @moduledoc """
-  Lists every consumer fed from the log in order, with how far it has read and
-  whether it is `running`, `stale`, `rebuilding` or `failing`, and moves one past a
-  failure when a person decides to.
+  Shows each consumer that reads the log in order: how far it has read, and its
+  status. It also moves one subscription past a failure, when a person decides to.
+
+  > **The task starts the whole application.**
+  > Run it only with the code that is deployed. The task records a deployment, and
+  > registers each subscription with the code that you run. It also starts the
+  > subscriptions, the relays and Oban, so effects can call external systems from
+  > where you run it. If your code differs from the deployed code, the engine
+  > rebuilds each changed process manager at once. It also rebuilds each changed read
+  > model that has `reset/0`. A rebuilt process manager forgets its runs.
 
       mix eh_os_contract.subscriptions
 
-  The consumers are the read models, process managers, policies delivered
-  `:at_least_once`, and relays. One that fails on an event stops there, and nothing
-  moves it past that event by itself: an ordered consumer that skipped events would
-  be a read model that silently lies. Moving it is a person's decision, taken in one
-  of two ways:
+  The consumers are the read models, the process managers, the policies delivered
+  `:at_least_once`, and the relays. The task prints a line for each of them, with its
+  status and its position: `running`, `stale`, `rebuilding` or `failing`. A line of a
+  failing subscription also gives the position where it fails, the module of the
+  exception and the count of attempts. A consumer with no row is `not registered`.
+
+  ## Move a subscription past a failure
+
+  A subscription that fails on an event tries it again, with a longer pause each time.
+  After three attempts, it is `failing`, and stops at that event. It does not try again
+  by itself: an ordered consumer that skipped events would be a read model with wrong
+  rows that nobody sees. A person decides how to move it:
 
       mix eh_os_contract.subscriptions --skip dispatch_rig.ledger:read_model:ledger_lines
       mix eh_os_contract.subscriptions --reset dispatch_rig.ledger:read_model:ledger_lines
 
-  - `--skip` moves a `failing` subscription past the one event it fails on, which is
-    then never applied. If that event erased a subject, the read model keeps the
-    subject's copy until it is reset. A subscription that failed while it replayed
-    the log goes on with the replay past that event: a read model takes the rest of
-    the log, and a process manager learns the rest of its runs without reacting to
-    them, also the events appended while it was failing.
-  - `--reset` empties a read model through its `reset/0` and replays the whole log
-    into it; a read model without `reset/0` cannot be reset.
-  - `--reset` of a process manager forgets every run it steers and replays the log
-    with its reactions suppressed, so it learns the runs again and issues nothing
-    for them.
-  - `--reset` of a policy moves it back to the beginning of the log, and it reacts to
-    every event from there. The keys it derives from each event keep it from issuing
-    again what it issued before.
-  - A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`): `--skip` means that
-    event never leaves the application, and `--reset` publishes the whole log again,
-    under the same ids.
+  If you give both options, the task does only `--skip`. The task stops with an error
+  in these cases:
+
+  - the name is not a subscription of the application;
+  - you skip a subscription that is not `failing`;
+  - you reset a read model without `reset/0`.
+
+  A changed declaration also moves a failing subscription, at the next boot. The
+  engine rebuilds a failing process manager, and a failing read model that has
+  `reset/0`.
+
+  `--skip` moves a `failing` subscription past the one event that it fails on. The
+  consumer never applies that event.
+
+  - If that event erased a subject, the read model keeps the copy of the subject until
+    you reset it.
+  - If the subscription failed while it replayed the log, the replay goes on after
+    that event. A read model takes the rest of the log. A process manager learns the
+    rest of its runs without a reaction to them. This includes the events appended
+    while it was failing.
+
+  `--reset` does a different thing for each kind of consumer:
+
+  | Consumer | What `--reset` does |
+  | --- | --- |
+  | A read model | Empties it through its `reset/0`, and replays the whole log into it. A read model without `reset/0` cannot be reset. |
+  | A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. |
+  | A policy | Moves it back to the start of the log. It reacts to each event from there. The keys that it derives from each event stop it from issuing again what it issued before. |
+  | A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) | Publishes the whole log again, under the same ids. |
+
+  For a relay, `--skip` means that the event never leaves the application.
+
+  [Repair or replay a subscription](subscriptions.md) tells when to use each one, and
+  what each one costs.
   """
 
   use Boundary, classify_to: EhOsContract

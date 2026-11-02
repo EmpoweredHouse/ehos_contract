@@ -1,16 +1,15 @@
 defmodule EhOsContract.Supplier do
   @moduledoc """
-  Where the values of the fields a contract declares `supplied_by: :host` come from.
+  Gives the values of the fields that a contract declares `supplied_by: :host`. The
+  caller of a command or a recording cannot send these fields.
 
       config :eh_os_contract, supplier: MyApp.Supplier
 
-  Some of what a decision depends on is not the caller's to say. What a late return
-  costs, by the desk's tariff, is data of the host's systems; a request that
-  carried `late_fee: 0` would decide on what the caller claims. A field
-  declared `supplied_by: :host` is therefore refused from a request through
-  `EhOsContract.call/3` — sent at all, even as `null`, it is `{field, :supplied}`
-  — and its value is asked of the configured implementation instead, once the
-  credential is authorized and before the fields are checked:
+  A decision can depend on data that the caller must not give. Example: the fee for a
+  late return comes from the tariff of the desk, which the host keeps. A request with
+  `late_fee: 0` would make the decision on what the caller claims. So the contract
+  declares the field `supplied_by: :host`, and the engine asks the configured
+  implementation for its value:
 
       defmodule MyApp.Supplier do
         @behaviour EhOsContract.Supplier
@@ -20,24 +19,41 @@ defmodule EhOsContract.Supplier do
           do: {:ok, %{late_fee: MyApp.Tariff.late_fee(id)}}
       end
 
-  One call per command or recording, for every supplied field of it, with the fields
-  already decoded as `given`. The answer holds exactly the fields asked for, each of
-  its type; anything else is the host's defect and raises, naming the field and never
-  its value. `{:error, reason}` — the tariff did not answer — refuses the request
-  with `{:not_supplied, reason}`, and nothing is written.
+  ## What the caller gets
 
-  The host is asked after the caller is authorized and after what the caller sent is
-  found sound — its own fields and its idempotency key — and not at all for a retry
-  of a request already accepted under its key, which gets its receipt. A value that
-  breaks a domain value's invariant is the host's defect, as one of the wrong type is,
-  and raises. The call has no time limit of the engine's: a register that may hang
-  is bounded by the implementation.
+  - If a request through `EhOsContract.call/3` holds a supplied field, also as
+    `null`, the engine refuses it: `{:error, {:invalid, [{field, :supplied}]}}`. Over
+    HTTP, the answer is 422.
+  - If the implementation returns `{:error, reason}`, the engine refuses the request:
+    `{:error, {:not_supplied, reason}}`. Over HTTP, the answer is 503. The engine
+    writes nothing, so the caller can send the request again.
 
-  `dispatch/3` and `record/3` from the application's own code are not asked: the
-  struct it builds is trusted, as everything else in it is. A node with a contract
-  declaring a supplied field does not start without an implementation configured,
-  one that is loaded and exports `supply/2` (checked at the engine's boot); the
-  Mix tasks that only read contracts do not ask.
+  ## When the engine asks
+
+  The engine asks one time for each command or recording, for all of its supplied
+  fields. `given` holds the other fields, decoded. The engine asks:
+
+  1. after it authorizes the caller;
+  2. after it checks what the caller sent: its own fields and its idempotency key.
+
+  It does not ask for a retry of a request that it accepted under its idempotency
+  key. That retry gets its receipt. The engine sets no time limit on the call. If the
+  source of the data can hang, the implementation must limit the time.
+
+  `dispatch/3` and `record/3` ask only with `supply: true`, which `call/3` sets.
+  Without it, the code of the application fills the supplied fields itself. The engine
+  trusts that struct, and checks those fields as it checks each other field.
+
+  ## What the answer must hold
+
+  The answer holds exactly the fields that the engine asked for, each of its type. If
+  it does not, or if a value breaks an invariant of a domain value, the engine raises.
+  The message names the field, never its value. Such an answer is an error in the
+  code of the host.
+
+  If a contract declares a supplied field, the node does not start without an
+  implementation. The implementation must be loaded and export `supply/2`. The engine
+  checks this at boot. The Mix tasks that only read contracts do not check it.
   """
 
   alias EhOsContract.{Actor, Codec}
@@ -64,7 +80,10 @@ defmodule EhOsContract.Supplier do
           }
   end
 
-  @doc "The values of `request.fields`, or why the host cannot give them."
+  @doc """
+  Returns the values of `request.fields`, or `{:error, reason}` if the host cannot
+  give them now.
+  """
   @callback supply(Actor.t(), Request.t()) :: {:ok, %{atom() => term()}} | {:error, term()}
 
   # The configured implementation, `config :eh_os_contract, supplier: MySupplier`, or

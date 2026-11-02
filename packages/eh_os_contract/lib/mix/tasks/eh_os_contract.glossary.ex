@@ -1,21 +1,26 @@
 defmodule Mix.Tasks.EhOsContract.Glossary do
-  @shortdoc "Prints a domain's ubiquitous language as Markdown"
+  @shortdoc "Prints the ubiquitous language of a domain as Markdown"
 
   @moduledoc """
-  Prints the glossary of the application's domain as Markdown: each context's terms,
-  their definitions, the words to avoid and their translations, and each term's word in
-  code — its translation into the domain's `code_language:` — with the declarations of
-  the context's contracts named with it, and the process modules that include the
-  context's events and are named with it: their id, a stage, a promise or a field that
-  tells their runs apart.
+  Prints the glossary of the domain of the application as Markdown.
 
-      mix eh_os_contract.glossary                        # every term, in its context's language
+      mix eh_os_contract.glossary                        # each term, in the language of its context
       mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
       mix eh_os_contract.glossary --context circulation  # one context
       mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
-  The domain is found among the modules of `config :eh_os_contract, applications:`.
-  `--output` writes the glossary to a file.
+  For each context, the glossary gives:
+
+  - each term, its definition, the words to avoid and its translations;
+  - the word in code of each term: its translation into the `code_language:` of the
+    domain;
+  - the declarations of the contracts of the context that the term names;
+  - the process modules that include events of the context and that the term names.
+    The term can name the id, a stage, a promise, or a field that tells the runs
+    apart.
+
+  The task finds the domain among the modules of `config :eh_os_contract,
+  applications:`. `--output` writes the glossary to a file.
   """
 
   use Boundary, classify_to: EhOsContract

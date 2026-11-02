@@ -1,42 +1,61 @@
 defmodule Mix.Tasks.EhOsContract.Pages do
-  @shortdoc "Writes the domain, its contracts and processes as Markdown pages, one per element"
+  @shortdoc "Writes the domain, its contracts and its process modules as Markdown pages"
 
   @moduledoc """
-  The application's domain, its contracts and its process modules as linked Markdown
-  pages, one per element.
+  Writes the domain of the application, its contracts and its process modules as
+  linked Markdown pages, one page for each element.
 
       mix eh_os_contract.pages --output docs/model                  # write the pages
       mix eh_os_contract.pages --output docs/model --check          # are they current?
       mix eh_os_contract.pages --output docs/model --domain lending # when there is more than one domain
       mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
-  The domain, its contracts and its process modules are found among the modules of
-  `config :eh_os_contract, applications:`. The pages go where `--output` says: the
-  host decides whether to commit them, add them to ExDoc's `extras`, or only read
-  them. A process module's page is `processes/<its id after the domain's name>.md`,
-  linked from the domain's page and from the page of each contract whose events it
-  includes: its stages in order with their events, what ends a run, its promises, its
-  deadline and the external systems its events rest on. Beside the pages,
-  `graph/<contract id>.json` holds each contract's `graph.v1` document and
-  `graph/process/<process id>.json` each process module's
-  (`EhOsContract.Graph.Document`), linked from its page. A page the model no
-  longer has is deleted — only a file that starts with the marker line of the domain's
-  pages, or a `graph.v1` document of one of the domain's contracts or process modules
-  at the path the task gives it, so another domain's pages in the same directory stay — and
-  a page is never written over a file without it, nor through a symbolic link: then
-  nothing is written, and the task names what is in the way. Nothing outside
-  `--output` is read or touched.
+  The task finds the domain, its contracts and its process modules among the modules
+  of `config :eh_os_contract, applications:`. It writes the pages where `--output`
+  says. `--output` is necessary. The host decides if it commits them, adds them to the `extras` of ExDoc, or
+  only reads them.
 
-  `--check` writes nothing, and fails naming every page that is missing, differs or
-  is left over.
+  ## What it writes
 
-  `--audience owner` writes the pages a business owner reads: the same tree, each
-  declaration by its label, without module names, versions, stored types, delivery,
-  idempotency, correlation keys, field names and types, and without the graph
-  documents. They have a marker of their own, so they go to a directory of their own:
-  in the engineer's directory each would be a file in the way. A stage or a value the
-  owner would read by its name in the code is `mix eh_os_contract.check`'s
-  `owner-view-without-label`. `--audience engineering` is the default.
+  - A page for the domain, for each contract and for each process module.
+  - The page of a process module is `processes/<its id after the domain's name>.md`.
+    The page of the domain links it, and so does the page of each contract whose
+    events it includes.
+  - The page of a process module gives its stages in order with their events, and
+    what ends a run. It also gives its promises, its deadline, and the external
+    systems that its events rest on.
+  - `graph/<contract id>.json` holds the `graph.v1` document of each contract
+    (`EhOsContract.Graph.Document`). `graph/process/<process id>.json` holds the
+    document of each process module. The page of each one links its document.
+
+  ## What it deletes, and what stops it
+
+  The task reads and changes nothing outside `--output`.
+
+  - It deletes a page that the model no longer has. It deletes only a file that starts
+    with the marker line of the pages of the domain. It also deletes a `graph.v1`
+    document of a contract or a process module of the domain, at the path that the
+    task gives it. So the pages of another domain in the same directory stay.
+  - It never writes a page over a file without the marker, or through a symbolic link.
+    Then it writes nothing, and names what is in the way.
+
+  `--check` writes nothing. It fails, and names each page that is missing, different
+  or left over, and each file in the way.
+
+  ## The pages for the business owner
+
+  `--audience owner` writes the pages that a business owner reads. They have the same
+  tree, with each declaration by its label. They leave out the names of modules,
+  versions, stored types, delivery, idempotency, correlation keys, the names and types
+  of fields, and the graph documents.
+
+  - These pages have a marker of their own. Write them to a directory of their own.
+    In the directory of the engineering pages, each one is a file in the way.
+  - If the owner reads a stage or a value by its name in the code,
+    `mix eh_os_contract.check` reports `owner-view-without-label`.
+
+  `--audience engineering` is the default. Another value stops the task with an
+  error.
   """
 
   use Boundary, classify_to: EhOsContract

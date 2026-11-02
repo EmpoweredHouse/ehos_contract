@@ -1,40 +1,52 @@
 defmodule Mix.Tasks.EhOsContract.Check do
-  @shortdoc "Whole-program checks over the contracts and their implementations"
+  @shortdoc "Checks the contracts and their implementations as one program"
 
   @moduledoc """
-  Reports what a contract may legally say and a reader should still hear about, as
-  errors, warnings and notices.
+  Reports what a contract can legally say and a reader must still know about. Each
+  finding is an error, a warning or a notice.
 
-  A compile refuses a contract that cannot be right. This task reads every contract,
-  domain and implementation of the applications `config :eh_os_contract,
-  applications:` names, less what `exclude:` leaves out, and reports the rest: a
-  contract nothing implements, a reaction that points back up its own process, a
-  deadline with no event that ends the run, a free-text field not marked personal.
-  A project that does not add the `:eh_os_contract` compiler gets that compiler's
-  violations here too, as errors.
+  A compile refuses a contract that cannot be right. This task reports the rest.
+  Examples:
 
-      mix eh_os_contract.check                         # errors fail the task
-      mix eh_os_contract.check --warnings-as-errors    # so do warnings
+  - a contract that no module implements;
+  - a reaction that points back up its own process;
+  - a deadline with no event that ends the run;
+  - a free-text field that is not marked personal.
+
+      mix eh_os_contract.check                         # an error fails the task
+      mix eh_os_contract.check --warnings-as-errors    # a warning fails it too
       mix eh_os_contract.check --format json           # one JSON array
 
-  Every finding names its rule, and, where it can, the file and line of the
-  declaration it is about. What each rule means and how to clear it is in
-  [the rules](rules.md) (`docs/rules.md` in the package); a compiler violation
-  repeated here keeps the compiler's code instead. Nothing silences a rule: a
-  finding goes away when the model changes.
+  The task reads each contract, domain and implementation of the applications that
+  `config :eh_os_contract, applications:` names. It leaves out the modules that
+  `exclude:` names. If the project does not add the `:eh_os_contract` compiler, the
+  task also reports the violations of that compiler, as errors.
 
-  Findings come out errors first, then warnings, then notices, each group sorted by
-  its text, so the same findings print the same output from one run to the next. In
-  the human format a finding is a line with its level, rule and message, and a second
-  line saying where the declaration it is about was written and where its rule is
-  documented, when anything says either; a count closes the report. In JSON a finding
-  is `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and
-  `line` (`null` when nothing says where) and `documentation` (`null` for a repeated
-  compiler rule, which the catalogue does not document).
+  If these applications hold no contract, the task reports the error `no-contracts`.
+  An empty report then does not mean a model with no problems.
 
-  `--format json` prints the array and nothing else, but the compile this task runs
-  first prints what it prints: compile beforehand when a program reads the output.
-  `--warnings-as-errors` changes the exit status, and nothing that is printed.
+  ## A finding
+
+  Each finding names its rule. If the task knows the declaration, the finding also
+  names its file and line. [The rules](rules.md) (`docs/rules.md` in the package)
+  tell what each rule means and how to clear it. A compiler violation that the task
+  repeats keeps the code of the compiler.
+
+  Nothing silences a rule. A finding goes away only when the model changes.
+
+  The task prints the errors first, then the warnings, then the notices. It sorts
+  each group by its text. So the same findings give the same output on each run.
+
+  | Format | A finding |
+  | --- | --- |
+  | `human`, the default | A line with the level, the rule and the message. A second line with where the declaration was written and where the rule is documented, if the task knows either. A count ends the report. |
+  | `json` | `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file`, `line` (`null` if the task does not know the place) and `documentation` (`null` for a repeated compiler rule, which the catalogue does not document) |
+
+  - `--format json` prints only the array. But the task compiles the project first,
+    and the compile prints its own output. If a program reads the output, compile
+    before you run the task.
+  - `--warnings-as-errors` changes the exit status. It does not change the output.
+  - `--format` other than `human` or `json` stops the task with an error.
   """
 
   use Boundary, classify_to: EhOsContract

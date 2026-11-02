@@ -2,44 +2,58 @@
 
 # Behaviours
 
-What a host may put in place of the library's own implementation. Each is named in
-the [configuration](configuration.md) under the key after its name.
+This page gives each behaviour that a host can implement in place of the
+implementation of the engine. For each one, it tells what the engine asks, and what
+the implementation promises. It is for a developer who writes such a module. The [configuration](configuration.md)
+names each implementation, under the key after the name of its behaviour.
 
 ## EhOsContract.Authorizer
 
 Configured with `config :eh_os_contract, authorizer: ...`, a module.
 
-The question dispatch and query ask about a credential's actor: may it do this?
+Decides if the actor of a credential can make a call: a command, a query or a
+recorded event.
 
     config :eh_os_contract, authorizer: MyApp.Authorizer
 
-The engine asks it about every command, query and recorded event that arrives
-with a credential, before anything else runs. It is not asked about the
-application's own code — a `:system` actor or a reaction — which the contract
-holds to its declarations instead.
+The engine asks the Authorizer about each call that arrives with a credential,
+before anything else runs. It does not ask about the code of the application: a
+`:system` actor or a reaction. The contract holds that code to its declarations.
 
-**The decision is `EhOsContract.Authorizer.check/2`**, and it reads nothing but the actor and the request:
+A declaration that no person can use has no capability. The engine refuses a call
+to it with `:missing_capability`, and does not ask the Authorizer.
 
-  * `{:error, :missing_capability}` — the credential does not grant the capability;
-  * `{:error, :unscoped_grant}` — the capability is scoped and the credential
-    carries no values for it. Empty is not "all": a grant without values is a
-    grant nobody finished, and it is refused;
-  * `{:error, :outside_scope}` — the value asked for is not among them.
+### The check
 
-Values are compared as the strings the credential carries, so a
-granted value that is not of the field's type matches nothing.
+`EhOsContract.Authorizer.check/2` is the decision. It reads only the actor and the request. It returns
+`:ok`, or refuses with one of these reasons:
 
-**An implementation may narrow what a credential grants, and never widen it.**
-`EhOsContract.Authorizer.Default`, used when nothing is configured, is `EhOsContract.Authorizer.check/2`
-alone. `eh_os_contract_auth` calls `EhOsContract.Authorizer.check/2` and records a row for each decision.
-Whatever the configured implementation answers, the engine runs `EhOsContract.Authorizer.check/2` again
-after an `:ok` and raises when that refuses, so a mistake in an implementation
-fails loudly instead of letting a call through. It follows that grants travel in
-the credential, as EHOS issues them.
+| Reason | The credential |
+| --- | --- |
+| `:missing_capability` | does not grant the capability. |
+| `:unscoped_grant` | grants a scoped capability with no values. An empty grant is not "all": it is an unfinished grant, and `EhOsContract.Authorizer.check/2` refuses it. |
+| `:outside_scope` | grants values, but not the value of the request. |
 
-A refusal writes nothing, neither to the log nor to the table of commands
-(`eh_os_contract_commands`): the row that
-records it belongs to the implementation.
+`EhOsContract.Authorizer.check/2` compares the values as the strings that the credential carries. So a
+granted value that is not of the type of the field matches nothing.
+
+### An implementation of your own
+
+An implementation can narrow what a credential grants. It can never widen it.
+
+- If the configuration names no implementation, the engine uses
+  `EhOsContract.Authorizer.Default`, which is `EhOsContract.Authorizer.check/2` alone.
+- `eh_os_contract_auth` calls `EhOsContract.Authorizer.check/2`, and records a row for each decision.
+- After an `:ok` of any implementation, the engine runs `EhOsContract.Authorizer.check/2` again. If
+  `EhOsContract.Authorizer.check/2` refuses, the engine raises `EhOsContract.Authorizer.WidenedError`. So
+  an error in an implementation stops the call, and does not let it through.
+
+So the grants travel in the credential, as the platform that issues the credential
+gives them. [Write an Authorizer](authorizer.md) tells how to add a rule of your own.
+
+A refusal writes nothing to the log or to the table of commands
+(`eh_os_contract_commands`). A row that records the refusal belongs to the
+implementation.
 
 ### Callbacks
 
@@ -48,66 +62,104 @@ records it belongs to the implementation.
   :ok | {:error, EhOsContract.Authorizer.reason()}
 ```
 
-Whether `actor` may make `request`.
+Returns `:ok` if `actor` can make `request`, or `{:error, reason}`. A reason of
+your own is an atom.
 
 ## EhOsContract.Bus
 
 Configured with `config :eh_os_contract, bus: ...`, a module or `{module, opts}`.
 
-How an integration event leaves one application and reaches another: the seam
-between the engine and a transport.
-
-The engine is on both sides of it. The relay publishes what a `publish` declares,
-from the log, and advances its checkpoint when `c:EhOsContract.Bus.publish/2` returns `:ok`; the
-subscriber's inbox takes a message, commits what its policy decides, and only then
-acknowledges. What sits between the two, and only that, is an adapter: this package
-ships `EhOsContract.Bus.Local` for tests and development, and the transport adapters
-(JetStream through `gnat`, EHOS's relay) are EHOS's. The library depends on none of
-them.
+Carries an integration event from one application to another. The bus is the
+interface between the engine and a transport, such as a message broker.
 
     config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
 
+The engine is on both sides of the bus:
+
+- The *relay* reads from the log the events that a `publish` declares. It hands
+  them to `c:EhOsContract.Bus.publish/2`.
+- The *inbox* of the subscriber takes each message. It commits what its policies
+  decide, and only then acknowledges the message.
+
+An *adapter* implements the bus between these two parts. This package supplies
+`EhOsContract.Bus.Local`, for tests and for one node. The adapters for a real
+transport, such as JetStream, are not in this library. The library depends on no
+transport.
+
+### What occurs between the relay, the bus and the inbox?
+
+![The engine starts a consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
+
+1. At boot, the engine starts the consumer of each inbox with `c:EhOsContract.Bus.consumer/2`. It
+   starts each inbox before any relay.
+2. The consumer subscribes to the transport under its name.
+3. In a transaction, the relay hands a batch of messages to `c:EhOsContract.Bus.publish/2`.
+4. The adapter hands the batch to the transport.
+5. The adapter returns `:ok` when the transport holds each message. The relay then
+   moves its position, in the same transaction.
+6. Later, the transport delivers each message to the consumer.
+7. The consumer calls the handler of the inbox with the message.
+8. The handler answers `:ack` after its commit, or `:nack`.
+9. The consumer acknowledges the message to the transport. After `:nack`, the
+   transport delivers the message again later.
+
+[How does an event leave the application?](between-contracts.md#how-does-an-event-leave-the-application)
+tells the same path from the side of the contracts.
+
 ### What an adapter promises
 
-`EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-it. It cannot see the absence of an order, nor how a relay treats an error, which
-`EhOsContract.Relay` describes.
+`EhOsContract.Bus.Suite` checks what a test can see of these promises. Any adapter
+can run it. It cannot see that an order is absent, or how a relay handles an error.
+`EhOsContract.Relay` tells about the relay.
 
-- **`:ok` from `c:EhOsContract.Bus.publish/2` means the transport holds every message of the batch.**
-  An error means it may hold some of them: the relay publishes the whole batch again,
-  under the same ids.
-- **At least once.** A message reaches every durable consumer of its name that was
-  subscribed when it was published, and comes again until that consumer's handler
-  returns `:ack`. A handler that returns `:nack`, raises, exits or throws, and a
-  consumer that stops with a message in hand, get it again later. A consumer that
-  comes back under the same name gets what was published while it was down.
-- **No order.** Messages may arrive in any order, and a redelivered one after a later
-  one. The relay publishes in log order, but nothing downstream may rely on it.
-- **No deduplication is required.** A message published twice may arrive twice. The
-  inbox drops the second one by its key, so a transport that deduplicates (JetStream's
-  `Nats-Msg-Id`) saves work and changes no result.
-- **Where a new consumer starts** is the adapter's, beyond one thing: it gets what is
-  published after it first subscribed. `EhOsContract.Bus.Local` gives it nothing
-  older.
-- **No bound on redelivery.** A message whose handler never succeeds comes again for
-  as long as the transport keeps it. What stops it is the transport's own limit
-  (JetStream's `MaxDeliver`), not this behaviour, nor the inbox, which answers
-  `:nack` to what it cannot take, so that nothing is lost while it is put right
-  (`EhOsContract.Inbox`).
+- **`:ok` from `c:EhOsContract.Bus.publish/2` means that the transport holds each message of the
+  batch.** An error means that it can hold some of them. Then the relay publishes
+  the whole batch again, under the same ids.
+- **At least once.** A message reaches each durable consumer of its name that was
+  subscribed when the message was published. It comes again until the handler of
+  that consumer returns `:ack`.
+  - A handler that returns `:nack`, raises, exits or throws gets the message again
+    later.
+  - A consumer that stops with a message in hand gets it again later.
+  - A consumer that comes back under the same name gets what was published while
+    it was down.
+- **No order.** Messages can arrive in any order, and a message delivered again can
+  arrive after a later one. The relay publishes in the order of the log, but nothing
+  after it can rely on that order.
+- **No deduplication is necessary.** A message published two times can arrive two
+  times. The inbox drops the second one by its key. A transport that deduplicates,
+  such as JetStream with `Nats-Msg-Id`, saves work, and changes no result.
+- **Where a new consumer starts** is for the adapter to decide, with one rule: the
+  consumer gets what is published after it first subscribed.
+  `EhOsContract.Bus.Local` gives it nothing older.
+- **No limit on deliveries.** A message whose handler never succeeds comes again for
+  as long as the transport keeps it. Only a limit of the transport stops it, such as
+  `MaxDeliver` of JetStream. The inbox answers `:nack` to what it cannot take, so
+  that nothing is lost while a person corrects the cause (`EhOsContract.Inbox`).
 
-Who may consume a name is not the engine's question either. The subscriber's
-`subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
-and the transport adapter routes by the grant. An adapter that cannot
-refuse an ungranted consumer grants every one.
+### Who can consume a name
+
+The engine does not decide who can consume a name. The `subscribe` of the
+subscriber derives the capability `<name>.subscribe`, where the name has no version.
+It derives it only for an event that a policy handles. The platform that issues the
+credentials grants the capability, and the adapter of the transport routes by the
+grant. An adapter that cannot refuse a consumer without the grant lets each
+consumer in.
 
 ### A message
 
-`EhOsContract.Bus.Message` carries five things: the id, the key that tells one event
-from another, the versioned name, the correlation and the payload. **The payload is
-JSON**: string keys, and values a JSON encoder turns into text and back — what
-arrives is what `Jason` decodes, not the Elixir terms that were sent.
-`EhOsContract.Bus.Local` encodes and decodes it on the way, so a term a real
-transport could not carry fails in a test and not in production.
+`EhOsContract.Bus.Message` carries five things:
+
+- the id;
+- the key that tells one event from another;
+- the name, with its version;
+- the correlation;
+- the payload.
+
+**The payload is JSON**: string keys, and values that a JSON encoder turns into text
+and back. What arrives is what `Jason` decodes, not the Elixir terms that were sent.
+`EhOsContract.Bus.Local` encodes and decodes the payload on the way. So a term that
+a real transport cannot carry fails in a test, not in production.
 
 ### Callbacks
 
@@ -115,58 +167,71 @@ transport could not carry fails in a test and not in production.
 @callback publish(opts :: keyword(), messages :: [EhOsContract.Bus.Message.t()]) :: :ok | {:error, term()}
 ```
 
-Hands `messages` to the transport, returning once it holds every one.
+Hands `messages` to the transport. Returns when the transport holds each message.
 
-**It is called inside a database transaction** — the relay's step, which holds its
-row and a pooled connection until this returns — **so it returns within a few
-seconds**, well under the repo's timeout (15 seconds by default): a broker that has
-not confirmed by then is `{:error, :timeout}`. Wait for the confirmations of a
-batch together, not one after another. `EhOsContract.Bus.Local` gives up after 5.
-A call that outlives the repo's timeout loses the connection after the transport
-took the batch, so the position never moves and the same batch goes out again and
-again.
+**The relay calls it inside a database transaction.** That transaction holds its
+row and a pooled connection until the call returns. So return within a few seconds,
+well under the timeout of the repo (15 seconds by default).
 
-`{:error, reason}`, never an exit, **only for what trying again can fix**: a
-transport that is down or slow. The relay then keeps its position, counts no
-attempt, and tries again in five seconds, for as long as it takes. Anything trying
-again will not fix raises — a payload JSON cannot encode, a message over the
-broker's size limit, a subject it refuses — so that the relay stops at that event,
-`failing`, where a person sees it, instead of retrying it forever.
+- If the transport has not confirmed by then, return `{:error, :timeout}`.
+- Wait for the confirmations of a batch together, not one after the other.
+- `EhOsContract.Bus.Local` stops after 5 seconds.
+
+If a call takes longer than the timeout of the repo, the relay loses its connection
+after the transport took the batch. Then the position never moves, and the relay
+publishes the same batch again and again.
+
+**Return `{:error, reason}` only for an error that a new try can correct**: a
+transport that is down or slow. Then the relay keeps its position, counts no
+attempt, and tries again after 5 seconds, with no end. An exit counts as such an
+error, but an adapter must return the error, not exit.
+
+**Raise for an error that a new try does not correct.** Examples:
+
+- a payload that JSON cannot encode;
+- a message over the size limit of the broker;
+- a subject that the broker refuses.
+
+Then the relay publishes the batch again, one event at a time. It
+publishes the events before the bad one, and stops at the bad one. After three
+attempts, the relay is `failing` at that event, where a person sees it.
 
 ```elixir
 @callback consumer(opts :: keyword(), EhOsContract.Bus.consumer()) :: Supervisor.child_spec()
 ```
 
-The child that runs `consumer`: started, it subscribes under the consumer's name, and
-delivers to its handler until it is stopped.
+Returns the child spec of the process that runs `consumer`. When it starts, the
+process subscribes under the name of the consumer. Then it delivers each message to
+the handler, until it stops.
 
-**It is subscribed once its start has returned.** The engine starts every inbox
-before any relay, and relies on this for nothing a relay publishes to be published,
-in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
+**The consumer is subscribed when its start returns.** The engine starts each inbox
+before any relay. So in one node, a relay publishes nothing before the inbox that
+takes it listens (`EhOsContract.Inbox`).
 
-**Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
-one inbox after another, so a start that waits on a transport that does not answer
-holds the host's boot for as long. A transport that is down is an error at once; the
-engine starts the child again later.
+**The start returns quickly**, subscribed or failed. The boot of the engine waits
+for each start, one inbox after the other. A start that waits for a transport that
+does not answer holds the boot of the host for as long. If the transport is down,
+return an error at once. The engine starts the child again later.
 
-**Its state and its exit reasons carry no credentials.** What OTP reports of a
-process that stops — its last state and its reason, in the log — is the adapter's,
-out of the engine's reach: keep a connection's secrets out of the reason, and out of
-the state with `format_status/1`.
+**The state and the exit reasons hold no credentials.** When a process stops, OTP
+writes its last state and its reason to the log. The engine cannot control that.
+Keep the secrets of a connection out of the reason, and out of the state with
+`format_status/1`.
 
 ## EhOsContract.Entities
 
 Configured with `config :eh_os_contract, entities: ...`, a module.
 
-Where the rows of the entities a command `reads:` come from.
+Gives the rows of the entities that a command reads. An entity is data that the
+application keeps outside the log.
 
     config :eh_os_contract, entities: MyApp.Entities
 
-A decision often depends on something the application keeps outside the log: whether
-a booked visit is reported to the state register depends on the service booked, and
-the clinic's application keeps its services. A command that declares
-`reads: [service: :service_id]` gets the service as the third argument of its
-decision, and the row is asked of the configured implementation:
+A decision can depend on such data. Example: a clinic reports a booked visit to the
+state register only for some services, and the application of the clinic keeps its
+services. A command that declares `reads: [service: :service_id]` gets the service
+as the third argument of its decision. The engine asks the configured
+implementation for the row:
 
     defmodule MyApp.Entities do
       @behaviour EhOsContract.Entities
@@ -180,44 +245,60 @@ decision, and the row is asked of the configured implementation:
       end
     end
 
-The actor is the one dispatch authorized: a person's credential, or one of the
-application's `:system` actors the command names in `by:`; never a reaction, which
-cannot issue a command that reads. A host that keeps several tenants' rows answers a
-credential only with what its tenant has, and `:not_found` otherwise, so a caller
-cannot have a decision read, and its record keep, another tenant's row; it decides
-what a `:system` actor may read.
+### Which actor it gets
+
+The actor is the actor that dispatch authorized. It is the credential of a person,
+or a `:system` actor that the command names in `by:`. It is never a
+reaction, because a policy or a process manager cannot issue a command that reads.
+The contract does not compile otherwise.
+
+If the host keeps the rows of more than one tenant, answer a credential only with
+the rows of its tenant. Answer `:not_found` for the rows of another tenant. If you
+do not, a caller can make a decision read the row of another tenant, and the record
+of the command keeps it. The host decides what a `:system` actor can read.
 
 ### What the engine does with the answer
 
-- **`{:ok, row}`**, a map or a struct with atom keys, an Ecto schema included. The
-  engine keeps the fields the domain declares for the entity, its identity among
-  them, and drops the rest; the decision gets `%{card: %{card_id: "card-1",
-  suspended: false}}`. A declared field missing from the row, or of the wrong type,
-  raises `EhOsContract.Entities.UnfitRowError`, naming the field and never its value:
-  the host's code and the domain disagree.
-- **`:not_found`** refuses the command as a field naming nothing:
-  `{:error, {:invalid, [{:service_id, :unknown}]}}`, 422 through
-  `EhOsContract.call/3`, and nothing is written.
-- Anything else raises `ArgumentError`.
+- **`{:ok, row}`**: the row is a map or a struct with atom keys, such as an Ecto
+  schema. The engine keeps the fields that the domain declares for the entity,
+  with its identity, and drops the rest. Example: the decision gets
+  `%{card: %{card_id: "card-1", suspended: false}}`.
+- **`:not_found`**: the engine refuses the command, as a field that names nothing:
+  `{:error, {:invalid, [{:service_id, :unknown}]}}`. Through
+  `EhOsContract.call/3`, the answer is 422. The engine writes nothing.
+- Any other answer raises `ArgumentError`.
 
-### When it is asked
+The engine raises `EhOsContract.Entities.UnfitRowError` if the row does not fit the
+domain. Then the code of the host and the domain do not agree:
 
-Once per command, after the caller is authorized and what it sent is found sound,
-and before the decision's transaction: when the decision meets a conflict and runs
-again, it decides on the same rows. A retry of a command already accepted under its
-idempotency key gets its receipt without asking. No policy or process manager issues
-a command that reads (the contract does not compile otherwise). A command the host's
-code dispatches inside a transaction — its own, or one a read model or an effect runs
-in — is asked inside that one, and after an append made in it, while every other
-writer of the log waits: keep `c:EhOsContract.Entities.fetch/4` a local read. The call has no time limit of
-the engine's.
+- a required field that the domain declares is not in the row;
+- a field has the wrong type, or its value breaks an invariant of a domain value;
+- the identity of the row is not the id that the engine asked for.
 
-What was read is kept with the command's record, accepted or rejected, the row's
-declared fields whole: an entity with a long text or a long list makes every command
-that reads it that much larger.
+The message names the fields, never their values. An optional field that is not in
+the row is not an error.
 
-A node with a contract whose command `reads:` does not start without an
-implementation configured, one that is loaded and exports `c:EhOsContract.Entities.fetch/4`.
+### When the engine asks
+
+The engine asks one time for each command. It asks after it authorizes the caller
+and checks the fields of the command, and before the transaction of the decision.
+
+- If the decision meets a conflict and runs again, it decides on the same rows.
+- A retry of a command that the engine accepted under its idempotency key gets its
+  receipt, and the engine does not ask.
+- The engine sets no time limit on the call.
+
+The code of the host can dispatch a command inside a transaction: its own, or the
+transaction of a read model or an effect. Then the engine asks inside that
+transaction. If that transaction appended before, each other writer of the log
+waits for the answer. So make `c:EhOsContract.Entities.fetch/4` a local read.
+
+The record of the command keeps what the engine read, accepted or rejected, with
+the declared fields of the row whole. So an entity with a long text or a long list
+makes each command that reads it larger.
+
+If a contract has a command that reads, the node does not start without an
+implementation. The implementation must be loaded and export `c:EhOsContract.Entities.fetch/4`.
 
 ### Callbacks
 
@@ -226,70 +307,82 @@ implementation configured, one that is loaded and exports `c:EhOsContract.Entiti
   {:ok, map()} | :not_found
 ```
 
-The row of the entity `entity` of `domain` identified by `id`, as `actor`, the one
-who issued the command, may have it decided on; or `:not_found`.
+Returns the row of the entity `entity` of `domain` with the id `id`, or
+`:not_found`. `actor` issued the command. Return only a row that this actor can
+have a decision read.
 
 ## EhOsContract.Store
 
 Configured with `config :eh_os_contract, store: ...`, a module.
 
-Where events are appended and read back.
+Appends events to the log, and reads them back. The default is
+`EhOsContract.Store.Postgres`.
 
-It isolates the SQL, not the transaction model. **Every call runs inside the
-caller's Ecto transaction**, so an append commits or rolls back together with
-whatever else the caller wrote.
+The Store hides the SQL. It does not have a transaction of its own:
+`c:EhOsContract.Store.append/3` and `c:EhOsContract.Store.lock/1` run inside the Ecto transaction of the caller, and raise
+outside one. So an append commits or rolls back together with each other write of
+the caller.
 
 ### What an implementation promises
 
-- **Appends are serialised.** Positions become visible in commit order, with no gap
-  a reader has to wait for. A reader that follows `position > checkpoint` therefore
-  never skips a row that commits late. Holes left by rolled-back appends are
-  permanent and harmless. `EhOsContract.Store.Postgres` gets this from one
-  transaction-scoped advisory lock.
-- **A stream's versions have no gaps.** `{:stream, id, expected}` appends only when
-  the stream's highest version is `expected` (`0`: the stream must not exist yet).
-  The new events get `expected + 1`, `expected + 2`, …. Otherwise the append returns
-  `{:error, :wrong_expected_version}` and writes nothing. The entries themselves name
-  no stream: the condition does.
-- **`{:dcb, query, after_position}` appends only when nothing matching `query` was
-  appended after `after_position`** — the head `c:EhOsContract.Store.read_query/2` returned with what it
-  read. Otherwise `{:error, :condition_failed}`, and nothing is written.
-  Such an append carries no stream: a consistency boundary is a query over the log,
-  not a stream of its own.
-- **`:none` appends without a condition**, and then no entry may carry a stream.
-  A stream id with no check would be a version nobody verified.
-- **An event's runs are appended with it** (`t:EhOsContract.Store.entry/0`), so no event is in the log
-  without the runs it belongs to.
+`EhOsContract.Store.Suite` checks each of these promises. Any implementation can
+run it.
 
-`EhOsContract.Store.Suite` checks all of this. Any implementation can run it.
+- **Appends happen one at a time.** Positions become visible in the order of the
+  commits, with no gap that a reader must wait for. So a reader that follows
+  `position > checkpoint` never skips a row that commits late. An append that rolls
+  back leaves a hole. The hole stays, and does no harm.
+  `EhOsContract.Store.Postgres` gets this order from one advisory lock for each
+  transaction.
+- **The versions of a stream have no gaps.** `{:stream, id, expected}` appends
+  only if the highest version of the stream is `expected`. With `0`, the stream
+  must not exist yet. The new events get `expected + 1`, `expected + 2`, and so on.
+  Otherwise the append returns `{:error, :wrong_expected_version}`, and writes
+  nothing. The condition names the stream; the entries do not.
+- **`{:dcb, query, after_position}` appends only if no event that matches `query`
+  came after `after_position`.** That position is the head that
+  `c:EhOsContract.Store.read_query/2` returned. Otherwise the append returns
+  `{:error, :condition_failed}`, and writes nothing. Such an append has no stream:
+  a consistency boundary is a query over the log, not a stream of its own.
+- **`:none` appends with no condition.** Then no entry can name a stream, because
+  nothing checks the version of that stream.
+- **An event and its runs go in one append** (`t:EhOsContract.Store.entry/0`). So the log holds no
+  event without the runs that it belongs to.
 
-### What it asks of the caller's transaction
+### What it asks of the transaction of the caller
 
-Two things, both from the one global lock, and both new for a host that emitted on
-0.2.1:
+Both rules come from the one global lock.
 
-- **READ COMMITTED.** `EhOsContract.Store.Postgres` refuses to append at any other
-  isolation level, because under a stricter one the stream check reads a snapshot
-  older than the lock. An append inside a REPEATABLE READ or SERIALIZABLE
-  transaction now raises.
-- **Take the append lock before any row lock that a reaction in the same
-  transaction also takes.** The lock is held from the first append to the end of
-  the transaction. Take this order: transaction A locks row R and then appends,
-  while transaction B appends and a reaction delivered in its transaction then
-  locks R. A waits for the append lock and B waits for R, so Postgres aborts one of
-  them as a deadlock. A transaction that locks rows and then appends should call
-  `c:EhOsContract.Store.lock/1` first. So should any transaction that appends and then locks rows
-  another appender may hold. The lock is re-entrant,
-  so taking it early costs nothing.
+- **Use READ COMMITTED.** `EhOsContract.Store.Postgres` raises on an append at any
+  other isolation level. At a stricter level, the check of the stream reads a
+  snapshot older than the lock.
+- **Take the append lock before a row lock that a reaction can take.** The
+  reaction runs in the same transaction. The lock stays from the first append to the end of the
+  transaction.
+
+Example of a deadlock: transaction A locks row R, and then appends. Transaction B
+appends, and then a reaction in its transaction locks R. A waits for the append
+lock, and B waits for R. Postgres stops one of them as a deadlock.
+
+- If a transaction locks rows and then appends, call `c:EhOsContract.Store.lock/1` first.
+- If a transaction appends and then locks rows that another appender can hold, call
+  `c:EhOsContract.Store.lock/1` first too.
+
+The lock is re-entrant, so an early `c:EhOsContract.Store.lock/1` costs nothing.
 
 ### A query
 
-`t:EhOsContract.Store.query/0` is a list of items, **OR-ed**; an item matches an event of one of its
-`types` carrying **every** one of its `tags`. An item with no tags matches every event
-of its types. `c:EhOsContract.Store.read_query/2` returns what matches with the log's head, and the
-head is what the condition checks against: every position up to it is committed,
-since appends commit in position order, so nothing matching up to it means nothing
-matching at all, and the check under the lock reads only what came after it.
+`t:EhOsContract.Store.query/0` is a list of items. An event matches the query if it matches one item.
+An event matches an item if it is of one of its `types`, and carries each of its
+`tags`. An item with no tags matches each event of its types.
+
+`c:EhOsContract.Store.read_query/2` returns the events that match, and the head of the log. The
+condition `{:dcb, query, head}` checks against that head:
+
+- appends commit in the order of their positions, so each position up to the head
+  is committed;
+- so if nothing matched up to the head, nothing matches there at all;
+- so the check under the lock reads only what came after the head.
 
 ### Callbacks
 
@@ -297,14 +390,15 @@ matching at all, and the check under the lock reads only what came after it.
 @callback lock(repo :: module()) :: :ok
 ```
 
-Takes the append lock for the rest of the caller's transaction.
+Takes the append lock until the end of the transaction of the caller.
 
 ```elixir
 @callback append(repo :: module(), [EhOsContract.Store.entry()], EhOsContract.Store.condition()) ::
   {:ok, [EhOsContract.Event.t()]} | {:error, EhOsContract.Store.conflict()}
 ```
 
-Appends `entries`, in order, if `condition` holds.
+Appends `entries` in their order, if `condition` holds. Returns the appended events,
+or the conflict.
 
 ```elixir
 @callback read_stream(repo :: module(), String.t(), after_version :: non_neg_integer()) :: [
@@ -312,15 +406,15 @@ Appends `entries`, in order, if `condition` holds.
 ]
 ```
 
-One stream's events after `after_version`, in version order.
+Returns the events of one stream after `after_version`, in the order of their versions.
 
 ```elixir
 @callback read_query(repo :: module(), EhOsContract.Store.query()) ::
   {[EhOsContract.Event.t()], head :: non_neg_integer()}
 ```
 
-The events matching `query`, in position order, and the head of the log they were
-read up to: the position to hand to `{:dcb, query, head}`.
+Returns the events that match `query`, in the order of their positions, and the
+head of the log that the read reached. Give that head to `{:dcb, query, head}`.
 
 ```elixir
 @callback read_all(
@@ -331,23 +425,23 @@ read up to: the position to hand to `{:dcb, query, head}`.
 ) :: [EhOsContract.Event.t()]
 ```
 
-Up to `limit` events after `after_position`, in position order, of the given types or all.
+Returns up to `limit` events after `after_position`, in the order of their
+positions. `types` limits the events to those types; `:all` takes each type.
 
 ## EhOsContract.Supplier
 
 Configured with `config :eh_os_contract, supplier: ...`, a module.
 
-Where the values of the fields a contract declares `supplied_by: :host` come from.
+Gives the values of the fields that a contract declares `supplied_by: :host`. The
+caller of a command or a recording cannot send these fields.
 
     config :eh_os_contract, supplier: MyApp.Supplier
 
-Some of what a decision depends on is not the caller's to say. What a late return
-costs, by the desk's tariff, is data of the host's systems; a request that
-carried `late_fee: 0` would decide on what the caller claims. A field
-declared `supplied_by: :host` is therefore refused from a request through
-`EhOsContract.call/3` — sent at all, even as `null`, it is `{field, :supplied}`
-— and its value is asked of the configured implementation instead, once the
-credential is authorized and before the fields are checked:
+A decision can depend on data that the caller must not give. Example: the fee for a
+late return comes from the tariff of the desk, which the host keeps. A request with
+`late_fee: 0` would make the decision on what the caller claims. So the contract
+declares the field `supplied_by: :host`, and the engine asks the configured
+implementation for its value:
 
     defmodule MyApp.Supplier do
       @behaviour EhOsContract.Supplier
@@ -357,24 +451,41 @@ credential is authorized and before the fields are checked:
         do: {:ok, %{late_fee: MyApp.Tariff.late_fee(id)}}
     end
 
-One call per command or recording, for every supplied field of it, with the fields
-already decoded as `given`. The answer holds exactly the fields asked for, each of
-its type; anything else is the host's defect and raises, naming the field and never
-its value. `{:error, reason}` — the tariff did not answer — refuses the request
-with `{:not_supplied, reason}`, and nothing is written.
+### What the caller gets
 
-The host is asked after the caller is authorized and after what the caller sent is
-found sound — its own fields and its idempotency key — and not at all for a retry
-of a request already accepted under its key, which gets its receipt. A value that
-breaks a domain value's invariant is the host's defect, as one of the wrong type is,
-and raises. The call has no time limit of the engine's: a register that may hang
-is bounded by the implementation.
+- If a request through `EhOsContract.call/3` holds a supplied field, also as
+  `null`, the engine refuses it: `{:error, {:invalid, [{field, :supplied}]}}`. Over
+  HTTP, the answer is 422.
+- If the implementation returns `{:error, reason}`, the engine refuses the request:
+  `{:error, {:not_supplied, reason}}`. Over HTTP, the answer is 503. The engine
+  writes nothing, so the caller can send the request again.
 
-`dispatch/3` and `record/3` from the application's own code are not asked: the
-struct it builds is trusted, as everything else in it is. A node with a contract
-declaring a supplied field does not start without an implementation configured,
-one that is loaded and exports `c:EhOsContract.Supplier.supply/2` (checked at the engine's boot); the
-Mix tasks that only read contracts do not ask.
+### When the engine asks
+
+The engine asks one time for each command or recording, for all of its supplied
+fields. `given` holds the other fields, decoded. The engine asks:
+
+1. after it authorizes the caller;
+2. after it checks what the caller sent: its own fields and its idempotency key.
+
+It does not ask for a retry of a request that it accepted under its idempotency
+key. That retry gets its receipt. The engine sets no time limit on the call. If the
+source of the data can hang, the implementation must limit the time.
+
+`dispatch/3` and `record/3` ask only with `supply: true`, which `call/3` sets.
+Without it, the code of the application fills the supplied fields itself. The engine
+trusts that struct, and checks those fields as it checks each other field.
+
+### What the answer must hold
+
+The answer holds exactly the fields that the engine asked for, each of its type. If
+it does not, or if a value breaks an invariant of a domain value, the engine raises.
+The message names the field, never its value. Such an answer is an error in the
+code of the host.
+
+If a contract declares a supplied field, the node does not start without an
+implementation. The implementation must be loaded and export `c:EhOsContract.Supplier.supply/2`. The engine
+checks this at boot. The Mix tasks that only read contracts do not check it.
 
 ### Callbacks
 
@@ -383,18 +494,24 @@ Mix tasks that only read contracts do not ask.
   {:ok, %{required(atom()) => term()}} | {:error, term()}
 ```
 
-The values of `request.fields`, or why the host cannot give them.
+Returns the values of `request.fields`, or `{:error, reason}` if the host cannot
+give them now.
 
 ## EhOsContract.Vault
 
 Configured with `config :eh_os_contract, vault: ...`, a module.
 
-The master keys that wrap the subjects' data keys.
+The master keys that protect personal data. A master key wraps the data key of
+each subject.
 
-A data key is 32 random bytes per subject, stored in `eh_os_contract_subject_keys`
-only wrapped: the database alone cannot decrypt a personal field.
+The engine encrypts each personal field with the data key of its subject. A data
+key is 32 random bytes. The engine keeps it in the table
+`eh_os_contract_subject_keys`, only in its wrapped form. So the database alone
+cannot decrypt a personal field.
 
-**The default is `EhOsContract.Vault.Local`**, which takes the master keys from
+### The default vault
+
+`EhOsContract.Vault.Local` is the default vault. It reads the master keys from the
 configuration:
 
     # config/runtime.exs
@@ -404,26 +521,50 @@ configuration:
         {"2026-03", System.fetch_env!("EH_OS_CONTRACT_KEK_OLD")}
       ]
 
-**Another implementation** — a KMS — is named in `config :eh_os_contract, vault:
-MyApp.KmsVault` and implements this behaviour.
+- The first key of the list wraps each new data key.
+- Each key of the list unwraps the data keys that it wrapped.
+- A node whose list does not hold a key cannot unwrap the data keys of that key.
 
-**Rotation.** The first key wraps every new data key; the others only unwrap. A
-node whose list does not hold a key cannot unwrap what it wrapped, so a key is
-rotated in three deploys:
+To keep the master keys in a key management service, write a module that
+implements this behaviour. Then name it in the configuration:
 
-1. add the new key **after** the current one, and deploy, so that every node can
-   unwrap what the new key will wrap;
-2. move it first, and deploy;
-3. run `mix eh_os_contract.rewrap`, which rewraps every data key the old master
-   key still wraps, then drop the old key and deploy.
+    config :eh_os_contract, vault: MyApp.KmsVault
 
-Putting the new key first in one step leaves the nodes still on the old list
-unable to read what the new ones write, until the rollout ends. No event is
-rewritten.
+[Manage the keys and the backups of personal data](master-keys.md) has an example.
 
-**At boot** the engine refuses to start when a contract it runs declares personal
-fields and the vault is not ready: without a master key, the first such command
-would fail rather than the deployment.
+### Rotate a master key
+
+You rotate a master key in four steps, with three deploys.
+[Rotate a master key](master-keys.md#rotate-a-master-key) gives the result of each
+step.
+
+Do not put the new key first in one deploy. If you do, the nodes with the old list
+cannot read what the nodes with the new list write, until the rollout ends.
+
+1. Add the new key after the current key, and deploy. Then each node can unwrap
+   what the new key will wrap.
+2. Move the new key to the first place, and deploy.
+3. Run `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
+   id of the key that it used. Make sure that it is the id of the new key.
+4. Do this step only when step 3 ended without an error, with the id of the new
+   key. Count the data keys of each master key. Each row must name the new key:
+
+       SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
+
+   Then remove the old key from the list, and deploy.
+
+The check of step 4 is necessary. The rewrap wraps with the first key of the list
+of the node where it runs. With the configuration of step 1, it wraps each data
+key with the old key again, and ends without an error. After you remove the old
+key, nothing can unwrap those data keys.
+
+A rotation does not rewrite an event.
+
+### At boot
+
+If a contract declares a personal field and the vault cannot wrap and unwrap, the
+engine does not start. So a missing master key stops the deployment, not the
+first command with a personal field.
 
 ### Callbacks
 
@@ -431,26 +572,39 @@ would fail rather than the deployment.
 @callback wrap(key :: binary(), context :: binary()) :: {EhOsContract.Vault.kek_id(), wrapped :: binary()}
 ```
 
-Wraps `key`, a data key, with the current master key. `context` is bound to the
-result: unwrapping with another context fails, so a wrapped key cannot be moved to
-another subject's row.
+Wraps `key`, a data key, with the current master key. Returns the id of that
+master key and the wrapped key.
+
+The wrapped key is bound to `context`. An unwrap with another context fails. So a
+wrapped key does not unwrap in the row of another subject.
 
 ```elixir
 @callback unwrap(EhOsContract.Vault.kek_id(), wrapped :: binary(), context :: binary()) ::
   {:ok, binary()} | :error
 ```
 
-Unwraps what `c:EhOsContract.Vault.wrap/2` returned, with the master key `kek_id` names.
+Unwraps a key that `c:EhOsContract.Vault.wrap/2` returned, with the master key that `kek_id` names and
+the same `context`. Returns `:error` if the vault does not hold that master key, or
+if the context or the wrapped key is not the same.
 
 ```elixir
 @callback current() :: EhOsContract.Vault.kek_id()
 ```
 
-The master key `c:EhOsContract.Vault.wrap/2` wraps with now.
+The id of the master key that `c:EhOsContract.Vault.wrap/2` uses now.
 
 ```elixir
 @callback check() :: :ok | {:error, String.t()}
 ```
 
-Whether the vault can wrap and unwrap: `:ok`, or why not, in a sentence that
-names no key.
+Tells if the vault can wrap and unwrap. Returns `:ok`, or the reason as a sentence.
+The sentence names no key.
+
+## Next steps
+
+- [The configuration](configuration.md): each key, with its default.
+- [Write an Authorizer](authorizer.md): add a rule of your own to the check of a call.
+- [How does an event reach another contract?](between-contracts.md): the relay, the
+  bus and the inbox, from the side of the contracts.
+- [Manage the keys and the backups of personal data](master-keys.md): rotate a
+  master key, or keep the keys in a key management service.

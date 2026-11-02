@@ -1,41 +1,58 @@
 defmodule Mix.Tasks.Compile.EhOsContract do
-  @shortdoc "Checks that contracts agree with their domain and with each other"
+  @shortdoc "Checks that the contracts agree with their domain and with each other"
 
   @moduledoc """
-  Checks, on every compile, the rules a contract cannot hold on its own: those that
-  need its domain, the contracts it consumes, or the rest of the application.
+  Checks the rules that a contract cannot hold alone, on each compile. These rules
+  need the domain of the contract, the contracts that it consumes, or the rest of
+  the application.
 
-  Among them: a contract's domain declares the contexts, terms, values and actors it
-  uses; a sibling contract declares every event and field this one consumes; a
-  policy or read model that takes another context's event says how it is delivered;
-  personal data stays out of what is published; a reference from one context into
-  another follows the relation the domain declares between them, and takes no more
-  than its pattern lets through; no declaration has two implementations; names are unique across the application; and a process module
-  agrees with the contracts whose events it includes.
-
-  Some of what these rules leave open is reported by `mix eh_os_contract.check`
-  instead of refused: a declaration with no implementation at all, and a reaction to
-  another context's event declared `delivery: :in_transaction`.
-
-  Add it to the project's compilers, after Elixir's:
+  Add the compiler to the project, after the compilers of Elixir:
 
       def project do
         [compilers: Mix.compilers() ++ [:eh_os_contract], ...]
       end
 
-  A contract names its domain and its siblings without depending on them at compile
-  time, so changing a domain recompiles none of the contracts that name it. That is
-  why this runs on every compile and over the whole project, not only when a
-  contract changed. It reads each `.beam` file's exports, and loads only the modules
-  that carry a model (a contract, a domain, a process) or an implementation.
+  ## What it checks
 
-  A violation is an error at the file and line of the declaration at fault, and
+  - The domain of a contract declares the contexts, terms, values and actors that the
+    contract uses.
+  - A sibling contract declares each event and field that this contract consumes.
+  - A policy or a read model that takes an event of another context says how the
+    engine delivers it.
+  - A published event holds no personal data.
+  - A reference from one context into another follows the relation that the domain
+    declares between them. It takes no more than the pattern of that relation lets
+    through.
+  - No declaration has two implementations.
+  - The `id:` of each contract and of each process module is unique in the
+    application.
+  - The name of each command, query and recorded event is unique in its domain.
+  - A process module agrees with the contracts whose events it includes.
+
+  These rules leave two things open. `mix eh_os_contract.check` reports them, but it
+  does not refuse them:
+
+  - a declaration with no implementation;
+  - a reaction to an event of another context with `delivery: :in_transaction`.
+
+  ## A violation
+
+  A violation is an error at the file and the line of the declaration at fault. It
   fails the compile. In a project without this compiler, `mix eh_os_contract.check`
-  reports the same violations, as errors.
+  reports the same violations as errors.
 
-  The modules checked are the project's own, the `.beam` files in its compile path;
-  no configuration names them. A domain or a sibling contract in a dependency is
-  found by its name.
+  ## Which modules it reads
+
+  A contract names its domain and its siblings with no compile-time dependency on
+  them. So a change to a domain recompiles none of the contracts that name it. For
+  this reason, the compiler runs on each compile and over the whole project, not only
+  when a contract changes.
+
+  - It reads the exports of each `.beam` file in the compile path of the project. No
+    configuration names the modules.
+  - It loads only the modules that hold a model (a contract, a domain or a process
+    module) or an implementation.
+  - It finds a domain or a sibling contract in a dependency by its name.
   """
 
   use Boundary, classify_to: EhOsContract

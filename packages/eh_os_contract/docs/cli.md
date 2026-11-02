@@ -2,149 +2,199 @@
 
 # Command-line tasks
 
-The `mix` tasks of `eh_os_contract`, as each one's documentation describes it. Run
-`mix help <task>` for the same text in a terminal.
+This page gives each `mix` task of `eh_os_contract`: what it does, its options, and
+what stops it. It is for a developer or an operator who runs the tasks. Each section
+is the documentation of its task. `mix help <task>` prints the same text in a
+terminal.
 
 ## mix compile.eh_os_contract
 
-Checks that contracts agree with their domain and with each other
+Checks that the contracts agree with their domain and with each other
 
-Checks, on every compile, the rules a contract cannot hold on its own: those that
-need its domain, the contracts it consumes, or the rest of the application.
+Checks the rules that a contract cannot hold alone, on each compile. These rules
+need the domain of the contract, the contracts that it consumes, or the rest of
+the application.
 
-Among them: a contract's domain declares the contexts, terms, values and actors it
-uses; a sibling contract declares every event and field this one consumes; a
-policy or read model that takes another context's event says how it is delivered;
-personal data stays out of what is published; a reference from one context into
-another follows the relation the domain declares between them, and takes no more
-than its pattern lets through; no declaration has two implementations; names are unique across the application; and a process module
-agrees with the contracts whose events it includes.
-
-Some of what these rules leave open is reported by `mix eh_os_contract.check`
-instead of refused: a declaration with no implementation at all, and a reaction to
-another context's event declared `delivery: :in_transaction`.
-
-Add it to the project's compilers, after Elixir's:
+Add the compiler to the project, after the compilers of Elixir:
 
     def project do
       [compilers: Mix.compilers() ++ [:eh_os_contract], ...]
     end
 
-A contract names its domain and its siblings without depending on them at compile
-time, so changing a domain recompiles none of the contracts that name it. That is
-why this runs on every compile and over the whole project, not only when a
-contract changed. It reads each `.beam` file's exports, and loads only the modules
-that carry a model (a contract, a domain, a process) or an implementation.
+### What it checks
 
-A violation is an error at the file and line of the declaration at fault, and
+- The domain of a contract declares the contexts, terms, values and actors that the
+  contract uses.
+- A sibling contract declares each event and field that this contract consumes.
+- A policy or a read model that takes an event of another context says how the
+  engine delivers it.
+- A published event holds no personal data.
+- A reference from one context into another follows the relation that the domain
+  declares between them. It takes no more than the pattern of that relation lets
+  through.
+- No declaration has two implementations.
+- The `id:` of each contract and of each process module is unique in the
+  application.
+- The name of each command, query and recorded event is unique in its domain.
+- A process module agrees with the contracts whose events it includes.
+
+These rules leave two things open. `mix eh_os_contract.check` reports them, but it
+does not refuse them:
+
+- a declaration with no implementation;
+- a reaction to an event of another context with `delivery: :in_transaction`.
+
+### A violation
+
+A violation is an error at the file and the line of the declaration at fault. It
 fails the compile. In a project without this compiler, `mix eh_os_contract.check`
-reports the same violations, as errors.
+reports the same violations as errors.
 
-The modules checked are the project's own, the `.beam` files in its compile path;
-no configuration names them. A domain or a sibling contract in a dependency is
-found by its name.
+### Which modules it reads
+
+A contract names its domain and its siblings with no compile-time dependency on
+them. So a change to a domain recompiles none of the contracts that name it. For
+this reason, the compiler runs on each compile and over the whole project, not only
+when a contract changes.
+
+- It reads the exports of each `.beam` file in the compile path of the project. No
+  configuration names the modules.
+- It loads only the modules that hold a model (a contract, a domain or a process
+  module) or an implementation.
+- It finds a domain or a sibling contract in a dependency by its name.
 
 ## mix eh_os_contract.check
 
-Whole-program checks over the contracts and their implementations
+Checks the contracts and their implementations as one program
 
-Reports what a contract may legally say and a reader should still hear about, as
-errors, warnings and notices.
+Reports what a contract can legally say and a reader must still know about. Each
+finding is an error, a warning or a notice.
 
-A compile refuses a contract that cannot be right. This task reads every contract,
-domain and implementation of the applications `config :eh_os_contract,
-applications:` names, less what `exclude:` leaves out, and reports the rest: a
-contract nothing implements, a reaction that points back up its own process, a
-deadline with no event that ends the run, a free-text field not marked personal.
-A project that does not add the `:eh_os_contract` compiler gets that compiler's
-violations here too, as errors.
+A compile refuses a contract that cannot be right. This task reports the rest.
+Examples:
 
-    mix eh_os_contract.check                         # errors fail the task
-    mix eh_os_contract.check --warnings-as-errors    # so do warnings
+- a contract that no module implements;
+- a reaction that points back up its own process;
+- a deadline with no event that ends the run;
+- a free-text field that is not marked personal.
+
+    mix eh_os_contract.check                         # an error fails the task
+    mix eh_os_contract.check --warnings-as-errors    # a warning fails it too
     mix eh_os_contract.check --format json           # one JSON array
 
-Every finding names its rule, and, where it can, the file and line of the
-declaration it is about. What each rule means and how to clear it is in
-[the rules](rules.md) (`docs/rules.md` in the package); a compiler violation
-repeated here keeps the compiler's code instead. Nothing silences a rule: a
-finding goes away when the model changes.
+The task reads each contract, domain and implementation of the applications that
+`config :eh_os_contract, applications:` names. It leaves out the modules that
+`exclude:` names. If the project does not add the `:eh_os_contract` compiler, the
+task also reports the violations of that compiler, as errors.
 
-Findings come out errors first, then warnings, then notices, each group sorted by
-its text, so the same findings print the same output from one run to the next. In
-the human format a finding is a line with its level, rule and message, and a second
-line saying where the declaration it is about was written and where its rule is
-documented, when anything says either; a count closes the report. In JSON a finding
-is `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file` and
-`line` (`null` when nothing says where) and `documentation` (`null` for a repeated
-compiler rule, which the catalogue does not document).
+If these applications hold no contract, the task reports the error `no-contracts`.
+An empty report then does not mean a model with no problems.
 
-`--format json` prints the array and nothing else, but the compile this task runs
-first prints what it prints: compile beforehand when a program reads the output.
-`--warnings-as-errors` changes the exit status, and nothing that is printed.
+### A finding
+
+Each finding names its rule. If the task knows the declaration, the finding also
+names its file and line. [The rules](rules.md) (`docs/rules.md` in the package)
+tell what each rule means and how to clear it. A compiler violation that the task
+repeats keeps the code of the compiler.
+
+Nothing silences a rule. A finding goes away only when the model changes.
+
+The task prints the errors first, then the warnings, then the notices. It sorts
+each group by its text. So the same findings give the same output on each run.
+
+| Format | A finding |
+| --- | --- |
+| `human`, the default | A line with the level, the rule and the message. A second line with where the declaration was written and where the rule is documented, if the task knows either. A count ends the report. |
+| `json` | `rule`, `level` (`"error"`, `"warning"` or `"notice"`), `message`, `file`, `line` (`null` if the task does not know the place) and `documentation` (`null` for a repeated compiler rule, which the catalogue does not document) |
+
+- `--format json` prints only the array. But the task compiles the project first,
+  and the compile prints its own output. If a program reads the output, compile
+  before you run the task.
+- `--warnings-as-errors` changes the exit status. It does not change the output.
+- `--format` other than `human` or `json` stops the task with an error.
 
 ## mix eh_os_contract.gen.migration
 
-Writes the migration that creates a read model's table
+Writes the migration that creates the table of a read model
 
-Writes the Ecto migration that creates the table of a read model that names one
-(`table:` and `key:`), from its declaration, so the migration does not list the
-read model's fields a second time by hand.
+Writes the Ecto migration that creates the table of a read model. The task reads
+the fields from the declaration of the read model, so you do not write them a
+second time. The read model must declare `table:` and `key:`.
 
     mix eh_os_contract.gen.migration Lending.Contracts.Membership member_directory
     mix eh_os_contract.gen.migration --all
 
-The first form writes the migration of one read model. `--all` writes one for every
-read model with a table that no migration of the repo creates yet, a migration whose
-source holds `table(:<table>`.
+- The first form writes the migration of one read model. It takes any compiled
+  contract. If the read model has no table, the task stops with an error.
+- `--all` writes a migration for each read model whose table no migration of the
+  repo creates yet. A migration creates the table if its source holds
+  `table(:<table>`. It reads only the contracts of `config :eh_os_contract,
+  applications:`.
+- `--migrations-path DIR` writes into another directory.
 
-Each migration creates the table with:
+### What the migration creates
 
-  * one column per field, of the type its field is stored as: text for an identifier,
-    a string and an enum's member, `bigint` for an integer, `numeric`, `boolean`,
-    `date`, `timestamp` with microseconds, `jsonb` for a value made of fields and for
-    a list of them, an array for a list of anything else;
-  * the read model's `key:` as the primary key;
-  * `null: false` on every required field, except a personal one, which an erasure
-    blanks;
-  * an index on each field a row is looked up by besides its key: a subject's
-    identifier, which `forget/2` deletes by, and a query's scope.
+- A column for each field, of the type that stores the field:
+  - `text` for an identifier, a string and a member of an enum;
+  - `bigint` for an integer;
+  - `numeric`, `boolean` and `date` for a decimal, a boolean and a date;
+  - `timestamp` with microseconds for a timestamp;
+  - `jsonb` for a domain value with fields, and for a list of them;
+  - the column of the inner type for a domain value with an inner type;
+  - an array for a list of anything else.
+- The `key:` of the read model as the primary key.
+- `null: false` on each required field, except a personal field. An erasure blanks
+  a personal field.
+- An index on each field that finds a row, other than the key. These fields are the
+  identifier of a subject, which `forget/2` deletes by, and the scope of a query.
 
-It is written into the repo's migrations, `priv/<repo>/migrations` unless the repo's
-`:priv` says otherwise, named `<timestamp>_create_<table>.exs`, and it is the
-application's from then on: add to it, alter the table in a later migration, and let
-`EhOsContract.Testing.assert_read_model_tables/1` hold the table to the contract. The
-task never overwrites a migration, and writes nothing for a read model without a
-table.
+### Where the task writes it
 
-`--migrations-path DIR` writes into another directory.
+The task writes the migration into the migrations of the repo:
+`priv/<repo>/migrations`, unless the `:priv` of the repo says otherwise. The file
+name is `<timestamp>_create_<table>.exs`.
+
+After that, the migration belongs to the application. Add to it, or change the
+table in a later migration. `EhOsContract.Testing.assert_read_model_tables/1` holds
+the table to the contract.
+
+The task never writes over a migration:
+
+- If a migration `create_<table>` exists, the task stops with an error.
+- If two read models name one table, the task stops before it writes anything.
+- With `--all`, the task writes nothing for a read model without a table.
 
 ## mix eh_os_contract.glossary
 
-Prints a domain's ubiquitous language as Markdown
+Prints the ubiquitous language of a domain as Markdown
 
-Prints the glossary of the application's domain as Markdown: each context's terms,
-their definitions, the words to avoid and their translations, and each term's word in
-code — its translation into the domain's `code_language:` — with the declarations of
-the context's contracts named with it, and the process modules that include the
-context's events and are named with it: their id, a stage, a promise or a field that
-tells their runs apart.
+Prints the glossary of the domain of the application as Markdown.
 
-    mix eh_os_contract.glossary                        # every term, in its context's language
+    mix eh_os_contract.glossary                        # each term, in the language of its context
     mix eh_os_contract.glossary --language en          # each term in English, or a note that it has none
     mix eh_os_contract.glossary --context circulation  # one context
     mix eh_os_contract.glossary --domain lending       # when the application has more than one domain
 
-The domain is found among the modules of `config :eh_os_contract, applications:`.
-`--output` writes the glossary to a file.
+For each context, the glossary gives:
+
+- each term, its definition, the words to avoid and its translations;
+- the word in code of each term: its translation into the `code_language:` of the
+  domain;
+- the declarations of the contracts of the context that the term names;
+- the process modules that include events of the context and that the term names.
+  The term can name the id, a stage, a promise, or a field that tells the runs
+  apart.
+
+The task finds the domain among the modules of `config :eh_os_contract,
+applications:`. `--output` writes the glossary to a file.
 
 ## mix eh_os_contract.graph
 
-Gives a contract's, a process's or a domain's graph.v1 document, or the log over it
+Gives the graph.v1 document of a contract, a process module or a domain, or the log over it
 
-The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
-contract or process module the registry finds — that is, of the binary that runs — or
-of its domain, and with `--overlay` what the log says over it
-(`EhOsContract.Graph.Overlay`).
+Gives the `graph.v1` document of a contract, a process module or a domain. A
+renderer draws this document (`EhOsContract.Graph.Document`). With `--overlay`, the
+task also gives what the log says over it (`EhOsContract.Graph.Overlay`).
 
     mix eh_os_contract.graph --contract lending.circulation --output circulation.json
     mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
@@ -152,140 +202,260 @@ of its domain, and with `--overlay` what the log says over it
     mix eh_os_contract.graph --domain lending --output lending.json
     mix eh_os_contract.graph --output-dir graph
 
-`--contract` names a contract by its `id:`, `--process` a process module by its
-`id:`; a process module may share its id with a contract, so they are two options.
-Without either the task gives the domain's document — its context map, its contracts
-and process modules and what flows between them, its actors — and `--domain` names
-the domain by its `name:`, which it may leave out when the application has one. The
-bytes are the ones the API serves, every object's keys in order, so two of them
-compare with `diff`. A document holds every fact of its
-contract or domain, whatever a renderer draws of them; the pictures are the
-renderer's (`eh_os_contract_graph`), which the dashboard mounts.
+| Option | Value |
+| --- | --- |
+| `--contract` | the `id:` of a contract |
+| `--process` | the `id:` of a process module. It can be the same as the `id:` of a contract, so the two are different options. |
+| `--domain` | the `name:` of a domain. You can leave it out if the application has one domain. |
+| `--overlay` | adds what the log says |
+| `--since` | the start of the period of the overlay, ISO 8601. A time without an offset is UTC. It needs `--overlay`. The overlay has no end of the period. |
+| `--output` | a file for the document |
+| `--output-dir` | a directory for each document of the application. It takes no other option. |
 
-`--output-dir` writes every document of the application in one run, into a directory
-that does not exist yet or is empty: each domain's as `domain.<module>.json`
-(`domain.Lending.Domain.json`), each contract's as `contract.<id>.json` and each process
-module's as `process.<id>.json`, named as the renderer's loader names them,
-each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
-so it boots the project once rather than once per document. It writes no overlay, and
-refuses a directory that holds anything, so a document of a contract removed since an
-earlier run is never sent with the rest.
-`mix eh_os_contract.bundle`, in `eh_os_contract_auth`, writes these documents with the
-manifest and an index of their digests, the bundle EHOS takes.
+Give one of `--contract`, `--process` and `--domain`, or none of them. With none,
+the task gives the document of the domain. The task takes no argument other than
+these options. A wrong combination stops it with an error.
 
-Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
-every label of a document is written in the client's language. Without it the
-document is the only thing the task writes to stdout: what the application logs as
-it starts (`--overlay` starts it) goes to stderr, so `> graph.json` is the document
-alone — once the project is compiled, since Mix prints its compilation to stdout
-before the task runs.
+### What a document holds
+
+The task finds a contract or a process module in the registry. So the document
+shows the code that runs.
+
+- The document of a domain holds its context map, its contracts and process
+  modules, what flows between them, and its actors.
+- A document holds each fact of its contract or domain, also the facts that a
+  renderer does not draw. The renderer `eh_os_contract_graph` draws the pictures,
+  and the dashboard mounts it.
+- The bytes are the bytes that the API serves, with the keys of each object in
+  order. So you can compare two documents with `diff`.
+
+### The overlay
+
+> **`--overlay` starts the whole application.**
+> Run it only with the code that is deployed. The task records a deployment, and
+> starts the subscriptions, the relays and Oban. So effects can call external
+> systems from where you run it. If your code differs from the deployed code, the
+> engine rebuilds each changed process manager at once. It also rebuilds each
+> changed read model that has `reset/0`. A rebuilt process manager forgets its runs.
+
+The overlay reads the log through the repo of the application, so the task starts
+the application.
+
+### Write each document of the application
+
+`--output-dir` writes each document of the application in one run. A pipeline sends
+these documents with a deployment. The project loads one time, not one time for
+each document.
+
+- The directory must not exist yet, or must be empty. So a document of a contract
+  that you removed after an earlier run is never sent with the rest.
+- The document of a domain is `domain.<module>.json` (`domain.Lending.Domain.json`).
+- The document of a contract is `contract.<id>.json`. The document of a process
+  module is `process.<id>.json`. The loader of the renderer uses these names.
+- Each file holds the bytes that `--output` writes for it.
+- The task writes no overlay.
+
+`mix eh_os_contract.bundle`, in `eh_os_contract_auth`, writes these documents with
+the manifest and an index of their digests. That is the bundle that the platform
+deploys from.
+
+### Write the document to a file
+
+Use `--output`. Erlang keeps the standard output in latin1 when it is not a
+terminal. Each label of a document is in the language of the client.
+
+Without `--output`, the document is the only thing that the task writes to the
+standard output. When the application starts (`--overlay`), it writes its log to the
+standard error. So `> graph.json` holds only the document. Compile the project
+first: Mix prints the compile to the standard output before the task runs.
 
 ## mix eh_os_contract.pages
 
-Writes the domain, its contracts and processes as Markdown pages, one per element
+Writes the domain, its contracts and its process modules as Markdown pages
 
-The application's domain, its contracts and its process modules as linked Markdown
-pages, one per element.
+Writes the domain of the application, its contracts and its process modules as
+linked Markdown pages, one page for each element.
 
     mix eh_os_contract.pages --output docs/model                  # write the pages
     mix eh_os_contract.pages --output docs/model --check          # are they current?
     mix eh_os_contract.pages --output docs/model --domain lending # when there is more than one domain
     mix eh_os_contract.pages --output docs/owner --audience owner # the pages for the business owner
 
-The domain, its contracts and its process modules are found among the modules of
-`config :eh_os_contract, applications:`. The pages go where `--output` says: the
-host decides whether to commit them, add them to ExDoc's `extras`, or only read
-them. A process module's page is `processes/<its id after the domain's name>.md`,
-linked from the domain's page and from the page of each contract whose events it
-includes: its stages in order with their events, what ends a run, its promises, its
-deadline and the external systems its events rest on. Beside the pages,
-`graph/<contract id>.json` holds each contract's `graph.v1` document and
-`graph/process/<process id>.json` each process module's
-(`EhOsContract.Graph.Document`), linked from its page. A page the model no
-longer has is deleted — only a file that starts with the marker line of the domain's
-pages, or a `graph.v1` document of one of the domain's contracts or process modules
-at the path the task gives it, so another domain's pages in the same directory stay — and
-a page is never written over a file without it, nor through a symbolic link: then
-nothing is written, and the task names what is in the way. Nothing outside
-`--output` is read or touched.
+The task finds the domain, its contracts and its process modules among the modules
+of `config :eh_os_contract, applications:`. It writes the pages where `--output`
+says. `--output` is necessary. The host decides if it commits them, adds them to the `extras` of ExDoc, or
+only reads them.
 
-`--check` writes nothing, and fails naming every page that is missing, differs or
-is left over.
+### What it writes
 
-`--audience owner` writes the pages a business owner reads: the same tree, each
-declaration by its label, without module names, versions, stored types, delivery,
-idempotency, correlation keys, field names and types, and without the graph
-documents. They have a marker of their own, so they go to a directory of their own:
-in the engineer's directory each would be a file in the way. A stage or a value the
-owner would read by its name in the code is `mix eh_os_contract.check`'s
-`owner-view-without-label`. `--audience engineering` is the default.
+- A page for the domain, for each contract and for each process module.
+- The page of a process module is `processes/<its id after the domain's name>.md`.
+  The page of the domain links it, and so does the page of each contract whose
+  events it includes.
+- The page of a process module gives its stages in order with their events, and
+  what ends a run. It also gives its promises, its deadline, and the external
+  systems that its events rest on.
+- `graph/<contract id>.json` holds the `graph.v1` document of each contract
+  (`EhOsContract.Graph.Document`). `graph/process/<process id>.json` holds the
+  document of each process module. The page of each one links its document.
+
+### What it deletes, and what stops it
+
+The task reads and changes nothing outside `--output`.
+
+- It deletes a page that the model no longer has. It deletes only a file that starts
+  with the marker line of the pages of the domain. It also deletes a `graph.v1`
+  document of a contract or a process module of the domain, at the path that the
+  task gives it. So the pages of another domain in the same directory stay.
+- It never writes a page over a file without the marker, or through a symbolic link.
+  Then it writes nothing, and names what is in the way.
+
+`--check` writes nothing. It fails, and names each page that is missing, different
+or left over, and each file in the way.
+
+### The pages for the business owner
+
+`--audience owner` writes the pages that a business owner reads. They have the same
+tree, with each declaration by its label. They leave out the names of modules,
+versions, stored types, delivery, idempotency, correlation keys, the names and types
+of fields, and the graph documents.
+
+- These pages have a marker of their own. Write them to a directory of their own.
+  In the directory of the engineering pages, each one is a file in the way.
+- If the owner reads a stage or a value by its name in the code,
+  `mix eh_os_contract.check` reports `owner-view-without-label`.
+
+`--audience engineering` is the default. Another value stops the task with an
+error.
 
 ## mix eh_os_contract.report
 
-Prints the conformance report for a period: what the code did against what the contracts say
+Prints the conformance report: what the code did against what the contracts say
 
-Prints the conformance report of the application for a period: a section for each
-contract, then one for each process module, if there are any.
+Prints the conformance report of the application for a period. The report has a
+section for each contract, then a section for each process module.
 
-Each contract's section answers four questions about it: which declared paths were
-never taken, which transitions happened that the contract does not declare, which
-promises were broken, and which version of the contract was deployed, and since
-when. Around them it shows what explains the answers: steps in progress or
-failing, scenarios never observed, declarations that changed, and events written
-under earlier versions.
+> **The task starts the whole application.**
+> The report reads the log through the repo of the application, so the task starts
+> the application. Run it only with the code that is deployed. The task records a
+> deployment, and starts the subscriptions, the relays and Oban. So effects can call external
+> systems from where you run it. If your code differs from the deployed code, the
+> recorded deployment changes the answer to question 4. The engine also rebuilds
+> each changed process manager at once. It also rebuilds each changed read model
+> that has `reset/0`. A rebuilt process manager forgets its runs. To read the report of a
+> running host without this, use the
+> [JSON API of the dashboard](conformance.md#the-dashboard).
 
     mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
     mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md
 
-`--since` and `--until` take ISO 8601 times with an offset (`Z`), and either may
-be left out. The task starts the application, since the report reads the log
-through its repo. `--output` writes the report to a file.
+| Option | Value | If you leave it out |
+| --- | --- | --- |
+| `--since` | the start of the period, ISO 8601 with an offset (`Z`) | the period has no start |
+| `--until` | the end of the period, ISO 8601 with an offset | the period has no end |
+| `--output` | a file | the report goes to the terminal |
+
+A time without an offset stops the task with an error. The moment of judgement is
+always the current time.
+
+### What the report answers
+
+The report answers four questions:
+
+1. Which declared paths were never taken?
+2. Which transitions occurred that the contract does not declare?
+3. Which promises were broken?
+4. Which version of the contract is deployed, and since when?
+
+The section of a contract answers questions 1, 2 and 4. The section of a process
+module answers question 3. Around the answers, the report shows what explains
+them:
+
+- steps in progress or failing;
+- scenarios never observed;
+- declarations that changed;
+- events written under earlier versions.
+
+[The conformance report](conformance.md) tells what each section says, and which
+events each number reads.
 
 ## mix eh_os_contract.rewrap
 
-Rewraps the subjects' data keys with the vault's current master key
+Rewraps the data keys of the subjects with the current master key
 
-Rewraps every subject's data key that a master key other than the vault's current
-one wraps, so that an old master key can be retired.
+Rewraps each data key that an old master key wraps, with the current master key
+of the vault. Run it in step 3 of
+[a rotation](master-keys.md#rotate-a-master-key), before you remove the old key.
+
+> **The task starts the whole application.**
+> Run it only with the code that is deployed. The task records a deployment, and
+> starts the subscriptions, the relays and Oban. So effects can call external
+> systems from where you run it. If your code differs from the deployed code, the
+> engine rebuilds each changed process manager at once. It also rebuilds each
+> changed read model that has `reset/0`. A rebuilt process manager forgets its runs.
 
     mix eh_os_contract.rewrap
 
-It is the third of a rotation's three deploys (`EhOsContract.Vault`): the new key
-was added after the current one and deployed, then moved first and deployed; run
-this, and only then drop the old key. No event is rewritten; each data key is
-unwrapped with the key that wrapped it and wrapped again. It runs in batches of
-500, each its own transaction, so it can be stopped and run again.
+The task unwraps each data key with the key that wrapped it, and wraps it again.
+It does not rewrite an event. At the end, it prints the count and the id of the
+key that it used:
+
+    120 data keys rewrapped with 2026-09
+
+> **The printed id must be the id of the new key.**
+> The task wraps with the first key of the list that it reads.
+> With the configuration of before the rotation, it wraps each data key with the old
+> key again, and ends without an error. Remove the old key only when the printed id
+> is the id of the new key, and each row of `eh_os_contract_subject_keys` names it.
+> [Rotate a master key](master-keys.md#rotate-a-master-key) gives each step.
+
+- The task works in batches of 500 data keys. Each batch is a transaction of its
+  own. If the task stops, run it again.
+- Each batch skips the rows that another run holds.
+- If a data key of another master key is left at the end, the task raises. Another
+  run holds that key, or a node wrote it with the old key during the run. Run the
+  task again when each node runs the new configuration.
+- If the vault does not hold the key that wraps a row, the task raises. Put that
+  key back in the list, deploy, and run the task again.
+- Do not remove the old key while the task raises.
+  [What can go wrong](master-keys.md#what-can-go-wrong) gives each message.
+- An erasure of a subject in the current batch waits for that batch. It holds the
+  append lock while it waits, so each other append waits too. Run the task at a
+  quiet time.
+- A release has no `mix`. From a release, call `EhOsContract.Personal.rewrap!/2`.
 
 ## mix eh_os_contract.schema
 
-Records the fields of every event, and refuses a change old rows would not read
+Records the fields of each event, and refuses a change that old rows do not read
 
-Keeps `eh_os_contract.lock`, the record of every event's fields by its
-`schema_version`, and refuses a change to a recorded version that old rows would not
-read, or a new version whose step does not cover what changed.
+Keeps `eh_os_contract.lock`, the record of the fields of each event for each
+`schema_version`. It refuses a change that old rows do not read, and a new version
+whose step does not cover what changed.
 
-The log keeps every event it ever recorded and reads each one again whenever it
-rebuilds a unit or a list, with today's declaration. A row that lacks a field the
-declaration now requires, or holds one in another shape or under another seal, does
-not read, so a change to an event's fields raises its `schema_version` and says, in an
-`upcast` step, how an old row reads. Nothing in a
-compile notices a change made without that: the code compiles, the tests pass on an
-empty log, and the deployed application fails on its first old row. This task
-notices it where the code is written.
+The log keeps each event that it recorded. It reads each event again, with the
+declaration of today, when it rebuilds a unit or a list. A row does not read if it
+lacks a field that the declaration now requires. It also does not read if it holds a
+field in another shape or under another seal. So a change to the fields of an event
+raises its `schema_version`, and an `upcast` step tells how an old row reads.
+
+The compile does not see a change without a new version. The code compiles, and the
+tests pass on an empty log. Then the deployed application fails on its first old row.
+This task finds the change where you write the code.
 
     mix eh_os_contract.schema                  # record what is new
-    mix eh_os_contract.schema --check          # fail when anything is new or changed
-    mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, record again
+    mix eh_os_contract.schema --check          # fail if anything is new or changed
+    mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, and record again
 
-It reads every contract of the applications `config :eh_os_contract, applications:`
-names, as `mix eh_os_contract.check` does, and keeps the file beside the project's
-`mix.lock` (in an umbrella, at its root). Commit the file: a change to it shows in a
-pull request as the fields that changed.
+The task reads each contract of the applications that `config :eh_os_contract,
+applications:` names, as `mix eh_os_contract.check` does. If they hold no contract,
+the task stops with an error. It keeps the file beside
+the `mix.lock` of the project; in an umbrella, at its root. Commit the file. In a
+pull request, a change to it shows the fields that changed.
 
 ### What it records
 
-An entry per event type, as the log names it, and version, with the fields as a row
-holds them:
+The file has an entry for each event type, by its name in the log, and for each
+version. The entry gives the fields as a row holds them:
 
     %{
       "shop.orders.order_placed" => %{
@@ -300,98 +470,158 @@ holds them:
       }
     }
 
-A field's type is what the log stores: a built-in type, an enum as its members' names,
-a list as what it holds, and a domain value as its own shape, its inner type or its
-fields. Then whether it may be absent, whether it is personal and whose identifier
-seals it, and the subject an identifier names. Labels, the names of domain values,
-invariants and the order of fields change no stored row, and are left out: a domain
-value renamed changes nothing, and one given a field changes every event that holds
-it.
+For each field, the entry gives:
+
+- the type that the log stores. A built-in type is its name, an enum is the names
+  of its members, and a list is what it holds. A domain value is its own shape,
+  its inner type or its fields;
+- if the field can be absent;
+- if the field is personal, and which identifier seals it;
+- the subject that an identifier names.
+
+The entry leaves out what changes no stored row: labels, the names of domain values,
+invariants and the order of fields. So a domain value that you rename changes
+nothing. A domain value that gets a new field changes each event that holds it.
+
+### What it records in place
+
+When the task records the current version of each event, it adds what the file
+lacks. It also records in place a change that old rows still read:
+
+- a field added as optional;
+- a field removed;
+- a required field made optional;
+- an enum with new members;
+- an `:integer` made a `:decimal`, or an `:id` made a `:string`;
+- the same changes inside a list or a domain value.
+
+A removed field stays in the file, marked `removed: true`. Old rows still hold it,
+and newer rows do not. So if you declare a field of that name again, the task holds
+it to what both kinds of row hold.
 
 ### What it refuses
 
-Recording the current version of every event adds what the file lacks, and records in
-place a change old rows still read: a field added as optional, a field removed, a
-required field made optional, an enum given members, an `:integer` made a `:decimal`,
-an `:id` made a `:string`, and the same inside a list or a domain value. A field removed
-stays in the file, marked `removed: true`, since old rows still hold it and rows written
-since do not: a field declared again under its name is held to what both hold. It
-refuses, writing nothing, when:
+The task refuses, and writes nothing, in these cases:
 
-  * the file holds the event's current version with fields an old row would not read
-    as: a field added as required, a type changed otherwise. The message names each
-    such field. Raise the event's `schema_version` and add its `upcast` step: the new
-    version is recorded beside the old one.
-  * the steps from a recorded version to the declared one do not cover what changed: a
-    field renamed without `rename:`, a required field added without `default:`, an
-    optional field made required (old rows hold an explicit `nil`), a type changed
-    otherwise than above, with no step a function. A function covers every change a
-    step could carry, since the engine cannot see what it does.
-  * a field becomes personal or stops being, or another identifier seals it; a personal
-    field changes its type otherwise than in place (an `:integer` made a `:decimal` still
-    reads, and is recorded in place), or a value holding personal data changes its shape;
-    a required personal field, at any depth, is one old rows may lack; an identifier that
-    seals a field changes its `subject:`; or a field the log tags rows with (a required,
-    non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one) was not
-    tagged under that name in the version before. Inside a domain value too. No step
-    carries those: rows already sealed or tagged keep what they were written with. Declare
-    a new event.
-  * the file holds a version newer than the one declared, whose rows would not read.
-  * the file holds an event no contract declares any more, renamed or removed, whose
-    rows would not read either.
+- The file holds the current version of the event, with fields that an old row does
+  not read as declared. Examples: a field added as required, or another change of
+  type. The
+  message names each such field. Raise the `schema_version` of the event, and add
+  its `upcast` step. The task then records the new version beside the old one.
+- The steps from a recorded version to the declared one do not cover what changed:
+  - a field renamed without `rename:`;
+  - a required field added without `default:`;
+  - an optional field made required (old rows hold an explicit `nil`);
+  - another change of type, with no step that is a function.
 
-`--forget TYPE` drops the event's versions from the one its contract declares up, or
-every version of an event no contract declares, and records what is declared: it says
-that no log holds rows of what it drops, as of a version added on a branch that was
-never deployed. It may be given more than once.
+  A function covers each change that a step can carry, because the engine cannot see
+  what the function does.
+- A change of personal data, which no step carries:
+  - a field becomes personal or stops being personal, or another identifier seals
+    it;
+  - a personal field changes its type other than in place (an `:integer` made a
+    `:decimal` still reads, and the task records it in place);
+  - a value that holds personal data changes its shape;
+  - a required personal field, at any depth, is one that old rows can lack;
+  - an identifier that seals a field changes its `subject:`.
+- A field that the log tags rows with was not tagged under that name in the version
+  before. Such a field is a required, non-personal `:id`, `:date` or `:timestamp`,
+  or a domain value that rests on one. This also applies inside a domain value.
+- The file holds a version newer than the declared one, whose rows do not read.
+- The file holds an event that no contract declares now, because it was renamed or
+  removed. Its rows do not read either.
 
-`--check` writes nothing and fails when recording would change the file, or refuse.
-Run it beside `mix eh_os_contract.check`.
+No step carries a change of personal data or of tags. The rows already sealed or
+tagged keep what they were written with. Declare a new event instead.
+
+### The options
+
+`--forget TYPE` drops versions of the event: the declared version and the versions
+after it. For an event that no contract declares, it drops each version. Then it
+records what is declared. Use it only when no log holds rows of what it drops.
+Example: a version that you added on a branch that was never deployed. You can give
+`--forget` more than one time.
+
+`--check` writes nothing. It fails if the task would change the file, or would refuse.
+It also fails if the file does not exist. It does not take `--forget`. Run it beside
+`mix eh_os_contract.check`.
 
 ## mix eh_os_contract.subscriptions
 
-Where each subscription stands, and a person's way past a poison event
+Shows where each subscription stands, and moves one past an event that fails
 
-Lists every consumer fed from the log in order, with how far it has read and
-whether it is `running`, `stale`, `rebuilding` or `failing`, and moves one past a
-failure when a person decides to.
+Shows each consumer that reads the log in order: how far it has read, and its
+status. It also moves one subscription past a failure, when a person decides to.
+
+> **The task starts the whole application.**
+> Run it only with the code that is deployed. The task records a deployment, and
+> registers each subscription with the code that you run. It also starts the
+> subscriptions, the relays and Oban, so effects can call external systems from
+> where you run it. If your code differs from the deployed code, the engine
+> rebuilds each changed process manager at once. It also rebuilds each changed read
+> model that has `reset/0`. A rebuilt process manager forgets its runs.
 
     mix eh_os_contract.subscriptions
 
-The consumers are the read models, process managers, policies delivered
-`:at_least_once`, and relays. One that fails on an event stops there, and nothing
-moves it past that event by itself: an ordered consumer that skipped events would
-be a read model that silently lies. Moving it is a person's decision, taken in one
-of two ways:
+The consumers are the read models, the process managers, the policies delivered
+`:at_least_once`, and the relays. The task prints a line for each of them, with its
+status and its position: `running`, `stale`, `rebuilding` or `failing`. A line of a
+failing subscription also gives the position where it fails, the module of the
+exception and the count of attempts. A consumer with no row is `not registered`.
+
+### Move a subscription past a failure
+
+A subscription that fails on an event tries it again, with a longer pause each time.
+After three attempts, it is `failing`, and stops at that event. It does not try again
+by itself: an ordered consumer that skipped events would be a read model with wrong
+rows that nobody sees. A person decides how to move it:
 
     mix eh_os_contract.subscriptions --skip dispatch_rig.ledger:read_model:ledger_lines
     mix eh_os_contract.subscriptions --reset dispatch_rig.ledger:read_model:ledger_lines
 
-- `--skip` moves a `failing` subscription past the one event it fails on, which is
-  then never applied. If that event erased a subject, the read model keeps the
-  subject's copy until it is reset. A subscription that failed while it replayed
-  the log goes on with the replay past that event: a read model takes the rest of
-  the log, and a process manager learns the rest of its runs without reacting to
-  them, also the events appended while it was failing.
-- `--reset` empties a read model through its `reset/0` and replays the whole log
-  into it; a read model without `reset/0` cannot be reset.
-- `--reset` of a process manager forgets every run it steers and replays the log
-  with its reactions suppressed, so it learns the runs again and issues nothing
-  for them.
-- `--reset` of a policy moves it back to the beginning of the log, and it reacts to
-  every event from there. The keys it derives from each event keep it from issuing
-  again what it issued before.
-- A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`): `--skip` means that
-  event never leaves the application, and `--reset` publishes the whole log again,
-  under the same ids.
+If you give both options, the task does only `--skip`. The task stops with an error
+in these cases:
+
+- the name is not a subscription of the application;
+- you skip a subscription that is not `failing`;
+- you reset a read model without `reset/0`.
+
+A changed declaration also moves a failing subscription, at the next boot. The
+engine rebuilds a failing process manager, and a failing read model that has
+`reset/0`.
+
+`--skip` moves a `failing` subscription past the one event that it fails on. The
+consumer never applies that event.
+
+- If that event erased a subject, the read model keeps the copy of the subject until
+  you reset it.
+- If the subscription failed while it replayed the log, the replay goes on after
+  that event. A read model takes the rest of the log. A process manager learns the
+  rest of its runs without a reaction to them. This includes the events appended
+  while it was failing.
+
+`--reset` does a different thing for each kind of consumer:
+
+| Consumer | What `--reset` does |
+| --- | --- |
+| A read model | Empties it through its `reset/0`, and replays the whole log into it. A read model without `reset/0` cannot be reset. |
+| A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. |
+| A policy | Moves it back to the start of the log. It reacts to each event from there. The keys that it derives from each event stop it from issuing again what it issued before. |
+| A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) | Publishes the whole log again, under the same ids. |
+
+For a relay, `--skip` means that the event never leaves the application.
+
+[Repair or replay a subscription](subscriptions.md) tells when to use each one, and
+what each one costs.
 
 ## mix eh_os_contract.view
 
 Prints the domain as a tree: contexts, contracts, units, consumers and processes
 
-Prints the application's domain as a tree for a terminal: its contexts, and in
-each its contracts, their units, consumers and queries; then its process modules,
-each with its stages in order and the events each includes, by contract.
+Prints the domain of the application as a tree in a terminal. The tree gives the
+contexts, and in each context its contracts with their units, consumers and
+queries. Then it gives the process modules, each with its stages in order and the
+events of each stage, by contract.
 
     mix eh_os_contract.view                                   # the whole domain
     mix eh_os_contract.view circulation                       # one context, without the processes
@@ -399,5 +629,16 @@ each with its stages in order and the events each includes, by contract.
     mix eh_os_contract.view --details                         # with what each row declares
     mix eh_os_contract.view --domain lending                  # when there is more than one domain
 
-The domain, its contracts and process modules are found among the modules of
-`config :eh_os_contract, applications:`. `--output` writes the tree to a file.
+A path is `<context>` or `<context>/<name>`. The task takes one path at most.
+
+The task finds the domain, its contracts and its process modules among the modules
+of `config :eh_os_contract, applications:`. `--output` writes the tree to a file.
+
+## Next steps
+
+- [The rules](rules.md): each rule that `mix eh_os_contract.check` reports.
+- [The conformance report](conformance.md): what `mix eh_os_contract.report` prints.
+- [Repair or replay a subscription](subscriptions.md): when to skip or reset a
+  subscription.
+- [Manage the keys and the backups of personal data](master-keys.md): the rotation
+  that `mix eh_os_contract.rewrap` ends.

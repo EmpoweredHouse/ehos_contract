@@ -1,33 +1,35 @@
 defmodule Mix.Tasks.EhOsContract.Schema do
-  @shortdoc "Records the fields of every event, and refuses a change old rows would not read"
+  @shortdoc "Records the fields of each event, and refuses a change that old rows do not read"
 
   @moduledoc """
-  Keeps `eh_os_contract.lock`, the record of every event's fields by its
-  `schema_version`, and refuses a change to a recorded version that old rows would not
-  read, or a new version whose step does not cover what changed.
+  Keeps `eh_os_contract.lock`, the record of the fields of each event for each
+  `schema_version`. It refuses a change that old rows do not read, and a new version
+  whose step does not cover what changed.
 
-  The log keeps every event it ever recorded and reads each one again whenever it
-  rebuilds a unit or a list, with today's declaration. A row that lacks a field the
-  declaration now requires, or holds one in another shape or under another seal, does
-  not read, so a change to an event's fields raises its `schema_version` and says, in an
-  `upcast` step, how an old row reads. Nothing in a
-  compile notices a change made without that: the code compiles, the tests pass on an
-  empty log, and the deployed application fails on its first old row. This task
-  notices it where the code is written.
+  The log keeps each event that it recorded. It reads each event again, with the
+  declaration of today, when it rebuilds a unit or a list. A row does not read if it
+  lacks a field that the declaration now requires. It also does not read if it holds a
+  field in another shape or under another seal. So a change to the fields of an event
+  raises its `schema_version`, and an `upcast` step tells how an old row reads.
+
+  The compile does not see a change without a new version. The code compiles, and the
+  tests pass on an empty log. Then the deployed application fails on its first old row.
+  This task finds the change where you write the code.
 
       mix eh_os_contract.schema                  # record what is new
-      mix eh_os_contract.schema --check          # fail when anything is new or changed
-      mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, record again
+      mix eh_os_contract.schema --check          # fail if anything is new or changed
+      mix eh_os_contract.schema --forget TYPE    # drop what no log holds rows of, and record again
 
-  It reads every contract of the applications `config :eh_os_contract, applications:`
-  names, as `mix eh_os_contract.check` does, and keeps the file beside the project's
-  `mix.lock` (in an umbrella, at its root). Commit the file: a change to it shows in a
-  pull request as the fields that changed.
+  The task reads each contract of the applications that `config :eh_os_contract,
+  applications:` names, as `mix eh_os_contract.check` does. If they hold no contract,
+  the task stops with an error. It keeps the file beside
+  the `mix.lock` of the project; in an umbrella, at its root. Commit the file. In a
+  pull request, a change to it shows the fields that changed.
 
   ## What it records
 
-  An entry per event type, as the log names it, and version, with the fields as a row
-  holds them:
+  The file has an entry for each event type, by its name in the log, and for each
+  version. The entry gives the fields as a row holds them:
 
       %{
         "shop.orders.order_placed" => %{
@@ -42,53 +44,81 @@ defmodule Mix.Tasks.EhOsContract.Schema do
         }
       }
 
-  A field's type is what the log stores: a built-in type, an enum as its members' names,
-  a list as what it holds, and a domain value as its own shape, its inner type or its
-  fields. Then whether it may be absent, whether it is personal and whose identifier
-  seals it, and the subject an identifier names. Labels, the names of domain values,
-  invariants and the order of fields change no stored row, and are left out: a domain
-  value renamed changes nothing, and one given a field changes every event that holds
-  it.
+  For each field, the entry gives:
+
+  - the type that the log stores. A built-in type is its name, an enum is the names
+    of its members, and a list is what it holds. A domain value is its own shape,
+    its inner type or its fields;
+  - if the field can be absent;
+  - if the field is personal, and which identifier seals it;
+  - the subject that an identifier names.
+
+  The entry leaves out what changes no stored row: labels, the names of domain values,
+  invariants and the order of fields. So a domain value that you rename changes
+  nothing. A domain value that gets a new field changes each event that holds it.
+
+  ## What it records in place
+
+  When the task records the current version of each event, it adds what the file
+  lacks. It also records in place a change that old rows still read:
+
+  - a field added as optional;
+  - a field removed;
+  - a required field made optional;
+  - an enum with new members;
+  - an `:integer` made a `:decimal`, or an `:id` made a `:string`;
+  - the same changes inside a list or a domain value.
+
+  A removed field stays in the file, marked `removed: true`. Old rows still hold it,
+  and newer rows do not. So if you declare a field of that name again, the task holds
+  it to what both kinds of row hold.
 
   ## What it refuses
 
-  Recording the current version of every event adds what the file lacks, and records in
-  place a change old rows still read: a field added as optional, a field removed, a
-  required field made optional, an enum given members, an `:integer` made a `:decimal`,
-  an `:id` made a `:string`, and the same inside a list or a domain value. A field removed
-  stays in the file, marked `removed: true`, since old rows still hold it and rows written
-  since do not: a field declared again under its name is held to what both hold. It
-  refuses, writing nothing, when:
+  The task refuses, and writes nothing, in these cases:
 
-    * the file holds the event's current version with fields an old row would not read
-      as: a field added as required, a type changed otherwise. The message names each
-      such field. Raise the event's `schema_version` and add its `upcast` step: the new
-      version is recorded beside the old one.
-    * the steps from a recorded version to the declared one do not cover what changed: a
-      field renamed without `rename:`, a required field added without `default:`, an
-      optional field made required (old rows hold an explicit `nil`), a type changed
-      otherwise than above, with no step a function. A function covers every change a
-      step could carry, since the engine cannot see what it does.
-    * a field becomes personal or stops being, or another identifier seals it; a personal
-      field changes its type otherwise than in place (an `:integer` made a `:decimal` still
-      reads, and is recorded in place), or a value holding personal data changes its shape;
-      a required personal field, at any depth, is one old rows may lack; an identifier that
-      seals a field changes its `subject:`; or a field the log tags rows with (a required,
-      non-personal `:id`, `:date` or `:timestamp`, or a domain value resting on one) was not
-      tagged under that name in the version before. Inside a domain value too. No step
-      carries those: rows already sealed or tagged keep what they were written with. Declare
-      a new event.
-    * the file holds a version newer than the one declared, whose rows would not read.
-    * the file holds an event no contract declares any more, renamed or removed, whose
-      rows would not read either.
+  - The file holds the current version of the event, with fields that an old row does
+    not read as declared. Examples: a field added as required, or another change of
+    type. The
+    message names each such field. Raise the `schema_version` of the event, and add
+    its `upcast` step. The task then records the new version beside the old one.
+  - The steps from a recorded version to the declared one do not cover what changed:
+    - a field renamed without `rename:`;
+    - a required field added without `default:`;
+    - an optional field made required (old rows hold an explicit `nil`);
+    - another change of type, with no step that is a function.
 
-  `--forget TYPE` drops the event's versions from the one its contract declares up, or
-  every version of an event no contract declares, and records what is declared: it says
-  that no log holds rows of what it drops, as of a version added on a branch that was
-  never deployed. It may be given more than once.
+    A function covers each change that a step can carry, because the engine cannot see
+    what the function does.
+  - A change of personal data, which no step carries:
+    - a field becomes personal or stops being personal, or another identifier seals
+      it;
+    - a personal field changes its type other than in place (an `:integer` made a
+      `:decimal` still reads, and the task records it in place);
+    - a value that holds personal data changes its shape;
+    - a required personal field, at any depth, is one that old rows can lack;
+    - an identifier that seals a field changes its `subject:`.
+  - A field that the log tags rows with was not tagged under that name in the version
+    before. Such a field is a required, non-personal `:id`, `:date` or `:timestamp`,
+    or a domain value that rests on one. This also applies inside a domain value.
+  - The file holds a version newer than the declared one, whose rows do not read.
+  - The file holds an event that no contract declares now, because it was renamed or
+    removed. Its rows do not read either.
 
-  `--check` writes nothing and fails when recording would change the file, or refuse.
-  Run it beside `mix eh_os_contract.check`.
+  No step carries a change of personal data or of tags. The rows already sealed or
+  tagged keep what they were written with. Declare a new event instead.
+
+  ## The options
+
+  `--forget TYPE` drops versions of the event: the declared version and the versions
+  after it. For an event that no contract declares, it drops each version. Then it
+  records what is declared. Use it only when no log holds rows of what it drops.
+  Example: a version that you added on a branch that was never deployed. You can give
+  `--forget` more than one time.
+
+  `--check` writes nothing. It fails if the task would change the file, or would refuse.
+  It also fails if the file does not exist. It does not take `--forget`. Run it beside
+  `mix eh_os_contract.check`.
   """
 
   use Boundary, classify_to: EhOsContract

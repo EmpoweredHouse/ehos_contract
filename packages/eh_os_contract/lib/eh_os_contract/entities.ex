@@ -1,14 +1,15 @@
 defmodule EhOsContract.Entities do
   @moduledoc """
-  Where the rows of the entities a command `reads:` come from.
+  Gives the rows of the entities that a command reads. An entity is data that the
+  application keeps outside the log.
 
       config :eh_os_contract, entities: MyApp.Entities
 
-  A decision often depends on something the application keeps outside the log: whether
-  a booked visit is reported to the state register depends on the service booked, and
-  the clinic's application keeps its services. A command that declares
-  `reads: [service: :service_id]` gets the service as the third argument of its
-  decision, and the row is asked of the configured implementation:
+  A decision can depend on such data. Example: a clinic reports a booked visit to the
+  state register only for some services, and the application of the clinic keeps its
+  services. A command that declares `reads: [service: :service_id]` gets the service
+  as the third argument of its decision. The engine asks the configured
+  implementation for the row:
 
       defmodule MyApp.Entities do
         @behaviour EhOsContract.Entities
@@ -22,44 +23,60 @@ defmodule EhOsContract.Entities do
         end
       end
 
-  The actor is the one dispatch authorized: a person's credential, or one of the
-  application's `:system` actors the command names in `by:`; never a reaction, which
-  cannot issue a command that reads. A host that keeps several tenants' rows answers a
-  credential only with what its tenant has, and `:not_found` otherwise, so a caller
-  cannot have a decision read, and its record keep, another tenant's row; it decides
-  what a `:system` actor may read.
+  ## Which actor it gets
+
+  The actor is the actor that dispatch authorized. It is the credential of a person,
+  or a `:system` actor that the command names in `by:`. It is never a
+  reaction, because a policy or a process manager cannot issue a command that reads.
+  The contract does not compile otherwise.
+
+  If the host keeps the rows of more than one tenant, answer a credential only with
+  the rows of its tenant. Answer `:not_found` for the rows of another tenant. If you
+  do not, a caller can make a decision read the row of another tenant, and the record
+  of the command keeps it. The host decides what a `:system` actor can read.
 
   ## What the engine does with the answer
 
-  - **`{:ok, row}`**, a map or a struct with atom keys, an Ecto schema included. The
-    engine keeps the fields the domain declares for the entity, its identity among
-    them, and drops the rest; the decision gets `%{card: %{card_id: "card-1",
-    suspended: false}}`. A declared field missing from the row, or of the wrong type,
-    raises `EhOsContract.Entities.UnfitRowError`, naming the field and never its value:
-    the host's code and the domain disagree.
-  - **`:not_found`** refuses the command as a field naming nothing:
-    `{:error, {:invalid, [{:service_id, :unknown}]}}`, 422 through
-    `EhOsContract.call/3`, and nothing is written.
-  - Anything else raises `ArgumentError`.
+  - **`{:ok, row}`**: the row is a map or a struct with atom keys, such as an Ecto
+    schema. The engine keeps the fields that the domain declares for the entity,
+    with its identity, and drops the rest. Example: the decision gets
+    `%{card: %{card_id: "card-1", suspended: false}}`.
+  - **`:not_found`**: the engine refuses the command, as a field that names nothing:
+    `{:error, {:invalid, [{:service_id, :unknown}]}}`. Through
+    `EhOsContract.call/3`, the answer is 422. The engine writes nothing.
+  - Any other answer raises `ArgumentError`.
 
-  ## When it is asked
+  The engine raises `EhOsContract.Entities.UnfitRowError` if the row does not fit the
+  domain. Then the code of the host and the domain do not agree:
 
-  Once per command, after the caller is authorized and what it sent is found sound,
-  and before the decision's transaction: when the decision meets a conflict and runs
-  again, it decides on the same rows. A retry of a command already accepted under its
-  idempotency key gets its receipt without asking. No policy or process manager issues
-  a command that reads (the contract does not compile otherwise). A command the host's
-  code dispatches inside a transaction — its own, or one a read model or an effect runs
-  in — is asked inside that one, and after an append made in it, while every other
-  writer of the log waits: keep `fetch/4` a local read. The call has no time limit of
-  the engine's.
+  - a required field that the domain declares is not in the row;
+  - a field has the wrong type, or its value breaks an invariant of a domain value;
+  - the identity of the row is not the id that the engine asked for.
 
-  What was read is kept with the command's record, accepted or rejected, the row's
-  declared fields whole: an entity with a long text or a long list makes every command
-  that reads it that much larger.
+  The message names the fields, never their values. An optional field that is not in
+  the row is not an error.
 
-  A node with a contract whose command `reads:` does not start without an
-  implementation configured, one that is loaded and exports `fetch/4`.
+  ## When the engine asks
+
+  The engine asks one time for each command. It asks after it authorizes the caller
+  and checks the fields of the command, and before the transaction of the decision.
+
+  - If the decision meets a conflict and runs again, it decides on the same rows.
+  - A retry of a command that the engine accepted under its idempotency key gets its
+    receipt, and the engine does not ask.
+  - The engine sets no time limit on the call.
+
+  The code of the host can dispatch a command inside a transaction: its own, or the
+  transaction of a read model or an effect. Then the engine asks inside that
+  transaction. If that transaction appended before, each other writer of the log
+  waits for the answer. So make `fetch/4` a local read.
+
+  The record of the command keeps what the engine read, accepted or rejected, with
+  the declared fields of the row whole. So an entity with a long text or a long list
+  makes each command that reads it larger.
+
+  If a contract has a command that reads, the node does not start without an
+  implementation. The implementation must be loaded and export `fetch/4`.
   """
 
   alias EhOsContract.{Actor, Codec, Model}
@@ -75,8 +92,9 @@ defmodule EhOsContract.Entities do
   end
 
   @doc """
-  The row of the entity `entity` of `domain` identified by `id`, as `actor`, the one
-  who issued the command, may have it decided on; or `:not_found`.
+  Returns the row of the entity `entity` of `domain` with the id `id`, or
+  `:not_found`. `actor` issued the command. Return only a row that this actor can
+  have a decision read.
   """
   @callback fetch(actor :: Actor.t(), domain :: module(), entity :: atom(), id :: String.t()) ::
               {:ok, map()} | :not_found
