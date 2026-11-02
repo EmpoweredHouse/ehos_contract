@@ -210,12 +210,14 @@ def handle_event("validate", %{"issue_invoice" => params} = event, socket) do
 end
 
 # After a reconnect, take back the key of the form. Accept only a UUID, as mount/3 makes it.
-defp keep_key(socket, key) do
+defp keep_key(socket, key) when is_binary(key) and byte_size(key) == 36 do
   case Ecto.UUID.cast(key) do
     {:ok, key} -> assign(socket, :form_key, key)
     :error -> socket
   end
 end
+
+defp keep_key(socket, _key), do: socket
 ```
 
 The key comes from the browser, and dispatch writes it to the log. So `keep_key/2` accepts only a
