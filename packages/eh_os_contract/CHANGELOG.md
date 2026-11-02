@@ -78,22 +78,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   manager reacted to the history after it: it issued commands and set timers for past events. Now a
   skip puts the subscription back in the status it failed in, so the rebuild or the replay continues
   after the event. Dispatch also leaves a `failing` read model delivered `:in_transaction` alone, as
-  a `rebuilding` one; the runner takes those events after the skip, an erasure among them, and a
-  query with `min_position:` waits for it. The task's list says "while it replays the log" for a
-  subscription that failed during a rebuild or a process manager's replay, and `--skip` of an unknown
-  key says that the key is not a subscription, not that it is not failing. The storage goes to
+  a `rebuilding` one; the runner takes those events after the skip, and a query with
+  `min_position:` waits for it. An erasure still calls its `forget/2` at once (#557), but inside a
+  savepoint: if `forget/2` raises on the partial rows, the engine undoes what it wrote, logs a
+  warning, and the erasure continues. Before, that raise failed the erasure, and every later one.
+  The task's list says "while it replays the log" for a subscription that failed during a rebuild
+  or a process manager's replay, and `--skip` of an unknown key says that the key is not a subscription, not that it is not failing. The storage goes to
   version 5, which keeps that status: add a migration calling `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
   marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
   boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
   queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
   `running` on a skip, as before: reset a process manager that failed during its replay instead of
   skipping it.
-- **An erasure reaches a failing read model delivered `:in_transaction` at once** (#557). Before, it
-  kept its copy of each subject erased after it failed, until a person skipped the event it fails on
-  or reset it. Now `erase/3` calls its `forget/2` in the erasure's transaction, inside a savepoint.
-  If `forget/2` raises on the partial rows, the engine rolls back to the savepoint, logs a warning
-  that names the read model, and the erasure continues; the read model then keeps its copy as
-  before. A `forget/2` that raises inside a `Repo.transaction` of its own still fails the erasure.
 
 ## [0.13.1] - 2026-11-01
 

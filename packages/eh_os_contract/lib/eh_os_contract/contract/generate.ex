@@ -264,7 +264,9 @@ defmodule EhOsContract.Contract.Generate do
       data. Required of a read model that projects personal data: without
       it, the host does not boot. A read model delivered in the transaction forgets
       inside the erasure's, under the append lock, so keep it fast: index the column
-      that holds the subject's id.
+      that holds the subject's id. Do not open a transaction in it: a raise or a
+      rollback inside one fails the erasure. It can be called twice for one erasure,
+      so a second call changes nothing.
       """
       @callback forget(subject_type :: atom(), subject_id :: String.t()) :: :ok
       @optional_callbacks reset: 0, forget: 2
