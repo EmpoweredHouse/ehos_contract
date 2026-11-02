@@ -144,5 +144,9 @@ Kinds of problems a review here found that neither file names yet:
   policy into new commands and effects, republishes a relay's whole log, and drops a process
   manager's reactions and timers since the failure. A page that offers one remedy for every kind
   sends an operator to lose data. Found in #517.
+- A number of the conformance report is read with the period it reads: with `--since` and `--until`,
+  a promise is judged only on the events inside the period, while the deadline and the order of
+  stages read each run whole, and the count of runs takes any run with an event in it. A page that
+  gives one rule for all of them misleads. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.
