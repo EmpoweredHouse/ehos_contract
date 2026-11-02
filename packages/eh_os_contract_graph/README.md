@@ -72,9 +72,9 @@ Add the package from git, as the other packages of this repository:
 ```
 
 If your application only mounts the dashboard of `eh_os_contract_web`, you do not need to add this
-package. The dashboard declares it, and carries its script and its stylesheet in its own. If your
-own pages also render a component of this package, declare it too. The script of the
-dashboard reads the markup that this package renders, so update the two packages together:
+package. The dashboard declares it, and its own script and stylesheet carry those of this
+package. If your own pages also render a component of this package, declare it too. The script of
+the dashboard reads the markup that this package renders, so update the two packages together:
 
 ```bash
 mix deps.update eh_os_contract_web eh_os_contract_graph

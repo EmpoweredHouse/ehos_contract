@@ -26,6 +26,9 @@ end
 [Decide who can see the dashboard](who-can-see-it.md). The macro adds no `Plug.Parsers`, because
 no route has a body.
 
+The API adds no authentication. Add a plug that authenticates your API clients to this pipeline.
+The `resolve_user/1` of the resolver then finds the caller on the connection.
+
 ## Routes
 
 Each route is `GET`. The examples use the mount `/api`.
@@ -63,10 +66,10 @@ On `/api/conformance`:
 
 ## Which document do I read?
 
-- **A client that draws a contract reads `/api/graph`.** A graph document holds each fact that a
+- **A client that draws a contract reads `/api/graph/<id>`.** A graph document holds each fact that a
   picture or a panel shows, by ids that do not change. Its overlay holds what the log says about
   the same ids.
-- **A client that works with the declarations reads `/api/model`.** The model document is the
+- **A client that works with the declarations reads `/api/model/<id>`.** The model document is the
   contract as its DSL declares it, one key for each declaration. Examples: a code generator, or a
   comparison of 2 versions in CI.
 

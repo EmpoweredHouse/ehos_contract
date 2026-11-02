@@ -157,24 +157,37 @@ The dashboard, `packages/eh_os_contract_web`, and the graph renderer,
 `priv/static/`. A host and the gate use the committed files, so only the person who changes
 `assets/` builds them.
 
-You need read access to the private repository `ehos-tools`. The build runs in `:dev`, and each
-of the two packages takes `:dev` dependencies from there: the dashboard its design system, and the
-graph renderer its diagram generator and the design system that the generator reads. Without that access, `mix deps.get` in the package fails.
+You need read access to the private repository `ehos-tools`. The build runs in `:dev`, and both
+packages take `:dev` dependencies from there:
+
+- the dashboard, its design system;
+- the graph renderer, its diagram generator and the design system that the generator reads.
+
+Without that access, `mix deps.get` in the package fails.
 
 1. Change the files in `assets/` of the package.
-2. Build the script and the stylesheet. The build uses esbuild, a downloaded binary, and needs no
-   Node:
+2. Fetch all the dependencies of the package, `:dev` included. Example, for the graph renderer:
 
    ```bash
-   mix assets.build
+   (cd packages/eh_os_contract_graph && mix deps.get)
    ```
 
-3. Look at the change in a browser, under a Content-Security-Policy of `default-src 'self'`. The
+3. Build the script and the stylesheet in the same package. The build uses esbuild, a downloaded
+   binary, and needs no Node. Example, for the graph renderer:
+
+   ```bash
+   (cd packages/eh_os_contract_graph && mix assets.build)
+   ```
+
+   If you changed the graph renderer, also build the dashboard. Its script and stylesheet carry
+   those of the graph renderer.
+
+4. Look at the change in a browser, under a Content-Security-Policy of `default-src 'self'`. The
    development host serves the dashboard under this policy. Some defects of the drawing layer
    pass each check that reads the files, and show only on the screen
    ([`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md)). On the development host, the
    dashboard draws each document of the case studies with the graph renderer.
-4. Commit the files in `assets/` and the built files in `priv/static/` together.
+5. Commit the files in `assets/` and the built files in `priv/static/` together.
 
 The graph renderer carries 2 libraries in its script: dagre and d3-zoom. They are in
 `assets/vendor/`. `NOTICE` says what each one is, its licence, and how it was taken.
@@ -188,10 +201,10 @@ the design system:
 
 1. Move the `ref` of `ehos_design` in `packages/eh_os_contract_web/mix.exs` to the commit of the new
    tag.
-2. Fetch it and build the assets, in `packages/eh_os_contract_web`:
+2. Fetch it and build the assets:
 
    ```bash
-   mix deps.get && mix assets.build
+   (cd packages/eh_os_contract_web && mix deps.get && mix assets.build)
    ```
 
 3. Commit `mix.exs`, `mix.lock` and `priv/static/assets/`.
