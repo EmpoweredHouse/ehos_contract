@@ -70,6 +70,6 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
     Mix.Task.run("app.start")
     repo = EhOsContract.Config.fetch!(:repo)
     count = EhOsContract.Personal.rewrap!(repo, expect)
-    Mix.shell().info("#{count} data keys rewrapped with #{EhOsContract.Vault.current()}")
+    Mix.shell().info("#{count} data keys rewrapped with #{expect}")
   end
 end

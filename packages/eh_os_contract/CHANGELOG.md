@@ -73,6 +73,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   a name of a command, a query or a recorded event is unique in its domain, not in the application.
 - **Breaking: the rewrap takes the id of the new master key, and refuses a vault that wraps with
   another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
+- **Breaking:** **The rewrap takes the id of the new master key, and refuses a vault that wraps
+  with another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
   `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`. If the first key of the list is not that
   key, the rewrap stops before it changes a data key. Before, a rewrap with the list of before the
   rotation wrapped each data key with the old key again, and ended without an error. The next

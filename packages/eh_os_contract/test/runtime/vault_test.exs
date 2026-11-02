@@ -232,10 +232,16 @@ defmodule EhOsContract.VaultTest do
       keys([{"kek-old", @kek}, {"kek-new", @new_kek}])
 
       assert_raise ArgumentError,
-                   ~r/the vault wraps with "kek-old", not with "kek-new" that was expected/,
+                   ~r/the vault wraps with "kek-old", not with "kek-new" that was expected.*or name the key/,
                    fn -> Personal.rewrap!(Repo, "kek-new") end
 
       assert kek_ids() == ["kek-old", "kek-new"]
+    end
+
+    test "a rewrap called with a batch size where the key id goes does not run" do
+      keys([{"kek-new", @new_kek}])
+
+      assert_raise FunctionClauseError, fn -> Personal.rewrap!(Repo, 50) end
     end
 
     test "a key whose master key left the vault before the rewrap does not read, and says so" do

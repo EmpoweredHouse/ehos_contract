@@ -552,7 +552,7 @@ defmodule EhOsContract.Personal do
 
   @doc """
   Rewraps, with the vault's current master key, every data key another master key
-  wraps: `mix eh_os_contract.rewrap`. Returns how many it rewrapped.
+  wraps: `mix eh_os_contract.rewrap --expect <key id>`. Returns how many it rewrapped.
 
   `expect` is the id of the master key the rotation moves to. When the vault's
   current key is another one, it raises before it rewraps anything: a run with the
@@ -566,14 +566,15 @@ defmodule EhOsContract.Personal do
   none is.
   """
   @spec rewrap!(module(), Vault.kek_id(), pos_integer()) :: non_neg_integer()
-  def rewrap!(repo, expect, batch \\ 500) do
+  def rewrap!(repo, expect, batch \\ 500) when is_binary(expect) do
     current = Vault.current()
 
     unless current == expect do
       raise ArgumentError,
             "the vault wraps with #{inspect(current)}, not with #{inspect(expect)} that was " <>
               "expected, so no data key was rewrapped; run the rewrap with the configuration " <>
-              "that lists #{inspect(expect)} first"
+              "that lists #{inspect(expect)} first, or name the key that the configuration " <>
+              "lists first"
     end
 
     count = rewrap!(repo, batch, current, 0)
