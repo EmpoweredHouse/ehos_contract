@@ -72,9 +72,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   is reset" for a subscription that failed during a rebuild, and `--skip` of an unknown key says that
   the key is not a subscription, not that it is not failing. The storage goes to version 5, which keeps that status: add a migration calling
   `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
-  marks a read model delivered `:in_transaction` that is `failing` at the upgrade to go on
-  rebuilding. Another kind that is `failing` at the upgrade goes back to `running` on a skip, as
-  before.
+  marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
+  boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
+  queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
+  `running` on a skip, as before: reset a process manager that failed during its replay instead of
+  skipping it.
 
 ## [0.13.1] - 2026-11-01
 
