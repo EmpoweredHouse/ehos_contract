@@ -138,6 +138,10 @@ defmodule EhOsContract.SubscriptionTest do
       Testing.drain(only: @lines)
       assert {:error, :not_failing} = Subscription.skip(Repo, @lines)
     end
+
+    test "a key no subscription has is not registered, not merely not failing" do
+      assert {:error, :not_registered} = Subscription.skip(Repo, "dispatch_rig.ledger:nothing")
+    end
   end
 
   describe "a policy delivered at least once" do
@@ -283,6 +287,35 @@ defmodule EhOsContract.SubscriptionTest do
       # And from then on dispatch projects it again, in the transaction.
       deposit(1)
       assert [{"a-1", "b-7", 16, _}, _, _] = balances()
+    end
+
+    test "a read model delivered in the transaction, skipped while it is rebuilt, goes on rebuilding and loses no later event" do
+      deposit(10)
+      deposit(77)
+      deposit(20)
+      Testing.drain(only: @balances)
+
+      Process.put(:dispatch_rig_balances_fail, true)
+      assert :ok = Subscription.rebuild(Repo, @balances)
+      assert %{failing: [@balances]} = Testing.drain(only: @balances)
+      assert %SubscriptionRecord{status: "failing"} = row(@balances)
+
+      # While it is failing, dispatch does not project it either: the runner takes the
+      # deposit after the skip, once.
+      deposit(5)
+      assert [{"a-1", "b-7", 10, _}] = balances()
+
+      Process.delete(:dispatch_rig_balances_fail)
+      assert :ok = Subscription.skip(Repo, @balances)
+      assert %SubscriptionRecord{status: "rebuilding"} = row(@balances)
+
+      assert %{failing: []} = Testing.drain(only: @balances)
+      assert %SubscriptionRecord{status: "running"} = row(@balances)
+      assert [{"a-1", "b-7", 35, last}] = balances()
+      assert last == position_of(5)
+
+      deposit(1)
+      assert [{"a-1", "b-7", 36, _}] = balances()
     end
 
     test "a read model without reset/0 cannot be rebuilt" do

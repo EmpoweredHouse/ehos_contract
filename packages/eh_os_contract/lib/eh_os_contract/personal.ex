@@ -261,7 +261,7 @@ defmodule EhOsContract.Personal do
 
   # Every read model delivered in the transaction that forgets, as dispatch projects an
   # appended event: a registered one's row advances with it, one being rebuilt is left
-  # to its runner (v2 §12).
+  # to its runner (v2 §12), and so is one that failed while it was rebuilt (issue #550).
   defp forget_inline!(repo, row, erased) do
     case Implementations.inline(nil, @erased) do
       [] -> :ok
@@ -275,7 +275,7 @@ defmodule EhOsContract.Personal do
     rebuilding =
       repo.all(
         from(s in SubscriptionRecord,
-          where: s.name in ^keys and s.status == "rebuilding",
+          where: s.name in ^keys and s.status in ~w(rebuilding failing),
           select: s.name
         )
       )
@@ -286,7 +286,9 @@ defmodule EhOsContract.Personal do
 
     repo.update_all(
       from(s in SubscriptionRecord,
-        where: s.name in ^keys and s.status != "rebuilding" and s.position < ^row.position
+        where:
+          s.name in ^keys and s.status not in ~w(rebuilding failing) and
+            s.position < ^row.position
       ),
       set: [position: row.position, updated_at: DateTime.utc_now()]
     )

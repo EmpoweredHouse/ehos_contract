@@ -908,7 +908,9 @@ defmodule EhOsContract.Dispatcher do
 
   # What each inline read model's subscription row says: `:running` advances with the
   # dispatch, `:rebuilding` is left to the runner that is catching it up (v2 §12),
-  # and a read model without a row, one no boot registered, projects as before.
+  # and a read model without a row, one no boot registered, projects as before. A
+  # failing one failed while it was rebuilt, and a skip hands it back to the runner,
+  # which takes what dispatch appended meanwhile (issue #550).
   defp projecting(repo, consumers) do
     keys = for {%{kind: :read_model, key: key}, _, _} <- consumers, uniq: true, do: key
 
@@ -922,7 +924,7 @@ defmodule EhOsContract.Dispatcher do
         )
       )
       |> Map.new(fn {name, status} ->
-        {name, if(status == "rebuilding", do: :rebuilding, else: :running)}
+        {name, if(status in ~w(rebuilding failing), do: :rebuilding, else: :running)}
       end)
     end
   end

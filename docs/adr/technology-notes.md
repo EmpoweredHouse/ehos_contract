@@ -520,7 +520,10 @@ and `:at_least_once` is either an ordered subscription over the log, one row in
 `EhOsContract.EffectJob` in Oban's `:events` queue inserted in the dispatch transaction (effects). Oban's
 transactional enqueue is still what makes an effect's job an outbox. A poison event stops a subscription at
 its position until a person skips it; a query reads its own write with `min_position:`. Details in
-`contract-v2.md` §12.
+`contract-v2.md` §12. A skip puts the row back in the status it failed in, which storage version 5 keeps in
+`resume_status`, so a rebuild or a process manager's replay goes on past the skipped event; dispatch leaves a
+failing inline read model to the runner, as a rebuilding one
+([#550](https://github.com/EmpoweredHouse/eh-os-contract/issues/550)).
 
 ### Idempotency
 

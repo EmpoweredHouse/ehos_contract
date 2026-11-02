@@ -19,7 +19,14 @@ defmodule EhOsContract.Subscription do
   # tries it alone. After three attempts the row is `failing` at that position and the
   # consumer stops there: an ordered consumer that skips is a read model that silently
   # lies. Skipping it, or rebuilding, is a person's decision
-  # (`mix eh_os_contract.subscriptions`).
+  # (`mix eh_os_contract.subscriptions`). The row keeps the status it failed in, and a
+  # skip goes back to it (issue #550): a rebuild interrupted by a failure goes on
+  # rebuilding past the skipped event, and a process manager's replay goes on without
+  # reacting. Back at `running`, an inline read model would never read the rest of the
+  # log, since dispatch projects only what it appends, and a process manager would
+  # react to the history left in it. Dispatch leaves a failing inline read model alone,
+  # as a rebuilding one, since it failed in a rebuild: what it would project, the
+  # runner takes after the skip.
   #
   # **Rebuild.** A read model whose declaration changed — its version is the digest of
   # the declaration and of every event it takes — is `stale` from the next
@@ -411,7 +418,11 @@ defmodule EhOsContract.Subscription do
           attempts: attempts
         }
 
-        changes = if failing, do: Map.put(changes, :status, "failing"), else: changes
+        changes =
+          if failing,
+            do: Map.merge(changes, %{status: "failing", resume_status: row.status}),
+            else: changes
+
         repo.update!(SubscriptionRecord.changeset(row, changes))
 
         # The module only: a message may quote the event's values (v2 §17).
@@ -479,7 +490,8 @@ defmodule EhOsContract.Subscription do
                 version: consumer.version,
                 failed_position: nil,
                 failure: nil,
-                attempts: 0
+                attempts: 0,
+                resume_status: nil
               })
             )
 
@@ -491,25 +503,28 @@ defmodule EhOsContract.Subscription do
   end
 
   @doc """
-  Moves a `failing` subscription past the event it fails on, and runs it again. The
+  Moves a `failing` subscription past the event it fails on, and runs it again in the
+  status it failed in: one that failed while it was rebuilt goes on rebuilding. The
   event is never applied: this is for a person who decided it should not be.
   """
-  @spec skip(module(), String.t()) :: :ok | {:error, :not_failing}
+  @spec skip(module(), String.t()) :: :ok | {:error, :not_failing | :not_registered}
   def skip(repo, key) do
     {:ok, result} =
       repo.transaction(fn ->
         case take(repo, key, ["failing"], :wait) do
           nil ->
-            {:error, :not_failing}
+            not_failing(repo, key)
 
+          # A row that was failing before storage version 5 says nothing of its status.
           row ->
             repo.update!(
               SubscriptionRecord.changeset(row, %{
                 position: row.failed_position,
-                status: "running",
+                status: row.resume_status || "running",
                 failed_position: nil,
                 failure: nil,
-                attempts: 0
+                attempts: 0,
+                resume_status: nil
               })
             )
 
@@ -518,6 +533,12 @@ defmodule EhOsContract.Subscription do
       end)
 
     result
+  end
+
+  defp not_failing(repo, key) do
+    if repo.get(SubscriptionRecord, key),
+      do: {:error, :not_failing},
+      else: {:error, :not_registered}
   end
 
   @doc "Every subscription row, by name."

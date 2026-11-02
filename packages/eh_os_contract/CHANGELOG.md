@@ -60,6 +60,20 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   report's "Met" and "BREACHED". Links change: the sections of `process.md` on recording an outage
   and on how the report reads a process are now `outages.md` and `conformance.md`.
 
+### Fixed
+
+- **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
+  `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
+  model delivered `:in_transaction` then never got the events after the skipped one, and a process
+  manager reacted to the history after it: it issued commands and set timers for past events. Now a
+  skip puts the subscription back in the status it failed in, so the rebuild or the replay continues
+  after the event. Dispatch also leaves a `failing` read model delivered `:in_transaction` alone, as
+  a `rebuilding` one; the runner takes those events after the skip. The task's list says "while it
+  is reset" for a subscription that failed during a rebuild, and `--skip` of an unknown key says that
+  the key is not a subscription, not that it is not failing. The storage goes to version 5, which keeps that status: add a migration calling
+  `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. A row that was
+  `failing` before the upgrade goes back to `running` on a skip, as before.
+
 ## [0.13.1] - 2026-11-01
 
 ### Added

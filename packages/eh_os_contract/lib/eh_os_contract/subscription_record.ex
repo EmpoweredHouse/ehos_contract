@@ -4,7 +4,8 @@ defmodule EhOsContract.SubscriptionRecord do
   #
   # `status` is `running`, `stale` (its declaration changed and it has not been
   # rebuilt), `rebuilding`, or `failing` at `failed_position`, whose exception's
-  # module is `failure`. `mode` is `ordered` for a consumer a runner feeds and
+  # module is `failure`, and `resume_status` the status it failed in, which a skip
+  # goes back to. `mode` is `ordered` for a consumer a runner feeds and
   # `inline` for a read model dispatch projects.
   @moduledoc false
 
@@ -24,6 +25,7 @@ defmodule EhOsContract.SubscriptionRecord do
     field(:failed_position, :integer)
     field(:failure, :string)
     field(:attempts, :integer, default: 0)
+    field(:resume_status, :string)
     field(:updated_at, :utc_datetime_usec)
   end
 
@@ -31,7 +33,15 @@ defmodule EhOsContract.SubscriptionRecord do
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(row, changes) do
     row
-    |> cast(changes, [:position, :version, :status, :failed_position, :failure, :attempts])
+    |> cast(changes, [
+      :position,
+      :version,
+      :status,
+      :failed_position,
+      :failure,
+      :attempts,
+      :resume_status
+    ])
     |> put_change(:updated_at, DateTime.utc_now())
   end
 end
