@@ -18,6 +18,7 @@ The same steps apply to an event that an actor records, and to the params of a q
 ## Before you start
 
 - A Phoenix LiveView page, with the `actor` of the person in its assigns.
+- The `CoreComponents` module that Phoenix 1.8 generates, with `<.input>` and `translate_error/1`.
 - A contract with the command, and a module for each domain value with invariants.
 
 This page uses this contract. An accountant issues an invoice for a month. A period is a month
@@ -166,15 +167,17 @@ def mount(%{"id" => id}, _session, socket) do
   # Check here that this person may act on this invoice: the Authorizer does not.
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, %{}, data: %{invoice_id: id})
   # One key per form shown, so a second submit of the same form is the same command.
-  {:ok, assign(socket, invoice_id: id, form_key: Ecto.UUID.generate(), form: to_form(changeset))}
+  key = Ecto.UUID.generate()
+  {:ok, assign(socket, invoice_id: id, form_key: key, form: to_form(changeset))}
 end
 
 defp data(socket), do: %{invoice_id: socket.assigns.invoice_id}
 ```
 
 ```heex
-<.form for={@form} phx-change="validate" phx-submit="save">
-  <.error :for={error <- @form[:base].errors}>{error_message(error)}</.error>
+<.form for={@form} id="issue-invoice" phx-change="validate" phx-submit="save">
+  <input type="hidden" name="form_key" value={@form_key} />
+  <p :for={error <- @form[:base].errors} class="text-error">{translate_error(error)}</p>
   <.input field={@form[:period]} label="Period" placeholder="2026-07" />
   <.input field={@form[:amount]} label="Amount" />
   <.input field={@form[:method]} type="select" label="Paid by" options={[Card: :card, Transfer: :transfer]} />
@@ -184,6 +187,13 @@ defp data(socket), do: %{invoice_id: socket.assigns.invoice_id}
 </.form>
 ```
 
+Give the form an `id`. Without an `id`, LiveView does not restore the form after a reconnect.
+
+Keep the key in a hidden input of the form. After a reconnect, LiveView calls `mount/3` again, and
+`mount/3` makes a new key. LiveView then sends the old inputs of the form to `phx-change`. The
+`phx-change` handler takes the old key back from them. So, if the person submits again after a lost
+reply, dispatch gets the same key. A reload of the page makes a new key.
+
 **Result:** the page shows an empty form for the invoice.
 
 ## Check the form while the person types
@@ -192,9 +202,9 @@ Build the changeset again on each `phx-change`:
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
-def handle_event("validate", %{"issue_invoice" => params}, socket) do
+def handle_event("validate", %{"issue_invoice" => params, "form_key" => key}, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
-  {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+  {:noreply, assign(socket, form_key: key, form: to_form(changeset, action: :validate))}
 end
 ```
 
@@ -237,19 +247,30 @@ form. To show it at a field, name the field:
 ## Write the messages from the reasons
 
 Each error carries the reason of the engine in its keyword list. Write the message from the reason,
-not from the text of the error:
+not from the text of the error.
 
-<!-- not compiled: a function of the host's error helpers -->
+`<.input>` shows the errors of its field through `translate_error/1` of `CoreComponents`. Write the
+messages in that function. Then `<.input>` and the errors on `:base` show the same words. Keep the
+body that Phoenix generated for the other errors:
+
+<!-- not compiled: functions of the host's CoreComponents -->
 ```elixir
-def error_message({_message, opts}) do
+def translate_error({_message, opts} = error) do
   case {opts[:validation], opts[:invariant]} do
     {:required, _} -> "Fill this in"
     {:type, _} -> "This is not a valid value"
     {:invariant, :written_as_month} -> "Write the month as YYYY-MM"
     {:rejected, :issued_once} -> "This invoice was already issued"
     {:unknown, _} -> "Nothing of that name exists"
-    _other -> "This cannot be accepted"
+    _other -> generated_message(error)
   end
+end
+
+# The body of translate_error/1 that Phoenix generates without Gettext.
+defp generated_message({message, opts}) do
+  Enum.reduce(opts, message, fn {key, value}, acc ->
+    String.replace(acc, "%{#{key}}", fn _ -> to_string(value) end)
+  end)
 end
 ```
 
