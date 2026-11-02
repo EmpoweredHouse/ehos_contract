@@ -1,0 +1,1 @@
+Review of 14c309d2 carries over: this commit qualifies one sentence of outages.md on a CodeRabbit finding (suspended only when the window ends empty with the outage inside). Docs tests 0 failures.
