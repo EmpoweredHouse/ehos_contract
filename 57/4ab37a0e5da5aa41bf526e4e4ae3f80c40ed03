@@ -1,0 +1,1 @@
+One-line doc change (the exception a read raises), from CodeRabbit; checked with eh_os_contract.docs, test/docs_test.exs, vault_test.exs and docs --warnings-as-errors, all passing. Earlier commits reviewed in two rounds; gate EXIT=0 at 44ddeec0.
