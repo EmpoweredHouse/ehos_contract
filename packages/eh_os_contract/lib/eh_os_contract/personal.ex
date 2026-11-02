@@ -552,13 +552,30 @@ defmodule EhOsContract.Personal do
 
   @doc """
   Rewraps, with the vault's current master key, every data key another master key
-  wraps: `mix eh_os_contract.rewrap`. Returns how many it rewrapped. Each batch of
-  `batch` keys is one transaction, and skips keys another run holds; when any key
-  is left on another master key at the end, it raises, so "done" means none is.
+  wraps: `mix eh_os_contract.rewrap`. Returns how many it rewrapped.
+
+  `expect` is the id of the master key the rotation moves to. When the vault's
+  current key is another one, it raises before it rewraps anything: a run with the
+  configuration of before the rotation would move every data key back to the old
+  key, which the next deploy removes.
+
+      EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")
+
+  Each batch of `batch` keys is one transaction, and skips keys another run holds;
+  when any key is left on another master key at the end, it raises, so "done" means
+  none is.
   """
-  @spec rewrap!(module(), pos_integer()) :: non_neg_integer()
-  def rewrap!(repo, batch \\ 500) do
+  @spec rewrap!(module(), Vault.kek_id(), pos_integer()) :: non_neg_integer()
+  def rewrap!(repo, expect, batch \\ 500) do
     current = Vault.current()
+
+    unless current == expect do
+      raise ArgumentError,
+            "the vault wraps with #{inspect(current)}, not with #{inspect(expect)} that was " <>
+              "expected, so no data key was rewrapped; run the rewrap with the configuration " <>
+              "that lists #{inspect(expect)} first"
+    end
+
     count = rewrap!(repo, batch, current, 0)
 
     # A batch skips the keys another run holds, so an empty batch does not mean that

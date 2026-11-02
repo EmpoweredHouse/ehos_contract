@@ -214,12 +214,28 @@ defmodule EhOsContract.VaultTest do
       join!("membership-celina", "member-celina")
       assert kek_ids() == ["kek-old", "kek-old", "kek-new"]
 
-      assert Personal.rewrap!(Repo, 1) == 2
+      assert Personal.rewrap!(Repo, "kek-new", 1) == 2
       assert kek_ids() == ["kek-new", "kek-new", "kek-new"]
-      assert Personal.rewrap!(Repo) == 0
+      assert Personal.rewrap!(Repo, "kek-new") == 0
 
       keys([{"kek-new", @new_kek}])
       assert [%Joined{name: "Anna Nowak"}, %Joined{name: "Anna Nowak"}, %Joined{}] = names()
+    end
+
+    test "a rewrap whose vault wraps with another key than the expected one rewraps nothing" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+      join!("membership-celina", "member-celina")
+
+      # The configuration of before the rotation: the old key still first.
+      keys([{"kek-old", @kek}, {"kek-new", @new_kek}])
+
+      assert_raise ArgumentError,
+                   ~r/the vault wraps with "kek-old", not with "kek-new" that was expected/,
+                   fn -> Personal.rewrap!(Repo, "kek-new") end
+
+      assert kek_ids() == ["kek-old", "kek-new"]
     end
 
     test "a key whose master key left the vault before the rewrap does not read, and says so" do
@@ -265,7 +281,7 @@ defmodule EhOsContract.VaultTest do
         capture_log(fn ->
           join!("membership-anna", "member-anna")
           keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
-          assert Personal.rewrap!(Repo) == 1
+          assert Personal.rewrap!(Repo, "kek-new") == 1
         end)
 
       # Control: the queries around them are logged.
@@ -279,8 +295,25 @@ defmodule EhOsContract.VaultTest do
       join!("membership-anna", "member-anna")
       keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
 
-      output = capture_io(fn -> Mix.Tasks.EhOsContract.Rewrap.run([]) end)
+      output =
+        capture_io(fn -> Mix.Tasks.EhOsContract.Rewrap.run(["--expect", "kek-new"]) end)
+
       assert output =~ "1 data keys rewrapped with kek-new"
+    end
+
+    test "the task refuses to run without the expected key" do
+      assert_raise Mix.Error, ~r/--expect/, fn -> Mix.Tasks.EhOsContract.Rewrap.run([]) end
+    end
+
+    test "the task refuses a vault that wraps with another key, and rewraps nothing" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+
+      assert_raise ArgumentError, ~r/not with "kek-new" that was expected/, fn ->
+        Mix.Tasks.EhOsContract.Rewrap.run(["--expect", "kek-new"])
+      end
+
+      assert kek_ids() == ["kek-old"]
     end
   end
 end

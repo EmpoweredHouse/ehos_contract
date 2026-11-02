@@ -49,13 +49,15 @@ read what the new nodes write, until the rollout ends.
 
 3. When each node runs the configuration of step 2, rewrap each data key with the new key. Run the
    rewrap with the configuration of step 2 too. It wraps with the first key of the list that it
-   reads.
+   reads. Give it the id of the new key. If the first key of the list is another key, the rewrap
+   stops before it changes a data key.
 
    ```bash
-   mix eh_os_contract.rewrap
+   mix eh_os_contract.rewrap --expect 2026-09
    ```
 
-   A release has no `mix`. From a release, call `EhOsContract.Personal.rewrap!(MyApp.Repo)`.
+   A release has no `mix`. From a release, call
+   `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`.
 
    **Result:** the task prints how many data keys it rewrapped, and the id of the key that it used.
    Example: `120 data keys rewrapped with 2026-09`. The id must be the id of the new key. The
@@ -144,7 +146,8 @@ The engine keeps no cache of data keys: a cache on another node would outlive an
 read of personal data asks the vault to unwrap the keys of its subjects. With a KMS, each command
 and each batch of a read model that touches personal data waits for the KMS, and counts against its
 quota. A replay or a rebuild of a read model asks for each subject again. For a smaller rewrap
-batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, 50)`; the Mix task takes no argument.
+batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09", 50)`; the Mix task takes no
+batch size.
 
 <a id="restore-a-backup-older-than-an-erasure"></a>
 
@@ -225,6 +228,7 @@ The rewrap raises with one of these messages:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
+| `the vault wraps with …, not with … that was expected` | The rewrap ran with a list whose first key is not the key that you gave. No data key changed. | Run the rewrap with the configuration of step 2. |
 | `… are still wrapped by another master key than …` | A node still wraps with the old key, or another rewrap holds some rows. | Wait until each node runs the new configuration and the other rewrap ends. Run the rewrap again. |
 | `… cannot be unwrapped with master key …; is that key still in the vault?` | The list of keys does not hold the key that wraps a row. | Put that key back in the list, deploy, and run the rewrap again. |
 | `the vault wrapped with … and calls … current` | A vault of your own returns from `wrap/2` an id other than `current/0`. | Make `wrap/2` return the id of `current/0`. |

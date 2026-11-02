@@ -57,10 +57,19 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   use Mix.Task
 
   @impl Mix.Task
-  def run(_args) do
+  def run(args) do
+    {opts, _} = OptionParser.parse!(args, strict: [expect: :string])
+
+    expect =
+      opts[:expect] ||
+        Mix.raise(
+          "name the master key the data keys move to, the new key of the rotation: " <>
+            "mix eh_os_contract.rewrap --expect <key id>"
+        )
+
     Mix.Task.run("app.start")
     repo = EhOsContract.Config.fetch!(:repo)
-    count = EhOsContract.Personal.rewrap!(repo)
+    count = EhOsContract.Personal.rewrap!(repo, expect)
     Mix.shell().info("#{count} data keys rewrapped with #{EhOsContract.Vault.current()}")
   end
 end
