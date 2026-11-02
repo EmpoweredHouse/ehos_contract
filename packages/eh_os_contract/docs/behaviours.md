@@ -559,8 +559,8 @@ cannot read what the nodes with the new list write, until the rollout ends.
    `mix eh_os_contract.rewrap --expect <id of the new key>` with the configuration
    of step 2. If the first key of its list is another key, the task stops before it
    changes a data key.
-4. Do this step only when step 3 ended without an error. Just before the deploy, count the data keys of each master key. Each row
-   must name the new key:
+4. Do this step only when step 3 ended without an error. Just before the deploy,
+   count the data keys of each master key. Each row must name the new key:
 
        SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 

@@ -29,7 +29,7 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
 
       120 data keys rewrapped with 2026-09
 
-  > **The task refuses the configuration of step 1.**
+  > **The task refuses a list whose first key is not the key of `--expect`.**
   > The task wraps with the first key of the list that it reads. With the
   > configuration of step 1, that key is the old key, not the key of `--expect`. The
   > task stops and changes no data key. Remove the old key only when the task ended
