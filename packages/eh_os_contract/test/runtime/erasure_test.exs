@@ -88,6 +88,19 @@ defmodule EhOsContract.ErasureTest do
     )
   end
 
+  # The members read model, failing on the second event while it was rebuilt.
+  defp fail_members! do
+    Subscription.register!(Repo, Implementations.subscribed())
+    key = "shredding_rig.members:read_model:members"
+
+    {1, _} =
+      Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == ^key),
+        set: [status: "failing", position: 1, failed_position: 2, resume_status: "rebuilding"]
+      )
+
+    key
+  end
+
   describe "erase/3" do
     test "deletes the keys, records the erasure, appends the event, and the read model forgets" do
       two_members!()
@@ -124,20 +137,36 @@ defmodule EhOsContract.ErasureTest do
              ] = Enum.map(log(), &Consumer.decode!/1)
     end
 
-    test "a read model projected in the transaction that failed while it was rebuilt is left to its runner" do
+    test "a read model projected in the transaction that failed while it was rebuilt forgets at once" do
       two_members!()
-      Subscription.register!(Repo, Implementations.subscribed())
-      key = "shredding_rig.members:read_model:members"
+      key = fail_members!()
 
-      {1, _} =
-        Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == ^key),
-          set: [status: "failing", position: 1, failed_position: 2, resume_status: "rebuilding"]
-        )
-
-      # A `forget/2` that raised on its partial rows would roll the erasure back.
       {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
 
+      assert members() == [{"member-anna", nil}, {"member-bartek", "Bartek Nowak"}]
+      assert %{status: "failing", position: 1} = Repo.get!(EhOsContract.SubscriptionRecord, key)
+    end
+
+    test "a failing read model whose forget/2 raises is left to its runner, and the erasure stands" do
+      two_members!()
+      key = fail_members!()
+      Process.put(:shredding_rig_forget_fails, true)
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert EhOsContract.erase(:member, "member-anna", actor: @officer) ==
+                   {:ok, :erased}
+
+          assert EhOsContract.erase(:member, "member-bartek", actor: @officer) ==
+                   {:ok, :erased}
+        end)
+
+      assert log =~ "subscription #{key}: it is failing, and its forget/2 raised Postgrex.Error"
+
+      # What `forget/2` wrote before it raised is undone; the erasures are not.
       assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
+      assert keys() == []
+      assert length(erasures()) == 2
       assert %{status: "failing", position: 1} = Repo.get!(EhOsContract.SubscriptionRecord, key)
     end
 

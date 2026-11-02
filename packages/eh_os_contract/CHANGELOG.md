@@ -88,6 +88,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
   `running` on a skip, as before: reset a process manager that failed during its replay instead of
   skipping it.
+- **An erasure reaches a failing read model delivered `:in_transaction` at once** (#557). Before, it
+  kept its copy of each subject erased after it failed, until a person skipped the event it fails on
+  or reset it. Now `erase/3` calls its `forget/2` in the erasure's transaction, inside a savepoint.
+  If `forget/2` raises on the partial rows, the engine rolls back to the savepoint, logs a warning
+  that names the read model, and the erasure continues; the read model then keeps its copy as
+  before. A `forget/2` that raises inside a `Repo.transaction` of its own still fails the erasure.
 
 ## [0.13.1] - 2026-11-01
 
