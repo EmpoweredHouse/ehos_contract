@@ -9,8 +9,8 @@ defmodule EhOsContract.Store do
   the caller.
 
   An append of no entries is the exception. `EhOsContract.Store.Postgres` returns
-  `{:ok, []}` for it, and checks no condition and no transaction. So an empty append
-  cannot check a version or a condition.
+  `{:ok, []}` for it. It checks no condition, and it does not raise outside a
+  transaction.
 
   ## What an implementation promises
 

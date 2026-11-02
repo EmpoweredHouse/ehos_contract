@@ -134,7 +134,7 @@
     <text class="keyt" x="540" y="680">The handler answers :ack after its commit, or :nack.</text>
     <circle class="badge" cx="526" cy="700" r="6"/>
     <text class="badget" x="526" y="703" text-anchor="middle">9</text>
-    <text class="keyt" x="540" y="704">After :ack, the durable consumer acknowledges the message.</text>
+    <text class="keyt" x="540" y="704">After :ack, the durable consumer acknowledges it to the transport.</text>
   </g>
   <g class="legend">
     <line class="rule" x1="40" y1="756" x2="960" y2="756"/>
