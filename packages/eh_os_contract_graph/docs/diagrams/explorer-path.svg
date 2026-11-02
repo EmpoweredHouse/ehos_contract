@@ -1,5 +1,5 @@
 <!-- title: Which path does the explorer follow? -->
-<!-- desc: From the domain, the reader opens a contract and its units, or a process module; an event of a process module opens its contract. -->
+<!-- desc: The reader opens a contract, then a unit, or a process module from the domain or its list; its events open their contracts. -->
 <!-- words: domain, contract, unit, process module -->
 <!-- technical: -->
 <!-- verbs: opens, lists -->

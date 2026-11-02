@@ -30,9 +30,9 @@ defines both.
    ```
 
 2. Add the stylesheet of the package, `priv/static/eh_os_contract_graph.css`. Import it into your
-   own stylesheet, or serve it beside it. It uses the tokens of the EmpoweredHouse design system,
-   `--surface-*`, `--border-*`, `--text-*`, `--accent-*`, `--error-*` and `--radius-*`. Define them in your page: the picture then
-   follows the theme of your page.
+   own stylesheet, or serve it beside it. It uses the tokens of the EmpoweredHouse design system:
+   `--surface-*`, `--border-*`, `--text-*`, `--accent-*`, `--error-*`, `--radius-*` and `--mono`.
+   Define them in your page: the picture then follows the theme of your page.
 
 3. Render the canvas, with the document, the overlay and the view:
 

@@ -21,25 +21,30 @@ background.
 1. Write `document/2`. It gets a reference and returns `{:ok, document}`, with string keys, as
    JSON decodes it. A reference is one of these:
    - `{:domain, module}`, such as `{:domain, "Lending.Domain"}`;
-   - `{:contract, id}`, by the `name` of the contract node in the graph document of the domain,
-     such as `"lending.circulation"`;
-   - `{:process, id}`, by the `name` of the process node in the same document. The `id` of a
-     node, such as `"contract:lending.circulation"`, is not a reference.
+   - `{:contract, name}`, by the `name` of the contract node in the graph document of the domain,
+     such as `{:contract, "lending.circulation"}`;
+   - `{:process, name}`, by the `name` of the process node in the same document.
+
+   The `id` of a node, such as `"contract:lending.circulation"`, is not a reference.
 2. Write `overlay/2`. It gets the same references. It returns `{:ok, overlay}`, or `{:ok, nil}` if
    the log says nothing.
 3. If a document cannot be read, return `{:error, reason}`. The explorer then shows "This picture
    could not be loaded." in place of the picture.
 
-4. If `overlay/2` fails, the explorer draws the picture without the numbers of the log, and shows
-   no message. It asks again when the reader comes back to the place.
-5. If you read another application, bound the size of each response, and give each request a
-   timeout. The explorer waits for the loader with no timeout of its own.
-
 If the engine runs in the same application, read it directly. The moduledoc of
 `EhOsContract.GraphRenderer.Loader` has an example. If you have only the JSON API of the
-application, read `GET <mount>/graph/domain/<module>`, `<mount>/graph/<id>` and
-`<mount>/graph/process/<id>`, each with `/overlay`, and decode them. The API asks its own resolver
-who the caller is, so send what it needs to let your application in.
+application, read `GET <mount>/graph/domain/<module>`, `<mount>/graph/<name>` and
+`<mount>/graph/process/<name>`, each with `/overlay`, and decode them.
+
+If you read another application, keep these rules:
+
+- Use `https`, and do not follow redirects. The loader sends the credential of your application
+  with each request.
+- Give the credential that the resolver of the other application needs to let your application in.
+- Bound the size of each response.
+- Give each request a timeout. The explorer waits for the loader with no timeout of its own.
+- Render the explorer only for the viewers who can see that application. The explorer does not
+  check who the viewer is.
 
 ## Render the explorer
 
@@ -90,7 +95,7 @@ The path has two branches. *The structure* goes from the domain to a contract, a
 of its units. *The processes* are a step beside the domain: the list of its process modules, and
 the picture of one.
 
-![From the domain, the reader opens a contract and its units, or a process module; an event of a process module opens its contract.](img/explorer-path.svg)
+![The reader opens a contract, then a unit, or a process module from the domain or its list; its events open their contracts.](img/explorer-path.svg)
 
 1. The panel of a contract in the domain has the button "Open this contract". It opens the full
    graph of the contract.
@@ -129,6 +134,8 @@ the table of the actors of the domain.
   name that contract or process module, or it could not be loaded. The explorer also starts at
   the domain for each other value of `at`. A move of the reader before the document arrives wins
   over `at`.
+- **A picture has no numbers of the log, and no message.** `overlay/2` failed. The explorer draws
+  the picture without the numbers, and asks the loader again when the reader comes back.
 - **A new `at` or `audience` changes nothing.** The explorer reads both when it starts. If you
   render it again with another value, it keeps the first.
 - **The page fails with an `ArgumentError`.** `audience` is not `:engineering` or `:owner`.

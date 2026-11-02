@@ -86,7 +86,8 @@ system of the reader prefers light.
   `priv/static/assets/fonts/`, and step 3 serves them too. The dashboard loads no Google Fonts
   and uses no CDN, so it works without internet.
 - **It works under a strict Content-Security-Policy**, `default-src 'self'`. No page has an
-  inline style. The graph renderer sets one style only, through the CSSOM, which the policy allows. The development host of this repository
+  inline style. The graph renderer keeps its positions in constructed stylesheets, and moves the
+picture with Web Animations, which the policy allows. The development host of this repository
   serves the dashboard under this policy.
 
 ## What can go wrong

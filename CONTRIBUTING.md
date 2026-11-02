@@ -158,8 +158,8 @@ The dashboard, `packages/eh_os_contract_web`, and the graph renderer,
 `assets/` builds them.
 
 You need read access to the private repository `ehos-tools`. The build runs in `:dev`, and each
-of the two packages takes a `:dev` dependency from there: the dashboard its design system, the
-graph renderer its diagram generator. Without that access, `mix deps.get` in the package fails.
+of the two packages takes `:dev` dependencies from there: the dashboard its design system, and the
+graph renderer its diagram generator and the design system that the generator reads. Without that access, `mix deps.get` in the package fails.
 
 1. Change the files in `assets/` of the package.
 2. Build the script and the stylesheet. The build uses esbuild, a downloaded binary, and needs no
