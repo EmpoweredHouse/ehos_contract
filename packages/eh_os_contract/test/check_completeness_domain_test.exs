@@ -166,7 +166,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~ "actor :auditor of #{inspect(@domain)}"
   end
 
-  test "a scoped actor may not get an application-wide command; control: scoped and unscoped actors" do
+  test "a scoped person may not get an application-wide command; control: scoped and unscoped actors, a scoped system actor" do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedDomain do
@@ -176,6 +176,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         context :work, "Work", subdomain: :core
         actor :clerk, :human, "Accountant", scope: [:company_id]
         actor :administrator, :human, "Administrator"
+        actor :importer, :system, "Nightly import", scope: [:company_id]
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedContract do
@@ -188,9 +189,11 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           command :rename, "Rename", by: :clerk, emits: :renamed
           command :archive, "Archive", by: :clerk, scope: :company_id, emits: :archived
           command :restore, "Restore", by: :administrator, emits: :restored
+          command :recount, "Recount", by: :importer, emits: :recounted
           event :renamed, "Renamed"
           event :archived, "Archived"
           event :restored, "Restored"
+          event :recounted, "Recounted"
         end
       end
       """,
@@ -208,7 +211,76 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
     assert message =~ "actor :clerk"
     assert message =~ "command :rename"
-    assert Finding.place(finding) == {"scoped_actor.ex", 17}
+    assert Finding.place(finding) == {"scoped_actor.ex", 18}
+  end
+
+  test "a scoped person may not ask an application-wide query; control: a scoped query, an unscoped actor, a scoped system actor" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedQueryDomain do
+        use EhOsContract.Domain, name: :scoped_query, language: :en
+
+        subdomain :core, "Core", type: :core
+        context :warehouse, "Warehouse", subdomain: :core
+        actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+        actor :manager, :human, "Operations manager"
+        actor :importer, :system, "Nightly import", scope: [:warehouse_id]
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedQueryContract do
+        use EhOsContract.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.ScopedQueryDomain,
+          context: :warehouse, id: "scoped_query.scoped_query_contract"
+
+        aggregate :pick_list, "Pick list" do
+          identity [:warehouse_id, :order_id]
+          command :assign, "Assign", by: :lead, scope: :warehouse_id, emits: :assigned
+          command :recount, "Recount", by: :importer, emits: :recounted
+          event :assigned, "Assigned"
+          event :recounted, "Recounted"
+        end
+
+        read_model :open_pick_lists, "Open pick lists", projects: [:assigned] do
+          field :warehouse_id, :id
+          field :order_id, :id
+        end
+
+        query :all_open, "All open pick lists", reads: :open_pick_lists, by: [:lead]
+
+        query :open_in_warehouse, "Open pick lists in a warehouse",
+          reads: :open_pick_lists,
+          by: [:lead],
+          scope: :warehouse_id do
+          param :warehouse_id, :id
+        end
+
+        query :every_open, "Every open pick list", reads: :open_pick_lists, by: [:manager]
+        query :imported, "Imported pick lists", reads: :open_pick_lists, by: [:importer]
+        query :shared, "Shared pick lists", reads: :open_pick_lists, by: [:lead, :manager]
+      end
+      """,
+      "scoped_query.ex"
+    )
+
+    contract = EhOsContract.CheckCompletenessDomainTest.ScopedQueryContract
+
+    findings = Completeness.findings([contract])
+
+    assert [{"scoped_query.ex", 29}, {"scoped_query.ex", 40}] ==
+             for(
+               f <- findings,
+               f.rule == "scoped-actor-with-unscoped-query",
+               do: Finding.place(f)
+             )
+
+    assert [all_open, shared] =
+             for(f <- findings, f.rule == "scoped-actor-with-unscoped-query", do: f.message)
+
+    assert all_open =~ "actor :lead"
+    assert all_open =~ "query :all_open"
+    assert shared =~ "actor :lead"
+    assert shared =~ "query :shared"
+    assert [] == for(f <- findings, f.rule == "scoped-actor-with-unscoped-command", do: f)
   end
 
   test "an external nothing uses; control: one an actor stands for, one an effect calls" do

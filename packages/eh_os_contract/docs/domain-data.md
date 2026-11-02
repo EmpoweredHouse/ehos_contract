@@ -1,6 +1,6 @@
 # What are actors, values, entities and external systems?
 
-<!-- covers: entities domain.actor, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, scoped-actor-with-unscoped-command -->
+<!-- covers: entities domain.actor, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, scoped-actor-with-unscoped-command, scoped-actor-with-unscoped-query -->
 
 This page tells what a domain declares besides its contexts. It covers who acts, the types of the
 data, the things that the application points to, and the systems that it uses. It is for a developer who
@@ -58,10 +58,18 @@ the `EhOsContract.Authorizer`, with the capability.
 [Narrow a call to the values of a grant](scope.md) tells what the checks do before and after a
 query runs.
 
-If an actor with a scope is in the `by:` of a command without `scope`, the check warns
+If a `:human` actor with a scope is in the `by:` of a command without `scope`, the check warns
 `scoped-actor-with-unscoped-command`. For this actor, the capability of that command is then valid
 in the whole application. Declare the `scope` of the command if it acts on one of the dimensions.
 If you want the authority in the whole application, name a different actor.
+
+If a `:human` actor with a scope is in the `by:` of a query without `scope`, the check warns
+`scoped-actor-with-unscoped-query`. The query then answers this actor the rows of each value of the
+dimension. Declare the `scope` of the query if its read model has one of the dimensions, and move
+the actors without the dimension to a second query. If the actor must read the whole application,
+name a different actor.
+
+Neither warning names a `:system` actor: the engine does not narrow it.
 
 <a id="who-may-let-whom-in"></a>
 

@@ -48,6 +48,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`mix eh_os_contract.check` warns about a scoped actor with an unscoped query** (#559). The new
+  warning `scoped-actor-with-unscoped-query` names a query that has an actor with a scope in `by:`
+  and no `scope:`. Such a query answers the rows of each value: a lead with a grant for warehouse 7
+  reads the rows of warehouse 12. Before, only an unscoped command got a warning. A contract with
+  such a query now gets one warning for each `:human` actor with a scope in its `by:`. A new warning
+  only: no verdict moves, but a host that runs `check --warnings-as-errors` fails until it scopes the
+  query or names a different actor.
+
 ### Changed
 
 - **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
@@ -72,6 +82,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
+  does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
   A `POST` must have the header `content-type: application/json`, with or without parameters such as
   `charset`. Otherwise the answer is 415, `{"error": "unsupported_media_type"}`, and nothing is

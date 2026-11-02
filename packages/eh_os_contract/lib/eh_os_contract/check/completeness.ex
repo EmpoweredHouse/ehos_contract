@@ -464,6 +464,7 @@ defmodule EhOsContract.Check.Completeness do
       terms_of_other_contexts(model, contracts),
       directions(model, declared, contracts),
       scoped_actors_with_unscoped_commands(model, contracts),
+      scoped_actors_with_unscoped_queries(model, contracts),
       unchecked_values(model, declared, contracts),
       unlabelled_values(model, declared)
     ])
@@ -504,13 +505,13 @@ defmodule EhOsContract.Check.Completeness do
   # dimensions. Letting the same actor issue an unscoped command makes that grant
   # unexpectedly application-wide (plan E10).
   defp scoped_actors_with_unscoped_commands(model, contracts) do
-    scoped = Map.new(model.actors, &{&1.name, &1.scope})
+    scoped = scoped_people(model)
 
     for %{model: contract, declarations: declarations} <- contracts,
         command <- contract.commands,
         Map.get(command, :scope) == nil,
         actor <- command.by,
-        Map.get(scoped, actor, []) != [] do
+        Map.has_key?(scoped, actor) do
       dimensions = scoped |> Map.fetch!(actor) |> Enum.map_join(", ", &inspect/1)
 
       Finding.new(
@@ -521,6 +522,36 @@ defmodule EhOsContract.Check.Completeness do
         declared_command(%{declarations: declarations}, command.unit, command.name)
       )
     end
+  end
+
+  # The same for a query: an unscoped query answers a scoped actor the rows of every
+  # value of its dimension, so a lead of one warehouse reads them all (#559).
+  defp scoped_actors_with_unscoped_queries(model, contracts) do
+    scoped = scoped_people(model)
+
+    for %{model: contract, declarations: declarations} <- contracts,
+        query <- contract.queries,
+        query.scope == nil,
+        actor <- query.by,
+        Map.has_key?(scoped, actor) do
+      dimensions = scoped |> Map.fetch!(actor) |> Enum.map_join(", ", &inspect/1)
+
+      Finding.new(
+        "scoped-actor-with-unscoped-query",
+        "actor #{inspect(actor)} of #{inspect(model.module)} has scope #{dimensions}, but query " <>
+          "#{inspect(query.name)} of #{inspect(contract.module)} answers it without a `scope`, so " <>
+          "it reads the rows of every value",
+        at(declarations.queries, query.name)
+      )
+    end
+  end
+
+  # Only a person holds a credential, so only a person's grant can be narrowed: dispatch
+  # never narrows a `:system` actor, whose scope exists only to satisfy D10 (#559).
+  defp scoped_people(model) do
+    for %{kind: :human, scope: [_ | _]} = actor <- model.actors,
+        into: %{},
+        do: {actor.name, actor.scope}
   end
 
   # A value whose invariants no module checks, in a domain whose contracts have code:

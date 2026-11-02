@@ -117,7 +117,9 @@ The engine does these checks:
    command or the query does not run.
 2. **After a query answers**, the engine compares the scope field of each row with the grant. If one
    row is outside it, the engine raises `EhOsContract.Authorizer.OutsideScopeError`. The caller gets
-   no row. So a wrong `where` cannot give one warehouse the rows of another warehouse.
+   no row. So a wrong `where` cannot give a lead the rows of a warehouse outside the grant. A lead
+   with a grant for warehouses 7 and 12 can still get the rows of warehouse 12 for a call about
+   warehouse 7.
 
 ## What can go wrong
 
@@ -132,6 +134,11 @@ not fail on a cast.
 **A lead acts in another warehouse.** The actor and the query have a scope, but the command does
 not. The command then takes each warehouse. `mix eh_os_contract.check` warns about this:
 `scoped-actor-with-unscoped-command`. Give the command `scope:` too.
+
+**A lead reads the rows of another warehouse.** The actor has a scope, but the query does not. The
+query then answers the rows of each warehouse. `mix eh_os_contract.check` warns about this:
+`scoped-actor-with-unscoped-query`. Give the query `scope:` too. If the `by:` of the query also names
+an actor without the scope, the compiler refuses the scope: make a second query for that actor.
 
 **A `:system` actor sees all the rows.** The engine does not narrow a `:system` actor that `by:`
 names, for a command or a query. This is correct: the code of the application has no grant.

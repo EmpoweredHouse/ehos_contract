@@ -123,7 +123,21 @@ defmodule EhOsContract.Check.Catalog do
       text: """
       The actor's other grants can be narrowed to named dimensions, but this command's capability is
       application-wide. Declare the command's `scope` when it acts on one of those dimensions, or use
-      a different actor when application-wide authority is deliberate.
+      a different actor when application-wide authority is deliberate. An actor of kind `:system` is
+      left out, since dispatch never narrows it.
+      """
+    },
+    %{
+      id: "scoped-actor-with-unscoped-query",
+      level: :warn,
+      esdm: nil,
+      summary: "An actor with scope dimensions may ask an unscoped query.",
+      text: """
+      The actor's other grants can be narrowed to named dimensions, but this query answers the rows of
+      every value: a lead granted one warehouse reads the rows of all of them. Declare the query's
+      `scope` when its read model has one of those dimensions, and move the actors without them to a
+      query of their own. Use a different actor when reading across the application is deliberate.
+      An actor of kind `:system` is left out, since dispatch never narrows it.
       """
     },
     %{
