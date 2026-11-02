@@ -229,7 +229,8 @@ UUID, as `mount/3` makes it.
 
 On `phx-submit`, convert the changeset into the command, and dispatch it. Give dispatch the key of
 the form, so that a second submit of the same form is the same command. If dispatch accepted the
-first command, it returns the receipt of that command, also if the person changed the form.
+first command, it returns the receipt of that command, also if the person changed the form. But
+first, the changed form must pass the changeset, and dispatch checks the capability and the fields.
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
