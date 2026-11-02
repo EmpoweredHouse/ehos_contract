@@ -166,7 +166,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~ "actor :auditor of #{inspect(@domain)}"
   end
 
-  test "a scoped actor may not get an application-wide command; control: scoped and unscoped actors" do
+  test "a scoped person may not get an application-wide command; control: scoped and unscoped actors, a scoped system actor" do
     compile(
       """
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedDomain do
@@ -176,6 +176,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
         context :work, "Work", subdomain: :core
         actor :clerk, :human, "Accountant", scope: [:company_id]
         actor :administrator, :human, "Administrator"
+        actor :importer, :system, "Nightly import", scope: [:company_id]
       end
 
       defmodule EhOsContract.CheckCompletenessDomainTest.ScopedContract do
@@ -188,9 +189,11 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
           command :rename, "Rename", by: :clerk, emits: :renamed
           command :archive, "Archive", by: :clerk, scope: :company_id, emits: :archived
           command :restore, "Restore", by: :administrator, emits: :restored
+          command :recount, "Recount", by: :importer, emits: :recounted
           event :renamed, "Renamed"
           event :archived, "Archived"
           event :restored, "Restored"
+          event :recounted, "Recounted"
         end
       end
       """,
@@ -208,7 +211,7 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
 
     assert message =~ "actor :clerk"
     assert message =~ "command :rename"
-    assert Finding.place(finding) == {"scoped_actor.ex", 17}
+    assert Finding.place(finding) == {"scoped_actor.ex", 18}
   end
 
   test "a scoped person may not ask an application-wide query; control: a scoped query, an unscoped actor, a scoped system actor" do

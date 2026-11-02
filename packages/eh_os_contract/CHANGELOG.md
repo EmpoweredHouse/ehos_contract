@@ -54,8 +54,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   warning `scoped-actor-with-unscoped-query` names a query that has an actor with a scope in `by:`
   and no `scope:`. Such a query answers the rows of each value: a lead with a grant for warehouse 7
   reads the rows of warehouse 12. Before, only an unscoped command got a warning. A contract with
-  such a query now gets one warning for each scoped actor of the query. No verdict moves, but a host
-  that runs `check --warnings-as-errors` fails until it gives the query a `scope:`.
+  such a query now gets one warning for each `:human` actor with a scope in its `by:`. A new warning
+  only: no verdict moves, but a host that runs `check --warnings-as-errors` fails until it scopes the
+  query or names a different actor.
 
 ### Changed
 
@@ -82,7 +83,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Fixed
 
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
-  does not narrow a `:system` actor, so a scope on it narrows nothing, and the warning had no fix.
+  does not narrow a `:system` actor, so a `scope` on the command narrows nothing for it.
 
 - **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
   `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
