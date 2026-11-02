@@ -140,7 +140,9 @@ version behind one name, the rewrap cannot see that the version changed.
 
 To rotate a key in the KMS, make `current/0` return the new version, and deploy. When each node runs
 it, rewrap each data key, as step 3 above tells. Disable the old key only after the rewrap ended
-without an error.
+without an error, and after the check of step 4: each row of `eh_os_contract_subject_keys` must
+name the new version. A node that still returns the old version wraps new data keys with it, also
+after the rewrap.
 
 The engine keeps no cache of data keys: a cache on another node would outlive an erasure. So each
 read of personal data asks the vault to unwrap the keys of its subjects. With a KMS, each command
