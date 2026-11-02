@@ -1,0 +1,1 @@
+Documentation alone. CodeRabbit r4442955850 fixed in f32f1c05: the replay sentence now says a changed form passes the changeset, the capability and the fields first (dispatch order Who, What, Once in EhOsContract.dispatch/3 doc). Gate EXIT=0 on f32f1c05; measure-prose 0 long.
