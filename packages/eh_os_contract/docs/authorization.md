@@ -178,8 +178,8 @@ declare the actor `:system`.
 A person is never the code of the application. So a call of a person comes through the door.
 
 > **Pass the actor of the person.**
-> If your code sends the request of a person as a `:system` actor, nothing asks the Authorizer.
-> The person then gets each permission of the `:system` actor.
+> If you send the request of a person as a `:system` actor, nothing asks the
+> Authorizer. The person then gets each permission of the `:system` actor.
 
 ## What can the Authorizer answer?
 
