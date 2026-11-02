@@ -701,7 +701,8 @@ defmodule EhOsContract.Check.Completeness do
   end
 
   # ESDM's `orphan-context-mapping`: a relation no reference crosses, in either
-  # direction.
+  # direction. A `:separate_ways` relation says that no reference crosses it, and the
+  # compiler refuses one that does (X11), so it is never an orphan (#537).
   defp orphan_relations(model, declared, contracts) do
     # A relation to an external is crossed when a contract of its context uses the
     # external (plan EL2); only a relation between contexts counts as ESDM's mapping for
@@ -720,6 +721,7 @@ defmodule EhOsContract.Check.Completeness do
       MapSet.new(Enum.map(ContextMap.crossings(model, contracts), & &1.pair) ++ external_uses)
 
     for {relation, index} <- Enum.with_index(model.relations),
+        relation.type != :separate_ways,
         pair = relation |> Domain.Build.endpoints() |> MapSet.new(),
         not MapSet.member?(crossing, pair) do
       [a, b] = Domain.Build.endpoints(relation)

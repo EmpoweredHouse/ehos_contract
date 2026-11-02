@@ -88,6 +88,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
   `running` on a skip, as before: reset a process manager that failed during its replay instead of
   skipping it.
+- **`mix eh_os_contract.check` no longer warns that a `:separate_ways` relation is crossed by no
+  reference** (`orphan-context-mapping`, #537). The relation says that the two contexts do not depend on
+  each other, and the compiler refuses a reference across it. The only way to silence the warning was to
+  remove the relation, and that removed the refusal too. A domain with such a relation has one warning
+  fewer for each; no verdict moves.
 
 ## [0.13.1] - 2026-11-01
 
