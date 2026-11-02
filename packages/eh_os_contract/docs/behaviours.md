@@ -593,8 +593,9 @@ its data keys, and deploy. To remove it, first run
 If you changed the bytes of a key and kept its id, its data keys can need two sets
 of bytes: the old bytes for the data keys from before the change, the new bytes for
 the data keys from after it. No list of keys of `EhOsContract.Vault.Local` unwraps
-both, because one id names one set of bytes. The engine tries only one data key of each master key, so the
-check can pass. Then a read of a data key of the other set raises.
+both, because one id names one set of bytes. The engine tries only one data key
+of each master key, so the check can pass. Then a read of a data key of the other
+set raises an `ArgumentError`.
 
 A master key that you destroyed cannot come back. While a data key names it, the
 engine does not start. This occurs when you restore a backup that is older than the
