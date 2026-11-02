@@ -94,9 +94,13 @@ give it. Each route is the name of a capability.
    query](read-models.md) tells what that means for personal data.
 
 A command and a recorded event must have the header `content-type: application/json`, also with an
-empty body. If the header is missing or different, the plug answers 415 and dispatches nothing. A
-web page on another site cannot send JSON with the cookie of a person without the permission of
-your site. So the plug stops that page from sending a command as the person.
+empty body. If the caller may make the call and the header is missing or different, the plug answers
+415. It dispatches nothing.
+
+This header protects a person who is signed in with a cookie. A web page of another origin can send
+a form with the cookie of the person. But the browser asks your application before that page can
+send `content-type: application/json`. Do not let your CORS configuration allow credentials for an
+origin that you do not trust. Otherwise, a page of that origin can send a command as the person.
 
 The plug reads two headers, for a command and for a recorded event. `idempotency-key` gives the
 idempotency key. `x-correlation-id` gives the correlation, a UUID.

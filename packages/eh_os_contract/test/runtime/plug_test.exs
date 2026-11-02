@@ -343,17 +343,11 @@ defmodule EhOsContract.PlugTest do
     assert Repo.aggregate(Event, :count) == 1
   end
 
-  describe "a body that is not JSON, as a page on another site can post one with the person's cookie" do
+  describe "a body that is not JSON, as a page of another origin can post one with the person's cookie" do
     @deposit "/commands/dispatch_rig.deposit"
     @body ~s({"account_id": "a-1", "amount": 1})
 
-    defp parsed_form(path) do
-      conn(:post, path, "account_id=a-1&amount=1")
-      |> put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> Plug.Parsers.call(Plug.Parsers.init(parsers: [:urlencoded]))
-    end
-
-    test "is refused with 415 before it is read, and nothing is written" do
+    test "is refused with 415, and nothing is written" do
       for conn <- [
             # A form with enctype="text/plain" whose field spells a JSON object.
             conn(:post, @deposit, @body) |> put_req_header("content-type", "text/plain"),
@@ -361,7 +355,17 @@ defmodule EhOsContract.PlugTest do
             parsed_form(@deposit),
             # fetch() with mode: "no-cors" sends no content type, with or without a body.
             conn(:post, @deposit, @body),
-            conn(:post, @deposit, "")
+            conn(:post, @deposit, ""),
+            # Two types in one header, or two headers.
+            conn(:post, @deposit, @body)
+            |> put_req_header("content-type", "application/json, text/plain"),
+            %{
+              conn(:post, @deposit, @body)
+              | req_headers: [
+                  {"content-type", "application/json"},
+                  {"content-type", "text/plain"}
+                ]
+            }
           ] do
         refused = call(conn)
 
@@ -370,8 +374,13 @@ defmodule EhOsContract.PlugTest do
       end
 
       auditor = Actor.credential("u-2", ["dispatch_rig.balance_confirmed"])
-      recording = call(conn(:post, "/records/dispatch_rig.balance_confirmed", ""), auditor)
-      assert recording.status == 415
+
+      recording =
+        conn(:post, "/records/dispatch_rig.balance_confirmed", ~s({"account_id": "a-1"}))
+        |> put_req_header("content-type", "text/plain")
+        |> call(auditor)
+
+      assert {recording.status, json(recording)} == {415, %{"error" => "unsupported_media_type"}}
 
       assert Repo.aggregate(Event, :count) == 1
     end
@@ -386,5 +395,11 @@ defmodule EhOsContract.PlugTest do
         assert accepted.status == 200
       end
     end
+  end
+
+  defp parsed_form(path) do
+    conn(:post, path, "account_id=a-1&amount=1")
+    |> put_req_header("content-type", "application/x-www-form-urlencoded")
+    |> Plug.Parsers.call(Plug.Parsers.init(parsers: [:urlencoded]))
   end
 end

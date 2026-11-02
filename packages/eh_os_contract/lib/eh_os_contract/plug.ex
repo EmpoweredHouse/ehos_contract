@@ -21,10 +21,12 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     **A command or a recording takes only JSON**: a `POST` without
     `content-type: application/json` answers 415, whatever its body, even an empty
-    one. A browser posts any other type, or none, to another site without asking it
-    first, so with a cookie session in front (`eh_os_contract_auth`'s
-    `EhOsContract.Auth.Session`, `assign_actor: true`) a page elsewhere could
-    otherwise post as the person.
+    one, once the caller may make the call. A page of another origin can post a
+    form, `text/plain` or no content type with the person's cookie and without
+    asking first, but a browser asks the host before it sends `application/json`
+    there. So with a cookie session in front (`eh_os_contract_auth`'s
+    `EhOsContract.Auth.Session`, `assign_actor: true`), a page of another origin
+    posts as the person only if the host's CORS allows it with credentials.
 
     It reads the body, or the query string, and the headers, and hands them to
     `EhOsContract.call/3`, which decodes them against the declaration's fields and
@@ -241,9 +243,9 @@ if Code.ensure_loaded?(Plug.Conn) do
         {conn, nil, {error.plug_status || 400, "invalid_query_string"}}
     end
 
-    # Only a JSON body: a browser sends any other type, or none, across sites without asking
-    # first, so with a cookie session in front a page elsewhere could post as the person.
-    # Checked before the body, whether read here or parsed by a plug in front.
+    # Only a JSON body: a browser sends a form, text/plain or no type to another origin
+    # without a preflight, so with a cookie session in front a page there could post as
+    # the person. Checked whether the body is read here or was parsed by a plug in front.
     defp input(conn, kind, _fields, _values) when kind in [:command, :record] do
       if json?(conn),
         do: read_input(conn),

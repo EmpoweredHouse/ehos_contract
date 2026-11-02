@@ -75,9 +75,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
   A `POST` must have the header `content-type: application/json`, with or without parameters such as
   `charset`. Otherwise the answer is 415, `{"error": "unsupported_media_type"}`, and nothing is
-  dispatched. Before, the plug read any body. A page on another site could then post a form, or a
+  dispatched. Before, the plug read any body. A page of another origin could then post a form, or a
   `fetch()` with no content type, with the cookie of a person signed in, and issue a command as that
-  person. A browser cannot send `application/json` to another site without asking it first. Clients
+  person. A browser asks the host before a page of another origin can send `application/json`. Clients
   that send no content type, or another one, must send `application/json`, also for an empty body.
   The OpenAPI document lists the 415 for each command, so the digest of each document changes.
 - **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
