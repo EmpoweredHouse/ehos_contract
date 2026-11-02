@@ -11,8 +11,9 @@ credential does not carry.
 ## Before you start
 
 - You know how the engine checks a call: [How is a call authorized?](authorization.md)
-- If the application uses `eh_os_contract_auth`, `EhOsContract.Auth` is the Authorizer already. It
-  writes a row for each decision. A module of your own replaces it, with its rows.
+- If the application uses `eh_os_contract_auth`, it configures `EhOsContract.Auth` as its
+  Authorizer, which writes a row for each decision. Without that configuration, the engine uses
+  `EhOsContract.Authorizer.Default`, which writes nothing.
 
 ## 1. Write the module
 
@@ -34,8 +35,14 @@ The request names:
 
 A refusal gives an atom as the reason. The engine raises on any other reason.
 
-Give your rule first. Then call `EhOsContract.Authorizer.check/2`, which compares the request with
-the credential:
+Give your rule first. Then give the call to the Authorizer that the module replaces:
+
+- With `eh_os_contract_auth`, call `EhOsContract.Auth.authorize/2`. It compares the request with the
+  credential and writes the decision row.
+- Without it, call `EhOsContract.Authorizer.check/2`. It compares the request with the credential,
+  and writes nothing.
+
+This example has no `eh_os_contract_auth`:
 
 ```elixir
 defmodule MyApp.Authorizer do
@@ -58,6 +65,10 @@ Name the module in the configuration of the application:
 ```elixir
 config :eh_os_contract, authorizer: MyApp.Authorizer
 ```
+
+> **Write a row for your own refusal.**
+> `EhOsContract.Auth` writes no row for a refusal that your rule gives before it. If you need each
+> decision in the table, write the row of the refusal yourself.
 
 ## The result
 

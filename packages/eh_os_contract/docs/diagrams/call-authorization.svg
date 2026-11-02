@@ -1,5 +1,5 @@
 <!-- title: How is a call authorized? -->
-<!-- desc: The application sends its capabilities and roles to the issuer of credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything. -->
+<!-- desc: The application sends its capabilities and roles to the platform that issues the credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything. -->
 <!-- words: actor, credential, application -->
 <!-- technical: Database -->
 <!-- verbs: sends, signs in, issues, fetches, keeps, writes, answers -->

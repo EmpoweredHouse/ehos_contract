@@ -107,7 +107,7 @@ in the whole domain. The compiler checks this ([`D14`](refusals.md#refusals-d)).
 
 ## How does a call get to the application?
 
-![The application sends its capabilities and roles to the issuer of credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything.](img/call-authorization.svg)
+![The application sends its capabilities and roles to the platform that issues the credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything.](img/call-authorization.svg)
 
 1. At deployment, the application sends its capabilities and roles to the platform, in its manifest.
    The engine derives them from the contracts. The task `mix eh_os_contract.manifest` of the package
@@ -118,7 +118,8 @@ in the whole domain. The compiler checks this ([`D14`](refusals.md#refusals-d)).
 3. The platform issues a credential. The credential is a JWT, signed with Ed25519, and valid for 10
    minutes. It carries these claims:
    - `sub`: the subject, an opaque name of the person;
-   - `aud`: the audience, one application where it runs;
+   - `aud`: the audience, the one application, in one place where it runs, that the credential is
+     for;
    - `cap`: each capability of each role of the person;
    - `scp`: the values of the scoped capabilities, if the role has values. [Narrow a call to the
      values of a grant](scope.md) tells how a scope uses them.
@@ -132,27 +133,31 @@ in the whole domain. The compiler checks this ([`D14`](refusals.md#refusals-d)).
    application decides and writes the events. If not, the engine decides nothing and writes nothing.
 8. The application answers with a receipt or a refusal.
 
-For the pages of the application, `eh_os_contract_auth` also signs a person in, and keeps the
-credential in the session. `EhOsContract.Auth.Session` then builds the actor of the person.
+For the pages of the application, `eh_os_contract_auth` also signs a person in. It keeps the
+credential encrypted in its own table, on the server. The browser holds only a random token.
+`EhOsContract.Auth.Session` then builds the actor of the person.
 
 ## Which calls does the Authorizer check?
 
-The Authorizer checks each call that comes into the application from outside. The origin of the
-call decides, not the kind of actor.
+The Authorizer checks each call that comes into the application from outside, through the *door*.
+The door is where a call with a credential enters: `EhOsContract.Plug`, or `EhOsContract.call/3`.
+The kind of actor decides. The engine always asks the Authorizer about an actor of a credential. It
+never asks about a `:system` actor or a reaction.
 
-![A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a policy and the code of the application issue to dispatch directly, held to what the contract names.](img/authorization-door.svg)
+![A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names.](img/authorization-door.svg)
 
 1. A person sends a call with a credential.
 2. An external system sends a call with its own credential.
 3. The credential check passes the actor of a verified credential on.
 4. The Authorizer allows the call, or dispatch refuses it.
-5. Dispatch delivers an event to a policy.
-6. The policy issues a command that its declaration names in `issues:`.
-7. As a `:system` actor, the code of the application issues what `by:` names.
+5. Dispatch delivers an event to a reaction: a policy or a process manager.
+6. The reaction issues a command that its declaration names.
+7. As a `:system` actor, the code of the application issues or records what `by:` or `recorded_by:`
+   names.
 
 | Origin of the call | Actor | What checks it |
 | --- | --- | --- |
-| A person, with a credential | `Actor.credential(sub, cap, scp)` | the Authorizer: the credential grants the capability |
+| A person, with a credential | `Actor.credential(sub, cap, scp)`, which the plug builds from a verified credential | the Authorizer: the credential grants the capability |
 | An external system, with its own credential | `Actor.credential/3` | the same, when the platform issues credentials to systems |
 | A policy or a process manager that takes an event | the engine builds it | the contract: the reaction names the command that it issues |
 | The code of the application: a job, an import | `Actor.system(:name)` | the contract: the domain declares the actor `:system`, and `by:` or `recorded_by:` names it |
@@ -160,7 +165,7 @@ call decides, not the kind of actor.
 The engine does not ask the Authorizer about the code of the application, for 3 reasons:
 
 - The application would ask itself.
-- A job has no credential for the door of the application.
+- A job that runs as the application has no credential of its own.
 - A policy can run in the transaction of the command that set it off. A refusal there would fail
   the command of a person, for a reason that is not the person's.
 
@@ -170,8 +175,11 @@ the contract names it for. `Actor.system(:nightly_import)` can assign a pick lis
 names `:nightly_import`. An actor of a person cannot pass as a `:system` actor, because the domain must
 declare the actor `:system`.
 
-A person is never the code of the application. So a call of a person always comes through the
-door.
+A person is never the code of the application. So a call of a person comes through the door.
+
+> **Pass the actor of the person.**
+> If your code sends the request of a person as a `:system` actor, nothing asks the Authorizer.
+> The person then gets each permission of the `:system` actor.
 
 ## What can the Authorizer answer?
 
@@ -191,7 +199,8 @@ The decision is `EhOsContract.Authorizer.check/2`. It reads only the actor and t
 
 If the host configures no Authorizer, the engine uses `EhOsContract.Authorizer.Default`. It is
 `check/2` alone, and records nothing. `EhOsContract.Auth`, in the package `eh_os_contract_auth`,
-calls `check/2` and writes a row for each decision.
+calls `check/2` and writes a row for each decision. The host must configure it:
+`config :eh_os_contract, authorizer: EhOsContract.Auth`.
 
 **An Authorizer can narrow what a credential grants. It cannot widen it.** After an `:ok`, the
 engine runs `check/2` again on the actor. If `check/2` refuses, the engine raises
@@ -214,7 +223,7 @@ unit. A picker of warehouse 7 can record an empty shelf in warehouse 12.
 
 ## What does each answer write?
 
-| Answer | Log | `eh_os_contract_commands` | Table of `eh_os_contract_auth`, for a call with a credential |
+| Answer | Log | `eh_os_contract_commands` | `eh_os_contract_auth_decisions`, for a call with a credential |
 | --- | --- | --- | --- |
 | Refused by the Authorizer | nothing | nothing | a `refused` row, with the reason |
 | Refused after the Authorizer: fields that do not fit, a conflict, a reused idempotency key, an erased subject | nothing | nothing | an `allowed` row |
@@ -226,6 +235,10 @@ unit. A picker of warehouse 7 can record an empty shelf in warehouse 12.
 - A refusal leaves nothing in the tables of the engine. The row that records it belongs to the
   Authorizer.
 - A credential that the plug does not verify gets no row. The Authorizer never sees it.
+- A declaration that no human actor can use has no capability. A call with a credential gets
+  `{:error, :missing_capability}`, and the engine does not ask the Authorizer. No row is written.
+- Each row of `eh_os_contract_auth` is one `INSERT` in the call, also for a query. Nothing deletes
+  the rows: the application decides how long it keeps them.
 - If `eh_os_contract_auth` cannot write its row, the call fails.
 - If the code fails inside the transaction of the caller, the engine writes no `failed` row. It
   raises the exception again.
@@ -247,7 +260,7 @@ Auth0, Keycloak or Entra ID:
 - each credential has one audience;
 - the roles become capabilities;
 - a missing value refuses the call;
-- each decision of the Authorizer gets a row.
+- with `eh_os_contract_auth`, each decision of the Authorizer gets a row.
 
 Two things are stronger than in a usual application:
 
@@ -258,14 +271,15 @@ Two things are stronger than in a usual application:
 
 The check has these limits. They are known and accepted:
 
-- A role that the platform removes works until the credential expires: 10 minutes or less. This is
+- A role that the platform removes works until the credential expires: 15 minutes or less. This is
   true of each JWT without a revocation list.
 - A stolen credential works until it expires. A credential bound to a client (DPoP, mutual TLS) is a
   higher level. The platform must decide it.
 - The plug accepts a credential that expires in 15 minutes or less. That is the 10 minutes of the
   platform, and 5 minutes for clocks that do not agree.
-- A key that the platform removes from its set works until the next fetch that succeeds: 5 minutes
-  or less. If a fetch fails, the application keeps the last set of keys that it fetched.
+- A key that the platform removes from its set works until the next fetch that succeeds. If the
+  fetches succeed, that is 5 minutes or less. While the fetches fail, the application keeps the last
+  set of keys that it fetched, with no limit of time.
 - A scope is one field, compared for equality. A recorded event has no scope. Richer rules for rows
   stay in the code of the application. For a command, `actor_is` lets only the person whom a field
   of the state names issue it. [Write a domain, a contract and a process module](contract.md) tells

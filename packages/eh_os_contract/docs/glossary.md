@@ -23,8 +23,8 @@ another page uses a word in a different way, this page is correct.
 | **Consumed event** | An event of another contract of the same application, which this contract takes from the same log. | `consumes` |
 | **Context** | A part of the domain in which each word has one meaning. Each contract belongs to one context. Also called a bounded context. | `context` |
 | **Contract** | A module that describes what the units of one context decide: their commands, events, invariants and lifecycles. It also holds the consumers of their events, the queries and the scenarios. | `use EhOsContract.Contract` |
-| **Credential** | A signed token that a platform issues to a person or a system. It names a subject and the capabilities that it grants. The engine does not verify it: the host verifies the signature before it builds the actor. | `EhOsContract.Actor.credential/3`, `eh_os_contract_auth` |
 | **Correlation** | The fields that tell the runs of one process apart. Each event that the process includes carries them. Example: `loan_id`. | `correlate` |
+| **Credential** | A signed token that a platform issues to a person or a system. It names a subject and the capabilities that it grants. The engine does not verify it: the host verifies the signature before it builds the actor. | `EhOsContract.Actor.credential/3`, `eh_os_contract_auth` |
 | **Data key** | A key of 32 random bytes for one subject. The engine encrypts the personal fields of the subject with it. A master key wraps it. If the subject is erased, the engine destroys it. | `EhOsContract.Vault` |
 | **Deadline** | The longest time that a whole run can take, from its first event to the first event that ends it. | `deadline` |
 | **Decision** | The answer of a unit to a command: events, or a rejection. The implementation of the unit makes the decision. | the callback for each command, `emit/1`, `reject/1` |

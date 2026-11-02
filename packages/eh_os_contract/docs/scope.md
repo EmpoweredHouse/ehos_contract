@@ -26,7 +26,6 @@ defmodule Concepts.Scope.Domain do
   context :warehouse, "Warehouse", subdomain: :core
 
   actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
-  actor :picker, :human, "Picker"
 end
 ```
 
@@ -76,6 +75,8 @@ end
 - The scope of a query is a field of its read model. The query has a parameter with the same name
   and type.
 - Each actor in `by:` carries the scope in the domain.
+- The scope is one value: not a list, and not a value with fields.
+- A command that creates its unit cannot have a scope that the engine generates.
 
 The compiler refuses a scope that does not fit ([`D10`](refusals.md#refusals-d)).
 
@@ -128,6 +129,10 @@ give the role with values.
 credential carries. A value that is not of the type of the field matches nothing. The engine does
 not fail on a cast.
 
+**A lead acts in another warehouse.** The actor and the query have a scope, but the command does
+not. The command then takes each warehouse. `mix eh_os_contract.check` warns about this:
+`scoped-actor-with-unscoped-command`. Give the command `scope:` too.
+
 **A `:system` actor sees all the rows.** The engine does not narrow a `:system` actor that `by:`
 names, for a command or a query. This is correct: the code of the application has no grant.
 
@@ -136,7 +141,9 @@ with its capability can record it for each unit. If the event must stay in one w
 command with a scope.
 
 **The rule needs more than one field.** Keep the rule in the code of the application. A scope is
-one field, compared for equality. "Only the pick lists that are assigned to me" is such a rule.
+one field, compared for equality. A rule over a warehouse and a zone needs two. For a command,
+`actor_is` covers "only the picker that the pick list names". [Write a domain, a contract and a
+process module](contract.md) tells how.
 
 ## Next steps
 

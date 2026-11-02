@@ -1,6 +1,6 @@
 # Accept calls with a credential
 
-This page tells how to bring a call with a credential to the contract: over HTTP, through another door
+This page tells how to bring a call with a *credential* to the contract: over HTTP, through another door
 of the application, or from code. It also tells how the code of the application calls as a `:system`
 actor. It is for a developer who builds an application on the engine. [The glossary](glossary.md)
 defines each word in italics.
@@ -10,7 +10,58 @@ defines each word in italics.
 - You know how the engine checks a call: [How is a call authorized?](authorization.md)
 - A plug in front of the routes verifies the credential and builds the actor. The plug of
   `eh_os_contract_auth` does this. Its README tells how to configure it.
-- The examples use the contract of [How is a call authorized?](authorization.md#an-example)
+
+This page uses this contract. A lead assigns pick lists. A picker reports an empty shelf. A nightly
+import also assigns pick lists, as a `:system` actor:
+
+```elixir
+defmodule Concepts.Calls.Domain do
+  use EhOsContract.Domain, name: :calls_example, language: :en
+
+  subdomain :core, "Core", type: :core
+
+  context :warehouse, "Warehouse", subdomain: :core
+
+  actor :lead, :human, "Warehouse lead"
+  actor :picker, :human, "Picker"
+  actor :nightly_import, :system, "Nightly import"
+end
+
+defmodule Concepts.Calls.Contracts.Warehouse do
+  use EhOsContract.Contract,
+    domain: Concepts.Calls.Domain,
+    context: :warehouse,
+    id: "calls_example.warehouse"
+
+  aggregate :pick_list, "Pick list" do
+    identity [:warehouse_id, :order_id]
+
+    command :assign_pick_list, "Assign a pick list to a picker",
+      by: [:lead, :nightly_import],
+      emits: :assigned do
+      field :picker_id, :id
+    end
+
+    event :assigned, "Pick list assigned" do
+      field :picker_id, :id
+    end
+
+    event :shelf_found_empty, "Shelf found empty", recorded_by: :picker
+  end
+
+  read_model :open_pick_lists, "Open pick lists", projects: [:assigned] do
+    field :warehouse_id, :id
+    field :order_id, :id
+    field :picker_id, :id
+  end
+
+  query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
+    reads: :open_pick_lists,
+    by: [:lead] do
+    param :warehouse_id, :id
+  end
+end
+```
 
 > **`EhOsContract.Actor.credential/3` verifies nothing.**
 > Build an actor from a credential only after a plug verifies its signature. An actor that you build
@@ -25,24 +76,25 @@ give it. Each route is the name of a capability.
 
    <!-- not compiled: a line of the host's router -->
    ```elixir
-   forward "/api", EhOsContract.Plug, contracts: [Concepts.Authorization.Contracts.Warehouse]
+   forward "/api", EhOsContract.Plug, contracts: [Concepts.Calls.Contracts.Warehouse]
    ```
 
 2. Send a call:
 
    ```text
-   POST /api/commands/authorization_example.assign_pick_list
+   POST /api/commands/calls_example.assign_pick_list
         {"warehouse_id": "7", "order_id": "order-1", "picker_id": "u-82"}
-   POST /api/records/authorization_example.shelf_found_empty
+   POST /api/records/calls_example.shelf_found_empty
         {"warehouse_id": "7", "order_id": "order-1"}
-   GET  /api/queries/authorization_example.open_pick_lists_for_warehouse?warehouse_id=7
+   GET  /api/queries/calls_example.open_pick_lists_for_warehouse?warehouse_id=7
    ```
 
    A command and a recorded event take their fields as the body. A query takes its parameters in the
-   URL.
+   URL. Browsers, proxies and servers can log the URL: [Write a read model and its
+   query](read-models.md) tells what that means for personal data.
 
-The plug reads two headers. `idempotency-key` gives the idempotency key of a command.
-`x-correlation-id` gives its correlation, a UUID.
+The plug reads two headers, for a command and for a recorded event. `idempotency-key` gives the
+idempotency key. `x-correlation-id` gives the correlation, a UUID.
 
 The plug does not authenticate. It reads the actor from `conn.assigns.eh_os_contract_actor`, which
 the plug in front of it builds from a verified credential. Without that actor, the answer is 401. A
@@ -65,7 +117,8 @@ These are the main answers. `EhOsContract.Plug` lists each answer, with its body
 
 **The plug asks the Authorizer first.** It asks also when the body or the fields do not fit. So a
 caller without the capability gets 403, and learns nothing about the fields of the declaration. Each
-request is one decision, and `eh_os_contract_auth` records it.
+request that gets to the Authorizer is one decision, and `eh_os_contract_auth` records it. A 404, a
+401 and a credential that fails the check of the plug get no decision.
 
 **A problem or a refusal carries no value that the caller did not send.** A problem names the field.
 A refusal names its reason.
@@ -79,7 +132,7 @@ the capability, the data as it was sent, and the actor of the credential:
 <!-- not compiled: a call in the host's code -->
 ```elixir
 EhOsContract.call(
-  {:command, "authorization_example.assign_pick_list"},
+  {:command, "calls_example.assign_pick_list"},
   %{"warehouse_id" => "7", "order_id" => "order-1", "picker_id" => "u-82"},
   actor: actor, idempotency_key: "req-81"
 )
@@ -99,25 +152,34 @@ answers as `dispatch/3`, `record/3` or `query/3` does. It has these answers of i
 A door that builds the structs itself loses this order. For this reason, the plug does not build
 them.
 
-`call/3` takes data with the types that JSON gives: a boolean as `true`, an integer as a number. A
+`call/3` takes data with the types that JSON gives: a boolean as `true`, an integer as a number.
+The values of a query can also come as text, as a URL carries them. A
 form sends text: `"false"` for a checkbox, `"42"` for an amount. A page reads a form through
 [`EhOsContract.Form`](forms.md). The form takes the module of the declaration, or the same name of the
-capability: `Form.changeset({:command, "authorization_example.assign_pick_list"}, params)`. It checks
+capability: `Form.changeset({:command, "calls_example.assign_pick_list"}, params)`. It checks
 the fields while the person types. The page then dispatches the struct with the actor of the
 person, and `dispatch/3` asks the Authorizer. Until the person sends the form, nothing asks the
-Authorizer. The form checks only the shape that the contract declares. So a page shows a form only to
-the people that it is for.
+Authorizer. The form checks only the shape that the contract declares. That is the fields, their
+types, the members of an enum and the names of the invariants of its values. So a page shows a form only to the
+people that it is for.
 
 ## Dispatch from code
 
-From code, build the actor and dispatch the struct of the command:
+From code, dispatch the struct of the command with the actor of the person. On a page,
+`EhOsContract.Auth.Session.actor/2` gives the actor of the person who signed in.
+
+> **Build an actor by hand only in a test, or to try the engine.**
+> `EhOsContract.Actor.credential/3` grants what you give it. In production, take the actor that a
+> plug built from a verified credential.
+
+This example builds the actor by hand:
 
 <!-- not compiled: calls in the host's code -->
 ```elixir
 actor =
-  EhOsContract.Actor.credential("u-81", ["authorization_example.assign_pick_list"])
+  EhOsContract.Actor.credential("u-81", ["calls_example.assign_pick_list"])
 
-EhOsContract.dispatch(Concepts.Authorization.Contracts.Warehouse,
+EhOsContract.dispatch(Concepts.Calls.Contracts.Warehouse,
   %AssignPickList{warehouse_id: "7", order_id: "order-1", picker_id: "u-82"},
   actor: actor, idempotency_key: "req-81")
 #=> {:ok, %EhOsContract.Receipt{...}}
@@ -127,9 +189,10 @@ The code of the application acts as a `:system` actor of its domain:
 
 <!-- not compiled: calls in the host's code -->
 ```elixir
-EhOsContract.dispatch(MyApp.Contracts.Ledger, %Deposit{account_id: "a-1", amount: 100},
-  actor: EhOsContract.Actor.system(:nightly_import))
-#=> {:ok, ...} when the command's by: names :nightly_import, else {:error, :not_declared}
+EhOsContract.dispatch(Concepts.Calls.Contracts.Warehouse,
+  %AssignPickList{warehouse_id: "7", order_id: "order-2", picker_id: "u-83"},
+  actor: EhOsContract.Actor.system(:nightly_import), idempotency_key: "import-row-2")
+#=> {:ok, ...}, because by: names :nightly_import; else {:error, :not_declared}
 ```
 
 ## Give each actor its own idempotency keys
@@ -143,13 +206,23 @@ receipt of the other.
 - Give the keys of each job a prefix of its own. All the code that shares one credential, or runs as
   one `:system` actor, shares one set of keys. Two jobs import as `:nightly_import`, and both send
   `"row-1"`:
-  - for the same command, the second job gets the receipt of the first, and nothing runs again;
+  - for a command of the same type, the second job gets the receipt of the first, whatever its
+    fields. Its command does not run;
   - for another command, the second job gets `{:error, :idempotency_key_reused}`.
 
 ## Test a call with a credential
 
 In a test, `EhOsContract.Auth.Testing.credential/3` of `eh_os_contract_auth` signs a credential with a
-test key. Send it through the plug, as a client does.
+test key. Send it through the plug, as a client does. The test key needs this line in
+`config/test.exs`, and nowhere else:
+
+<!-- not compiled: the host's configuration -->
+```elixir
+config :eh_os_contract_auth, pin_keys: true
+```
+
+The package raises if the line is in another environment. So a running application trusts no key
+that the platform did not publish.
 
 ## Next steps
 

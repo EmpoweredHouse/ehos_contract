@@ -1,9 +1,9 @@
 <!-- title: Which calls does the Authorizer check? -->
-<!-- desc: A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a policy and the code of the application issue to dispatch directly, held to what the contract names. -->
-<!-- words: actor, external system, credential, authorizer, dispatch, policy, application -->
+<!-- desc: A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names. -->
+<!-- words: actor, external system, credential, authorizer, dispatch, reaction, application -->
 <!-- technical: -->
 <!-- verbs: sends, passes, allows, delivers, issues -->
-<!-- parts: actor = -, external = -, check = -, authorizer = -, dispatch = -, policy = -, code = - -->
+<!-- parts: actor = -, external = -, check = -, authorizer = -, dispatch = -, reaction = -, code = - -->
 <svg viewBox="0 0 1000 788" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <marker id="authorization-door-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
@@ -87,20 +87,20 @@
   <text class="sub" x="330" y="274" text-anchor="middle">verifies the signature, builds the actor</text>
 
   <rect class="knock" x="680" y="232" width="180" height="56" rx="6"/>
-  <rect id="authorization-door-authorizer" class="n-back" x="680" y="232" width="180" height="56" rx="6"/>
+  <rect id="authorization-door-authorizer" class="n-focal" x="680" y="232" width="180" height="56" rx="6"/>
   <text class="name" x="770" y="256" text-anchor="middle">Authorizer</text>
   <text class="sub" x="770" y="274" text-anchor="middle">is the capability granted?</text>
 
-  <!-- Inside: dispatch, a policy, the code of the application -->
+  <!-- Inside: dispatch, a reaction, the code of the application -->
   <rect class="knock" x="680" y="384" width="180" height="152" rx="6"/>
-  <rect id="authorization-door-dispatch" class="n-focal" x="680" y="384" width="180" height="152" rx="6"/>
+  <rect id="authorization-door-dispatch" class="n-back" x="680" y="384" width="180" height="152" rx="6"/>
   <text class="name" x="770" y="452" text-anchor="middle">Dispatch</text>
   <text class="sub" x="770" y="470" text-anchor="middle">decision and events</text>
 
   <rect class="knock" x="360" y="384" width="200" height="56" rx="6"/>
-  <rect id="authorization-door-policy" class="n-back" x="360" y="384" width="200" height="56" rx="6"/>
-  <text class="name" x="460" y="408" text-anchor="middle">Policy</text>
-  <text class="sub" x="460" y="426" text-anchor="middle">takes an event</text>
+  <rect id="authorization-door-reaction" class="n-back" x="360" y="384" width="200" height="56" rx="6"/>
+  <text class="name" x="460" y="408" text-anchor="middle">Reaction</text>
+  <text class="sub" x="460" y="426" text-anchor="middle">a policy, a process manager</text>
 
   <rect class="knock" x="360" y="480" width="200" height="56" rx="6"/>
   <rect id="authorization-door-code" class="n-back" x="360" y="480" width="200" height="56" rx="6"/>
@@ -127,13 +127,13 @@
 
   <circle class="badge" cx="526" cy="632" r="6"/>
   <text class="badget" x="526" y="635" text-anchor="middle">5</text>
-  <text class="keyt" x="540" y="636">Dispatch delivers an event to a policy.</text>
+  <text class="keyt" x="540" y="636">Dispatch delivers an event to a reaction.</text>
   <circle class="badge" cx="526" cy="656" r="6"/>
   <text class="badget" x="526" y="659" text-anchor="middle">6</text>
-  <text class="keyt" x="540" y="660">The policy issues a command that its declaration names.</text>
+  <text class="keyt" x="540" y="660">The reaction issues a command that its declaration names.</text>
   <circle class="badge" cx="526" cy="680" r="6"/>
   <text class="badget" x="526" y="683" text-anchor="middle">7</text>
-  <text class="keyt" x="540" y="684">As a :system actor, the code issues what by: names.</text>
+  <text class="keyt" x="540" y="684">As a :system actor, the code issues what the contract names.</text>
   </g>
 
   <!-- Legend strip -->
