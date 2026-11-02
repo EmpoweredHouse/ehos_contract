@@ -165,8 +165,10 @@ defmodule EhOsContract.Dispatcher do
       {nil, :in_transaction} ->
         :ok
 
+      # An inline one that is failing failed while it was rebuilt: its rows are partial.
       {%{position: at, status: status}, _delivery}
-      when at >= position and status != "rebuilding" ->
+      when at >= position and status != "rebuilding" and
+             not (status == "failing" and delivery == :in_transaction) ->
         :ok
 
       _behind ->
@@ -908,7 +910,9 @@ defmodule EhOsContract.Dispatcher do
 
   # What each inline read model's subscription row says: `:running` advances with the
   # dispatch, `:rebuilding` is left to the runner that is catching it up (v2 §12),
-  # and a read model without a row, one no boot registered, projects as before.
+  # and a read model without a row, one no boot registered, projects as before. A
+  # failing one failed while it was rebuilt, and a skip hands it back to the runner,
+  # which takes what dispatch appended meanwhile (issue #550).
   defp projecting(repo, consumers) do
     keys = for {%{kind: :read_model, key: key}, _, _} <- consumers, uniq: true, do: key
 
@@ -922,7 +926,7 @@ defmodule EhOsContract.Dispatcher do
         )
       )
       |> Map.new(fn {name, status} ->
-        {name, if(status == "rebuilding", do: :rebuilding, else: :running)}
+        {name, if(status in SubscriptionRecord.behind(), do: :rebuilding, else: :running)}
       end)
     end
   end

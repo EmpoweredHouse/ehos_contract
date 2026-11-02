@@ -1,0 +1,141 @@
+<!-- title: How is a call authorized? -->
+<!-- desc: The application sends its capabilities and roles to the platform that issues the credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything. -->
+<!-- words: actor, credential, application -->
+<!-- technical: Database -->
+<!-- verbs: sends, signs in, issues, fetches, keeps, writes, answers -->
+<!-- parts: actor = -, issuer = -, application = -, database = - -->
+<svg viewBox="0 0 1000 744" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="call-authorization-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Lifelines -->
+  <line class="rule" x1="120" y1="120" x2="120" y2="508"/>
+  <line class="rule" x1="373" y1="120" x2="373" y2="508"/>
+  <line class="rule" x1="627" y1="120" x2="627" y2="508"/>
+  <line class="rule" x1="880" y1="120" x2="880" y2="508"/>
+
+  <!-- Messages, top to bottom -->
+  <line class="arr" x1="627" y1="168" x2="374" y2="168" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="120" y1="212" x2="372" y2="212" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="373" y1="256" x2="121" y2="256" marker-end="url(#call-authorization-arrow)"/>
+  <line class="uses" x1="627" y1="300" x2="374" y2="300" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="627" y1="344" x2="879" y2="344" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="120" y1="388" x2="626" y2="388" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="627" y1="432" x2="879" y2="432" marker-end="url(#call-authorization-arrow)"/>
+  <line class="arr" x1="627" y1="476" x2="121" y2="476" marker-end="url(#call-authorization-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="386" y="146" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="396" cy="153" r="6"/>
+  <text class="badget" x="396" y="156" text-anchor="middle">1</text>
+  <text class="lbl" x="408" y="156">SENDS</text>
+
+  <rect class="mask" x="132" y="190" width="84" height="14" rx="2"/>
+  <circle class="badge" cx="142" cy="197" r="6"/>
+  <text class="badget" x="142" y="200" text-anchor="middle">2</text>
+  <text class="lbl" x="154" y="200">SIGNS IN</text>
+
+  <rect class="mask" x="132" y="234" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="142" cy="241" r="6"/>
+  <text class="badget" x="142" y="244" text-anchor="middle">3</text>
+  <text class="lbl" x="154" y="244">ISSUES</text>
+
+  <rect class="mask" x="386" y="278" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="396" cy="285" r="6"/>
+  <text class="badget" x="396" y="288" text-anchor="middle">4</text>
+  <text class="lbl" x="408" y="288">FETCHES</text>
+
+  <rect class="mask" x="640" y="322" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="650" cy="329" r="6"/>
+  <text class="badget" x="650" y="332" text-anchor="middle">5</text>
+  <text class="lbl" x="662" y="332">KEEPS</text>
+
+  <rect class="mask" x="132" y="366" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="142" cy="373" r="6"/>
+  <text class="badget" x="142" y="376" text-anchor="middle">6</text>
+  <text class="lbl" x="154" y="376">SENDS</text>
+
+  <rect class="mask" x="640" y="410" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="650" cy="417" r="6"/>
+  <text class="badget" x="650" y="420" text-anchor="middle">7</text>
+  <text class="lbl" x="662" y="420">WRITES</text>
+
+  <rect class="mask" x="132" y="454" width="76" height="14" rx="2"/>
+  <circle class="badge" cx="142" cy="461" r="6"/>
+  <text class="badget" x="142" y="464" text-anchor="middle">8</text>
+  <text class="lbl" x="154" y="464">ANSWERS</text>
+
+  <!-- The person -->
+  <rect class="knock" x="40" y="64" width="160" height="56" rx="6"/>
+  <rect id="call-authorization-actor" class="n-ext" x="40" y="64" width="160" height="56" rx="6"/>
+  <text class="name" x="120" y="88" text-anchor="middle">Actor</text>
+  <text class="sub" x="120" y="106" text-anchor="middle">a person, in a browser</text>
+
+  <!-- The issuer of credentials -->
+  <rect class="knock" x="293" y="64" width="160" height="56" rx="6"/>
+  <rect id="call-authorization-issuer" class="n-ext" x="293" y="64" width="160" height="56" rx="6"/>
+  <text class="name" x="373" y="88" text-anchor="middle">Credential issuer</text>
+  <text class="sub" x="373" y="106" text-anchor="middle">the platform</text>
+
+  <!-- The application -->
+  <rect class="knock" x="547" y="64" width="160" height="56" rx="6"/>
+  <rect id="call-authorization-application" class="n-focal" x="547" y="64" width="160" height="56" rx="6"/>
+  <text class="name" x="627" y="88" text-anchor="middle">Application</text>
+  <text class="sub" x="627" y="106" text-anchor="middle">with the engine</text>
+
+  <!-- The database of the application -->
+  <rect class="knock" x="800" y="64" width="160" height="56" rx="6"/>
+  <rect id="call-authorization-database" class="n-store" x="800" y="64" width="160" height="56" rx="6"/>
+  <text class="name" x="880" y="88" text-anchor="middle">Database</text>
+  <text class="sub" x="880" y="106" text-anchor="middle">of the application</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="540" x2="960" y2="540"/>
+  <text class="eyes" x="40" y="560">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="580" r="6"/>
+  <text class="badget" x="46" y="583" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="584">At deployment, the application sends its capabilities and roles.</text>
+  <circle class="badge" cx="46" cy="604" r="6"/>
+  <text class="badget" x="46" y="607" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="608">A person with a role signs in to the platform.</text>
+  <circle class="badge" cx="46" cy="628" r="6"/>
+  <text class="badget" x="46" y="631" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="632">The platform issues a signed credential for 10 minutes.</text>
+  <circle class="badge" cx="46" cy="652" r="6"/>
+  <text class="badget" x="46" y="655" text-anchor="middle">4</text>
+  <text class="keyt" x="60" y="656">Every 5 minutes, the application fetches the public keys.</text>
+
+  <circle class="badge" cx="526" cy="580" r="6"/>
+  <text class="badget" x="526" y="583" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="584">The application keeps the keys in its own database.</text>
+  <circle class="badge" cx="526" cy="604" r="6"/>
+  <text class="badget" x="526" y="607" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="608">The person sends a call with the credential.</text>
+  <circle class="badge" cx="526" cy="628" r="6"/>
+  <text class="badget" x="526" y="631" text-anchor="middle">7</text>
+  <text class="keyt" x="540" y="632">If the Authorizer allows the call, the application writes.</text>
+  <circle class="badge" cx="526" cy="652" r="6"/>
+  <text class="badget" x="526" y="655" text-anchor="middle">8</text>
+  <text class="keyt" x="540" y="656">The application answers with a receipt or a refusal.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="700" x2="960" y2="700"/>
+  <rect class="n-focal" x="40" y="716" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="725">The application</text>
+  <rect class="n-ext" x="180" y="716" width="14" height="10" rx="2"/>
+  <text class="legt" x="200" y="725">Outside the application</text>
+  <rect class="n-store" x="380" y="716" width="14" height="10" rx="2"/>
+  <text class="legt" x="400" y="725">Kept by the application</text>
+  <line class="arr" x1="600" y1="721" x2="627" y2="721" marker-end="url(#call-authorization-arrow)"/>
+  <text class="legt" x="636" y="725">A call</text>
+  <line class="uses" x1="720" y1="721" x2="747" y2="721" marker-end="url(#call-authorization-arrow)"/>
+  <text class="legt" x="756" y="725">Asynchronous: not part of a call</text>
+  </g>
+</svg>

@@ -3,7 +3,7 @@ defmodule DispatchRig.FirstDepositChase do
   **Invented.** Gives a new account a day for its first deposit: the day passing
   flags the account, and so does interest recorded before any deposit. A deposit
   sets a review a week after it, a timer at `review_at` of the state, which flags the
-  account too.
+  account too. It raises on a deposit of exactly 77, an event it cannot fold.
   """
 
   use DispatchRig.Ledger, process_manager: :first_deposit_chase
@@ -30,6 +30,8 @@ defmodule DispatchRig.FirstDepositChase do
   def review(%State{account_id: id}), do: issue(%FlagAccount{account_id: id})
 
   @impl true
+  def evolve(_state, %Deposited{amount: 77}), do: raise("the chase fails on 77")
+
   def evolve(state, %Deposited{__meta__: meta}),
     do: %{
       state

@@ -92,7 +92,7 @@ engine does not do.
 - [Getting started](docs/getting-started.md): install the engine and dispatch a first command.
 - [Write a domain, a contract and a process module](docs/contract.md): the full task.
 - [The command-line tasks](docs/cli.md): each `mix` task and its options.
-- [Authorization](docs/authorization.md): how a credential becomes an actor.
+- [How is a call authorized?](docs/authorization.md): how a credential becomes an actor.
 
 ## Licence
 

@@ -25,7 +25,7 @@ defmodule EhOsContract.Docs do
   def prose do
     ["README.md", "docs/introduction.md", "docs/getting-started.md", "docs/contract.md"] ++
       Enum.map(concepts(), &"docs/#{&1}.md") ++
-      ["docs/authorization.md", "docs/glossary.md"]
+      ["docs/glossary.md"]
   end
 
   @doc """
@@ -46,7 +46,7 @@ defmodule EhOsContract.Docs do
   @doc "The concept pages, in the order a reader takes them."
   @spec concepts() :: [String.t()]
   def concepts do
-    ~w(domain domain-data personal-data master-keys units deciding event-versions reactions reading read-models subscriptions forms between-contracts process outages conformance scenarios)
+    ~w(domain domain-data personal-data master-keys units deciding event-versions reactions reading read-models subscriptions forms between-contracts process outages conformance scenarios authorization scope authorizer calls)
   end
 
   # Each DSL with the prefix of its reference pages.
