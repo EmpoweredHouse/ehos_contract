@@ -158,7 +158,8 @@ defmodule EhOsContract do
      (`EhOsContract.Migrations`): a host that upgrades the package without running its
      new migration is told so at boot, not by the first command. Storage a newer
      release migrated is let through, so a node can restart during a rolling deploy.
-     Then
+     It unwraps one stored data key of each master key, and refuses when one of them
+     does not unwrap (`EhOsContract.Vault`). Then
      `EhOsContract.Deployment.record!/0` writes what that binary declared and since
      when: without it the report could not tell history from drift. After the
      deployment is recorded, it logs a warning, and goes on, when the log holds

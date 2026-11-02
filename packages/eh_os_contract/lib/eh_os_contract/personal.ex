@@ -633,6 +633,79 @@ defmodule EhOsContract.Personal do
     if count == 0, do: done, else: rewrap!(repo, batch, current, done + count)
   end
 
+  # Raises when `models` declare a personal field and a stored data key is wrapped by
+  # a master key the vault cannot unwrap with: one removed while it still wraps data
+  # keys, or one whose id stayed and whose bytes changed. It unwraps one data key of
+  # each master key, so it reads a row for each, not the table. Called by the
+  # engine's supervisor at boot, after `EhOsContract.Vault.check!/1`.
+  @doc false
+  @spec check_master_keys!(module(), [map()]) :: :ok
+  def check_master_keys!(repo, models) do
+    if Enum.any?(models, &declares?/1), do: Enum.each(samples(repo), &check_master_key!(repo, &1))
+    :ok
+  end
+
+  defp check_master_key!(repo, [kek_id, type, id, version, wrapped]) do
+    case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
+      {:ok, _key} ->
+        :ok
+
+      :error ->
+        count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
+
+        raise ArgumentError,
+              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
+                "unwrap the data key that the engine tried, so the engine cannot read the " <>
+                "personal data of its subject. " <> remedy(kek_id, Vault.current())
+    end
+  end
+
+  # The vault wraps with the id it cannot unwrap with, so its bytes under that id are
+  # likely not the ones that wrapped the row; a rewrap would move nothing, since it
+  # skips the current key's rows. Only one row was tried, so the text asks for the bytes
+  # of that row, not of every row under the id: rows wrapped since a change need the new.
+  defp remedy(current, current) do
+    "The vault wraps with #{inspect(current)}. Check that its bytes are the bytes that " <>
+      "wrapped that data key"
+  end
+
+  defp remedy(kek_id, current) do
+    "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped its data keys. " <>
+      "Then run `mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it"
+  end
+
+  defp data_keys(1), do: "1 data key is"
+  defp data_keys(count), do: "#{count} data keys are"
+
+  # One data key of each master key, as `[kek_id, subject_type, subject_id,
+  # key_version, wrapped_key]`. A loose index scan down the `kek_id` index: the row
+  # with the smallest id, then the first row whose id is greater than the last. The
+  # range and the `ORDER BY` keep each step on the index; an equality on an id with
+  # few distinct values lets the planner scan the table for a retired key's last
+  # rows. One statement, so one snapshot: a rewrap or an erasure on another node
+  # cannot leave an id without its row.
+  defp samples(repo) do
+    %{rows: rows} =
+      repo.query!(
+        """
+        WITH RECURSIVE k AS (
+          (SELECT kek_id, subject_type, subject_id, key_version, wrapped_key
+           FROM #{@keys} ORDER BY kek_id LIMIT 1)
+          UNION ALL
+          SELECT n.* FROM k CROSS JOIN LATERAL (
+            SELECT s.kek_id, s.subject_type, s.subject_id, s.key_version, s.wrapped_key
+            FROM #{@keys} s WHERE s.kek_id > k.kek_id ORDER BY s.kek_id LIMIT 1
+          ) n
+        )
+        SELECT * FROM k
+        """,
+        [],
+        log: false
+      )
+
+    rows
+  end
+
   # What a data key is bound to when wrapped: its row.
   defp context(type, id, version), do: "eh_os_contract.subject_key|#{type}|#{id}|#{version}"
 
