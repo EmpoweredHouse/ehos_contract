@@ -16,7 +16,7 @@ Round 1, security (engineering:code-review not in session, done by hand; ehos-de
 - GET /queries reachable by navigation: no change; existed before, response not readable cross-origin.
 - Test gaps (two types, two headers, recording with text/plain): fixed (3f848d46).
 Round 2, correctness (code-review, ehos-dev:elixir, ehos-dev:voice):
-- A scoped command gets 403 outside_scope, not 415: fixed in docs, test pins it (d-final commit).
+- A scoped command gets 403 outside_scope, not 415: fixed in docs, test pins it (1b61621b).
 - No stranger test on a recording: fixed.
 - Digest note too broad: fixed.
 - Absolute "only if CORS allows": fixed.
