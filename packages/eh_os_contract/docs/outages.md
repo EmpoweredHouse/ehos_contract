@@ -192,7 +192,8 @@ only through `waits_on`. The engine records it all the same.
 - **In a test that uses the log**, run the code in `EhOsContract.Clock.at/2`. `observe/3` stamps
   the observation with `EhOsContract.Clock.now/0`, so the outage is at the moment that the test
   sets, as the events are. `Clock.at/2` applies only in the process that calls it. A call of
-  `observe/3` or `unavailable!/4` in another process stamps the current time. `Clock.at/2` accepts only a time in UTC.
+  `observe/3` in another process stamps the current time. So does a call of `unavailable!` without
+  a fourth argument. `Clock.at/2` accepts only a time in UTC.
 
 The result: the verdict of the promise is `:suspended` for a run whose window ended empty with the
 outage inside it.
