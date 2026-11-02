@@ -8,6 +8,10 @@ defmodule EhOsContract.Store do
   outside one. So an append commits or rolls back together with each other write of
   the caller.
 
+  An append of no entries is the exception. `EhOsContract.Store.Postgres` returns
+  `{:ok, []}` for it, and checks no condition and no transaction. So an empty append
+  cannot check a version or a condition.
+
   ## What an implementation promises
 
   `EhOsContract.Store.Suite` checks each of these promises. Any implementation can

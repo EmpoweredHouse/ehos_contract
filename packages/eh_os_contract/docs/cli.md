@@ -161,7 +161,9 @@ the table to the contract.
 The task never writes over a migration:
 
 - If a migration `create_<table>` exists, the task stops with an error.
-- If two read models name one table, the task stops before it writes anything.
+- With `--all`, if two read models name one table, the task stops before it
+  writes anything. The form for one read model does not check this; the compiler
+  refuses it.
 - With `--all`, the task writes nothing for a read model without a table.
 
 ## mix eh_os_contract.glossary
@@ -269,10 +271,12 @@ deploys from.
 Use `--output`. Erlang keeps the standard output in latin1 when it is not a
 terminal. Each label of a document is in the language of the client.
 
-Without `--output`, the document is the only thing that the task writes to the
-standard output. When the application starts (`--overlay`), it writes its log to the
-standard error. So `> graph.json` holds only the document. Compile the project
-first: Mix prints the compile to the standard output before the task runs.
+Without `--output`, the task writes the document to the standard output. When the
+application starts (`--overlay`), the task moves the log of the application to the
+standard error. But the code of the application can still print to the standard
+output, so `> graph.json` can hold more than the document. If you need the document
+alone, use `--output`. Mix also prints the compile to the standard output before the
+task runs.
 
 ## mix eh_os_contract.pages
 
@@ -312,8 +316,10 @@ The task reads and changes nothing outside `--output`.
   with the marker line of the pages of the domain. It also deletes a `graph.v1`
   document of a contract or a process module of the domain, at the path that the
   task gives it. So the pages of another domain in the same directory stay.
-- It never writes a page over a file without the marker, or through a symbolic link.
-  Then it writes nothing, and names what is in the way.
+- It never writes a page over a file without the marker, or through a symbolic link
+  inside `--output`. Then it writes nothing, and names what is in the way.
+- If `--output` itself is a symbolic link to a directory, the task follows it. It
+  then writes and deletes pages in that directory.
 
 `--check` writes nothing. It fails, and names each page that is missing, different
 or left over, and each file in the way.

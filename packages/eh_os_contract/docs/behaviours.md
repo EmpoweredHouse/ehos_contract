@@ -100,8 +100,9 @@ transport.
 6. Later, the transport delivers each message to the durable consumer.
 7. The durable consumer calls the handler of the inbox with the message.
 8. The handler answers `:ack` after its commit, or `:nack`.
-9. The durable consumer acknowledges the message to the transport. After `:nack`, the
-   transport delivers the message again later.
+9. After `:ack`, the durable consumer acknowledges the message to the transport.
+   After `:nack`, it does not: the message stays with the transport, which delivers
+   it again later.
 
 [How does an event reach another contract?](between-contracts.md)
 tells the same path from the side of the contracts.
@@ -323,6 +324,10 @@ The Store hides the SQL. It does not have a transaction of its own:
 `c:EhOsContract.Store.append/3` and `c:EhOsContract.Store.lock/1` run inside the Ecto transaction of the caller, and raise
 outside one. So an append commits or rolls back together with each other write of
 the caller.
+
+An append of no entries is the exception. `EhOsContract.Store.Postgres` returns
+`{:ok, []}` for it, and checks no condition and no transaction. So an empty append
+cannot check a version or a condition.
 
 ### What an implementation promises
 

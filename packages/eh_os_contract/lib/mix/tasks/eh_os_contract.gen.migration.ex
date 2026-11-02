@@ -46,7 +46,9 @@ defmodule Mix.Tasks.EhOsContract.Gen.Migration do
   The task never writes over a migration:
 
   - If a migration `create_<table>` exists, the task stops with an error.
-  - If two read models name one table, the task stops before it writes anything.
+  - With `--all`, if two read models name one table, the task stops before it
+    writes anything. The form for one read model does not check this; the compiler
+    refuses it.
   - With `--all`, the task writes nothing for a read model without a table.
   """
 

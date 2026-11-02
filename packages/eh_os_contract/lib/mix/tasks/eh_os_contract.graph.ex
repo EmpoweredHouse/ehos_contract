@@ -79,10 +79,12 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   Use `--output`. Erlang keeps the standard output in latin1 when it is not a
   terminal. Each label of a document is in the language of the client.
 
-  Without `--output`, the document is the only thing that the task writes to the
-  standard output. When the application starts (`--overlay`), it writes its log to the
-  standard error. So `> graph.json` holds only the document. Compile the project
-  first: Mix prints the compile to the standard output before the task runs.
+  Without `--output`, the task writes the document to the standard output. When the
+  application starts (`--overlay`), the task moves the log of the application to the
+  standard error. But the code of the application can still print to the standard
+  output, so `> graph.json` can hold more than the document. If you need the document
+  alone, use `--output`. Mix also prints the compile to the standard output before the
+  task runs.
   """
 
   use Boundary, classify_to: EhOsContract

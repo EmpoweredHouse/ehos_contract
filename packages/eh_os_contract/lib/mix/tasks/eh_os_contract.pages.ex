@@ -36,8 +36,10 @@ defmodule Mix.Tasks.EhOsContract.Pages do
     with the marker line of the pages of the domain. It also deletes a `graph.v1`
     document of a contract or a process module of the domain, at the path that the
     task gives it. So the pages of another domain in the same directory stay.
-  - It never writes a page over a file without the marker, or through a symbolic link.
-    Then it writes nothing, and names what is in the way.
+  - It never writes a page over a file without the marker, or through a symbolic link
+    inside `--output`. Then it writes nothing, and names what is in the way.
+  - If `--output` itself is a symbolic link to a directory, the task follows it. It
+    then writes and deletes pages in that directory.
 
   `--check` writes nothing. It fails, and names each page that is missing, different
   or left over, and each file in the way.
