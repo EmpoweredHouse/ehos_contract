@@ -40,9 +40,14 @@ defmodule EhOsContract.Supplier do
   key. That retry gets its receipt. The engine sets no time limit on the call. If the
   source of the data can hang, the implementation must limit the time.
 
-  `dispatch/3` and `record/3` ask only with `supply: true`, which `call/3` sets.
-  Without it, the code of the application fills the supplied fields itself. The engine
-  trusts that struct, and checks those fields as it checks each other field.
+  The code of the host can dispatch inside a transaction that appended before. Then
+  each other writer of the log waits for the answer. So make `supply/2` fast.
+
+  `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
+  page with `EhOsContract.Form` can pass it. Without it, the code of the application
+  fills the supplied fields itself. The engine trusts that struct, and checks those
+  fields as it checks each other field. So do not fill a supplied field from what a
+  caller sent.
 
   ## What the answer must hold
 

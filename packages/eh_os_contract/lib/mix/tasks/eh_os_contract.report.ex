@@ -8,13 +8,15 @@ defmodule Mix.Tasks.EhOsContract.Report do
   > **The task starts the whole application.**
   > The report reads the log through the repo of the application, so the task starts
   > the application. Run it only with the code that is deployed. The task records a
-  > deployment, and starts the subscriptions, the relays and Oban. So effects can call external
-  > systems from where you run it. If your code differs from the deployed code, the
-  > recorded deployment changes the answer to question 4. The engine also rebuilds
-  > each changed process manager at once. It also rebuilds each changed read model
-  > that has `reset/0`. A rebuilt process manager forgets its runs. To read the report of a
-  > running host without this, use the
-  > [JSON API of the dashboard](conformance.md#the-dashboard).
+  > deployment, which changes the answer to question 4 if your code differs from the
+  > deployed code. It starts the subscriptions, the relays, the inboxes and Oban. So
+  > effects can call external systems from where you run it, and an inbox can take
+  > messages from the transport. If your code differs from the deployed code, the
+  > engine rebuilds each changed process manager at once. It also rebuilds each
+  > changed read model that has `reset/0`. A process manager that rebuilds reacts to
+  > no event until it reaches the head of the log. The deployed nodes then rebuild the
+  > same consumers again at their next boot. To read the report of a running host
+  > without this, use the [JSON API of the dashboard](conformance.md#the-dashboard).
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md

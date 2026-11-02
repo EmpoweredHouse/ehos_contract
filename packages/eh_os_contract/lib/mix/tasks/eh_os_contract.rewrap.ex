@@ -7,11 +7,14 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   [a rotation](master-keys.md), before you remove the old key.
 
   > **The task starts the whole application.**
-  > Run it only with the code that is deployed. The task records a deployment, and
-  > starts the subscriptions, the relays and Oban. So effects can call external
-  > systems from where you run it. If your code differs from the deployed code, the
-  > engine rebuilds each changed process manager at once. It also rebuilds each
-  > changed read model that has `reset/0`. A rebuilt process manager forgets its runs.
+  > Run it only with the code that is deployed. The task records a deployment. It
+  > starts the subscriptions, the relays, the inboxes and Oban. So effects can call
+  > external systems from where you run it, and an inbox can take messages from the
+  > transport. If your code differs from the deployed code, the engine rebuilds each
+  > changed process manager at once. It also rebuilds each changed read model that
+  > has `reset/0`. A process manager that rebuilds reacts to no event until it reaches
+  > the head of the log. The deployed nodes then rebuild the same consumers again at
+  > their next boot.
 
       mix eh_os_contract.rewrap
 

@@ -472,9 +472,14 @@ It does not ask for a retry of a request that it accepted under its idempotency
 key. That retry gets its receipt. The engine sets no time limit on the call. If the
 source of the data can hang, the implementation must limit the time.
 
-`dispatch/3` and `record/3` ask only with `supply: true`, which `call/3` sets.
-Without it, the code of the application fills the supplied fields itself. The engine
-trusts that struct, and checks those fields as it checks each other field.
+The code of the host can dispatch inside a transaction that appended before. Then
+each other writer of the log waits for the answer. So make `c:EhOsContract.Supplier.supply/2` fast.
+
+`dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
+page with `EhOsContract.Form` can pass it. Without it, the code of the application
+fills the supplied fields itself. The engine trusts that struct, and checks those
+fields as it checks each other field. So do not fill a supplied field from what a
+caller sent.
 
 ### What the answer must hold
 
@@ -544,10 +549,12 @@ cannot read what the nodes with the new list write, until the rollout ends.
 1. Add the new key after the current key, and deploy. Then each node can unwrap
    what the new key will wrap.
 2. Move the new key to the first place, and deploy.
-3. Run `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
+3. Wait until each node runs the configuration of step 2. Then run
+   `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
    id of the key that it used. Make sure that it is the id of the new key.
 4. Do this step only when step 3 ended without an error, with the id of the new
-   key. Count the data keys of each master key. Each row must name the new key:
+   key. Just before the deploy, count the data keys of each master key. Each row
+   must name the new key:
 
        SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 
@@ -563,8 +570,11 @@ A rotation does not rewrite an event.
 ### At boot
 
 If a contract declares a personal field and the vault cannot wrap and unwrap, the
-engine does not start. So a missing master key stops the deployment, not the
+engine does not start. So a vault with no master key stops the deployment, not the
 first command with a personal field.
+
+This check reads only the configured keys, not the data keys. It does not find a
+data key whose master key you removed. The first read of that subject raises.
 
 ### Callbacks
 

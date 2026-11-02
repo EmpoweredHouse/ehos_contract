@@ -43,10 +43,12 @@ defmodule EhOsContract.Vault do
   1. Add the new key after the current key, and deploy. Then each node can unwrap
      what the new key will wrap.
   2. Move the new key to the first place, and deploy.
-  3. Run `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
+  3. Wait until each node runs the configuration of step 2. Then run
+     `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
      id of the key that it used. Make sure that it is the id of the new key.
   4. Do this step only when step 3 ended without an error, with the id of the new
-     key. Count the data keys of each master key. Each row must name the new key:
+     key. Just before the deploy, count the data keys of each master key. Each row
+     must name the new key:
 
          SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 
@@ -62,8 +64,11 @@ defmodule EhOsContract.Vault do
   ## At boot
 
   If a contract declares a personal field and the vault cannot wrap and unwrap, the
-  engine does not start. So a missing master key stops the deployment, not the
+  engine does not start. So a vault with no master key stops the deployment, not the
   first command with a personal field.
+
+  This check reads only the configured keys, not the data keys. It does not find a
+  data key whose master key you removed. The first read of that subject raises.
   """
 
   @typedoc "What names a master key, stored beside each data key it wraps."
