@@ -227,6 +227,7 @@ defmodule EhOsContract.OpenAPITest do
       ]["post"]["responses"]
 
     assert responses["400"]["description"] =~ "Invalid JSON"
+    assert responses["415"]["description"] =~ "application/json"
 
     receipt = responses["200"]["content"]["application/json"]["schema"]
 
