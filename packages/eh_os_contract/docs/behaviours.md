@@ -575,8 +575,9 @@ A rotation does not rewrite an event.
 
 ### What does the engine check at boot?
 
-If a contract declares a personal field and the vault cannot wrap and unwrap, the
-engine does not start. With such a contract, a configured vault that does not
+If a contract declares a personal field and `c:EhOsContract.Vault.check/0` of the vault returns an
+error, the engine does not start. The engine does not try a wrap or an unwrap at
+boot. With such a contract, a configured vault that does not
 export `c:EhOsContract.Vault.check/0` also stops the boot. So a vault with no master key stops the deployment, not the first
 command with a personal field.
 
