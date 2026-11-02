@@ -1,0 +1,1 @@
+Documentation alone (docs/adr/technology-notes.md): the version-5 skip rule moved into its own dated amendment, after a CodeRabbit comment on #555. Checked against the code: subscription.ex skip/2 and failed!/4, dispatcher.ex projecting/2. No check reads this file. The previous commit 81406d99 carries the two-round review.
