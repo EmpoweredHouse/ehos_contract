@@ -60,6 +60,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   report's "Met" and "BREACHED". Links change: the sections of `process.md` on recording an outage
   and on how the report reads a process are now `outages.md` and `conformance.md`.
 
+### Fixed
+
+- **`mix eh_os_contract.check` no longer warns that a `:separate_ways` relation is crossed by no
+  reference** (`orphan-context-mapping`, #537). The relation says that the two contexts do not depend on
+  each other, and the compiler refuses a reference across it, so the warning could not be fixed. A
+  domain with such a relation has one warning fewer for each; no verdict moves.
+
 ## [0.13.1] - 2026-11-01
 
 ### Added

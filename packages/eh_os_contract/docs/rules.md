@@ -380,6 +380,8 @@ No contract of one context consumes a contract of the other, names an entity or 
 other owns (`{:id, name}`) or uses a value it declares (`context:`), in either direction; for a relation to an external system, no contract
 of the context calls it, depends on it, has a field it issues or acts through an actor it backs. The relation describes
 a dependency the contracts do not have.
+A `:separate_ways` relation is not checked: it says that the two contexts do not depend on
+each other, and the compiler refuses a reference across it.
 
 ## `label-with-avoided-term`
 
