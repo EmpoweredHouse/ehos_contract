@@ -21,12 +21,14 @@ if Code.ensure_loaded?(Plug.Conn) do
 
     **A command or a recording takes only JSON**: a `POST` without
     `content-type: application/json` answers 415, whatever its body, even an empty
-    one, once the caller may make the call. A page of another origin can post a
-    form, `text/plain` or no content type with the person's cookie and without
-    asking first, but a browser asks the host before it sends `application/json`
-    there. So with a cookie session in front (`eh_os_contract_auth`'s
-    `EhOsContract.Auth.Session`, `assign_actor: true`), a page of another origin
-    posts as the person only if the host's CORS allows it with credentials.
+    one, once the caller may make the call. A command narrowed to a scope gets 403
+    `outside_scope` instead, since its scope is not read from such a body. A page of
+    another origin can post a form, `text/plain` or no content type with the
+    person's cookie and without asking first, but a browser asks the host before it
+    sends `application/json` there. So with a cookie session in front
+    (`eh_os_contract_auth`'s `EhOsContract.Auth.Session`, `assign_actor: true`), a
+    page of another origin cannot post JSON to this plug as the person unless the
+    host's CORS allows credentials for it.
 
     It reads the body, or the query string, and the headers, and hands them to
     `EhOsContract.call/3`, which decodes them against the declaration's fields and

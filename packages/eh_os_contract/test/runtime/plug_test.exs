@@ -353,7 +353,7 @@ defmodule EhOsContract.PlugTest do
             conn(:post, @deposit, @body) |> put_req_header("content-type", "text/plain"),
             # A form a parser in front of the plug has already read.
             parsed_form(@deposit),
-            # fetch() with mode: "no-cors" sends no content type, with or without a body.
+            # fetch() with mode: "no-cors" sends no content type with no body, or a typeless one.
             conn(:post, @deposit, @body),
             conn(:post, @deposit, ""),
             # Two types in one header, or two headers.
@@ -383,6 +383,22 @@ defmodule EhOsContract.PlugTest do
       assert {recording.status, json(recording)} == {415, %{"error" => "unsupported_media_type"}}
 
       assert Repo.aggregate(Event, :count) == 1
+    end
+
+    test "whether the caller may is answered first, and a scope is not read from it" do
+      form = fn path, body ->
+        conn(:post, path, body) |> put_req_header("content-type", "text/plain")
+      end
+
+      stranger = Actor.credential("u-3", [])
+      recording = call(form.("/records/dispatch_rig.balance_confirmed", ~s({})), stranger)
+      assert {recording.status, json(recording)} == {403, %{"refused" => "missing_capability"}}
+
+      move = "dispatch_rig.move_account"
+      clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+      body = ~s({"account_id": "a-1", "branch_id": "b-7"})
+      scoped = call(form.("/commands/#{move}", body), clerk)
+      assert {scoped.status, json(scoped)} == {403, %{"refused" => "outside_scope"}}
     end
 
     test "the control: JSON with parameters or in capitals is read" do
