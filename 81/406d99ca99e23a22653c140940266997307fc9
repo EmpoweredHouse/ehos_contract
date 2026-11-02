@@ -1,0 +1,7 @@
+Pre-PR review of #550 (a6186456..81406d99), two rounds.
+Correctness (code-review high, ehos-dev:elixir) and security/performance (ehos-dev:elixir; engineering:code-review not available, by hand).
+R1 correctness: legacy failing inline row lost events on skip -> fixed (V05 marks it stale, boot rebuilds); resume_status left on non-failing rows -> fixed in register!; min_position answered from partial rows of a failing inline read model -> fixed; no erasure test -> fixed; "while it is reset" wording -> fixed ("while it replays the log"); PM docs clause on events appended while failing -> fixed; changelog wrap -> fixed.
+R1 security: same legacy row -> fixed; erasure skipped forget on a failing inline read model -> fixed then reverted in R2, now skipped (issue to file, docs say so); register! failing->stale -> no change needed (boot rebuilds stale); migration lock -> no change needed (tiny table).
+R2 correctness: forget at once could block every erasure -> fixed (left to runner again); changelog text -> fixed; V05 stale row kept failure columns -> fixed; docs condition too broad -> fixed; wait_for repeats behind/0 -> no change needed (guard); dead resume_status clear in advance! -> fixed.
+R2 security: changelog understated the upgrade rebuild -> fixed.
+Reverse checks: each fix test fails with the fix undone. Gate: mix check in sandbox EXIT=0 on 81406d99 (sandbox check 0/3/7, engine 2051 tests, web 79, auth 482, graph 236, 15 diagrams current).
