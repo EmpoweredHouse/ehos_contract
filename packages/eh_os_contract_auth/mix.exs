@@ -79,14 +79,20 @@ defmodule EhOsContract.Auth.MixProject do
       },
       # `priv/schemas/`, EHOS's `ehos.yaml` schemas the reader validates with, and not the rest of
       # `priv/`, which is this package's own test migration.
-      files: ~w(lib priv/schemas .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      files: ~w(lib priv/schemas docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: [
+        "README.md",
+        "docs/getting-started.md",
+        "docs/credential.md",
+        "docs/decisions.md",
+        "CHANGELOG.md"
+      ],
       # The changelog names what a release removed, and the names resolve nowhere
       # after it, as they should.
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
