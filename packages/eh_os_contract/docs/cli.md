@@ -369,9 +369,10 @@ of two ways:
 
 - `--skip` moves a `failing` subscription past the one event it fails on, which is
   then never applied. If that event erased a subject, the read model keeps the
-  subject's copy until it is reset. A subscription that failed while it was reset
-  goes on with the reset past that event: a read model takes the rest of the log,
-  and a process manager learns the rest of its runs without reacting to them.
+  subject's copy until it is reset. A subscription that failed while it replayed
+  the log goes on with the replay past that event: a read model takes the rest of
+  the log, and a process manager learns the rest of its runs without reacting to
+  them, also the events appended while it was failing.
 - `--reset` empties a read model through its `reset/0` and replays the whole log
   into it; a read model without `reset/0` cannot be reset.
 - `--reset` of a process manager forgets every run it steers and replays the log
