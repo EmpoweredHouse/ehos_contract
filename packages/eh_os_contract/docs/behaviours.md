@@ -556,20 +556,19 @@ cannot read what the nodes with the new list write, until the rollout ends.
    what the new key will wrap.
 2. Move the new key to the first place, and deploy.
 3. Wait until each node runs the configuration of step 2. Then run
-   `mix eh_os_contract.rewrap` with the configuration of step 2. It prints the
-   id of the key that it used. Make sure that it is the id of the new key.
-4. Do this step only when step 3 ended without an error, with the id of the new
-   key. Just before the deploy, count the data keys of each master key. Each row
-   must name the new key:
+   `mix eh_os_contract.rewrap --expect <id of the new key>` with the configuration
+   of step 2. If the first key of its list is another key, the task stops before it
+   changes a data key.
+4. Do this step only when step 3 ended without an error. Just before the deploy,
+   count the data keys of each master key. Each row must name the new key:
 
        SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 
    Then remove the old key from the list, and deploy.
 
-The check of step 4 is necessary. The rewrap wraps with the first key of the list
-of the node where it runs. With the configuration of step 1, it wraps the data keys
-of the new key with the old key again, and ends without an error. After you remove the old
-key, nothing can unwrap those data keys.
+The check of step 4 is necessary. A node that still runs the configuration of
+step 1 wraps each new data key with the old key, also after the rewrap. After you
+remove the old key, nothing can unwrap those data keys.
 
 A rotation does not rewrite an event.
 

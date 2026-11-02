@@ -69,7 +69,7 @@ defmodule EhOsContract.RewrapCommitsTest do
     assert_raise ArgumentError,
                  ~r/0 data keys rewrapped, and 1 are still wrapped by another master key/,
                  fn ->
-                   Personal.rewrap!(Repo)
+                   Personal.rewrap!(Repo, "kek-new")
                  end
 
     send(holder, :release)

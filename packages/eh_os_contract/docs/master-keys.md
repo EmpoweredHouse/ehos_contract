@@ -49,13 +49,15 @@ read what the new nodes write, until the rollout ends.
 
 3. When each node runs the configuration of step 2, rewrap each data key with the new key. Run the
    rewrap with the configuration of step 2 too. It wraps with the first key of the list that it
-   reads.
+   reads. Give it the id of the new key. If the first key of the list is another key, the rewrap
+   stops before it changes a data key.
 
    ```bash
-   mix eh_os_contract.rewrap
+   mix eh_os_contract.rewrap --expect 2026-09
    ```
 
-   A release has no `mix`. From a release, call `EhOsContract.Personal.rewrap!(MyApp.Repo)`.
+   A release has no `mix`. From a release, call
+   `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`.
 
    **Result:** the task prints how many data keys it rewrapped, and the id of the key that it used.
    Example: `120 data keys rewrapped with 2026-09`. The id must be the id of the new key. The
@@ -138,13 +140,20 @@ version behind one name, the rewrap cannot see that the version changed.
 
 To rotate a key in the KMS, make `current/0` return the new version, and deploy. When each node runs
 it, rewrap each data key, as step 3 above tells. Disable the old key only after the rewrap ended
-without an error.
+without an error, and after the check of step 4: each row of `eh_os_contract_subject_keys` must
+name the new version. A node that still returns the old version wraps new data keys with it, also
+after the rewrap.
 
 The engine keeps no cache of data keys: a cache on another node would outlive an erasure. So each
 read of personal data asks the vault to unwrap the keys of its subjects. With a KMS, each command
 and each batch of a read model that touches personal data waits for the KMS, and counts against its
 quota. A replay or a rebuild of a read model asks for each subject again. For a smaller rewrap
-batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, 50)`; the Mix task takes no argument.
+batch, give the id that `current/0` returns, and the batch size; the Mix task takes no batch size:
+
+<!-- not compiled: the host's repository and key -->
+```elixir
+EhOsContract.Personal.rewrap!(MyApp.Repo, "projects/my-app/keys/personal-data/versions/2", 50)
+```
 
 <a id="restore-a-backup-older-than-an-erasure"></a>
 
@@ -225,6 +234,7 @@ The rewrap raises with one of these messages:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
+| `the vault wraps with …, not with … that was expected` | The first key of the list is not the key that you gave. The list is not the list of step 2, or you mistyped the id of the new key. No data key changed. | Run the rewrap with the configuration of step 2, and give the id of the new key. |
 | `… are still wrapped by another master key than …` | A node still wraps with the old key, or another rewrap holds some rows. | Wait until each node runs the new configuration and the other rewrap ends. Run the rewrap again. |
 | `… cannot be unwrapped with master key …; is that key still in the vault?` | The list of keys does not hold the key that wraps a row. | Put that key back in the list, deploy, and run the rewrap again. |
 | `the vault wrapped with … and calls … current` | A vault of your own returns from `wrap/2` an id other than `current/0`. | Make `wrap/2` return the id of `current/0`. |

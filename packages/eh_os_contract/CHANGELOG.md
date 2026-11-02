@@ -65,12 +65,19 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   starts with its scope and ends with "Next steps". `EhOsContract.Bus` has a diagram of what occurs
   between the relay, the bus and the inbox. The docs now say that `mix eh_os_contract.report`,
   `mix eh_os_contract.subscriptions`, `mix eh_os_contract.rewrap` and `mix eh_os_contract.graph
-  --overlay` start the whole application. The docs of a rotation of a master key now tell the operator to check the id
-  that the rewrap prints, and the key of each data key, before the old key goes (#541). Corrected facts: the
+  --overlay` start the whole application. The docs of a rotation of a master key now tell the
+  operator to check the key of each data key before the old key goes (#541). Corrected facts: the
   supplier is asked by `dispatch/3` and `record/3` with `supply: true`, and its refusal is 503 over
   HTTP; a raise in `publish/2` makes the relay `failing` after three attempts, not at once; the
   report's contract section answers questions 1, 2 and 4, and a process module's section question 3;
   a name of a command, a query or a recorded event is unique in its domain, not in the application.
+- **Breaking:** **The rewrap takes the id of the new master key, and refuses a vault that wraps
+  with another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
+  `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`. If the first key of the list is not that
+  key, the rewrap stops before it changes a data key. The batch size moves to the third argument:
+  `rewrap!(MyApp.Repo, 50)` now raises `FunctionClauseError`. Before, a rewrap with the list of
+  before the rotation wrapped each data key with the old key again, and ended without an error. The
+  next deploy then removed the old key, and the personal data did not unwrap.
 - **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
   Concept page, "How is a call authorized?", with two diagrams: the order of a call from sign-in to
   the answer, and which calls the Authorizer checks. Three how-tos take the rest: `scope.md` narrows a

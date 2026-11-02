@@ -18,7 +18,10 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   > still in the queue. The deployed nodes then rebuild the same consumers again at
   > their next boot.
 
-      mix eh_os_contract.rewrap
+      mix eh_os_contract.rewrap --expect 2026-09
+
+  `--expect` is required. It names the new key. If the first key of the list is
+  another key, the task stops before it changes a data key.
 
   The task unwraps each data key with the key that wrapped it, and wraps it again.
   It does not rewrite an event. At the end, it prints the count and the id of the
@@ -26,11 +29,11 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
 
       120 data keys rewrapped with 2026-09
 
-  > **The printed id must be the id of the new key.**
-  > The task wraps with the first key of the list that it reads.
-  > With the configuration of step 1, it wraps the data keys of the new key with the
-  > old key again. It ends without an error. Remove the old key only when the printed id
-  > is the id of the new key. Each row of `eh_os_contract_subject_keys` must name it too.
+  > **The task refuses a list whose first key is not the key of `--expect`.**
+  > The task wraps with the first key of the list that it reads. With the
+  > configuration of step 1, that key is the old key, not the key of `--expect`. The
+  > task stops and changes no data key. Remove the old key only when the task ended
+  > without an error, and each row of `eh_os_contract_subject_keys` names the new key.
   > [Manage the keys and the backups of personal data](master-keys.md) gives each step
   > of a rotation.
 
@@ -50,17 +53,27 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   - An erasure of a subject in the current batch waits for that batch. It holds the
     append lock while it waits, so each other append waits too. Run the task at a
     quiet time.
-  - A release has no `mix`. From a release, call `EhOsContract.Personal.rewrap!/2`.
+  - A release has no `mix`. From a release, call
+    `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`.
   """
 
   use Boundary, classify_to: EhOsContract
   use Mix.Task
 
   @impl Mix.Task
-  def run(_args) do
+  def run(args) do
+    {opts, _} = OptionParser.parse!(args, strict: [expect: :string])
+
+    expect =
+      opts[:expect] ||
+        Mix.raise(
+          "name the master key the data keys move to, the new key of the rotation: " <>
+            "mix eh_os_contract.rewrap --expect <key id>"
+        )
+
     Mix.Task.run("app.start")
     repo = EhOsContract.Config.fetch!(:repo)
-    count = EhOsContract.Personal.rewrap!(repo)
-    Mix.shell().info("#{count} data keys rewrapped with #{EhOsContract.Vault.current()}")
+    count = EhOsContract.Personal.rewrap!(repo, expect)
+    Mix.shell().info("#{count} data keys rewrapped with #{expect}")
   end
 end
