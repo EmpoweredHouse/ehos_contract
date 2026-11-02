@@ -42,9 +42,11 @@ defmodule EhOsContract.Supplier do
   those rows waits until the events are appended. Without a lock, the answer can be
   stale when the engine appends.
 
-  If the stream of the unit changed after the engine read it, the engine tries the
-  command again, in a new transaction, and asks again. A command that reads entities
-  (`reads:`) reads them in the same transaction, after the answer.
+  If the stream of the unit changed after the engine read it, and the transaction is
+  the engine's own, the engine tries the command again, in a new transaction, and asks
+  again. In a transaction of the host, the engine returns `{:error, :conflict}`. A
+  command that reads entities (`reads:`) reads them in the same transaction, after the
+  answer.
 
   The engine does not ask for a retry of a request that it accepted under its
   idempotency key. That retry gets its receipt.

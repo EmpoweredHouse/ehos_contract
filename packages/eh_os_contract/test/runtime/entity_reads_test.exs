@@ -170,7 +170,7 @@ defmodule EhOsContract.EntityReadsTest do
     defp gift(opts) do
       EhOsContract.call(
         {:command, "read_rig.place_gift_order"},
-        %{"order_id" => "order-1", "product_id" => "product-tea", "quantity" => 3},
+        %{"order_id" => "order-1", "quantity" => 3},
         Keyword.merge([actor: @gift_clerk], opts)
       )
     end
@@ -178,7 +178,7 @@ defmodule EhOsContract.EntityReadsTest do
     test "reads the entity inside the transaction, after the host supplies" do
       Process.put(:supply_rig_answer, fn _actor, _request ->
         send(self(), {:fetched_when_supplied, fetched(), Repo.in_transaction?()})
-        {:ok, %{wrapping: 2}}
+        {:ok, %{product_id: "product-tea", wrapping: 2}}
       end)
 
       assert {:ok, %Receipt{events: [%Placed{total: 14}]}} = gift([])
@@ -187,7 +187,7 @@ defmodule EhOsContract.EntityReadsTest do
     end
 
     test "a row that does not fit is the command's failure, in the entities" do
-      Process.put(:supply_rig_answer, {:ok, %{wrapping: 2}})
+      Process.put(:supply_rig_answer, {:ok, %{product_id: "product-tea", wrapping: 2}})
       Process.put({:read_rig_row, "product-tea"}, :a_row_of_no_shape)
 
       assert_raise ArgumentError, fn -> gift([]) end
@@ -201,7 +201,7 @@ defmodule EhOsContract.EntityReadsTest do
         if Process.put(:read_rig_supplied, true) == nil,
           do: {:ok, %Receipt{}} = gift(idempotency_key: "gift-1")
 
-        {:ok, %{wrapping: 2}}
+        {:ok, %{product_id: "product-tea", wrapping: 2}}
       end)
 
       assert {:ok, %Receipt{duplicate: true, events: [%Placed{total: 14}]}} =

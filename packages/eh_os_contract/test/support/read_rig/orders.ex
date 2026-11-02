@@ -4,7 +4,7 @@ defmodule ReadRig.Orders do
 
   Placing an order reads the product it names: the order is refused for a product no
   longer on sale, and its total is the product's price as read. A gift order reads it
-  too, and adds the wrapping, which the host supplies. Cancelling one reads nothing, so
+  too, and adds the wrapping; the host supplies both the product and the wrapping. Cancelling one reads nothing, so
   its decision keeps two arguments.
   """
 
@@ -34,7 +34,7 @@ defmodule ReadRig.Orders do
       emits: :placed,
       rejects: :product_on_sale,
       reads: [product: :product_id] do
-      field :product_id, {:id, :product}
+      field :product_id, {:id, :product}, supplied_by: :host
       field :quantity, :integer
       field :wrapping, :integer, supplied_by: :host
     end
