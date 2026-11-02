@@ -61,7 +61,7 @@ another page uses a word in a different way, this page is correct.
 | **Rejection** | The answer of a unit that refuses a command on an invariant or a constraint. The log gets no event. | `reject/1`, `rejects:` |
 | **Relation** | How two contexts depend on each other: one of 8 patterns of context mapping. | `relation`, in the domain |
 | **Relay** | The consumer that reads the published events from the log and gives them to the bus. | `EhOsContract.Relay` |
-| **Role** | The capabilities of one human actor of a domain, by the name `<domain>.<actor>`. The platform that issues the credentials grants roles to people. A credential carries the capabilities of the roles, not the roles. | `roles:` in `EhOsContract.Model.capabilities/1` |
+| **Role** | The name of one human actor of a domain: `<domain>.<actor>`. A role grants the capability of each declaration whose `by:` or `recorded_by:` names the actor. The platform that issues the credentials grants roles to people. A credential carries the capabilities of the roles, not the roles. | `roles:` in `EhOsContract.Model.capabilities/1` |
 | **Run** | One case of a process. Example: one loan, from lending to return. The correlation fields of its events tell it from other runs. | — |
 | **Scenario** | An example that a contract or a process module carries: the events that occurred, what occurs next, and the result that it must give. The engine runs each scenario as a test. | `scenario`, `EhOsContract.ScenarioCase` |
 | **Schema version** | The version of the fields of an event. A row in the log keeps the version that it was written with. | `schema_version` |
