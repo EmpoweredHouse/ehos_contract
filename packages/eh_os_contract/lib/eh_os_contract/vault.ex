@@ -104,9 +104,14 @@ defmodule EhOsContract.Vault do
   the same `context`. Returns `:error` if the vault does not hold that master key, or
   if the context or the wrapped key is not the same.
 
-  The engine also calls it at boot, one time for each master key that a stored data
-  key names. At boot, `:error` stops the engine. If the vault cannot answer now, for
-  example because a key management service is down, raise. Do not return `:error`.
+  If a contract declares a personal field, the engine also calls it at boot, one time
+  for each master key that a stored data key names. At boot, `:error` stops the
+  engine, with an error that tells the operator to check the master key.
+
+  If the vault cannot answer now, for example because a key management service is
+  down, raise. Do not return `:error`. The engine does not start while the service
+  is down, so give each call a timeout. Do not put `context` or the wrapped key in
+  the exception: the context holds the id of the subject.
   """
   @callback unwrap(kek_id(), wrapped :: binary(), context :: binary()) :: {:ok, binary()} | :error
 

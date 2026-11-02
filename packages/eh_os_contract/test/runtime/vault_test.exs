@@ -113,9 +113,21 @@ defmodule EhOsContract.VaultTest do
       assert_raise ArgumentError,
                    ~s(1 data key is wrapped by master key "kek-1", and the vault cannot ) <>
                      ~s(unwrap with that key, so the engine cannot read the personal data of ) <>
-                     ~s(their subjects. The vault holds other bytes under "kek-1". Put back ) <>
-                     ~s(the bytes that wrapped them),
+                     ~s(their subjects. The vault wraps with "kek-1". Check that its bytes are ) <>
+                     ~s(the bytes that wrapped these data keys),
                    fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
+    end
+
+    test "a master key after one that unwraps is checked too" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+      join!("membership-celina", "member-celina")
+      keys([{"kek-new", @new_kek}])
+
+      assert_raise ArgumentError, ~r/^1 data key is wrapped by master key "kek-old"/, fn ->
+        Personal.check_master_keys!(Repo, [Model.fetch(Members)])
+      end
     end
 
     test "control: a vault that unwraps a data key of each master key starts" do

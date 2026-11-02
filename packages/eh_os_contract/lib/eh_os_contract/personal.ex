@@ -660,11 +660,14 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  # The vault wraps with the id it cannot unwrap with: it holds other bytes under that
-  # id, and a rewrap would move nothing, since it skips the current key's rows.
-  defp remedy(current, current),
-    do:
-      "The vault holds other bytes under #{inspect(current)}. Put back the bytes that wrapped them"
+  # The vault wraps with the id it cannot unwrap with, so its bytes under that id are
+  # likely not the ones that wrapped the row; a rewrap would move nothing, since it
+  # skips the current key's rows. Only one row was tried, so the text does not say
+  # that putting old bytes back is the fix: data keys wrapped since may need the new.
+  defp remedy(current, current) do
+    "The vault wraps with #{inspect(current)}. Check that its bytes are the bytes that " <>
+      "wrapped these data keys"
+  end
 
   defp remedy(kek_id, current) do
     "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped them. Then run " <>
@@ -675,24 +678,26 @@ defmodule EhOsContract.Personal do
   defp data_keys(count), do: "#{count} data keys are"
 
   # One data key of each master key, as `[kek_id, subject_type, subject_id,
-  # key_version, wrapped_key]`. A loose index scan down the `kek_id` index finds the
-  # ids: the smallest, then the smallest greater than the last. One statement, so one
-  # snapshot: a rewrap or an erasure on another node that moves the last data key off
-  # a master key cannot leave an id without its row.
+  # key_version, wrapped_key]`. A loose index scan down the `kek_id` index: the row
+  # with the smallest id, then the first row whose id is greater than the last. The
+  # range and the `ORDER BY` keep each step on the index; an equality on an id with
+  # few distinct values lets the planner scan the table for a retired key's last
+  # rows. One statement, so one snapshot: a rewrap or an erasure on another node
+  # cannot leave an id without its row.
   defp samples(repo) do
     %{rows: rows} =
       repo.query!(
         """
-        WITH RECURSIVE k(kek_id) AS (
-          SELECT min(kek_id) FROM #{@keys}
+        WITH RECURSIVE k AS (
+          (SELECT kek_id, subject_type, subject_id, key_version, wrapped_key
+           FROM #{@keys} ORDER BY kek_id LIMIT 1)
           UNION ALL
-          SELECT (SELECT min(s.kek_id) FROM #{@keys} s WHERE s.kek_id > k.kek_id)
-          FROM k WHERE k.kek_id IS NOT NULL
+          SELECT n.* FROM k CROSS JOIN LATERAL (
+            SELECT s.kek_id, s.subject_type, s.subject_id, s.key_version, s.wrapped_key
+            FROM #{@keys} s WHERE s.kek_id > k.kek_id ORDER BY s.kek_id LIMIT 1
+          ) n
         )
-        SELECT s.kek_id, s.subject_type, s.subject_id, s.key_version, s.wrapped_key
-        FROM k CROSS JOIN LATERAL (
-          SELECT * FROM #{@keys} s WHERE s.kek_id = k.kek_id LIMIT 1
-        ) s
+        SELECT * FROM k
         """,
         [],
         log: false
