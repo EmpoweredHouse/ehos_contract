@@ -125,6 +125,7 @@ declaration has a label in the words of the business.
 5. The log keeps each event in order, with the version of its contract.
 6. `mix eh_os_contract.report` and the dashboard answer
    [the four questions of conformance](glossary.md#four-questions) for a period.
+   [The conformance report](conformance.md) tells what each section says.
 
 ## What does it not do?
 

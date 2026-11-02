@@ -48,6 +48,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The page on processes is split by what a reader asks** (#517). `docs/process.md` is a Concept
+  page, "What is a process module?", with one diagram: which verdicts a promise can have, and what
+  moves it. Recording an outage of an external system is a how-to, `outages.md`. What the
+  conformance report prints is a Reference page, `conformance.md`: each section, each sentence of a
+  process module, and the JSON document. The pages now say that a report with a period judges a
+  promise only on the events inside the period, while the deadline and the order of stages read each
+  run whole. They also give the names of the verdicts, `:satisfied` and `:violated`, beside the
+  report's "Met" and "BREACHED". Links change: the sections of `process.md` on recording an outage
+  and on how the report reads a process are now `outages.md` and `conformance.md`.
+
 ## [0.13.1] - 2026-11-01
 
 ### Added

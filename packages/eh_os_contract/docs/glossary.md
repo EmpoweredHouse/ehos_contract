@@ -187,3 +187,4 @@ end
 - [Write a domain, a contract and a process module](contract.md): how to start.
 - [The compile refusals](refusals.md): each refusal of the compiler, with its code.
 - The concepts, from [the domain](domain.md) to [processes](process.md).
+- [The conformance report](conformance.md): what the report gives for the four questions.

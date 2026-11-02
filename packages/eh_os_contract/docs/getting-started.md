@@ -360,7 +360,8 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
   for each contract and process module, for a period.
 
 **Result:** the check names each finding with its rule. The report has a section
-`CONTRACT: getting_started.loans`. [The command-line tasks](cli.md) list each task and its options.
+`CONTRACT: getting_started.loans`. [The conformance report](conformance.md) tells what each section
+says. [The command-line tasks](cli.md) list each task and its options.
 
 ## Next steps
 
@@ -373,6 +374,7 @@ mix eh_os_contract.report --since 2026-07-01T00:00:00Z
   [a change to an event with rows](event-versions.md), [reactions](reactions.md), [reading](reading.md),
   [a read model and its query](read-models.md), [a subscription to repair](subscriptions.md),
   [forms](forms.md), [between contracts](between-contracts.md),
-  [processes](process.md) and [scenarios](scenarios.md).
+  [process modules](process.md), [an outage to record](outages.md), [the conformance report](conformance.md)
+  and [scenarios](scenarios.md).
 - [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/eh-os-contract/README.md):
   skills that write contracts by the rules of this engine.
