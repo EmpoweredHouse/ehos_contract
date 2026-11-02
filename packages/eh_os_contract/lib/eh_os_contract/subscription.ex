@@ -342,13 +342,7 @@ defmodule EhOsContract.Subscription do
   defp advance!(repo, row, position) do
     changes =
       if row.failed_position && position >= row.failed_position,
-        do: %{
-          position: position,
-          failed_position: nil,
-          failure: nil,
-          attempts: 0,
-          resume_status: nil
-        },
+        do: %{position: position, failed_position: nil, failure: nil, attempts: 0},
         else: %{position: position}
 
     repo.update!(SubscriptionRecord.changeset(row, changes))

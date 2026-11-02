@@ -95,7 +95,7 @@ subscriptions_example.loans:read_model:copies_out  failing at 41, fails at 42 (K
 | `running` | It reads the log. After a reset, it reads from position 0 again. |
 | `stale` | Its declaration changed, and it was not rebuilt. It reads new events over its old rows. |
 | `rebuilding` | A process manager or a read model delivered `:in_transaction` reads the log again from the start. |
-| `failing` | It failed 3 times on one event, and stopped there. The task adds "while it replays the log" if it failed during a rebuild, or during the first replay of a process manager. |
+| `failing` | It failed 3 times on one event, and stopped there. The task adds "while it replays the log" if it is a read model delivered `:in_transaction` or a process manager, and it failed in its replay. |
 
 <a id="move-a-subscription-past-an-event-that-fails"></a>
 
@@ -132,8 +132,10 @@ event.
    > **A reset of a process manager does not undo a skip.**
    > A reset of the other kinds applies the event again. A skip moves the subscription past the
    > event. If the event erased a subject, a read model keeps its copy of the subject until you
-   > reset it. If the skipped event is an `ends_on` event, the run of a process manager stays open,
-   > and its timers still fire.
+   > reset it. A read model delivered `:in_transaction` that is `failing` also keeps its copy of
+   > each subject erased after it failed, until you skip the event or reset it. If the skipped
+   > event is an `ends_on` event, the run of a process manager stays open, and its timers still
+   > fire.
 
 5. Run the command:
 

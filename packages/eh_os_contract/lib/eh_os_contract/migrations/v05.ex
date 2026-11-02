@@ -26,7 +26,8 @@ defmodule EhOsContract.Migrations.V05 do
            )
 
     execute("""
-    UPDATE eh_os_contract_subscriptions SET status = 'stale'
+    UPDATE eh_os_contract_subscriptions
+    SET status = 'stale', failed_position = NULL, failure = NULL, attempts = 0
     WHERE status = 'failing' AND mode = 'inline'
     """)
 

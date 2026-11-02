@@ -246,9 +246,10 @@ defmodule EhOsContract.MigrationsTest do
     # Issue #550: before V05, dispatch went on projecting an inline read model that
     # failed while it was rebuilt, so V05 has it rebuilt from the start.
     Repo.query!(
-      "INSERT INTO eh_os_contract_subscriptions (name, kind, mode, version, status) " <>
-        "VALUES ('MigrationsTest', 'read_model', 'inline', 'v', 'failing'), " <>
-        "('MigrationsTest:ordered', 'read_model', 'ordered', 'v', 'failing')"
+      "INSERT INTO eh_os_contract_subscriptions " <>
+        "(name, kind, mode, version, status, failed_position, failure, attempts) " <>
+        "VALUES ('MigrationsTest', 'read_model', 'inline', 'v', 'failing', 7, 'RuntimeError', 3), " <>
+        "('MigrationsTest:ordered', 'read_model', 'ordered', 'v', 'failing', 7, 'RuntimeError', 3)"
     )
 
     on_exit(fn ->
@@ -258,9 +259,10 @@ defmodule EhOsContract.MigrationsTest do
     migrate(:up, all: true)
 
     assert column("""
-           SELECT name || ' ' || status || ' ' || coalesce(resume_status, '-')
+           SELECT concat_ws(' ', name, status, coalesce(resume_status, '-'),
+                            coalesce(failed_position::text, '-'), attempts)
            FROM eh_os_contract_subscriptions WHERE name LIKE 'MigrationsTest%' ORDER BY name
-           """) == ["MigrationsTest stale -", "MigrationsTest:ordered failing -"]
+           """) == ["MigrationsTest stale - - 0", "MigrationsTest:ordered failing - 7 3"]
 
     migrate(:down, to: @upgrade_to_v5)
 
