@@ -225,7 +225,7 @@ of rows (`returns: :many`, the default), or one row or `nil` (`returns: :one`).
   `EhOsContract.Authorizer.OutsideScopeError`, and returns no row.
 - A `:system` actor is not narrowed.
 
-[Authorization](authorization.md) tells how grants are made.
+[Narrow a call to the values of a grant](scope.md) tells how a credential grants the values.
 
 ## What does the check say about a read model?
 

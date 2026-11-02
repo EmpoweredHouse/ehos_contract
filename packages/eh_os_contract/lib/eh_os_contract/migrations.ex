@@ -44,7 +44,8 @@ defmodule EhOsContract.Migrations do
   event's runs are the rows of `EhOsContract.EventRun`, filed under the process modules
   that include it. Version 4 records the digest of a contract's words beside its
   version on each deployment (`EhOsContract.Deployment`), so a change of the words
-  alone is a deployment of its own.
+  alone is a deployment of its own. Version 5 keeps the status a failing subscription
+  failed in, so that skipping the event goes back to it: a rebuild goes on rebuilding.
 
   **A version that removes a column stops the release before it.** The engine refuses
   to start on storage newer than its own version, since a node of the older release
@@ -111,7 +112,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 4
+  @current_version 5
 
   # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
   # match on the path: with `search_path: "ledger, public"` and the tables already

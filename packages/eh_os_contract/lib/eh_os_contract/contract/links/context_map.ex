@@ -23,7 +23,8 @@ defmodule EhOsContract.Contract.Links.ContextMap do
   # owns (plan DD, L3 (#286)), and a field typed with a domain value another context
   # declares. `mix eh_os_contract.check` reads the same list for the rules it keeps: a
   # reference with no relation (`cross-bounded-context-reference-without-mapping`) and a
-  # relation nothing crosses (`orphan-context-mapping`). Including an event in a process
+  # relation nothing crosses (`orphan-context-mapping`), which leaves `:separate_ways`
+  # out because X11 refuses every reference across it. Including an event in a process
   # module is no reference: a process belongs to no context.
   @moduledoc false
 

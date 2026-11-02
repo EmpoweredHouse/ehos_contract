@@ -50,6 +50,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
+  Concept page, "How is a call authorized?", with two diagrams: the order of a call from sign-in to
+  the answer, and which calls the Authorizer checks. Three how-tos take the rest: `scope.md` narrows a
+  call to the values of a grant, `authorizer.md` adds a rule of your own, and `calls.md` serves the
+  contract over HTTP, through `call/3` or from code. The status table is gone. The pages now say that
+  a recorded event has no scope, that `eh_os_contract_auth` signs a person in itself, that a
+  credential can expire in up to 15 minutes, and that a removed key stays trusted while fetches fail.
+  The table of what each answer writes now has the refusals after the Authorizer and a repeated
+  idempotency key. Links change: the sections on scope, the Authorizer, the plug, `call/3` and
+  idempotency keys are now on the three new pages.
 - **The page on processes is split by what a reader asks** (#517). `docs/process.md` is a Concept
   page, "What is a process module?", with one diagram: which verdicts a promise can have, and what
   moves it. Recording an outage of an external system is a how-to, `outages.md`. What the
@@ -59,6 +69,30 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   run whole. They also give the names of the verdicts, `:satisfied` and `:violated`, beside the
   report's "Met" and "BREACHED". Links change: the sections of `process.md` on recording an outage
   and on how the report reads a process are now `outages.md` and `conformance.md`.
+
+### Fixed
+
+- **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
+  `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
+  model delivered `:in_transaction` then never got the events after the skipped one, and a process
+  manager reacted to the history after it: it issued commands and set timers for past events. Now a
+  skip puts the subscription back in the status it failed in, so the rebuild or the replay continues
+  after the event. Dispatch also leaves a `failing` read model delivered `:in_transaction` alone, as
+  a `rebuilding` one; the runner takes those events after the skip, an erasure among them, and a
+  query with `min_position:` waits for it. The task's list says "while it replays the log" for a
+  subscription that failed during a rebuild or a process manager's replay, and `--skip` of an unknown
+  key says that the key is not a subscription, not that it is not failing. The storage goes to
+  version 5, which keeps that status: add a migration calling `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
+  marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
+  boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
+  queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
+  `running` on a skip, as before: reset a process manager that failed during its replay instead of
+  skipping it.
+- **`mix eh_os_contract.check` no longer warns that a `:separate_ways` relation is crossed by no
+  reference** (`orphan-context-mapping`, #537). The relation says that the two contexts do not depend on
+  each other, and the compiler refuses a reference across it. The only way to silence the warning was to
+  remove the relation, and that removed the refusal too. A domain with such a relation has one warning
+  fewer for each; no verdict moves.
 
 ## [0.13.1] - 2026-11-01
 

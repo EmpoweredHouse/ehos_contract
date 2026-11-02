@@ -297,10 +297,12 @@ module answered a row that the credential does not grant. The `where` of the que
 caller gets no row.
 
 **A query reads part of the rows.** The read model is being rebuilt. Give `min_position:` to wait for
-it.
+it. If the rebuild stopped at an event that fails, the read model is `failing`, and a person must
+move it: [Move a subscription past an event that fails](subscriptions.md#move-a-subscription-past-an-event-that-fails).
 
 ## Next steps
 
 - [Repair or replay a subscription](subscriptions.md): rebuild the read model after a change.
 - [What is a scenario?](scenarios.md): how a scenario of a query runs.
-- [Authorization](authorization.md): the capabilities and grants that a query asks for.
+- [How is a call authorized?](authorization.md): the capabilities that a query asks for.
+- [Narrow a call to the values of a grant](scope.md): the scope of a query.

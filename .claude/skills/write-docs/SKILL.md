@@ -133,7 +133,7 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
 
 ## Not this skill
 
-- Prose pages written by hand in `docs/` (`contract.md`, `authorization.md`, the concept pages): they have
+- Prose pages written by hand in `docs/` (`contract.md`, the concept pages, `authorization.md` among them): they have
   their own tests (`docs_test.exs`) and are guides, not reference. How to add one, and what each kind of change
   asks of the docs: `packages/eh_os_contract/MAINTAINING-DOCS.md`.
 - Comments for the next maintainer: `CLAUDE.md`, "A code never stands alone in prose", and the issue

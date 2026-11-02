@@ -522,6 +522,12 @@ transactional enqueue is still what makes an effect's job an outbox. A poison ev
 its position until a person skips it; a query reads its own write with `min_position:`. Details in
 `contract-v2.md` §12.
 
+*Amended 2 November 2026:* a skip put every row back to `running`, which ended a rebuild at the skipped event:
+an inline read model never read the rest of the log, and a process manager reacted to the history after it. A
+skip now puts the row back in the status it failed in, which storage version 5 keeps in `resume_status`, so a
+rebuild or a process manager's replay goes on past the skipped event; dispatch leaves a failing inline read
+model to the runner, as a rebuilding one. [#550](https://github.com/EmpoweredHouse/eh-os-contract/issues/550)
+
 ### Idempotency
 
 Every async handler eventually processes the same event twice. **The event declares `identity:` in the

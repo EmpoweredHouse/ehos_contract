@@ -25,7 +25,8 @@ when one differs from what the task would write now:
 | `docs/img/<id>.svg` | `mix ehos_diagrams.gen` | the hand-laid source `docs/diagrams/<id>.svg`, and the words of `docs/glossary.md` |
 
 **Prose** pages are written by hand: `README.md`, `docs/introduction.md`, `docs/getting-started.md`,
-`docs/contract.md`, the concept pages, `docs/authorization.md` and `docs/glossary.md`. The list is
+`docs/contract.md`, the concept pages, among them `docs/authorization.md` and its how-tos, and
+`docs/glossary.md`. The list is
 `EhOsContract.Docs.prose/0` (in `dev/`). Each of them:
 
 - has at least one example that defines a module, and every `elixir` block that defines one compiles, with the

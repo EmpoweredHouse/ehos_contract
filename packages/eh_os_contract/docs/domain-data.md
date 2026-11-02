@@ -25,7 +25,7 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 - **A human actor is a role.** The platform that issues the credentials grants roles to people. The
   role of `:mechanic` in the domain `:shop` is `shop.mechanic`. A credential carries the capabilities
   of its roles. The engine does not know who is behind a credential: it sees an opaque subject.
-  [Authorization](authorization.md) tells how a credential becomes an actor.
+  [How is a call authorized?](authorization.md) tells how a credential becomes an actor.
 - **A system actor is code of the application** that acts as itself, for example a job or an
   import: `EhOsContract.Actor.system(:payment_terminal)`. It needs no credential. It can do what the
   declarations that name it permit. The engine does not ask the `EhOsContract.Authorizer` about a
@@ -55,7 +55,8 @@ the `EhOsContract.Authorizer`, with the capability.
 - Each actor in the `by:` of a scoped declaration must have the dimension
   ([`D10`](refusals.md#refusals-d)).
 
-[Authorization](authorization.md) tells what the checks do before and after a query runs.
+[Narrow a call to the values of a grant](scope.md) tells what the checks do before and after a
+query runs.
 
 If an actor with a scope is in the `by:` of a command without `scope`, the check warns
 `scoped-actor-with-unscoped-command`. For this actor, the capability of that command is then valid
@@ -365,8 +366,8 @@ end
 
 - [How does the engine keep and erase personal data?](personal-data.md): the subjects,
   and the personal fields of this example.
-- [Authorization](authorization.md): how a credential becomes an actor, and how a scope is
-  checked.
+- [How is a call authorized?](authorization.md): how a credential becomes an actor.
+- [Narrow a call to the values of a grant](scope.md): how a scope is checked.
 - [What is a reaction?](reactions.md): the effects that call an external system.
 - [The compile refusals](refusals.md#refusals-d): each refusal of a domain, and of a contract
   against its domain ([`X`](refusals.md#refusals-x)).

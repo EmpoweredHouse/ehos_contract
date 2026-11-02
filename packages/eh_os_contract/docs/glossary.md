@@ -24,6 +24,7 @@ another page uses a word in a different way, this page is correct.
 | **Context** | A part of the domain in which each word has one meaning. Each contract belongs to one context. Also called a bounded context. | `context` |
 | **Contract** | A module that describes what the units of one context decide: their commands, events, invariants and lifecycles. It also holds the consumers of their events, the queries and the scenarios. | `use EhOsContract.Contract` |
 | **Correlation** | The fields that tell the runs of one process apart. Each event that the process includes carries them. Example: `loan_id`. | `correlate` |
+| **Credential** | A signed token that a platform issues to a person or a system. It names a subject and the capabilities that it grants. The engine does not verify it: the host verifies the signature before it builds the actor. | `EhOsContract.Actor.credential/3`, `eh_os_contract_auth` |
 | **Data key** | A key of 32 random bytes for one subject. The engine encrypts the personal fields of the subject with it. A master key wraps it. If the subject is erased, the engine destroys it. | `EhOsContract.Vault` |
 | **Deadline** | The longest time that a whole run can take, from its first event to the first event that ends it. | `deadline` |
 | **Decision** | The answer of a unit to a command: events, or a rejection. The implementation of the unit makes the decision. | the callback for each command, `emit/1`, `reject/1` |
@@ -60,9 +61,11 @@ another page uses a word in a different way, this page is correct.
 | **Rejection** | The answer of a unit that refuses a command on an invariant or a constraint. The log gets no event. | `reject/1`, `rejects:` |
 | **Relation** | How two contexts depend on each other: one of 8 patterns of context mapping. | `relation`, in the domain |
 | **Relay** | The consumer that reads the published events from the log and gives them to the bus. | `EhOsContract.Relay` |
+| **Role** | The name of one human actor of a domain: `<domain>.<actor>`. A role grants the capability of each declaration whose `by:` or `recorded_by:` names the actor. The platform that issues the credentials grants roles to people. A credential carries the capabilities of the roles, not the roles. | `roles:` in `EhOsContract.Model.capabilities/1` |
 | **Run** | One case of a process. Example: one loan, from lending to return. The correlation fields of its events tell it from other runs. | — |
 | **Scenario** | An example that a contract or a process module carries: the events that occurred, what occurs next, and the result that it must give. The engine runs each scenario as a test. | `scenario`, `EhOsContract.ScenarioCase` |
 | **Schema version** | The version of the fields of an event. A row in the log keeps the version that it was written with. | `schema_version` |
+| **Scope** | One field that narrows a command or a query to the values that a credential grants. Example: a lead can act only in warehouse 7. | `scope:` |
 | **Stage** | One step of a run, with the events that it includes. The stages have an order. The report counts the runs that entered them out of order. | `stage` |
 | **State** | What a unit or a process manager remembers between decisions. The engine folds it from the events, in order. | `state` |
 | **Status** | The position of an aggregate in its lifecycle. The engine calculates it from the names of the events in the stream. | `status`, in the state |
