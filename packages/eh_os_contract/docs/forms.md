@@ -220,8 +220,8 @@ end
 defp keep_key(socket, _key), do: socket
 ```
 
-The key comes from the browser, and dispatch writes it to the log. So `keep_key/2` accepts only a
-UUID, as `mount/3` makes it.
+The key comes from the browser. If dispatch accepts the command, it writes the key to the log. So
+`keep_key/2` accepts only a UUID, as `mount/3` makes it.
 
 **Result:** if the person types `July` as the period, the page shows an error at the period.
 
