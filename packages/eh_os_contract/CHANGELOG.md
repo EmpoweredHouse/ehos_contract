@@ -83,7 +83,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Fixed
 
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
-  does not narrow a `:system` actor, so a `scope` on the command narrows nothing for it.
+  does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
   A `POST` must have the header `content-type: application/json`, with or without parameters such as
   `charset`. Otherwise the answer is 415, `{"error": "unsupported_media_type"}`, and nothing is
