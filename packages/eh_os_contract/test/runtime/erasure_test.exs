@@ -124,6 +124,23 @@ defmodule EhOsContract.ErasureTest do
              ] = Enum.map(log(), &Consumer.decode!/1)
     end
 
+    test "a read model projected in the transaction that failed while it was rebuilt is left to its runner" do
+      two_members!()
+      Subscription.register!(Repo, Implementations.subscribed())
+      key = "shredding_rig.members:read_model:members"
+
+      {1, _} =
+        Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == ^key),
+          set: [status: "failing", position: 1, failed_position: 2, resume_status: "rebuilding"]
+        )
+
+      # A `forget/2` that raised on its partial rows would roll the erasure back.
+      {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+
+      assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
+      assert %{status: "failing", position: 1} = Repo.get!(EhOsContract.SubscriptionRecord, key)
+    end
+
     test "a second erasure is {:ok, :already_erased} and appends nothing" do
       two_members!()
       {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)

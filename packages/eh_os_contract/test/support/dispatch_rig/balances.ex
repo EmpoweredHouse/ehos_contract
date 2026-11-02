@@ -3,6 +3,10 @@ defmodule DispatchRig.Balances do
   **Invented.** The balances read model, one row per account, written in its own
   table, with the position of the last event it projected: the one field of an
   event's `__meta__` a projection most often needs.
+
+  A test can make it raise on a deposit of exactly 77,
+  `Process.put(:dispatch_rig_balances_fail, true)`: dispatch would roll back on it, so
+  this is how a rebuild meets an event it cannot apply.
   """
 
   use DispatchRig.Ledger, read_model: :balances
@@ -19,8 +23,12 @@ defmodule DispatchRig.Balances do
   end
 
   @impl true
-  def deposited(%Deposited{account_id: id, amount: amount, __meta__: meta}),
-    do: move(id, amount, meta.position)
+  def deposited(%Deposited{account_id: id, amount: amount, __meta__: meta}) do
+    if amount == 77 and Process.get(:dispatch_rig_balances_fail),
+      do: raise("the balances fail on 77")
+
+    move(id, amount, meta.position)
+  end
 
   @impl true
   def withdrawn(%Withdrawn{account_id: id, amount: amount, __meta__: meta}),

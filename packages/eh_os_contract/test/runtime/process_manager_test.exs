@@ -367,6 +367,32 @@ defmodule EhOsContract.ProcessManagerTest do
       assert %{status: "running"} = Repo.get!(EhOsContract.SubscriptionRecord, @chase)
     end
 
+    test "skipped at an event it cannot fold, goes on replaying and reacts to none of the history after it" do
+      # History: interest before any deposit, which a running manager flags.
+      at(0, fn ->
+        dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
+        dispatch(%Deposit{account_id: "a-1", amount: 77})
+        dispatch(%OpenAccount{account_id: "a-2", branch_id: "b-7"})
+
+        {:ok, _} =
+          EhOsContract.record(Ledger, %InterestRecorded{account_id: "a-2", amount: 3},
+            actor: Actor.system(:nightly_import)
+          )
+      end)
+
+      # The deploy replays it, and fails on the deposit it cannot fold.
+      assert %{failing: [@chase]} = drain_at(1)
+      assert %{status: "failing"} = Repo.get!(EhOsContract.SubscriptionRecord, @chase)
+
+      assert :ok = Subscription.skip(Repo, @chase)
+      assert %{status: "rebuilding"} = Repo.get!(EhOsContract.SubscriptionRecord, @chase)
+
+      assert %{failing: []} = drain_at(1)
+      assert flags() == []
+      assert %ProcessManagerRecord{completed_at: nil} = run("a-2")
+      assert %{status: "running"} = Repo.get!(EhOsContract.SubscriptionRecord, @chase)
+    end
+
     test "takes events in batches, since it dispatches nothing" do
       for account <- ~w(a-1 a-2 a-3), do: open(account)
       drain_at(0)

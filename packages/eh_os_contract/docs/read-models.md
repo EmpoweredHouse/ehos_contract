@@ -297,7 +297,8 @@ module answered a row that the credential does not grant. The `where` of the que
 caller gets no row.
 
 **A query reads part of the rows.** The read model is being rebuilt. Give `min_position:` to wait for
-it.
+it. If the rebuild stopped at an event that fails, the read model is `failing`, and a person must
+move it: [Move a subscription past an event that fails](subscriptions.md#move-a-subscription-past-an-event-that-fails).
 
 ## Next steps
 

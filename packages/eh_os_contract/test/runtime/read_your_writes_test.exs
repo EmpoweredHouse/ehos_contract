@@ -22,6 +22,14 @@ defmodule EhOsContract.ReadYourWritesTest do
   defp lines(opts),
     do: EhOsContract.query(Ledger, %LinesOf{account_id: "a-1"}, [actor: @auditor] ++ opts)
 
+  # The row of a subscription that stopped at the event after `position`.
+  defp failing!(key, position) do
+    {1, _} =
+      Repo.update_all(from(s in EhOsContract.SubscriptionRecord, where: s.name == ^key),
+        set: [status: "failing", position: position, failed_position: position + 1]
+      )
+  end
+
   setup do
     Testing.drain()
     {:ok, _} = dispatch(%OpenAccount{account_id: "a-1", branch_id: "b-7"})
@@ -45,6 +53,25 @@ defmodule EhOsContract.ReadYourWritesTest do
 
   test "and refuses when the read model does not get there in time", %{position: position} do
     assert {:error, :not_caught_up} = lines(min_position: position, wait: 50)
+  end
+
+  test "a read model projected in the transaction that failed while it was rebuilt refuses", %{
+    position: position
+  } do
+    failing!("dispatch_rig.ledger:read_model:balances", position)
+
+    assert {:error, :not_caught_up} =
+             EhOsContract.query(Ledger, %BalanceOf{account_id: "a-1"},
+               actor: @auditor,
+               min_position: position,
+               wait: 0
+             )
+  end
+
+  test "control: a failing read model projected after the transaction answers up to where it stopped",
+       %{position: position} do
+    failing!("dispatch_rig.ledger:read_model:ledger_lines", position)
+    assert {:ok, []} = lines(min_position: position, wait: 0)
   end
 
   test "a read model projected in the transaction already has it", %{position: position} do

@@ -19,7 +19,10 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
 
   - `--skip` moves a `failing` subscription past the one event it fails on, which is
     then never applied. If that event erased a subject, the read model keeps the
-    subject's copy until it is reset.
+    subject's copy until it is reset. A subscription that failed while it replayed
+    the log goes on with the replay past that event: a read model takes the rest of
+    the log, and a process manager learns the rest of its runs without reacting to
+    them, also the events appended while it was failing.
   - `--reset` empties a read model through its `reset/0` and replays the whole log
     into it; a read model without `reset/0` cannot be reset.
   - `--reset` of a process manager forgets every run it steers and replays the log
@@ -58,6 +61,7 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
     case Subscription.skip(repo, key) do
       :ok -> Mix.shell().info("#{key}: moved past the event it failed on, which is not applied")
       {:error, :not_failing} -> Mix.raise("#{key} is not failing, so there is nothing to skip")
+      {:error, :not_registered} -> Mix.raise("#{key} is not a subscription of this application")
     end
   end
 
@@ -105,5 +109,10 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
   defp failure(%{failed_position: nil}), do: ""
 
   defp failure(row),
-    do: ", fails at #{row.failed_position} (#{row.failure}, #{row.attempts} attempts)"
+    do:
+      ", fails at #{row.failed_position} (#{row.failure}, #{row.attempts} attempts)" <>
+        while(row)
+
+  defp while(%{resume_status: "rebuilding"}), do: " while it replays the log"
+  defp while(_row), do: ""
 end
