@@ -228,7 +228,7 @@ The rewrap raises with one of these messages:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| `the vault wraps with …, not with … that was expected` | The first key of the list is not the key that you gave. The list is not the list of step 2, or you gave the wrong id. No data key changed. | Run the rewrap with the configuration of step 2, and give the id of the new key. |
+| `the vault wraps with …, not with … that was expected` | The first key of the list is not the key that you gave. The list is not the list of step 2, or you mistyped the id of the new key. No data key changed. | Run the rewrap with the configuration of step 2, and give the id of the new key. |
 | `… are still wrapped by another master key than …` | A node still wraps with the old key, or another rewrap holds some rows. | Wait until each node runs the new configuration and the other rewrap ends. Run the rewrap again. |
 | `… cannot be unwrapped with master key …; is that key still in the vault?` | The list of keys does not hold the key that wraps a row. | Put that key back in the list, deploy, and run the rewrap again. |
 | `the vault wrapped with … and calls … current` | A vault of your own returns from `wrap/2` an id other than `current/0`. | Make `wrap/2` return the id of `current/0`. |

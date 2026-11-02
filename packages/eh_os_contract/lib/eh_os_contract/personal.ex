@@ -573,8 +573,8 @@ defmodule EhOsContract.Personal do
       raise ArgumentError,
             "the vault wraps with #{inspect(current)}, not with #{inspect(expect)} that was " <>
               "expected, so no data key was rewrapped; run the rewrap with the configuration " <>
-              "that lists #{inspect(expect)} first, or name the key that the configuration " <>
-              "lists first"
+              "that lists #{inspect(expect)} first, and check that #{inspect(expect)} is the " <>
+              "id of the new key"
     end
 
     count = rewrap!(repo, batch, current, 0)

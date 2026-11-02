@@ -76,9 +76,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **Breaking:** **The rewrap takes the id of the new master key, and refuses a vault that wraps
   with another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
   `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`. If the first key of the list is not that
-  key, the rewrap stops before it changes a data key. Before, a rewrap with the list of before the
-  rotation wrapped each data key with the old key again, and ended without an error. The next
-  deploy then removed the old key, and the personal data did not unwrap.
+  key, the rewrap stops before it changes a data key. The batch size moves to the third argument:
+  `rewrap!(MyApp.Repo, 50)` now raises `FunctionClauseError`. Before, a rewrap with the list of
+  before the rotation wrapped each data key with the old key again, and ended without an error. The
+  next deploy then removed the old key, and the personal data did not unwrap.
 - **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
   Concept page, "How is a call authorized?", with two diagrams: the order of a call from sign-in to
   the answer, and which calls the Authorizer checks. Three how-tos take the rest: `scope.md` narrows a

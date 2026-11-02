@@ -232,7 +232,7 @@ defmodule EhOsContract.VaultTest do
       keys([{"kek-old", @kek}, {"kek-new", @new_kek}])
 
       assert_raise ArgumentError,
-                   ~r/the vault wraps with "kek-old", not with "kek-new" that was expected.*or name the key/,
+                   ~r/the vault wraps with "kek-old", not with "kek-new" that was expected.*check that "kek-new" is the id of the new key$/,
                    fn -> Personal.rewrap!(Repo, "kek-new") end
 
       assert kek_ids() == ["kek-old", "kek-new"]
