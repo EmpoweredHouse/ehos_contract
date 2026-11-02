@@ -44,9 +44,12 @@ defmodule EhOsContract.Supplier do
 
   If the stream of the unit changed after the engine read it, and the transaction is
   the engine's own, the engine tries the command again, in a new transaction, and asks
-  again. In a transaction of the host, the engine returns `{:error, :conflict}`. A
-  command that reads entities (`reads:`) reads them in the same transaction, after the
-  answer.
+  again. In a transaction of the host, the engine returns `{:error, :conflict}`.
+
+  If a command with a supplied field also reads entities (`reads:`), the engine reads
+  them in the same transaction, after the answer, and again on each retry. A command
+  with no supplied field reads its entities before the transaction
+  (`EhOsContract.Entities`).
 
   The engine does not ask for a retry of a request that it accepted under its
   idempotency key. That retry gets its receipt.
