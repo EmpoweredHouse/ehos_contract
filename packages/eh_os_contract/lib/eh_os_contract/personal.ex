@@ -641,20 +641,11 @@ defmodule EhOsContract.Personal do
   @doc false
   @spec check_master_keys!(module(), [map()]) :: :ok
   def check_master_keys!(repo, models) do
-    if Enum.any?(models, &declares?/1), do: Enum.each(kek_ids(repo), &check_master_key!(repo, &1))
+    if Enum.any?(models, &declares?/1), do: Enum.each(samples(repo), &check_master_key!(repo, &1))
     :ok
   end
 
-  defp check_master_key!(repo, kek_id) do
-    {type, id, version, wrapped} =
-      repo.one(
-        from(k in @keys,
-          where: k.kek_id == ^kek_id,
-          limit: 1,
-          select: {k.subject_type, k.subject_id, k.key_version, k.wrapped_key}
-        )
-      )
-
+  defp check_master_key!(repo, [kek_id, type, id, version, wrapped]) do
     case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
       {:ok, _key} ->
         :ok
@@ -674,26 +665,31 @@ defmodule EhOsContract.Personal do
   defp data_keys(1), do: "1 data key is"
   defp data_keys(count), do: "#{count} data keys are"
 
-  # A loose index scan down the `kek_id` index: the smallest id, then the smallest
-  # greater than the last, so the boot reads a row for each master key.
-  defp kek_ids(repo) do
+  # One data key of each master key, as `[kek_id, subject_type, subject_id,
+  # key_version, wrapped_key]`. A loose index scan down the `kek_id` index finds the
+  # ids: the smallest, then the smallest greater than the last. One statement, so one
+  # snapshot: a rewrap or an erasure on another node that moves the last data key off
+  # a master key cannot leave an id without its row.
+  defp samples(repo) do
     %{rows: rows} =
       repo.query!(
         """
         WITH RECURSIVE k(kek_id) AS (
-          SELECT min(kek_id) FROM eh_os_contract_subject_keys
+          SELECT min(kek_id) FROM #{@keys}
           UNION ALL
-          SELECT (SELECT min(s.kek_id) FROM eh_os_contract_subject_keys s
-                  WHERE s.kek_id > k.kek_id)
+          SELECT (SELECT min(s.kek_id) FROM #{@keys} s WHERE s.kek_id > k.kek_id)
           FROM k WHERE k.kek_id IS NOT NULL
         )
-        SELECT kek_id FROM k WHERE kek_id IS NOT NULL
+        SELECT s.kek_id, s.subject_type, s.subject_id, s.key_version, s.wrapped_key
+        FROM k CROSS JOIN LATERAL (
+          SELECT * FROM #{@keys} s WHERE s.kek_id = k.kek_id LIMIT 1
+        ) s
         """,
         [],
         log: false
       )
 
-    for [kek_id] <- rows, do: kek_id
+    rows
   end
 
   # What a data key is bound to when wrapped: its row.
