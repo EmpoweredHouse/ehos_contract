@@ -319,9 +319,8 @@ defmodule EhOsContract.Personal do
 
         Logger.warning(
           "subscription #{consumer.key}: it is failing, and its forget/2 raised " <>
-            "#{inspect(exception.__struct__)} on an erasure of a #{erased.subject}, so " <>
-            "its rows keep the subject until it is skipped past the event it fails on " <>
-            "or reset"
+            "#{inspect(exception.__struct__)} on an erasure of subject type " <>
+            "#{erased.subject}, so its rows keep the subject until it is reset"
         )
     else
       :ok -> repo.query!("RELEASE SAVEPOINT eh_os_contract_forget")

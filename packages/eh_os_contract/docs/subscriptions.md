@@ -134,7 +134,8 @@ event.
    > event. If the event erased a subject, a read model keeps its copy of the subject until you
    > reset it. A read model delivered `:in_transaction` that is `failing` forgets a subject at the
    > erasure. If its `forget/2` raises, the engine logs a warning and undoes what `forget/2` wrote.
-   > The read model then keeps its copy until you skip the event or reset it. If the skipped
+   > The read model then keeps its copy until you reset it, or until its runner reaches the
+   > erasure after a skip and `forget/2` succeeds. If the skipped
    > event is an `ends_on` event, the run of a process manager stays open, and its timers still
    > fire.
 

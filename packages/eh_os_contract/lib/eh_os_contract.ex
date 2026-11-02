@@ -403,8 +403,8 @@ defmodule EhOsContract do
   `mix eh_os_contract.subscriptions --skip` keeps its copy; `--reset` rebuilds it,
   and the replay forgets. A read model fed in the transaction that is `failing` forgets
   at once; if its `forget/2` raises on the rows it has, what it wrote is undone, a
-  warning names it, and it keeps its copy until it is skipped past the event it fails
-  on or reset. Calling `erase/3` again appends nothing.
+  warning names it, and it keeps its copy. A reset forgets; after a skip, its runner
+  calls `forget/2` again when it reaches the erasure. Calling `erase/3` again appends nothing.
 
   Raises when no domain of the host's contracts declares `subject`.
   """

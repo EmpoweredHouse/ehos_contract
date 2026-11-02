@@ -81,9 +81,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   a `rebuilding` one; the runner takes those events after the skip, and a query with
   `min_position:` waits for it. An erasure still calls its `forget/2` at once (#557), but inside a
   savepoint: if `forget/2` raises on the partial rows, the engine undoes what it wrote, logs a
-  warning, and the erasure continues. Before, that raise failed the erasure, and every later one.
-  The task's list says "while it replays the log" for a subscription that failed during a rebuild
-  or a process manager's replay, and `--skip` of an unknown key says that the key is not a subscription, not that it is not failing. The storage goes to
+  warning, and the erasure continues. Before, that raise failed the erasure, and every later one. A
+  `forget/2` that raises or rolls back inside a `Repo.transaction` of its own still fails the
+  erasure. The task's list says "while it replays the log" for a subscription that failed during a
+  rebuild or a process manager's replay, and `--skip` of an unknown key says that the key is not a
+  subscription, not that it is not failing. The storage goes to
   version 5, which keeps that status: add a migration calling `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
   marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
   boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its

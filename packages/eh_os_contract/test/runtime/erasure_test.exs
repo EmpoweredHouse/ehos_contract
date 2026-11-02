@@ -162,6 +162,7 @@ defmodule EhOsContract.ErasureTest do
         end)
 
       assert log =~ "subscription #{key}: it is failing, and its forget/2 raised Postgrex.Error"
+      refute log =~ "member-anna"
 
       # What `forget/2` wrote before it raised is undone; the erasures are not.
       assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
