@@ -33,6 +33,10 @@ defmodule ShreddingRig.MembersTable do
       set: [name: nil]
     )
 
+    # Rows a rebuild left partial: it has written, then Postgres refuses the next
+    # statement, which aborts the transaction it runs in.
+    if Process.get(:shredding_rig_forget_fails), do: repo().query!("SELECT 1 / 0")
+
     :ok
   end
 
