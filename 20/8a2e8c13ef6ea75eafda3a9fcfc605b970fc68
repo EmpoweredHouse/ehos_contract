@@ -1,0 +1,1 @@
+Doc-only fix for a CodeRabbit comment (scope the reads: sentence); docs --check and ExDoc --warnings-as-errors pass. Reviewed by the author inline.
