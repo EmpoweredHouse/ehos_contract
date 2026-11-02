@@ -7,13 +7,15 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   [a rotation](master-keys.md), before you remove the old key.
 
   > **The task starts the whole application.**
-  > Run it only with the code that is deployed. The task records a deployment. It
-  > starts the subscriptions, the relays, the inboxes and Oban. So effects can call
-  > external systems from where you run it, and an inbox can take messages from the
-  > transport. If your code differs from the deployed code, the engine rebuilds each
-  > changed process manager at once. It also rebuilds each changed read model that
-  > has `reset/0`. A process manager that rebuilds reacts to no event until it reaches
-  > the head of the log. The deployed nodes then rebuild the same consumers again at
+  > Run it only with the code that is deployed. The task records a deployment. It starts
+  > the subscriptions, the relays, the inboxes and Oban. So effects can call external
+  > systems from where you run it, and an inbox can take messages from the transport. If
+  > your code differs from the deployed code, the engine rebuilds each changed process
+  > manager at once. It also rebuilds each changed read model that has `reset/0`. A
+  > rebuilt read model is empty until it catches up. A rebuilt process manager forgets
+  > its runs, and learns them again from the log. An event appended before it reaches
+  > the head never gets a reaction. A timer due by then is dropped, unless its job is
+  > still in the queue. The deployed nodes then rebuild the same consumers again at
   > their next boot.
 
       mix eh_os_contract.rewrap
@@ -28,7 +30,7 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   > The task wraps with the first key of the list that it reads.
   > With the configuration of step 1, it wraps the data keys of the new key with the
   > old key again. It ends without an error. Remove the old key only when the printed id
-  > is the id of the new key, and each row of `eh_os_contract_subject_keys` names it.
+  > is the id of the new key. Each row of `eh_os_contract_subject_keys` must name it too.
   > [Manage the keys and the backups of personal data](master-keys.md) gives each step
   > of a rotation.
 
@@ -36,7 +38,8 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
     own. If the task stops, run it again.
   - Each batch skips the rows that another run or an erasure holds.
   - If a data key of another master key is left at the end, the task raises. Another
-    run holds that key, or a node wrote it with the old key during the run. Run the
+    run or an erasure holds that key, or a node wrote it with the old key during the
+    run. Run the
     task again when each node runs the new configuration.
   - If the vault does not hold the key that wraps a row, the task raises. Put that
     key back in the list, deploy, and run the task again.

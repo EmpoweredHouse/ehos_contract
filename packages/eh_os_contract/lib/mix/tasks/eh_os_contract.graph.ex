@@ -39,16 +39,18 @@ defmodule Mix.Tasks.EhOsContract.Graph do
   - The bytes are the bytes that the API serves, with the keys of each object in
     order. So you can compare two documents with `diff`.
 
-  ## Add what the log says
+  ## Add what the log says over the document
 
   > **`--overlay` starts the whole application.**
-  > Run it only with the code that is deployed. The task records a deployment. It
-  > starts the subscriptions, the relays, the inboxes and Oban. So effects can call
-  > external systems from where you run it, and an inbox can take messages from the
-  > transport. If your code differs from the deployed code, the engine rebuilds each
-  > changed process manager at once. It also rebuilds each changed read model that
-  > has `reset/0`. A process manager that rebuilds reacts to no event until it reaches
-  > the head of the log. The deployed nodes then rebuild the same consumers again at
+  > Run it only with the code that is deployed. The task records a deployment. It starts
+  > the subscriptions, the relays, the inboxes and Oban. So effects can call external
+  > systems from where you run it, and an inbox can take messages from the transport. If
+  > your code differs from the deployed code, the engine rebuilds each changed process
+  > manager at once. It also rebuilds each changed read model that has `reset/0`. A
+  > rebuilt read model is empty until it catches up. A rebuilt process manager forgets
+  > its runs, and learns them again from the log. An event appended before it reaches
+  > the head never gets a reaction. A timer due by then is dropped, unless its job is
+  > still in the queue. The deployed nodes then rebuild the same consumers again at
   > their next boot.
 
   The overlay reads the log through the repo of the application, so the task starts

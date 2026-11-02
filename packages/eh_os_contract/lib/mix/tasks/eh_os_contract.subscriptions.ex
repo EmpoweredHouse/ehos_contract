@@ -7,14 +7,15 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
 
   > **The task starts the whole application.**
   > Run it only with the code that is deployed. The task records a deployment, and
-  > registers each subscription with the code that you run. It
-  > starts the subscriptions, the relays, the inboxes and Oban. So effects can call
-  > external systems from where you run it, and an inbox can take messages from the
-  > transport. If your code differs from the deployed code, the engine rebuilds each
-  > changed process manager at once. It also rebuilds each changed read model that
-  > has `reset/0`. A process manager that rebuilds reacts to no event until it reaches
-  > the head of the log. The deployed nodes then rebuild the same consumers again at
-  > their next boot.
+  > registers each subscription with the code that you run. It starts the subscriptions,
+  > the relays, the inboxes and Oban. So effects can call external systems from where
+  > you run it, and an inbox can take messages from the transport. If your code differs
+  > from the deployed code, the engine rebuilds each changed process manager at once. It
+  > also rebuilds each changed read model that has `reset/0`. A rebuilt read model is
+  > empty until it catches up. A rebuilt process manager forgets its runs, and learns
+  > them again from the log. An event appended before it reaches the head never gets a
+  > reaction. A timer due by then is dropped, unless its job is still in the queue. The
+  > deployed nodes then rebuild the same consumers again at their next boot.
 
       mix eh_os_contract.subscriptions
 
@@ -60,8 +61,8 @@ defmodule Mix.Tasks.EhOsContract.Subscriptions do
   | Consumer | What `--reset` does |
   | --- | --- |
   | A read model | Empties it through its `reset/0`, and replays the whole log into it. A read model without `reset/0` cannot be reset. |
-  | A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. No event gets a reaction until the replay ends, also an event appended during it. A timer that is due in that time is dropped. |
-  | A policy | Moves it back to the start of the log. It reacts to each event from there, also to the events from before it was deployed. The keys that it derives from each event stop it from issuing again what it issued before. The unit decides again each command that it rejected before, and the effects of a command that it accepts now run. You cannot undo it. If the policy now issues another command for an event, it fails with `:idempotency_key_reused`. |
+  | A process manager | Forgets each run that it steers, and replays the log with its reactions off. So it learns the runs again, and issues nothing for them. No event gets a reaction until the replay ends, also an event appended during it. A timer that is due in that time is dropped, unless its job is still in the queue. |
+  | A policy | Moves it back to the start of the log. It reacts to each event from there, also to the events from before it was deployed. The keys that it derives from each event stop it from issuing again what it issued before. The unit decides again each command that it rejected before, and the effects of a command that it accepts now run. Each step holds the append lock, so each append is slower until the reset ends. You cannot undo it. If the policy now issues another command for an event, the reset stops with `:idempotency_key_reused`, and the policy is `failing`. |
   | A relay (`<contract id>:relay:<name>`, `EhOsContract.Relay`) | Publishes the whole log again, under the same ids. The identities go out in clear text, also those of the subjects erased since. |
 
   For a relay, `--skip` means that the event never leaves the application.

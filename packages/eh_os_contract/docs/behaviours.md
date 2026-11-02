@@ -88,7 +88,7 @@ transport.
 
 ### What occurs between the relay, the bus and the inbox?
 
-![The engine starts a durable consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
+![The relay publishes each batch through the adapter in a transaction, and the durable consumer of an inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
 
 1. At boot, the engine starts the durable consumer of each inbox with
    `c:EhOsContract.Bus.consumer/2`. It starts each inbox before any relay.
@@ -571,8 +571,8 @@ A rotation does not rewrite an event.
 ### What does the engine check at boot?
 
 If a contract declares a personal field and the vault cannot wrap and unwrap, the
-engine does not start. A configured vault that does not export `c:EhOsContract.Vault.check/0` also
-stops the boot. So a vault with no master key stops the deployment, not the first
+engine does not start. With such a contract, a configured vault that does not
+export `c:EhOsContract.Vault.check/0` also stops the boot. So a vault with no master key stops the deployment, not the first
 command with a personal field.
 
 This check reads only the configured keys, not the data keys. It does not find a

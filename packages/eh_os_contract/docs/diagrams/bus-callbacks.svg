@@ -1,5 +1,5 @@
 <!-- title: What occurs between the relay, the bus and the inbox? -->
-<!-- desc: The engine starts a durable consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit. -->
+<!-- desc: The relay publishes each batch through the adapter in a transaction, and the durable consumer of an inbox acknowledges each message after its commit. -->
 <!-- words: relay, bus, inbox -->
 <!-- technical: Transport -->
 <!-- verbs: starts, subscribes, publishes, hands, confirms, delivers, calls, answers, acknowledges -->

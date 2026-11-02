@@ -19,7 +19,7 @@ defmodule EhOsContract.Bus do
 
   ## What occurs between the relay, the bus and the inbox?
 
-  ![The engine starts a durable consumer for each inbox, the relay hands each batch to the adapter in a transaction, and the inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
+  ![The relay publishes each batch through the adapter in a transaction, and the durable consumer of an inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
 
   1. At boot, the engine starts the durable consumer of each inbox with
      `c:consumer/2`. It starts each inbox before any relay.

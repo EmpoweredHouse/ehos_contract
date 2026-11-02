@@ -6,17 +6,20 @@ defmodule Mix.Tasks.EhOsContract.Report do
   section for each contract, then a section for each process module.
 
   > **The task starts the whole application.**
-  > The report reads the log through the repo of the application, so the task starts
-  > the application. Run it only with the code that is deployed. The task records a
-  > deployment. If your code differs from the deployed code, that deployment changes
-  > which version the report calls deployed, and the boundary of a changed promise. It starts the subscriptions, the relays, the inboxes and Oban. So
+  > The report reads the log through the repo of the application, so the task starts the
+  > application. Run it only with the code that is deployed. The task records a
+  > deployment. It starts the subscriptions, the relays, the inboxes and Oban. So
   > effects can call external systems from where you run it, and an inbox can take
   > messages from the transport. If your code differs from the deployed code, the
-  > engine rebuilds each changed process manager at once. It also rebuilds each
-  > changed read model that has `reset/0`. A process manager that rebuilds reacts to
-  > no event until it reaches the head of the log. The deployed nodes then rebuild the
-  > same consumers again at their next boot. To read the report of a running host
-  > without this, use the [JSON API of the dashboard](conformance.md#the-dashboard).
+  > recorded deployment changes which version the report calls deployed, and the
+  > boundary of a changed promise. The engine rebuilds each changed process manager at
+  > once. It also rebuilds each changed read model that has `reset/0`. A rebuilt read
+  > model is empty until it catches up. A rebuilt process manager forgets its runs, and
+  > learns them again from the log. An event appended before it reaches the head never
+  > gets a reaction. A timer due by then is dropped, unless its job is still in the
+  > queue. The deployed nodes then rebuild the same consumers again at their next boot.
+  > To read the report of a running host without this, use the [JSON API of the
+  > dashboard](conformance.md#the-dashboard).
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md

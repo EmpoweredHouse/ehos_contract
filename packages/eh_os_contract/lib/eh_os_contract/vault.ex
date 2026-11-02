@@ -64,8 +64,8 @@ defmodule EhOsContract.Vault do
   ## What does the engine check at boot?
 
   If a contract declares a personal field and the vault cannot wrap and unwrap, the
-  engine does not start. A configured vault that does not export `check/0` also
-  stops the boot. So a vault with no master key stops the deployment, not the first
+  engine does not start. With such a contract, a configured vault that does not
+  export `check/0` also stops the boot. So a vault with no master key stops the deployment, not the first
   command with a personal field.
 
   This check reads only the configured keys, not the data keys. It does not find a

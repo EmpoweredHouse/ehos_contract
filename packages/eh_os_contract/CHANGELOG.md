@@ -55,7 +55,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   starts with its scope and ends with "Next steps". `EhOsContract.Bus` has a diagram of what occurs
   between the relay, the bus and the inbox. The docs now say that `mix eh_os_contract.report`,
   `mix eh_os_contract.subscriptions`, `mix eh_os_contract.rewrap` and `mix eh_os_contract.graph
-  --overlay` start the whole application. The docs of a rotation of a master key now tell to check the id
+  --overlay` start the whole application. The docs of a rotation of a master key now tell the operator to check the id
   that the rewrap prints, and the key of each data key, before the old key goes (#541). Corrected facts: the
   supplier is asked by `dispatch/3` and `record/3` with `supply: true`, and its refusal is 503 over
   HTTP; a raise in `publish/2` makes the relay `failing` after three attempts, not at once; the
