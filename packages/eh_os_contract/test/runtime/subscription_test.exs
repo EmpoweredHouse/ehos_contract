@@ -408,6 +408,19 @@ defmodule EhOsContract.SubscriptionTest do
       assert version == Implementations.consumer(@lines).version
     end
 
+    test "a failing read model whose declaration changed is stale, and keeps no status to resume" do
+      deposit(31)
+      Testing.drain(only: @lines)
+      assert %SubscriptionRecord{status: "failing", resume_status: "running"} = row(@lines)
+
+      Repo.update_all(from(s in SubscriptionRecord, where: s.name == @lines),
+        set: [version: "old"]
+      )
+
+      Subscription.register!(Repo, [Implementations.consumer(@lines)])
+      assert %SubscriptionRecord{status: "stale", resume_status: nil} = row(@lines)
+    end
+
     test "a policy whose declaration changed just takes the new version" do
       Testing.drain(only: @flag)
 

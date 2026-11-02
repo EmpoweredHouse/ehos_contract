@@ -243,6 +243,27 @@ defmodule EhOsContract.MigrationsTest do
     assert version() == "4"
     refute resume_status?()
 
+    # Issue #550: before V05, dispatch went on projecting an inline read model that
+    # failed while it was rebuilt, so V05 has it rebuilt from the start.
+    Repo.query!(
+      "INSERT INTO eh_os_contract_subscriptions (name, kind, mode, version, status) " <>
+        "VALUES ('MigrationsTest', 'read_model', 'inline', 'v', 'failing'), " <>
+        "('MigrationsTest:ordered', 'read_model', 'ordered', 'v', 'failing')"
+    )
+
+    on_exit(fn ->
+      Repo.query!("DELETE FROM eh_os_contract_subscriptions WHERE name LIKE 'MigrationsTest%'")
+    end)
+
+    migrate(:up, all: true)
+
+    assert column("""
+           SELECT name || ' ' || status || ' ' || coalesce(resume_status, '-')
+           FROM eh_os_contract_subscriptions WHERE name LIKE 'MigrationsTest%' ORDER BY name
+           """) == ["MigrationsTest stale -", "MigrationsTest:ordered failing -"]
+
+    migrate(:down, to: @upgrade_to_v5)
+
     migrate(:down, to: @upgrade_to_v4)
 
     assert version() == "3"

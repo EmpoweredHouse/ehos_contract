@@ -165,8 +165,10 @@ defmodule EhOsContract.Dispatcher do
       {nil, :in_transaction} ->
         :ok
 
+      # An inline one that is failing failed while it was rebuilt: its rows are partial.
       {%{position: at, status: status}, _delivery}
-      when at >= position and status != "rebuilding" ->
+      when at >= position and status != "rebuilding" and
+             not (status == "failing" and delivery == :in_transaction) ->
         :ok
 
       _behind ->
@@ -924,7 +926,7 @@ defmodule EhOsContract.Dispatcher do
         )
       )
       |> Map.new(fn {name, status} ->
-        {name, if(status in ~w(rebuilding failing), do: :rebuilding, else: :running)}
+        {name, if(status in SubscriptionRecord.behind(), do: :rebuilding, else: :running)}
       end)
     end
   end

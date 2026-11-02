@@ -95,7 +95,9 @@ subscriptions_example.loans:read_model:copies_out  failing at 41, fails at 42 (K
 | `running` | It reads the log. After a reset, it reads from position 0 again. |
 | `stale` | Its declaration changed, and it was not rebuilt. It reads new events over its old rows. |
 | `rebuilding` | A process manager or a read model delivered `:in_transaction` reads the log again from the start. |
-| `failing` | It failed 3 times on one event, and stopped there. The task adds "while it is reset" if it failed during a rebuild. |
+| `failing` | It failed 3 times on one event, and stopped there. The task adds "while it replays the log" if it failed during a rebuild, or during the first replay of a process manager. |
+
+<a id="move-a-subscription-past-an-event-that-fails"></a>
 
 ## Move a subscription past an event that fails
 
@@ -124,7 +126,7 @@ event.
    | read model delivered `:at_least_once` | `--skip` | The rows never get the event. |
    | read model delivered `:in_transaction` | `--skip` | It fails only while it is rebuilt. The rows never get the event. The rebuild continues after the event, also with the events that dispatch appended while it was `failing`. Then dispatch writes the rows again. |
    | policy | `--skip`, then issue the command of that event yourself if it is necessary | The policy never takes the event. A reset reacts to the whole log again: [React to history](#react-to-history-or-publish-it-again). |
-   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. If it failed during such a replay, the replay continues after the event, with its reactions turned off. |
+   | process manager | `--skip`, then issue the command of that event yourself if it is necessary | The process manager never takes the event. Do not reset it: a reset forgets each run, and replays the log with its reactions turned off. An event appended before the replay ends never gets a reaction, and a timer due by then is dropped. If it failed during such a replay, the replay continues after the event, with its reactions turned off. The events appended while it was `failing` get no reaction either, and a timer due in that time is dropped. |
    | relay | `--skip` | The event never leaves the application. A reset publishes the whole log again to each subscriber, with the identities of erased subjects: [React to history](#react-to-history-or-publish-it-again). |
 
    > **A reset of a process manager does not undo a skip.**

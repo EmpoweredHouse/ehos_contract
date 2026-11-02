@@ -29,6 +29,13 @@ defmodule EhOsContract.SubscriptionRecord do
     field(:updated_at, :utc_datetime_usec)
   end
 
+  @doc """
+  The statuses in which dispatch leaves a read model delivered in the transaction to
+  its runner: being rebuilt, or failing, which it can only be while it is rebuilt.
+  """
+  @spec behind() :: [String.t()]
+  def behind, do: ~w(rebuilding failing)
+
   @doc "A change to a row, stamped with the time it is made."
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(row, changes) do

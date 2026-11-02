@@ -71,8 +71,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   a `rebuilding` one; the runner takes those events after the skip. The task's list says "while it
   is reset" for a subscription that failed during a rebuild, and `--skip` of an unknown key says that
   the key is not a subscription, not that it is not failing. The storage goes to version 5, which keeps that status: add a migration calling
-  `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. A row that was
-  `failing` before the upgrade goes back to `running` on a skip, as before.
+  `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
+  marks a read model delivered `:in_transaction` that is `failing` at the upgrade to go on
+  rebuilding. Another kind that is `failing` at the upgrade goes back to `running` on a skip, as
+  before.
 
 ## [0.13.1] - 2026-11-01
 
