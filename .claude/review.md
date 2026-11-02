@@ -30,8 +30,8 @@ Markdown that no part of `mix check` reads and that sets no rule a review follow
 root `README.md`, and `docs/` except `docs/adr/contract-v2.md`. The gate reads more than it seems
 to:
 
-- `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`,
-  `packages/eh_os_contract/docs/contract.md` and `packages/eh_os_contract/docs/authorization.md`,
+- `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`
+  and of each prose page of `packages/eh_os_contract/docs/` (`EhOsContract.Docs.prose/0`),
   holds the refusal table of `packages/eh_os_contract/docs/refusals.md` to the code, and checks the
   links of every ExDoc extra, the package's `CHANGELOG.md` included;
 - `mix ehos_diagrams.gen --check` in `packages/eh_os_contract`, run in `:dev` by the gate where the
@@ -148,5 +148,9 @@ Kinds of problems a review here found that neither file names yet:
   a promise is judged only on the events inside the period, while the deadline and the order of
   stages read each run whole, and the count of runs takes any run with an event in it. A page that
   gives one rule for all of them misleads. Found in #517.
+
+- A page that says a package guards something is read against the guard's condition: `pin_keys`
+  raises when the line is missing, not when it is in the wrong environment, so "the package raises
+  elsewhere" promised a guard that does not exist. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

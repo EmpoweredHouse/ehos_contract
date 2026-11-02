@@ -50,6 +50,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a
+  Concept page, "How is a call authorized?", with two diagrams: the order of a call from sign-in to
+  the answer, and which calls the Authorizer checks. Three how-tos take the rest: `scope.md` narrows a
+  call to the values of a grant, `authorizer.md` adds a rule of your own, and `calls.md` serves the
+  contract over HTTP, through `call/3` or from code. The status table is gone. The pages now say that
+  a recorded event has no scope, that `eh_os_contract_auth` signs a person in itself, that a
+  credential can expire in up to 15 minutes, and that a removed key stays trusted while fetches fail.
+  The table of what each answer writes now has the refusals after the Authorizer and a repeated
+  idempotency key. Links change: the sections on scope, the Authorizer, the plug, `call/3` and
+  idempotency keys are now on the three new pages.
 - **The page on processes is split by what a reader asks** (#517). `docs/process.md` is a Concept
   page, "What is a process module?", with one diagram: which verdicts a promise can have, and what
   moves it. Recording an outage of an external system is a how-to, `outages.md`. What the

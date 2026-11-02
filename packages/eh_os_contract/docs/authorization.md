@@ -1,221 +1,56 @@
-# Authorization
+# How is a call authorized?
 
-How an application built on `eh_os_contract` decides who may issue a command, ask a query or
-record an event. This page explains how the pieces fit, and what is built today.
+This page tells how the engine decides who can issue a command, ask a query or record an event. It
+tells which names the engine derives from a contract, which calls it checks, and what each answer
+writes. It is for a developer who builds an application on the engine, and for a reviewer who must
+know how strong the check is. [The glossary](glossary.md) defines each word in italics.
 
-## The approach in one sentence
+## Who decides what?
 
-**The contract says what can be done and which role may do it; EHOS decides which people get which
-roles; the application checks it on every call, locally, without asking EHOS.**
-
-The examples on this page are an invented shop's warehouse, where a lead assigns pick lists to
-pickers and each lead is granted one warehouse. [Scope](#scope) shows its
-domain and contract. The sandbox's `Fulfilment.Contracts.Warehouse` has more of the warehouse: there,
-pickers confirm and pack their pick lists.
-
-Three places, each answering its own question:
+Three places each answer one question:
 
 | Where | Question | Example |
 | --- | --- | --- |
-| The contract | What can be done, and by which role? | `command :assign_pick_list, by: :lead` |
-| EHOS | Which person holds which role, where? | Mira is bound to `fulfilment.lead` in `fulfilment/production`, for warehouse 7 |
-| The application | Does this caller's credential allow this call? | Mira's credential lists `fulfilment.assign_pick_list` |
+| The contract | What can be done, and by which actor? | `command :assign_pick_list, by: :lead` |
+| The platform that issues the credentials | Which person has which role? | Mira has the role `authorization_example.lead` |
+| The application | Does the credential of this call grant this call? | the credential of Mira grants `authorization_example.assign_pick_list` |
 
-The model is role-based access control flattened into capabilities, the shape Kubernetes RBAC and
-cloud IAM use: roles are bound to people, and the credential carries the union of the capabilities
-those roles grant. The application never learns which roles a person has, only what their credential
-allows.
+The contract names the *actors* of each declaration. The platform grants *roles* to people. The
+application checks each call, in its own process, without a call to the platform.
 
-## Names: capabilities and roles
+The model is role-based access control. A *credential* carries the capabilities of all the roles of a
+person, not the roles. The application never learns the roles of a person. It knows only what the
+credential grants. Kubernetes RBAC and cloud IAM use the same shape.
 
-Names are derived from the contract, never written by hand, so the list EHOS grants from cannot drift
-from the code (`EhOsContract.Model.capabilities/1`):
+## An example
 
-- a **capability** per command, per query and per recorded event a person may use: `<domain>.<name>`,
-  e.g. `fulfilment.assign_pick_list`, `fulfilment.open_pick_lists_for_warehouse`, `fulfilment.shelf_found_empty`, where
-  `<domain>` is the domain's `name:`;
-- a **role** per `:human` actor of the domain: `<domain>.<actor>`, e.g. `fulfilment.lead`. A role
-  grants the capabilities of every declaration whose `by:` or `recorded_by:` names that actor.
-
-**Only what a person may do is a capability of a person.** A declaration whose `by:` or `recorded_by:` names no
-`:human` actor (a command only a policy issues, an event only an integration records) has none, so
-no credential can be granted it, even by mistake; the application's own `:system` actor reaches it
-without a credential.
-
-**One more capability is the application's: `<published name>.subscribe`**, for each event of another
-application that the contract subscribes to and a policy takes. The published name loses its version:
-`subscribe "billing.invoice.issued.v1"` gives `billing.invoice.issued.subscribe`. It has no role, so no
-person holds it, and nothing in the engine checks it.
-
-Because a capability is `<domain>.<name>`, a command, query or recorded event name is unique across the
-whole application, which the compiler checks ([`D14`](refusals.md#refusals-d)).
-
-## The flow, end to end
-
-```mermaid
-sequenceDiagram
-    participant P as Person (browser)
-    participant E as EHOS
-    participant A as Application
-    participant DB as Application database
-
-    Note over A,E: at deployment
-    A->>E: manifest: capabilities and roles, derived from the contract
-    Note over E: an administrator binds Mira to fulfilment.lead
-    P->>E: sign in
-    E-->>P: credential (10 minutes): sub, aud, cap, scp
-    E-->>A: public keys (JWKS), fetched every 5 minutes and kept in DB
-    P->>A: POST /commands/fulfilment.assign_pick_list + credential
-    Note over A: the auth package verifies the signature,<br/>builds the actor from the claims
-    Note over A: the engine asks the Authorizer:<br/>does the credential grant this capability?
-    A->>DB: events and the command's row, in one transaction
-    A-->>P: receipt, or a refusal
-```
-
-1. **Deployment.** The application sends EHOS a manifest with its capabilities and roles, derived from
-   its contracts, beside what its `ehos.yaml` says it needs: `ehos.manifest/v2`, `v3`, `v4`, `v6`, `v7` or `v8`,
-   by the version of its `ehos.yaml`, or, before `ehos.yaml/v5`, `v5` when an actor's `may_grant:` says which
-   roles a person in it may grant, which `mix eh_os_contract.manifest --output ehos.manifest.json` in
-   `eh_os_contract_auth` writes.
-2. **Binding.** An EHOS administrator binds a person to a role, per application and environment,
-   optionally with scope values ("warehouse 7").
-3. **Sign-in.** The person signs in to EHOS and receives a credential: a JWT signed with Ed25519, valid
-   for 10 minutes, for one application and environment (`aud`). It carries `sub` (who), `cap` (every
-   capability of every role bound to them there) and `scp` (the values of scoped capabilities).
-4. **Keys.** The application keeps EHOS's public keys in its own database and refreshes them every 5
-   minutes, so it verifies credentials without calling EHOS, and keeps working while EHOS is down.
-5. **The call.** The credential arrives with the request. The auth package verifies it and builds an
-   `EhOsContract.Actor`; the engine asks the `EhOsContract.Authorizer` whether that actor may make this
-   call; only then does anything decide or write.
-
-## The door: which calls are asked
-
-**The check stands at the application's door.** What matters is where a call comes from, not what
-kind of actor makes it.
-
-```mermaid
-flowchart LR
-    subgraph outside[Outside the application]
-        P[Person]
-        S[External system]
-    end
-    subgraph door[The door]
-        V[Credential verified] --> Z[Authorizer: capability in the credential?]
-    end
-    subgraph inside[Inside: held to the contract]
-        D[Decision and events]
-        R[Policy reacting to an event]
-        J[Application job]
-    end
-    P --> V
-    S --> V
-    Z --> D
-    D --> R
-    R -->|issues:| D
-    J -->|by: / recorded_by:| D
-```
-
-| Where the call comes from | Actor | What checks it |
-| --- | --- | --- |
-| A person, with a credential | `Actor.credential(sub, cap, scp)` | the `Authorizer`: the capability is in the credential |
-| An external system, with its own credential | `Actor.credential/3` | the same, once EHOS issues credentials to systems |
-| A policy reacting to an event | built by the engine | the contract: the policy's `issues:` names the command |
-| The application's own code (a job, an import) | `Actor.system(:name)` | the contract: the actor is `:system` in the domain and named in `by:` or `recorded_by:` |
-
-The application's own code is not asked of the `Authorizer`, for 3 reasons: the application would
-be asking itself; EHOS issues no credential to a job; and a policy runs in the transaction of the
-command that set it off, so a refusal there would fail a person's command for a reason that is not
-theirs. Its permission was given when the contract said `issues:` or `by:` and a reviewer approved
-it; the compiler and dispatch hold it to that. A `:system` actor can do only what the contract names
-it for: `Actor.system(:nightly_import)` cannot assign a pick list unless a declaration says
-`by: :nightly_import`, and a person's actor cannot be passed off as one, because the domain must
-declare the actor `:system`.
-
-A person never *is* the application's code, so a person always comes through the door.
-
-## The Authorizer
-
-<!-- not compiled: the host's configuration -->
-```elixir
-config :eh_os_contract, authorizer: MyApp.Authorizer
-```
-
-One callback:
-
-<!-- not compiled: the callback of a behaviour of the library -->
-```elixir
-@callback authorize(EhOsContract.Actor.t(), EhOsContract.Authorizer.Request.t()) ::
-            :ok | {:error, reason :: atom()}
-```
-
-The request names the kind (`:command` or `:query`), the capability, the contract and its version, and
-for a scoped command or query the dimension and the value asked for (`{"warehouse_id", "7"}`).
-
-**The decision is `EhOsContract.Authorizer.check/2`**, and it reads nothing but the actor and the
-request:
-
-| Result | When |
-| --- | --- |
-| `:ok` | the credential grants the capability, and a scoped value is among its values |
-| `{:error, :missing_capability}` | the capability is not in `cap` |
-| `{:error, :unscoped_grant}` | the capability is scoped and `scp` carries no values for it: empty is not "all" |
-| `{:error, :outside_scope}` | the value asked for is not among the granted values |
-
-`EhOsContract.Authorizer.Default`, used when nothing is configured, is `check/2` alone and records
-nothing. `EhOsContract.Auth`, in the package `eh_os_contract_auth` for EHOS credentials, calls
-`check/2` and records a row for every decision in `eh_os_contract_auth_decisions`.
-
-**An implementation may narrow what a credential grants, never widen it.** After an `:ok`, the engine
-runs `check/2` again from the actor and raises `EhOsContract.Authorizer.WidenedError` if it refuses.
-A defect in an implementation therefore fails loudly instead of letting a call through, and grants
-must travel in the credential, as EHOS issues them.
-
-An implementation that adds a rule of its own, for instance refusing suspended accounts:
+A warehouse lead assigns pick lists to pickers. A picker reports a shelf that is empty. A lead reads
+the open pick lists of a warehouse:
 
 ```elixir
-defmodule MyApp.Authorizer do
-  @behaviour EhOsContract.Authorizer
-
-  @impl true
-  def authorize(actor, request) do
-    if MyApp.Accounts.suspended?(actor.subject),
-      do: {:error, :suspended},
-      else: EhOsContract.Authorizer.check(actor, request)
-  end
-end
-```
-
-<a id="scope"></a>
-
-## Scope: narrowing a query to rows
-
-A query may be scoped by one field of its read model ([`D10`](refusals.md#refusals-d)). The actor
-names the field in its domain, and the query names it in `scope:`. A command may be scoped the same
-way, by one of its fields:
-
-```elixir
-defmodule Fulfilment.Domain do
-  use EhOsContract.Domain, name: :fulfilment, language: :en
+defmodule Concepts.Authorization.Domain do
+  use EhOsContract.Domain, name: :authorization_example, language: :en
 
   subdomain :core, "Core", type: :core
+
   context :warehouse, "Warehouse", subdomain: :core
 
-  actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+  actor :lead, :human, "Warehouse lead"
   actor :picker, :human, "Picker"
+  actor :nightly_import, :system, "Nightly import"
 end
 
-defmodule Fulfilment.Contracts.Warehouse do
+defmodule Concepts.Authorization.Contracts.Warehouse do
   use EhOsContract.Contract,
-    domain: Fulfilment.Domain,
+    domain: Concepts.Authorization.Domain,
     context: :warehouse,
-    id: "fulfilment.warehouse"
+    id: "authorization_example.warehouse"
 
   aggregate :pick_list, "Pick list" do
     identity [:warehouse_id, :order_id]
 
     command :assign_pick_list, "Assign a pick list to a picker",
-      by: :lead,
-      scope: :warehouse_id,
+      by: [:lead, :nightly_import],
       emits: :assigned do
       field :picker_id, :id
     end
@@ -234,202 +69,230 @@ defmodule Fulfilment.Contracts.Warehouse do
   end
 
   query :open_pick_lists_for_warehouse, "Open pick lists in a warehouse",
-    reads: :open_pick_lists, by: [:lead], scope: :warehouse_id do
+    reads: :open_pick_lists,
+    by: [:lead] do
     param :warehouse_id, :id
   end
 end
 ```
 
-A lead granted warehouse 7 cannot assign a pick list of warehouse 12, and the credential needs the
-values for the command as for the query.
+The sandbox has a longer example of a warehouse: `Fulfilment.Contracts.Warehouse`. There, pickers
+also confirm and pack their pick lists.
 
-EHOS binds the role with values, and the credential carries them:
+## Which names does the engine derive from a contract?
 
-```json
-{
-  "cap": ["fulfilment.assign_pick_list", "fulfilment.open_pick_lists_for_warehouse"],
-  "scp": {
-    "fulfilment.assign_pick_list": {"warehouse_id": ["7"]},
-    "fulfilment.open_pick_lists_for_warehouse": {"warehouse_id": ["7"]}
-  }
-}
-```
+The engine derives each name from the contract. Nobody writes the names by hand. So the list that
+the platform grants from always agrees with the code. `EhOsContract.Model.capabilities/1` returns
+them.
 
-- **Before the implementation runs**, the value of the scope parameter is checked against the
-  granted values. Asking for warehouse 12 with a grant for warehouse 7 is `{:error, :outside_scope}`, and the
-  query's code never runs.
-- **A scoped capability without values is refused** (`:unscoped_grant`): the check fails closed.
-- **After the implementation answers**, every row's scope field is checked against the grant again.
-  A row outside it raises `EhOsContract.Authorizer.OutsideScopeError` and no row is returned, so a
-  wrong `where` cannot hand one warehouse another warehouse's rows.
-- Values are compared as the strings the credential carries, so a granted value that is not of the
-  field's type matches nothing instead of failing a cast.
-- The application's own `:system` actor named in the query's `by:` is not narrowed.
+- A *capability* is the name of one thing that a person can do: `<domain>.<name>`. There is one
+  capability for each command, query and recorded event that a human actor can use. `<domain>` is the
+  `name:` of the domain. The example has `authorization_example.assign_pick_list`,
+  `authorization_example.open_pick_lists_for_warehouse` and `authorization_example.shelf_found_empty`.
+- A *role* is the name of one human actor: `<domain>.<actor>`. The example has
+  `authorization_example.lead` and `authorization_example.picker`. A role grants the capability of
+  each declaration whose `by:` or `recorded_by:` names the actor.
 
-`scope` is one field compared for equality. "Only the pick lists assigned to me" or a rule over several fields
-stays in the application's code.
+**A declaration that no human actor can use has no capability.** A command that only a policy
+issues is an example. An event that only an integration records is another. No credential can
+grant it, also not by mistake. A `:system` actor of the application reaches it without a credential.
 
-## Recording an event
+**The application has one more capability for each subscribed event that a policy takes:**
+`<published name>.subscribe`. The published name loses its version. `subscribe
+"billing.invoice.issued.v1"` gives `billing.invoice.issued.subscribe`. This capability has no role,
+so no person has it. The engine does not check it.
 
-`EhOsContract.record/3` appends an event the contract declares `recorded_by:`, without a command: an
-observation or an integration's answer. Its capability is `<domain>.<event>`, with the roles of
-the actors in `recorded_by:`, and a credential is asked of the `Authorizer` for it as for a command:
-a picker reporting a shelf found empty needs `fulfilment.shelf_found_empty`. A `:system` actor the
-event names records it without a credential. `EhOsContract.Plug` serves it as
-`POST <mount>/records/<capability>` with the event's fields as the body.
+A capability is `<domain>.<name>`. So the name of a command, a query or a recorded event is unique
+in the whole domain. The compiler checks this ([`D14`](refusals.md#refusals-d)).
 
-Until 28 September 2026 (stage E9) a credential was refused with `{:error, :not_grantable}`, because no
-capability named a recording; the name `<domain>.<event>` was decided on 27 September.
+## How does a call get to the application?
 
-## What is written
+![The application sends its capabilities and roles to the platform that issues the credentials, a person signs in and gets a credential, and the application checks that credential against keys in its own database before it writes anything.](img/call-authorization.svg)
 
-| Outcome | Event log | `eh_os_contract_commands` | Auth package's table, for a call with a credential |
+1. At deployment, the application sends its capabilities and roles to the platform, in its manifest.
+   The engine derives them from the contracts. The task `mix eh_os_contract.manifest` of the package
+   `eh_os_contract_auth` writes the manifest. `EhOsContract.Auth.Manifest` tells which version of
+   the manifest it writes.
+2. A person with a role signs in to the platform. An administrator of the platform gives the role to
+   the person first.
+3. The platform issues a credential. The credential is a JWT, signed with Ed25519, and valid for 10
+   minutes. It carries these claims:
+   - `sub`: the subject, an opaque name of the person;
+   - `aud`: the audience, the one application, in one place where it runs, that the credential is
+     for;
+   - `cap`: each capability of each role of the person;
+   - `scp`: the values of the scoped capabilities, if the role has values. [Narrow a call to the
+     values of a grant](scope.md) tells how a scope uses them.
+4. Every 5 minutes, the application fetches the public keys of the platform.
+5. The application keeps the keys in its own database. So it verifies a credential without a call to
+   the platform, and it keeps working when the platform is down.
+6. The person sends a call with the credential. A plug of `eh_os_contract_auth` verifies the
+   signature, the issuer, the audience and the expiry. Then it builds an `EhOsContract.Actor` from the
+   claims. If one check fails, the plug answers 401, and nothing asks the Authorizer.
+7. Dispatch asks the *Authorizer* if the actor can make the call. If the Authorizer allows it, the
+   application decides and writes the events. If not, the engine decides nothing and writes nothing.
+8. The application answers with a receipt or a refusal.
+
+For the pages of the application, `eh_os_contract_auth` also signs a person in. It keeps the
+credential encrypted in its own table, on the server. The browser holds only a random token.
+`EhOsContract.Auth.Session` then builds the actor of the person.
+
+## Which calls does the Authorizer check?
+
+The Authorizer checks each call that comes into the application from outside, with a credential.
+This page calls the place where such a call enters the door. The door is `EhOsContract.Plug`,
+`EhOsContract.call/3`, or a page that dispatches for a person who signed in. The kind
+of actor decides. The engine asks the Authorizer about an actor of a credential. It never asks about
+a `:system` actor or a reaction.
+
+![A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names.](img/authorization-door.svg)
+
+1. A person sends a call with a credential.
+2. An external system sends a call with its own credential.
+3. The credential check passes the actor of a verified credential on.
+4. The Authorizer allows the call, or dispatch refuses it.
+5. Dispatch delivers an event to a reaction: a policy or a process manager.
+6. The reaction issues a command that its declaration names.
+7. As a `:system` actor, the code of the application issues or records what `by:` or `recorded_by:`
+   names.
+
+| Origin of the call | Actor | What checks it |
+| --- | --- | --- |
+| A person, with a credential | `Actor.credential(sub, cap, scp)`, which `eh_os_contract_auth` builds from a verified credential | the Authorizer: the credential grants the capability |
+| An external system, with its own credential | `Actor.credential/3` | the same, when the platform issues credentials to systems |
+| A policy or a process manager that takes an event | the engine builds it | the contract: the reaction names the command that it issues |
+| The code of the application: a job, an import | `Actor.system(:name)` | the contract: the domain declares the actor `:system`, and `by:` or `recorded_by:` names it |
+
+The engine does not ask the Authorizer about the code of the application, for 3 reasons:
+
+- The application would ask itself.
+- A job that runs as the application has no credential of its own.
+- A policy can run in the transaction of the command that set it off. A refusal there would fail
+  the command of a person, for a reason that is not the person's.
+
+The contract gives the code of the application its permission: an `issues:` or a `by:` that a
+reviewer approved. The compiler and dispatch hold the code to it. A `:system` actor can do only what
+the contract names it for. `Actor.system(:nightly_import)` can assign a pick list only because `by:`
+names `:nightly_import`. An actor of a person cannot pass as a `:system` actor, because the domain must
+declare the actor `:system`.
+
+A person is never the code of the application. So a call of a person comes through the door.
+
+> **Pass the actor of the person.**
+> If you send the request of a person as a `:system` actor, nothing asks the
+> Authorizer. The person then gets each permission of the `:system` actor.
+
+## What can the Authorizer answer?
+
+The Authorizer is a module of the application. It gets the actor and the request, and answers
+`:ok` or `{:error, reason}`. The request names the kind of call, the capability, the contract and its
+version. For a scoped command or query, it also names the scope field and the value that the call
+asks for.
+
+The decision is `EhOsContract.Authorizer.check/2`. It reads only the actor and the request:
+
+| Answer | When |
+| --- | --- |
+| `:ok` | the credential grants the capability, and the scope value is one of its values |
+| `{:error, :missing_capability}` | `cap` does not have the capability |
+| `{:error, :unscoped_grant}` | the capability is scoped, and `scp` has no values for it. No values does not mean all values. |
+| `{:error, :outside_scope}` | the value that the call asks for is not one of the granted values |
+
+If the host configures no Authorizer, the engine uses `EhOsContract.Authorizer.Default`. It is
+`check/2` alone, and records nothing. `EhOsContract.Auth`, in the package `eh_os_contract_auth`,
+calls `check/2` and writes a row for each decision. The host must configure it:
+`config :eh_os_contract, authorizer: EhOsContract.Auth`.
+
+**An Authorizer can narrow what a credential grants. It cannot widen it.** After an `:ok`, the
+engine runs `check/2` again on the actor. If `check/2` refuses, the engine raises
+`EhOsContract.Authorizer.WidenedError`. So a defect in an Authorizer fails, and does not let a call
+through. Each grant must come in the credential, as the platform issues it.
+
+[Write an Authorizer](authorizer.md) tells how to add a rule of your own.
+
+## What does a recorded event need?
+
+`EhOsContract.record/3` appends an event that the contract declares `recorded_by:`, without a
+command. Example: an observation, or the answer of an external system. Its capability is
+`<domain>.<event>`. Its roles are those of the human actors in `recorded_by:`. The engine asks the
+Authorizer about a credential, as for a command. A picker who reports an empty shelf needs
+`authorization_example.shelf_found_empty`. A `:system` actor that the event names records it without
+a credential.
+
+**A recorded event has no scope.** A credential with the capability can record the event for each
+unit. A picker of warehouse 7 can record an empty shelf in warehouse 12.
+
+## What does each answer write?
+
+| Answer | Log | `eh_os_contract_commands` | `eh_os_contract_auth_decisions`, for a call with a credential |
 | --- | --- | --- | --- |
 | Refused by the Authorizer | nothing | nothing | a `refused` row, with the reason |
+| Refused after the Authorizer: fields that do not fit, a conflict, a reused idempotency key, an erased subject | nothing | nothing | an `allowed` row |
 | Accepted | the events | an `accepted` row | an `allowed` row |
+| Accepted before, with the same idempotency key | nothing more | nothing more | an `allowed` row |
 | Rejected on an invariant | nothing | a `rejected` row | an `allowed` row |
-| Failed in code | nothing (rolled back) | a `failed` row | an `allowed` row |
+| Failed in the code | nothing: the engine rolls back | a `failed` row, if dispatch owns the transaction | an `allowed` row |
 
-A refusal leaves nothing in the engine's tables; the row that records it belongs to the
-`Authorizer`'s implementation. Queries write nothing to the log: a read is not an event, but a query
-with a credential has its decision row like a command.
+- A refusal leaves nothing in the tables of the engine. The row that records it belongs to the
+  Authorizer.
+- A credential that the plug does not verify gets no row. The Authorizer never sees it.
+- A declaration that no human actor can use has no capability. A call with a credential gets
+  `{:error, :missing_capability}`, and the engine does not ask the Authorizer. No row is written.
+- Each row of `eh_os_contract_auth` is one `INSERT` in the call, also for a query. Nothing deletes
+  the rows: the application decides how long it keeps them.
+- If `eh_os_contract_auth` cannot write its row, the call fails.
+- If the code fails inside the transaction of the caller, the engine writes no `failed` row. It
+  raises the exception again.
+- A query writes nothing to the log, because a read is not an event. A query with a credential gets a
+  decision row, as a command does.
+- An accepted command has two rows. The row of `eh_os_contract_auth` records that the credential
+  allowed the call. The row of `eh_os_contract_commands` records what became of the command.
+- The engine asks the Authorizer before its own transaction. If a caller wraps `dispatch/3` in its own
+  transaction and rolls it back, the decision row goes too. `EhOsContract.Plug` never does this.
 
-The two rows of an accepted command are two records, not one written twice: the auth package's row
-records that the credential allowed the call, `eh_os_contract_commands` what became of the command.
-The engine asks the `Authorizer` before its own transaction, so a caller that wraps `dispatch/3` in a
-transaction of its own and rolls it back rolls the decision row back too; `EhOsContract.Plug` never
-does.
+## How strong is this check?
 
-## Over HTTP
+The check is the standard level. It is the same as an application that verifies the tokens of
+Auth0, Keycloak or Entra ID:
 
-`EhOsContract.Plug` serves the commands, recordings and queries of the contracts it is given, under
-their capabilities:
+- the credentials are signed and short: Ed25519, 10 minutes;
+- the application verifies them with published keys, in its own process;
+- the keys rotate by `kid`;
+- each credential has one audience;
+- the roles become capabilities;
+- a missing value refuses the call;
+- with `eh_os_contract_auth`, each decision of the Authorizer gets a row.
 
-<!-- not compiled: a line of the host's router -->
-```elixir
-# in the host's router, after the plug that verifies the credential
-forward "/api", EhOsContract.Plug, contracts: [Fulfilment.Contracts.Warehouse]
-```
+Two things are stronger than in a usual application:
 
-```text
-POST /api/commands/fulfilment.assign_pick_list            {"warehouse_id": "7", "order_id": "order-1", "picker_id": "u-82"}
-GET  /api/queries/fulfilment.open_pick_lists_for_warehouse?warehouse_id=7
-```
+- The check is in one place, dispatch, not in each controller. A command without the capability
+  does not get to its decision, from any origin with a credential. This closes the most frequent weakness of web
+  applications, broken access control (OWASP A01).
+- The engine checks each row of a scoped query again, against the grant.
 
-It authenticates nobody. The actor is `conn.assigns.eh_os_contract_actor`, which the plug in front of
-it builds from a credential it verified; without one, the answer is 401. A `:system` actor never comes
-over HTTP and is refused the same way.
+The check has these limits. They are known and accepted:
 
-| Outcome | Status |
-| --- | --- |
-| accepted, or a query answered | 200 |
-| rejected on an invariant, or fields that do not fit | 422 |
-| refused (`missing_capability`, `outside_scope`, …) | 403 |
-| no credential's actor | 401 |
-| conflict, or an idempotency key the same actor used for another command | 409 |
-| no such capability | 404 |
+- A role that the platform removes works until the credential expires: 15 minutes or less. This is
+  true of each JWT without a revocation list.
+- A stolen credential works until it expires. A credential bound to a client (DPoP, mutual TLS) is a
+  higher level. The platform must decide it.
+- The plug accepts a credential that expires in 15 minutes or less. That is the 10 minutes of the
+  platform, and 5 minutes for clocks that do not agree.
+- A key that the platform removes from its set works until the next fetch that succeeds. If the
+  fetches succeed, that is 5 minutes or less. While the fetches fail, the application keeps the last
+  set of keys that it fetched, with no limit of time.
+- A scope is one field, compared for equality. A recorded event has no scope. Richer rules for rows
+  stay in the code of the application. For a command, `actor_is` lets only the person whom a field
+  of the state names issue it. [Write a domain, a contract and a process module](contract.md) tells
+  how.
+- The decision rows are not tamper-evident.
+- The whole chain is as strong as the flow that gives a frontend its credential. `eh_os_contract_auth`
+  signs a person in with the authorization code flow of OpenID Connect, with PKCE.
 
-No response body carries a value the caller did not send: a problem names the field, a refusal its
-reason. **Whether the caller may is answered first:** a request whose body or fields do not fit is
-asked of the `Authorizer` all the same, so a caller without the capability gets 403 and learns nothing
-about the declaration's fields, and every request is one decision, recorded by the auth package.
+## Next steps
 
-## Another door
-
-The plug is one door onto `EhOsContract.call/3`, and a host's other doors that carry raw data, such as a job
-holding a person's credential or another API, call it the same way: the capability's name, the data as it
-was sent, the credential's actor.
-
-<!-- not compiled: a call in the host's code -->
-```elixir
-EhOsContract.call(
-  {:command, "fulfilment.assign_pick_list"},
-  %{"warehouse_id" => "7", "order_id" => "order-1", "picker_id" => "u-82"},
-  actor: actor, idempotency_key: "req-81"
-)
-#=> {:ok, %EhOsContract.Receipt{...}}
-```
-
-It asks the `Authorizer` before it says what is wrong with what was sent, as the plug does, and answers
-as `dispatch/3`, `record/3` or `query/3` would, or `{:error, :not_found}` for a capability the contracts it
-serves (`contracts:`, every registered one by default) do not declare as that kind, `{:error, :no_actor}`
-without a credential's actor, and, once the caller may, `{:error, :not_an_object}` or
-`{:error, :correlation_id_is_not_a_uuid}`. A door that builds the structs itself skips that order, which
-is why the plug no longer builds them.
-
-`call/3` takes data with the types JSON gives it: a boolean as `true`, an integer as a number. A form sends text,
-`"false"` for a checkbox and `"42"` for an amount, and a page reads it through
-[`EhOsContract.Form`](forms.md) instead: a changeset that checks what was typed field by field
-while the person types, built from the declaration by the module or by the same capability name
-(`Form.changeset({:command, "fulfilment.assign_pick_list"}, params)`), whose struct the page then
-dispatches with the person's actor. The `Authorizer` is asked then, by `dispatch/3`. Until the form is sent
-it asks none: what it checks is the shape the contract declares, its fields, their types, an enum's members
-and the names of its values' invariants, so a page shows the form only to whom it means to.
-
-## Calling it from code
-
-<!-- not compiled: calls in the host's code -->
-```elixir
-actor =
-  EhOsContract.Actor.credential("u-81", ["fulfilment.assign_pick_list"],
-    %{"fulfilment.assign_pick_list" => %{"warehouse_id" => ["7"]}})
-
-EhOsContract.dispatch(Fulfilment.Contracts.Warehouse,
-  %AssignPickList{warehouse_id: "7", order_id: "order-1", picker_id: "u-82"},
-  actor: actor, idempotency_key: "req-81")
-#=> {:ok, %EhOsContract.Receipt{...}}
-
-# the application's own job, acting as a :system actor of its domain
-EhOsContract.dispatch(MyApp.Contracts.Ledger, %Deposit{account_id: "a-1", amount: 100},
-  actor: EhOsContract.Actor.system(:nightly_import))
-#=> {:ok, ...} when the command's by: names :nightly_import, else {:error, :not_declared}
-```
-
-`Actor.credential/3` verifies nothing. Build it only from a credential that was verified, which in a
-host means the auth package's plug.
-
-**An idempotency key belongs to the actor who sent it**: to the credential's subject, or to the
-`:system` actor's name. Two actors with one key are two commands, and neither sees the other's receipt.
-What that asks of a host:
-
-- a retry has to come from the same subject: if EHOS gives a user another `sub` between the first try
-  and the retry, the retry is a new command and runs;
-- everything that shares one credential, or runs as one `:system` actor, shares one key space: two jobs
-  importing as `:nightly_import` both sending `"row-1"` are one command, so give each job's keys a
-  prefix of its own.
-
-## How strong this is
-
-It is the standard, well-understood level: the same as an application validating Auth0, Keycloak or
-Entra ID tokens. Signed short-lived tokens (Ed25519, 10 minutes) verified locally against published
-keys, rotation by `kid`, one audience per application and environment, roles flattened into
-capabilities, failing closed, and a record of every decision.
-
-Two things are stronger than in a typical application. The check sits in one place, dispatch, rather
-than in every controller, which closes the most common web weakness (OWASP A01, broken access
-control): a command without the capability does not reach its decision, whichever way it came. And
-a query's rows are checked a second time against the grant.
-
-Known limits, accepted deliberately:
-
-- A removed role keeps working until the credential expires, at most 10 minutes, as with any JWT
-  without a revocation list.
-- A stolen credential works until it expires. Binding tokens to a client (DPoP, mutual TLS) is a
-higher, banking-grade level, and would be EHOS's decision.
-- A key removed from EHOS's set is trusted until the next refresh, at most 5 minutes.
-- `scope` is one field and equality; richer row rules stay in application code.
-- The audit rows are not tamper-evident.
-- How a frontend obtains a credential for a signed-in user is EHOS's to design, and the whole chain is
-  as strong as that flow; the standard is OpenID Connect's authorization code flow with PKCE.
-
-## What is built
-
-| Part | Status |
-| --- | --- |
-| Capability and role names derived from the contract | built (E4) |
-| `EhOsContract.Actor`, `EhOsContract.Authorizer` with `check/2` and the default | built (E6) |
-| Authorization in `dispatch/3`, `query/3` and `record/3`, scope checks, the row check | built (E6) |
-| `EhOsContract.Plug` | built (E6) |
-| Verifying EHOS credentials, keeping keys, the audit row, the bearer-token plug, the test helper | built (EA), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
-| The manifest EHOS reads, `ehos.manifest/v2` to `v8` from `ehos.yaml` and the contracts | built (E10, EH), package [`eh_os_contract_auth`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract_auth) |
-| Sign-in for a frontend's users | EHOS, not designed yet |
+- [Narrow a call to the values of a grant](scope.md): give a command or a query a scope.
+- [Write an Authorizer](authorizer.md): add a rule of your own to the check.
+- [Accept calls with a credential](calls.md): serve the contract over HTTP, through `call/3`, or
+  from code.
+- [The compile refusals](refusals.md#refusals-d): each refusal of names and scopes, in the family D.

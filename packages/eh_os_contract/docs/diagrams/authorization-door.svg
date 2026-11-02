@@ -1,0 +1,151 @@
+<!-- title: Which calls does the Authorizer check? -->
+<!-- desc: A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names. -->
+<!-- words: actor, external system, credential, authorizer, dispatch, reaction, application -->
+<!-- technical: -->
+<!-- verbs: sends, passes, allows, delivers, issues -->
+<!-- parts: actor = -, external = -, check = -, authorizer = -, dispatch = -, reaction = -, code = - -->
+<svg viewBox="0 0 1000 788" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="authorization-door-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- Zones: outside, the door, inside -->
+  <rect class="zone" x="100" y="40" width="460" height="120" rx="8"/>
+  <rect class="mask" x="116" y="34" width="132" height="12" rx="2"/>
+  <text class="zlabel" x="120" y="43">OUTSIDE THE APPLICATION</text>
+
+  <rect class="zone" x="100" y="192" width="800" height="120" rx="8"/>
+  <rect class="mask" x="116" y="186" width="60" height="12" rx="2"/>
+  <text class="zlabel" x="120" y="195">THE DOOR</text>
+
+  <rect class="zone" x="100" y="344" width="800" height="216" rx="8"/>
+  <rect class="mask" x="116" y="338" width="156" height="12" rx="2"/>
+  <text class="zlabel" x="120" y="347">INSIDE: HELD TO THE CONTRACT</text>
+
+  <!-- Connectors -->
+  <line class="arr" x1="220" y1="136" x2="220" y2="231" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="440" y1="136" x2="440" y2="231" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="520" y1="260" x2="679" y2="260" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="770" y1="288" x2="770" y2="383" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="680" y1="400" x2="561" y2="400" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="560" y1="424" x2="679" y2="424" marker-end="url(#authorization-door-arrow)"/>
+  <line class="arr" x1="560" y1="508" x2="679" y2="508" marker-end="url(#authorization-door-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="232" y="168" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="242" cy="175" r="6"/>
+  <text class="badget" x="242" y="178" text-anchor="middle">1</text>
+  <text class="lbl" x="254" y="178">SENDS</text>
+
+  <rect class="mask" x="452" y="168" width="64" height="14" rx="2"/>
+  <circle class="badge" cx="462" cy="175" r="6"/>
+  <text class="badget" x="462" y="178" text-anchor="middle">2</text>
+  <text class="lbl" x="474" y="178">SENDS</text>
+
+  <rect class="mask" x="560" y="238" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="570" cy="245" r="6"/>
+  <text class="badget" x="570" y="248" text-anchor="middle">3</text>
+  <text class="lbl" x="582" y="248">PASSES</text>
+
+  <rect class="mask" x="782" y="320" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="792" cy="327" r="6"/>
+  <text class="badget" x="792" y="330" text-anchor="middle">4</text>
+  <text class="lbl" x="804" y="330">ALLOWS</text>
+
+  <rect class="mask" x="572" y="378" width="88" height="14" rx="2"/>
+  <circle class="badge" cx="582" cy="385" r="6"/>
+  <text class="badget" x="582" y="388" text-anchor="middle">5</text>
+  <text class="lbl" x="594" y="388">DELIVERS</text>
+
+  <rect class="mask" x="572" y="432" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="582" cy="439" r="6"/>
+  <text class="badget" x="582" y="442" text-anchor="middle">6</text>
+  <text class="lbl" x="594" y="442">ISSUES</text>
+
+  <rect class="mask" x="572" y="486" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="582" cy="493" r="6"/>
+  <text class="badget" x="582" y="496" text-anchor="middle">7</text>
+  <text class="lbl" x="594" y="496">ISSUES</text>
+
+  <!-- Outside: a person and an external system -->
+  <rect class="knock" x="140" y="80" width="160" height="56" rx="6"/>
+  <rect id="authorization-door-actor" class="n-ext" x="140" y="80" width="160" height="56" rx="6"/>
+  <text class="name" x="220" y="104" text-anchor="middle">Actor</text>
+  <text class="sub" x="220" y="122" text-anchor="middle">a person</text>
+
+  <rect class="knock" x="360" y="80" width="160" height="56" rx="6"/>
+  <rect id="authorization-door-external" class="n-ext" x="360" y="80" width="160" height="56" rx="6"/>
+  <text class="name" x="440" y="104" text-anchor="middle">External system</text>
+  <text class="sub" x="440" y="122" text-anchor="middle">with its own credential</text>
+
+  <!-- The door: the credential check and the Authorizer -->
+  <rect class="knock" x="140" y="232" width="380" height="56" rx="6"/>
+  <rect id="authorization-door-check" class="n-back" x="140" y="232" width="380" height="56" rx="6"/>
+  <text class="name" x="330" y="256" text-anchor="middle">Credential check</text>
+  <text class="sub" x="330" y="274" text-anchor="middle">verifies the signature, builds the actor</text>
+
+  <rect class="knock" x="680" y="232" width="180" height="56" rx="6"/>
+  <rect id="authorization-door-authorizer" class="n-focal" x="680" y="232" width="180" height="56" rx="6"/>
+  <text class="name" x="770" y="256" text-anchor="middle">Authorizer</text>
+  <text class="sub" x="770" y="274" text-anchor="middle">is the capability granted?</text>
+
+  <!-- Inside: dispatch, a reaction, the code of the application -->
+  <rect class="knock" x="680" y="384" width="180" height="152" rx="6"/>
+  <rect id="authorization-door-dispatch" class="n-back" x="680" y="384" width="180" height="152" rx="6"/>
+  <text class="name" x="770" y="452" text-anchor="middle">Dispatch</text>
+  <text class="sub" x="770" y="470" text-anchor="middle">decision and events</text>
+
+  <rect class="knock" x="360" y="384" width="200" height="56" rx="6"/>
+  <rect id="authorization-door-reaction" class="n-back" x="360" y="384" width="200" height="56" rx="6"/>
+  <text class="name" x="460" y="408" text-anchor="middle">Reaction</text>
+  <text class="sub" x="460" y="426" text-anchor="middle">a policy, a process manager</text>
+
+  <rect class="knock" x="360" y="480" width="200" height="56" rx="6"/>
+  <rect id="authorization-door-code" class="n-back" x="360" y="480" width="200" height="56" rx="6"/>
+  <text class="name" x="460" y="504" text-anchor="middle">Application code</text>
+  <text class="sub" x="460" y="522" text-anchor="middle">a job, an import</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="592" x2="960" y2="592"/>
+  <text class="eyes" x="40" y="612">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="632" r="6"/>
+  <text class="badget" x="46" y="635" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="636">A person sends a call with a credential.</text>
+  <circle class="badge" cx="46" cy="656" r="6"/>
+  <text class="badget" x="46" y="659" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="660">An external system sends a call with its own credential.</text>
+  <circle class="badge" cx="46" cy="680" r="6"/>
+  <text class="badget" x="46" y="683" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="684">The check passes the actor of a verified credential on.</text>
+  <circle class="badge" cx="46" cy="704" r="6"/>
+  <text class="badget" x="46" y="707" text-anchor="middle">4</text>
+  <text class="keyt" x="60" y="708">The Authorizer allows the call, or dispatch refuses it.</text>
+
+  <circle class="badge" cx="526" cy="632" r="6"/>
+  <text class="badget" x="526" y="635" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="636">Dispatch delivers an event to a reaction.</text>
+  <circle class="badge" cx="526" cy="656" r="6"/>
+  <text class="badget" x="526" y="659" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="660">The reaction issues a command that its declaration names.</text>
+  <circle class="badge" cx="526" cy="680" r="6"/>
+  <text class="badget" x="526" y="683" text-anchor="middle">7</text>
+  <text class="keyt" x="540" y="684">As a :system actor, the code issues or records what the contract names.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="744" x2="960" y2="744"/>
+  <rect class="n-focal" x="40" y="760" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="769">The subject</text>
+  <rect class="n-back" x="150" y="760" width="14" height="10" rx="2"/>
+  <text class="legt" x="170" y="769">The engine, or your module</text>
+  <rect class="n-ext" x="350" y="760" width="14" height="10" rx="2"/>
+  <text class="legt" x="370" y="769">Outside the application</text>
+  <line class="arr" x1="560" y1="765" x2="587" y2="765" marker-end="url(#authorization-door-arrow)"/>
+  <text class="legt" x="596" y="769">A call</text>
+  </g>
+</svg>
