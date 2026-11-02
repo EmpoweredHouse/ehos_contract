@@ -38,6 +38,7 @@ another page uses a word in a different way, this page is correct.
 | **Event** | Something that occurred in the business, declared in a unit. A unit emits it after a decision, or an actor records it. The log keeps it. Do not call it a "fact". | `event` |
 | **External system** | A system that the application exchanges data with. Its name tells what it does for the business, not the name of its vendor. | `external`, in the domain |
 | **Form** | Input that a person sends as text, such as an HTML form or a CSV import, to issue a command, record an event or ask a query. `EhOsContract.Form` checks its shape against the contract. | `EhOsContract.Form` |
+| **Graph document** | The facts of a domain, a contract or a process module as JSON, in the format `graph.v1`, for a program that draws them. Each fact has an id that does not change. The same declarations give the same bytes. | `EhOsContract.Graph.Document`, `mix eh_os_contract.graph` |
 | **Identity** | The fields that tell one unit from another. The engine adds them to the state, the commands and the events of the unit. | `identity` |
 | **Implementation** | The module that holds the code of one declaration of a contract. It points to the contract. The contract does not name it. | `use <Contract>, aggregate: :name` |
 | **Inbox** | The table of the engine that receives the events of other applications. Only a policy takes an event from it. The inbox drops a second delivery of the same message. If the publication declares `idempotent_on:`, it also drops the same event published again with a new id. The event does not go into the log. | `EhOsContract.Inbox` |
@@ -46,6 +47,7 @@ another page uses a word in a different way, this page is correct.
 | **Lifecycle** | The statuses of an aggregate, and the transitions that its events make between them. A dynamic consistency boundary has no lifecycle. | `lifecycle` |
 | **Log** | The table of the engine that keeps the events of the application, in the order that they were appended. | `EhOsContract.Store` |
 | **Master key** | A key that wraps the data keys of the subjects. The vault holds it. The database keeps a data key only wrapped. | `EhOsContract.Vault` |
+| **Overlay** | What the log says about the facts of one graph document: for example, how many times each event occurred in a period. It names the graph document by its digest. | `EhOsContract.Graph.Overlay` |
 | **Personal field** | A field that holds personal data of one subject. The engine encrypts it with a key for that subject. If the subject is erased, the engine destroys the key. | `personal:`, `EhOsContract.erase/3` |
 | **Policy** | A reaction without state. When it takes an event, it can issue commands. | `policy` |
 | **Process manager** | A reaction that steers one run over time. It keeps a state, sets timers, and issues commands. | `process_manager` |

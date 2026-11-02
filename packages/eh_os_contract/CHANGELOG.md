@@ -60,6 +60,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The glossary defines "graph document" and "overlay"** (#517). The pages of
+  `eh_os_contract_web` and `eh_os_contract_graph` use both words.
 - **The docs of the behaviours and the Mix tasks are rewritten by the shared writing rules** (#517).
   They generate `docs/behaviours.md` and `docs/cli.md`, and hexdocs shows the same text. Each page now
   starts with its scope and ends with "Next steps". `EhOsContract.Bus` has a diagram of what occurs

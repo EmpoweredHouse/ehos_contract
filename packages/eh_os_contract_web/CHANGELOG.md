@@ -25,6 +25,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The README is split into pages by what a reader asks** (#517). The README says what the dashboard
+  shows. Two how-tos, `docs/mount-the-dashboard.md` and `docs/who-can-see-it.md`, and a Reference
+  page, `docs/api.md`, take the rest, and hexdocs shows them. The pages now say that
+  `/api/conformance` also takes `process=<id>`, and that it answers 400, not 404, for a contract or
+  a process module it does not know. They also say that `/api/model` is an index with the schema
+  `eh_os_contract.model-index.v2`, and that only a graph document answers 304 to `If-None-Match`.
+  The options of the macro, the redirect of the mount path and the exact `at:` of the assets are
+  new on the pages. Links change: the section of the README on the API is now `docs/api.md`.
+
 ## [0.8.0] - 2026-10-29
 
 ### Changed

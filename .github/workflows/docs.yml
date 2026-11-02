@@ -144,9 +144,10 @@ jobs:
         working-directory: packages/eh_os_contract_auth
         run: mix deps.get
 
+      # `--only test`, as for the engine: the renderer's `:dev` dependencies draw its diagrams.
       - name: Install graph renderer deps
         working-directory: packages/eh_os_contract_graph
-        run: mix deps.get
+        run: mix deps.get --only test
 
       - name: Build the documentation
         env:

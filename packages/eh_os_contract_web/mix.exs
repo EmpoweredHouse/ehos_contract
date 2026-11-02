@@ -119,7 +119,13 @@ defmodule EhOsContract.Web.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: [
+        "README.md",
+        "docs/mount-the-dashboard.md",
+        "docs/who-can-see-it.md",
+        "docs/api.md",
+        "CHANGELOG.md"
+      ],
       # The changelog names what a release removed, and the names resolve nowhere
       # after it, as they should.
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],

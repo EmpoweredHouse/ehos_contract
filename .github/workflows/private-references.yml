@@ -17,9 +17,10 @@ name: private-references
 #
 # Allowed line by line, not file by file (#520): each line of
 # .github/private-references.allow is `<path>:<line>`, exactly as `git grep` prints a
-# hit, once for each time the line may occur. It holds the lines that fetch the engine's
-# ehos_diagrams and ehos_design, which draw its pages' diagrams: their `github:` in
-# mix.exs, their entries in mix.lock, and the token in ci.yml's `diagrams` job. Any
+# hit, once for each time the line may occur. It holds the lines that fetch
+# ehos_diagrams and ehos_design for the engine and the graph renderer, which draw their
+# pages' diagrams: their `github:` in mix.exs, their entries in mix.lock, and the token in
+# ci.yml's `diagrams` job. Any
 # other line that names a private repository fails, and so do a changed line, one more
 # copy of an allowed line, and an allowed line that no longer occurs: a new pin of either
 # dependency replaces its mix.lock line in the allowlist in the same pull request. The

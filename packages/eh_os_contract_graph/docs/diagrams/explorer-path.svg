@@ -1,0 +1,125 @@
+<!-- title: Which path does the explorer follow? -->
+<!-- desc: From the domain, the reader opens a contract and then one of its units, or a process module, from the domain or from its list; an event of a process module opens its contract. -->
+<!-- words: domain, contract, unit, process module -->
+<!-- technical: -->
+<!-- verbs: opens, lists -->
+<!-- parts: domain = -, contract = -, unit = -, processes = -, process = - -->
+<svg viewBox="0 0 1000 680" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="explorer-path-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- The two branches of the path -->
+  <rect class="zone" x="40" y="40" width="320" height="436" rx="6"/>
+  <text class="zlabel" x="56" y="60">THE STRUCTURE</text>
+  <rect class="zone" x="600" y="40" width="320" height="276" rx="6"/>
+  <text class="zlabel" x="616" y="60">THE PROCESSES</text>
+
+  <!-- Connectors (behind the parts) -->
+  <line class="arr" x1="200" y1="136" x2="200" y2="235" marker-end="url(#explorer-path-arrow)"/>
+  <line class="arr" x1="200" y1="296" x2="200" y2="395" marker-end="url(#explorer-path-arrow)"/>
+  <polyline class="arr" points="340,124 560,124 560,252 619,252" marker-end="url(#explorer-path-arrow)"/>
+  <line class="arr" x1="340" y1="92" x2="619" y2="92" marker-end="url(#explorer-path-arrow)"/>
+  <line class="arr" x1="760" y1="136" x2="760" y2="235" marker-end="url(#explorer-path-arrow)"/>
+  <line class="arr" x1="620" y1="284" x2="341" y2="284" marker-end="url(#explorer-path-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="212" y="176" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="222" cy="183" r="6"/>
+  <text class="badget" x="222" y="186" text-anchor="middle">1</text>
+  <text class="lbl" x="234" y="186">OPENS</text>
+
+  <rect class="mask" x="212" y="336" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="222" cy="343" r="6"/>
+  <text class="badget" x="222" y="346" text-anchor="middle">2</text>
+  <text class="lbl" x="234" y="346">OPENS</text>
+
+  <rect class="mask" x="484" y="180" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="494" cy="187" r="6"/>
+  <text class="badget" x="494" y="190" text-anchor="middle">3</text>
+  <text class="lbl" x="506" y="190">OPENS</text>
+
+  <rect class="mask" x="420" y="68" width="56" height="14" rx="2"/>
+  <circle class="badge" cx="430" cy="75" r="6"/>
+  <text class="badget" x="430" y="78" text-anchor="middle">4</text>
+  <text class="lbl" x="442" y="78">LISTS</text>
+
+  <rect class="mask" x="772" y="176" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="782" cy="183" r="6"/>
+  <text class="badget" x="782" y="186" text-anchor="middle">5</text>
+  <text class="lbl" x="794" y="186">OPENS</text>
+
+  <rect class="mask" x="404" y="296" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="414" cy="303" r="6"/>
+  <text class="badget" x="414" y="306" text-anchor="middle">6</text>
+  <text class="lbl" x="426" y="306">OPENS</text>
+
+  <!-- The domain, where the explorer starts -->
+  <rect class="knock" x="60" y="72" width="280" height="64" rx="6"/>
+  <rect id="explorer-path-domain" class="n-focal" x="60" y="72" width="280" height="64" rx="6"/>
+  <text class="name" x="200" y="98" text-anchor="middle">Domain</text>
+  <text class="sub" x="200" y="116" text-anchor="middle">its contracts, or its contexts</text>
+
+  <!-- A contract -->
+  <rect class="knock" x="60" y="236" width="280" height="64" rx="6"/>
+  <rect id="explorer-path-contract" class="n-back" x="60" y="236" width="280" height="64" rx="6"/>
+  <text class="name" x="200" y="262" text-anchor="middle">Contract</text>
+  <text class="sub" x="200" y="280" text-anchor="middle">its full graph</text>
+
+  <!-- A unit -->
+  <rect class="knock" x="60" y="396" width="280" height="64" rx="6"/>
+  <rect id="explorer-path-unit" class="n-back" x="60" y="396" width="280" height="64" rx="6"/>
+  <text class="name" x="200" y="422" text-anchor="middle">Unit</text>
+  <text class="sub" x="200" y="440" text-anchor="middle">its commands and events, or its lifecycle</text>
+
+  <!-- The list of process modules -->
+  <rect class="knock" x="620" y="72" width="280" height="64" rx="6"/>
+  <rect id="explorer-path-processes" class="n-back" x="620" y="72" width="280" height="64" rx="6"/>
+  <text class="name" x="760" y="98" text-anchor="middle">Process modules</text>
+  <text class="sub" x="760" y="116" text-anchor="middle">the list of the domain</text>
+
+  <!-- A process module -->
+  <rect class="knock" x="620" y="236" width="280" height="64" rx="6"/>
+  <rect id="explorer-path-process" class="n-back" x="620" y="236" width="280" height="64" rx="6"/>
+  <text class="name" x="760" y="262" text-anchor="middle">Process module</text>
+  <text class="sub" x="760" y="280" text-anchor="middle">its stages, events and promises</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="508" x2="960" y2="508"/>
+  <text class="eyes" x="40" y="528">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="548" r="6"/>
+  <text class="badget" x="46" y="551" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="552">The panel of a contract in the domain opens its full graph.</text>
+  <circle class="badge" cx="46" cy="572" r="6"/>
+  <text class="badget" x="46" y="575" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="576">The panel of a unit, or of its event, opens the unit.</text>
+  <circle class="badge" cx="46" cy="596" r="6"/>
+  <text class="badget" x="46" y="599" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="600">The panel of a process module in the domain opens it.</text>
+
+  <circle class="badge" cx="526" cy="548" r="6"/>
+  <text class="badget" x="526" y="551" text-anchor="middle">4</text>
+  <text class="keyt" x="540" y="552">The Processes step beside the path lists the process modules.</text>
+  <circle class="badge" cx="526" cy="572" r="6"/>
+  <text class="badget" x="526" y="575" text-anchor="middle">5</text>
+  <text class="keyt" x="540" y="576">A process module in the list opens its picture.</text>
+  <circle class="badge" cx="526" cy="596" r="6"/>
+  <text class="badget" x="526" y="599" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="600">The panel of an event opens the contract that records it.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="632" x2="960" y2="632"/>
+  <rect class="n-focal" x="40" y="644" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="653">Where the explorer starts, by default</text>
+  <rect class="n-back" x="260" y="644" width="14" height="10" rx="2"/>
+  <text class="legt" x="280" y="653">A place of the path</text>
+  <line class="arr" x1="460" y1="649" x2="487" y2="649" marker-end="url(#explorer-path-arrow)"/>
+  <text class="legt" x="496" y="653">A move of the reader</text>
+  </g>
+</svg>

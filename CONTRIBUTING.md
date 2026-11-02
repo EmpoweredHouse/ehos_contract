@@ -36,8 +36,8 @@ You need these:
 
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
-- Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine takes its
-  diagram generator from there, in `:dev` only. Without access, the gate does not check the
+- Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine and the graph
+  renderer take their diagram generator from there, in `:dev` only. Without access, the gate does not check the
   diagrams, and CI's `diagrams` job checks them. That job does not run for a pull request from a
   fork or from Dependabot, so nothing checks the diagrams of such a pull request (#527).
 
@@ -57,14 +57,18 @@ dependencies. From the root of the repository, fetch them as CI does:
 ```
 
 ```bash
-(cd packages/eh_os_contract_graph && mix deps.get)
+(cd packages/eh_os_contract_graph && mix deps.get --only test)
 ```
 
-If you have access to `ehos-tools`, fetch all of the engine's dependencies instead. Then the gate
-also checks the diagrams:
+If you have access to `ehos-tools`, fetch all of the dependencies of the engine and of the graph
+renderer instead. Then the gate also checks the diagrams:
 
 ```bash
 (cd packages/eh_os_contract && mix deps.get)
+```
+
+```bash
+(cd packages/eh_os_contract_graph && mix deps.get)
 ```
 
 Then start PostgreSQL and run the gate:
@@ -89,9 +93,9 @@ mix check
    engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
    `test/docs_test.exs`. These hold the generated pages and the examples of the prose pages to the
    code.
-6. After the engine, `ehos_diagrams.gen --check` in `:dev`, if the diagram generator is fetched.
-   It holds the diagrams to their sources. Without the generator, the gate prints that it did not
-   check the diagrams.
+6. After the engine, `ehos_diagrams.gen --check` in `:dev`, in the engine and in the graph
+   renderer, if the diagram generator is fetched there. It holds the diagrams to their sources.
+   Without the generator, the gate prints that it did not check the diagrams of that package.
 
 Check the exit code of `mix check` itself. If you pipe the output into `tail`, the exit code is the
 exit code of `tail`.
@@ -144,7 +148,53 @@ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
 ```
 
 The same answers are JSON under the `/api` mount of the host:
-[the README of the dashboard](packages/eh_os_contract_web/README.md#the-api) lists the routes.
+[the JSON API of the dashboard](packages/eh_os_contract_web/docs/api.md) lists the routes.
+
+## Change the script or the stylesheet of a package
+
+The dashboard, `packages/eh_os_contract_web`, and the graph renderer,
+`packages/eh_os_contract_graph`, each commit their built script and stylesheet under
+`priv/static/`. A host and the gate use the committed files, so only the person who changes
+`assets/` builds them.
+
+1. Change the files in `assets/` of the package.
+2. Build the script and the stylesheet. The build uses esbuild, a downloaded binary, and needs no
+   Node:
+
+   ```bash
+   mix assets.build
+   ```
+
+3. Look at the change in a browser, under a Content-Security-Policy of `default-src 'self'`. The
+   development host serves the dashboard under this policy. Some defects of the drawing layer
+   pass each check that reads the files, and show only on the screen
+   ([`docs/adr/graph-renderer.md`](docs/adr/graph-renderer.md)). On the development host, the
+   dashboard draws each document of the case studies with the graph renderer.
+4. Commit the files in `assets/` and the built files in `priv/static/` together.
+
+The graph renderer carries 2 libraries in its script: dagre and d3-zoom. They are in
+`assets/vendor/`. `NOTICE` says what each one is, its licence, and how it was taken.
+
+The dashboard takes its look from the EmpoweredHouse design system, `ehos_design`. That package
+is in the private repository `ehos-tools`, and the dashboard pins it in `mix.exs` as a `:dev`
+dependency, at one commit. `mix assets.build` imports its tokens,
+`priv/css/colors_and_type.css`, into the stylesheet, and copies its fonts beside the stylesheet,
+into `priv/static/assets/fonts/`. A host gets nothing from `ehos_design`. To take a new version of
+the design system:
+
+1. Move the `ref` of `ehos_design` in `packages/eh_os_contract_web/mix.exs` to the commit of the new
+   tag.
+2. Fetch it and build the assets, in `packages/eh_os_contract_web`:
+
+   ```bash
+   mix deps.get && mix assets.build
+   ```
+
+3. Commit `mix.exs`, `mix.lock` and `priv/static/assets/`.
+
+Without access to `ehos-tools`, fetch the dependencies of the dashboard with
+`mix deps.get --only test`. A plain `mix deps.get` fetches the dependencies of each environment,
+`ehos_design` included. The tests read only the committed build.
 
 ## Where the work is recorded
 
