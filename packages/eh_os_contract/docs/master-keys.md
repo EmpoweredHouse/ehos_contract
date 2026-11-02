@@ -79,7 +79,8 @@ read what the new nodes write, until the rollout ends.
 
    Then remove the old key from the list, and deploy.
 
-   **Result:** the nodes use only the new key.
+   **Result:** the nodes use only the new key. If a data key still names the old key, the engine
+   does not start. "What can go wrong" below tells what to do.
 
 Then destroy the old key, within the time that you keep backups. After that, a backup that holds a
 data key wrapped by the old key cannot unwrap it.
@@ -240,6 +241,13 @@ The rewrap raises with one of these messages:
 | `the vault wrapped with … and calls … current` | A vault of your own returns from `wrap/2` an id other than `current/0`. | Make `wrap/2` return the id of `current/0`. |
 
 Do not remove the old key while the rewrap raises.
+
+At boot, the engine unwraps one data key of each master key in `eh_os_contract_subject_keys`. If
+one does not unwrap, the engine does not start, and raises with this message:
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| `… wrapped by master key …, and the vault cannot unwrap with that key` | You removed a master key that still wraps data keys, or you changed the bytes of a key and kept its id. | Put that key back in the list, and deploy. Then run the rewrap before you remove the key. |
 
 A destroyed master key cannot unwrap a data key that it wraps, also in a backup. Before you destroy
 it, make sure that you do not need to restore such a backup.

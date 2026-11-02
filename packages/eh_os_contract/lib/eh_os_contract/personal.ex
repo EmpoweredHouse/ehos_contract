@@ -633,6 +633,69 @@ defmodule EhOsContract.Personal do
     if count == 0, do: done, else: rewrap!(repo, batch, current, done + count)
   end
 
+  # Raises when `models` declare a personal field and a stored data key is wrapped by
+  # a master key the vault cannot unwrap with: one removed while it still wraps data
+  # keys, or one whose id stayed and whose bytes changed. It unwraps one data key of
+  # each master key, so it reads a row for each, not the table. Called by the
+  # engine's supervisor at boot, after `EhOsContract.Vault.check!/1`.
+  @doc false
+  @spec check_master_keys!(module(), [map()]) :: :ok
+  def check_master_keys!(repo, models) do
+    if Enum.any?(models, &declares?/1), do: Enum.each(kek_ids(repo), &check_master_key!(repo, &1))
+    :ok
+  end
+
+  defp check_master_key!(repo, kek_id) do
+    {type, id, version, wrapped} =
+      repo.one(
+        from(k in @keys,
+          where: k.kek_id == ^kek_id,
+          limit: 1,
+          select: {k.subject_type, k.subject_id, k.key_version, k.wrapped_key}
+        )
+      )
+
+    case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
+      {:ok, _key} ->
+        :ok
+
+      :error ->
+        count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
+
+        raise ArgumentError,
+              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}, and the vault " <>
+                "cannot unwrap with that key, so the engine cannot read the personal data of " <>
+                "their subjects. Put #{inspect(kek_id)} back in the vault, then run " <>
+                "`mix eh_os_contract.rewrap --expect #{inspect(Vault.current())}` before you " <>
+                "remove it"
+    end
+  end
+
+  defp data_keys(1), do: "1 data key is"
+  defp data_keys(count), do: "#{count} data keys are"
+
+  # A loose index scan down the `kek_id` index: the smallest id, then the smallest
+  # greater than the last, so the boot reads a row for each master key.
+  defp kek_ids(repo) do
+    %{rows: rows} =
+      repo.query!(
+        """
+        WITH RECURSIVE k(kek_id) AS (
+          SELECT min(kek_id) FROM eh_os_contract_subject_keys
+          UNION ALL
+          SELECT (SELECT min(s.kek_id) FROM eh_os_contract_subject_keys s
+                  WHERE s.kek_id > k.kek_id)
+          FROM k WHERE k.kek_id IS NOT NULL
+        )
+        SELECT kek_id FROM k WHERE kek_id IS NOT NULL
+        """,
+        [],
+        log: false
+      )
+
+    for [kek_id] <- rows, do: kek_id
+  end
+
   # What a data key is bound to when wrapped: its row.
   defp context(type, id, version), do: "eh_os_contract.subject_key|#{type}|#{id}|#{version}"
 

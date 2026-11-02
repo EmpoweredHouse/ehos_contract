@@ -56,7 +56,8 @@ defmodule EhOsContract.Vault do
 
   The check of step 4 is necessary. A node that still runs the configuration of
   step 1 wraps each new data key with the old key, also after the rewrap. After you
-  remove the old key, nothing can unwrap those data keys.
+  remove the old key, nothing can unwrap those data keys. If you skip the check, the
+  engine finds those data keys at the next boot, and does not start.
 
   A rotation does not rewrite an event.
 
@@ -67,12 +68,18 @@ defmodule EhOsContract.Vault do
   export `check/0`. So the default vault with no master key stops the deployment, not
   the first command with a personal field.
 
-  The engine does not try a wrap or an unwrap at boot. So a vault whose `c:check/0`
-  returns `:ok` starts, even if its wrap fails.
+  Then the engine unwraps one stored data key of each master key that the table
+  `eh_os_contract_subject_keys` names. If one does not unwrap, the engine does not
+  start. Its error gives the id of that master key and the count of its data keys.
+  This occurs when you remove a master key that still wraps data keys, or when you
+  change the bytes of a key and keep its id.
 
-  The check of the default vault reads only the configured keys, not the data keys.
-  It does not find a data key whose master key you removed. The first read of that
-  subject raises.
+  To start again, put that master key back in the vault, and deploy. Then rewrap
+  its data keys with `mix eh_os_contract.rewrap` before you remove it.
+
+  The engine does not try a wrap at boot. So a vault whose `c:check/0` returns `:ok`
+  starts, even if its wrap fails. The engine unwraps one data key of each master
+  key, not each data key.
   """
 
   @typedoc "What names a master key, stored beside each data key it wraps."
