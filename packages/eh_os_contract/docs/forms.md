@@ -192,7 +192,8 @@ Give the form an `id`. Without an `id`, LiveView does not restore the form after
 Keep the key in a hidden input of the form. After a reconnect, LiveView calls `mount/3` again, and
 `mount/3` makes a new key. LiveView then sends the old inputs of the form to `phx-change`. The
 `phx-change` handler takes the old key back from them. So, if the person submits again after a lost
-reply, dispatch gets the same key. A reload of the page makes a new key.
+reply, dispatch gets the same key. A new page makes a new key: a reload, also one that LiveView
+starts itself, or a navigation back to the page.
 
 **Result:** the page shows an empty form for the invoice.
 
@@ -202,18 +203,31 @@ Build the changeset again on each `phx-change`:
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
-def handle_event("validate", %{"issue_invoice" => params, "form_key" => key}, socket) do
+def handle_event("validate", %{"issue_invoice" => params} = event, socket) do
   changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
-  {:noreply, assign(socket, form_key: key, form: to_form(changeset, action: :validate))}
+  socket = assign(socket, :form, to_form(changeset, action: :validate))
+  {:noreply, keep_key(socket, event["form_key"])}
+end
+
+# After a reconnect, take back the key of the form. Accept only a key that the page made.
+defp keep_key(socket, key) do
+  case Ecto.UUID.cast(key) do
+    {:ok, key} -> assign(socket, :form_key, key)
+    :error -> socket
+  end
 end
 ```
+
+The key comes from the browser, and dispatch writes it to the log. So `keep_key/2` accepts only a
+UUID, as `mount/3` makes it.
 
 **Result:** if the person types `July` as the period, the page shows an error at the period.
 
 ## Send the command, and put the refusal on the form
 
 On `phx-submit`, convert the changeset into the command, and dispatch it. Give dispatch the key of
-the form, so that a second submit of the same form is the same command.
+the form, so that a second submit of the same form is the same command. Dispatch then returns the
+receipt of the first command, also if the person changed the form.
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
@@ -250,27 +264,30 @@ Each error carries the reason of the engine in its keyword list. Write the messa
 not from the text of the error.
 
 `<.input>` shows the errors of its field through `translate_error/1` of `CoreComponents`. Write the
-messages in that function. Then `<.input>` and the errors on `:base` show the same words. Keep the
-body that Phoenix generated for the other errors:
+messages in that function. Then `<.input>` and the errors on `:base` show the same words.
+
+`translate_error/1` shows the errors of each form of the application. So match only the reasons of
+the engine. Rename the generated function, and call it for each other error:
 
 <!-- not compiled: functions of the host's CoreComponents -->
 ```elixir
 def translate_error({_message, opts} = error) do
   case {opts[:validation], opts[:invariant]} do
-    {:required, _} -> "Fill this in"
     {:type, _} -> "This is not a valid value"
     {:invariant, :written_as_month} -> "Write the month as YYYY-MM"
     {:rejected, :issued_once} -> "This invoice was already issued"
     {:unknown, _} -> "Nothing of that name exists"
-    _other -> generated_message(error)
+    _other -> generated_translate_error(error)
   end
 end
 
-# The body of translate_error/1 that Phoenix generates without Gettext.
-defp generated_message({message, opts}) do
-  Enum.reduce(opts, message, fn {key, value}, acc ->
-    String.replace(acc, "%{#{key}}", fn _ -> to_string(value) end)
-  end)
+# The translate_error/1 that Phoenix generated, with Gettext. Keep the body that your application has.
+defp generated_translate_error({message, opts}) do
+  if count = opts[:count] do
+    Gettext.dngettext(MyAppWeb.Gettext, "errors", message, message, count, opts)
+  else
+    Gettext.dgettext(MyAppWeb.Gettext, "errors", message, opts)
+  end
 end
 ```
 
