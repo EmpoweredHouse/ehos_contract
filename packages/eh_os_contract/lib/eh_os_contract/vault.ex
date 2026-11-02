@@ -78,6 +78,11 @@ defmodule EhOsContract.Vault do
   its data keys, and deploy. To remove it, first run
   `mix eh_os_contract.rewrap --expect <id of the current key>`.
 
+  If you changed the bytes of a key and kept its id, its data keys can need two sets
+  of bytes: the old bytes for the data keys from before the change, the new bytes for
+  the data keys from after it. The engine tries only one data key. So after you put
+  one set back, some data keys can still not unwrap.
+
   A master key that you destroyed cannot come back. While a data key names it, the
   engine does not start. This occurs when you restore a backup that is older than the
   rewrap. The engine gives no way to start past this check.

@@ -654,9 +654,9 @@ defmodule EhOsContract.Personal do
         count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
 
         raise ArgumentError,
-              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}, and the vault " <>
-                "cannot unwrap with that key, so the engine cannot read the personal data of " <>
-                "their subjects. " <> remedy(kek_id, Vault.current())
+              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
+                "unwrap the one that the engine tried, so the engine may not read the personal " <>
+                "data of their subjects. " <> remedy(kek_id, Vault.current())
     end
   end
 
@@ -666,7 +666,7 @@ defmodule EhOsContract.Personal do
   # that putting old bytes back is the fix: data keys wrapped since may need the new.
   defp remedy(current, current) do
     "The vault wraps with #{inspect(current)}. Check that its bytes are the bytes that " <>
-      "wrapped these data keys"
+      "wrapped these data keys. Data keys wrapped since a change of the bytes need the new bytes"
   end
 
   defp remedy(kek_id, current) do

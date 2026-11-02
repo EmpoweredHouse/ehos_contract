@@ -92,9 +92,9 @@ defmodule EhOsContract.VaultTest do
       keys([{"kek-new", @new_kek}])
 
       assert_raise ArgumentError,
-                   ~s(2 data keys are wrapped by master key "kek-old", and the vault cannot ) <>
-                     ~s(unwrap with that key, so the engine cannot read the personal data of ) <>
-                     ~s(their subjects. ) <>
+                   ~s(2 data keys are wrapped by master key "kek-old". The vault cannot unwrap ) <>
+                     ~s(the one that the engine tried, so the engine may not read the personal ) <>
+                     ~s(data of their subjects. ) <>
                      ~s(Put "kek-old" back in the vault, with the bytes that wrapped them. Then run ) <>
                      ~s(`mix eh_os_contract.rewrap --expect "kek-new"` before you remove it),
                    fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
@@ -111,10 +111,11 @@ defmodule EhOsContract.VaultTest do
       keys([{"kek-1", @new_kek}])
 
       assert_raise ArgumentError,
-                   ~s(1 data key is wrapped by master key "kek-1", and the vault cannot ) <>
-                     ~s(unwrap with that key, so the engine cannot read the personal data of ) <>
-                     ~s(their subjects. The vault wraps with "kek-1". Check that its bytes are ) <>
-                     ~s(the bytes that wrapped these data keys),
+                   ~s(1 data key is wrapped by master key "kek-1". The vault cannot unwrap ) <>
+                     ~s(the one that the engine tried, so the engine may not read the personal ) <>
+                     ~s(data of their subjects. The vault wraps with "kek-1". Check that its ) <>
+                     ~s(bytes are the bytes that wrapped these data keys. Data keys wrapped ) <>
+                     ~s(since a change of the bytes need the new bytes),
                    fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
     end
 
