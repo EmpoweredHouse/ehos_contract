@@ -112,14 +112,20 @@ defmodule EhOsContract.Web.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_web/CHANGELOG.md"
       },
-      files: ~w(lib priv/static .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
+      files: ~w(lib priv/static docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: [
+        "README.md",
+        "docs/mount-the-dashboard.md",
+        "docs/who-can-see-it.md",
+        "docs/api.md",
+        "CHANGELOG.md"
+      ],
       # The changelog names what a release removed, and the names resolve nowhere
       # after it, as they should.
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],

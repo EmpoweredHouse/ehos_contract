@@ -138,13 +138,16 @@ jobs:
           path: packages/eh_os_contract_auth/deps
           key: eh-os-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
-      # The graph renderer (plan E13b), same shape: its gate runs as a separate Mix
-      # project via package_test_graph/1 in sandbox/mix.exs.
+      # The graph renderer (plan E13b): its gate runs as a separate Mix project via
+      # package_test_graph/1 in sandbox/mix.exs. Its `:dev` dependencies come from the private
+      # ehos-tools, so its children are listed and those left out, as the engine's above.
       # docs.yml copies this key and path.
       - name: Cache graph renderer deps
         uses: actions/cache@v4
         with:
-          path: packages/eh_os_contract_graph/deps
+          path: |
+            packages/eh_os_contract_graph/deps/*
+            !packages/eh_os_contract_graph/deps/ehos_*
           key: eh-os-contract-graph-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
       # Compiled dependencies, one cache per project. Without it every run
@@ -216,16 +219,18 @@ jobs:
         working-directory: packages/eh_os_contract_auth
         run: mix deps.get
 
+      # `--only test`, as for the engine: the renderer's `:dev` dependencies, which draw its
+      # diagrams, live in the private ehos-tools.
       - name: Install graph renderer deps
         working-directory: packages/eh_os_contract_graph
-        run: mix deps.get
+        run: mix deps.get --only test
 
       # The newest pair only. The repository follows the oldest pair's formatter, so the
       # newest formats first. Nothing here is committed.
       - name: Format as the newest Elixir does
         if: ${{ matrix.name == 'newest' }}
-        # The environment the dependencies were fetched for: in `:dev` the engine and the
-        # dashboard would also ask for their private `:dev` dependencies.
+        # The environment the dependencies were fetched for: in `:dev` the engine, the
+        # dashboard and the graph renderer would also ask for their private `:dev` dependencies.
         env:
           MIX_ENV: test
         run: |
@@ -267,8 +272,8 @@ jobs:
         working-directory: sandbox
         run: mix check
 
-  # The engine's diagrams in `docs/img/` against their sources in `docs/diagrams/`, by
-  # `mix ehos_diagrams.gen --check` in `:dev`. The generator and the design system it reads
+  # The diagrams of the engine and the graph renderer in `docs/img/` against their sources in
+  # `docs/diagrams/`, by `mix ehos_diagrams.gen --check` in `:dev`. The generator and the design system it reads
   # live in the private ehos-tools, so this is the only job that gets a token for it, from
   # the "ehos-tools CI" GitHub App: it may only read that repository and expires within the
   # hour, as in eh-os. A pull request from a fork or from Dependabot gets no Actions
@@ -317,6 +322,18 @@ jobs:
 
       - name: mix ehos_diagrams.gen --check
         working-directory: packages/eh_os_contract
+        run: mix ehos_diagrams.gen --check
+
+      - name: Install graph renderer deps
+        working-directory: packages/eh_os_contract_graph
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
+        run: mix deps.get --only dev
+
+      - name: mix ehos_diagrams.gen --check, graph renderer
+        working-directory: packages/eh_os_contract_graph
         run: mix ehos_diagrams.gen --check
 
   # Each package as Hex would build it, and as an application would read it once

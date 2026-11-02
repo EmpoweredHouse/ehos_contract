@@ -21,6 +21,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The README is split into pages by what a reader asks** (#517). The README says what the
+  package draws. Three how-tos take the rest, and hexdocs shows them: `docs/explore-a-domain.md`,
+  with a diagram of the path that the explorer follows, `docs/draw-a-document.md` and
+  `docs/join-applications.md`. The pages now say that a panel of a card opens the next place with a
+  button, and that the explorer can also start at `:processes`. They also say that the explorer loads an
+  overlay only for a picture that shows the numbers of the log, and that the title of a box with no
+  graph document starts with the name of its application. How to build the script and the
+  stylesheet is now in `CONTRIBUTING.md`.
+
 ## [0.9.0] - 2026-10-29
 
 ### Added

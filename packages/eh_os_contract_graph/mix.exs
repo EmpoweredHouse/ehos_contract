@@ -3,6 +3,14 @@ defmodule EhOsContract.GraphRenderer.MixProject do
 
   @version "0.9.1-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
+  # The pages ExDoc builds, in the order a reader takes them.
+  @extras [
+    "README.md",
+    "docs/explore-a-domain.md",
+    "docs/draw-a-document.md",
+    "docs/join-applications.md",
+    "CHANGELOG.md"
+  ]
   @description "Draws EhOsContract's graph.v1 documents in a LiveView: cards, arrows, panels."
 
   @moduledoc """
@@ -30,8 +38,32 @@ defmodule EhOsContract.GraphRenderer.MixProject do
       compilers: [:boundary] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      # `mix ehos_diagrams.gen [--check]`, in `:dev` only, as in the engine: the sandbox's gate
+      # runs the check when the generator is fetched, and CI in its `diagrams` job.
+      ehos_diagrams: [
+        sources: "docs/diagrams",
+        out: "docs/img",
+        vocabulary: {__MODULE__, :vocabulary, []},
+        pages: ["README.md", "docs/**/*.md"],
+        documents: ["README.md", "docs/**/*.md"]
+      ]
     ]
+  end
+
+  # What the labels of the diagrams are held to: each word the engine's glossary defines, in
+  # lower case. The engine owns the words of a contract, and this package draws them. Read from
+  # the engine beside it, which is there wherever `ehos_diagrams` is, in this repository.
+  @doc false
+  def vocabulary do
+    words =
+      ~r/^\| \*\*([^*]+)\*\* \|/mu
+      |> Regex.scan(File.read!(Path.expand("../eh_os_contract/docs/glossary.md", __DIR__)),
+        capture: :all_but_first
+      )
+      |> Enum.map(fn [word] -> String.downcase(word) end)
+
+    %{words: words, alone: [], concepts: %{}, badges: []}
   end
 
   # `mix check` runs the tests, and those need MIX_ENV=test.
@@ -73,14 +105,16 @@ defmodule EhOsContract.GraphRenderer.MixProject do
         "Changelog" => "#{@source_url}/blob/main/packages/eh_os_contract_graph/CHANGELOG.md"
       },
       files:
-        ~w(lib priv/static priv/schema .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
+        ~w(lib priv/static priv/schema docs .formatter.exs mix.exs README.md CHANGELOG.md LICENSE NOTICE)
     ]
   end
 
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      # The diagrams `mix ehos_diagrams.gen` writes, which the pages link as `img/<id>.svg`.
+      assets: %{"docs/img" => "img"},
+      extras: @extras,
       # The changelog names what a release removed, and the names resolve nowhere
       # after it, as they should.
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
@@ -120,7 +154,23 @@ defmodule EhOsContract.GraphRenderer.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       # Builds assets/ into the bundle committed under priv/static/, as in
       # packages/eh_os_contract_web: a downloaded binary, run by whoever edits the JS.
-      {:esbuild, "~> 0.9", only: :dev, runtime: false}
+      {:esbuild, "~> 0.9", only: :dev, runtime: false},
+      # The diagrams of the pages: hand-laid sources in `docs/diagrams/`, checked and written
+      # into `docs/img/` by `mix ehos_diagrams.gen` (`ehos_diagrams:` above), at the commits the
+      # engine pins, for the reasons its `mix.exs` gives. `:dev` only: `mix deps.get --only test`
+      # fetches nothing private, so anyone can run this package's `mix check`.
+      {:ehos_diagrams, "~> 0.2.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_diagrams",
+       ref: "2198050364cee447b66b010ac31dfd6df9c9262e",
+       only: :dev,
+       runtime: false},
+      {:ehos_design, "~> 0.5.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_design",
+       ref: "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0",
+       only: :dev,
+       runtime: false}
     ]
   end
 end

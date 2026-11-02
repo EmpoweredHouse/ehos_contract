@@ -124,7 +124,9 @@ jobs:
       - name: Restore graph renderer deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract_graph/deps
+          path: |
+            packages/eh_os_contract_graph/deps/*
+            !packages/eh_os_contract_graph/deps/ehos_*
           key: eh-os-contract-graph-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
 
       # `--only test`, as in ci.yml: the engine's `:dev` dependencies, which draw its
@@ -144,9 +146,10 @@ jobs:
         working-directory: packages/eh_os_contract_auth
         run: mix deps.get
 
+      # `--only test`, as for the engine: the renderer's `:dev` dependencies draw its diagrams.
       - name: Install graph renderer deps
         working-directory: packages/eh_os_contract_graph
-        run: mix deps.get
+        run: mix deps.get --only test
 
       - name: Build the documentation
         env:
