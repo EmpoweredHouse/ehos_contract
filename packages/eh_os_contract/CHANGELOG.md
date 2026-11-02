@@ -84,23 +84,40 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
   does not narrow a `:system` actor, so a `scope` on the command narrows nothing for it.
-
+- **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
+  A `POST` must have the header `content-type: application/json`, with or without parameters such as
+  `charset`. Otherwise the answer is 415, `{"error": "unsupported_media_type"}`, and nothing is
+  dispatched. Before, the plug read any body. A page of another origin could then post a form, or a
+  `fetch()` with no content type, with the cookie of a person signed in, and issue a command as that
+  person. A browser asks the host before a page of another origin can send `application/json`. Clients
+  that send no content type, or another one, must send `application/json`, also for an empty body.
+  The OpenAPI document lists the 415 for each command, so the digest of each contract with a command
+  changes.
 - **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
   `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
   model delivered `:in_transaction` then never got the events after the skipped one, and a process
   manager reacted to the history after it: it issued commands and set timers for past events. Now a
   skip puts the subscription back in the status it failed in, so the rebuild or the replay continues
   after the event. Dispatch also leaves a `failing` read model delivered `:in_transaction` alone, as
-  a `rebuilding` one; the runner takes those events after the skip, an erasure among them, and a
-  query with `min_position:` waits for it. The task's list says "while it replays the log" for a
-  subscription that failed during a rebuild or a process manager's replay, and `--skip` of an unknown
-  key says that the key is not a subscription, not that it is not failing. The storage goes to
+  a `rebuilding` one; the runner takes those events after the skip, and a query with
+  `min_position:` waits for it. An erasure still calls its `forget/2` at once (#557), but inside a
+  savepoint: if `forget/2` raises on the partial rows, the engine undoes what it wrote, logs a
+  warning, and the erasure continues. Before, that raise failed the erasure, and every later one. A
+  `forget/2` that raises or rolls back inside a `Repo.transaction` of its own still fails the
+  erasure. The task's list says "while it replays the log" for a subscription that failed during a
+  rebuild or a process manager's replay, and `--skip` of an unknown key says that the key is not a
+  subscription, not that it is not failing. The storage goes to
   version 5, which keeps that status: add a migration calling `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
   marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
   boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
   queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
   `running` on a skip, as before: reset a process manager that failed during its replay instead of
   skipping it.
+- **`mix eh_os_contract.check` no longer warns that a `:separate_ways` relation is crossed by no
+  reference** (`orphan-context-mapping`, #537). The relation says that the two contexts do not depend on
+  each other, and the compiler refuses a reference across it. The only way to silence the warning was to
+  remove the relation, and that removed the refusal too. A domain with such a relation has one warning
+  fewer for each; no verdict moves.
 
 ## [0.13.1] - 2026-11-01
 

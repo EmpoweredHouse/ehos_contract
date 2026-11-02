@@ -401,7 +401,10 @@ defmodule EhOsContract do
   a contract dispatched from outside them has read models `erase/3` does not know.
   A read model fed after the transaction that is moved past the erasure by
   `mix eh_os_contract.subscriptions --skip` keeps its copy; `--reset` rebuilds it,
-  and the replay forgets. Calling `erase/3` again appends nothing.
+  and the replay forgets. A read model fed in the transaction that is `failing` forgets
+  at once; if its `forget/2` raises on the rows it has, what it wrote is undone, a
+  warning names it, and it keeps its copy. A reset forgets; after a skip, its runner
+  calls `forget/2` again when it reaches the erasure. Calling `erase/3` again appends nothing.
 
   Raises when no domain of the host's contracts declares `subject`.
   """

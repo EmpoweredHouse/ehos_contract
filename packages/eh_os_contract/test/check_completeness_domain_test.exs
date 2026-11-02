@@ -298,6 +298,47 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert message =~ "relation :partnership between :archive and :scheduling"
   end
 
+  # #537: separate ways says no reference crosses it, and X11 refuses one that does.
+  test "a separate-ways relation is not an orphan; control: a partnership nothing crosses" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.ApartDomain do
+        use EhOsContract.Domain, name: :apart, language: :en
+
+        subdomain :supporting, "Support", type: :supporting
+        context :loans, "Loans", subdomain: :supporting
+        context :events, "Events", subdomain: :supporting
+        context :archive, "Archive", subdomain: :supporting
+        actor :clerk, :human, "Clerk"
+        relation :separate_ways, between: [:loans, :events]
+        relation :partnership, between: [:loans, :archive]
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ApartLoans do
+        use EhOsContract.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.ApartDomain,
+          context: :loans, id: "apart.loans"
+
+        aggregate :loan, "Loan" do
+          identity :loan_id
+          command :grant, "Grant", by: :clerk, emits: :granted
+          event :granted, "Granted"
+        end
+      end
+      """,
+      "apart.ex"
+    )
+
+    assert [message] =
+             for(
+               f <- Completeness.findings([EhOsContract.CheckCompletenessDomainTest.ApartLoans]),
+               f.rule == "orphan-context-mapping",
+               do: f.message
+             )
+
+    assert message =~ "relation :partnership between :archive and :loans"
+  end
+
   test "a contract consuming one of another context with no relation between them" do
     # Reporting consumes Settlement, and nothing relates the two contexts; Settlement
     # names Scheduling's entity, which the customer-supplier relation covers.

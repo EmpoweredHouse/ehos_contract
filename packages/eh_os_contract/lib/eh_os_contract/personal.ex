@@ -49,6 +49,8 @@ defmodule EhOsContract.Personal do
 
   alias EhOsContract.Subscription.Runner
 
+  require Logger
+
   @keys "eh_os_contract_subject_keys"
   @erasures "eh_os_contract_erasures"
   @erased "eh_os_contract.subject_erased"
@@ -260,10 +262,11 @@ defmodule EhOsContract.Personal do
     do: consumer.delivery == :at_least_once and Map.has_key?(consumer.callbacks, @erased)
 
   # Every read model delivered in the transaction that forgets, as dispatch projects an
-  # appended event: a registered one's row advances with it, one being rebuilt is left
-  # to its runner (v2 §12), and so is one that failed while it was rebuilt (issue #550).
-  # Its rows are partial, and a `forget/2` that raised on them would roll the erasure
-  # back, and every one after it, until a person skips the event or resets it.
+  # appended event: a registered one's row advances with it, and one being rebuilt is
+  # left to its runner, which reaches the erasure as it catches up (v2 §12). One that
+  # failed while it was rebuilt (issue #550) may stay failing for days, so it forgets
+  # at once too (issue #557), but its rows are partial: a `forget/2` that raises on
+  # them is undone and left to its runner, so that it does not roll the erasure back.
   defp forget_inline!(repo, row, erased) do
     case Implementations.inline(nil, @erased) do
       [] -> :ok
@@ -274,16 +277,21 @@ defmodule EhOsContract.Personal do
   defp forget_inline!(repo, row, erased, consumers) do
     keys = for c <- consumers, do: c.key
 
-    rebuilding =
+    behind =
       repo.all(
         from(s in SubscriptionRecord,
           where: s.name in ^keys and s.status in ^SubscriptionRecord.behind(),
-          select: s.name
+          select: {s.name, s.status}
         )
       )
+      |> Map.new()
 
-    for consumer <- consumers, consumer.key not in rebuilding do
-      :ok = Consumer.handle!(consumer, erased, [])
+    for consumer <- consumers do
+      case Map.get(behind, consumer.key) do
+        nil -> :ok = Consumer.handle!(consumer, erased, [])
+        "failing" -> forget_failing(repo, consumer, erased)
+        "rebuilding" -> :ok
+      end
     end
 
     repo.update_all(
@@ -294,6 +302,33 @@ defmodule EhOsContract.Personal do
       ),
       set: [position: row.position, updated_at: DateTime.utc_now()]
     )
+  end
+
+  # Ecto's nested transaction takes no savepoint, and a raise in one fails the
+  # erasure's, so the savepoint is taken by hand. Rolling back to it also clears an
+  # error Postgres raised, but keeps the savepoint, so it is released after: several
+  # read models whose forget/2 raised in one erasure leave none open. The row stays
+  # failing where it was: its runner takes the erasure again after a skip or a
+  # reset, and a second `forget/2` changes nothing.
+  defp forget_failing(repo, consumer, erased) do
+    repo.query!("SAVEPOINT eh_os_contract_forget")
+
+    try do
+      Consumer.handle!(consumer, erased, [])
+    rescue
+      exception ->
+        repo.query!("ROLLBACK TO SAVEPOINT eh_os_contract_forget")
+        repo.query!("RELEASE SAVEPOINT eh_os_contract_forget")
+
+        Logger.warning(
+          "subscription #{consumer.key}: it is failing, and its forget/2 raised " <>
+            "#{inspect(exception.__struct__)} on an erasure of subject type " <>
+            "#{erased.subject}, so its rows keep the subject until it is reset, or until " <>
+            "it is skipped and its runner's forget/2 succeeds at the erasure"
+        )
+    else
+      :ok -> repo.query!("RELEASE SAVEPOINT eh_os_contract_forget")
+    end
   end
 
   defp declared!(subject) do

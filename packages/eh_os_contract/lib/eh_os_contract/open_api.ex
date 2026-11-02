@@ -221,6 +221,7 @@ defmodule EhOsContract.OpenAPI do
       "404" => %{"description" => "Capability not found"},
       "409" => %{"description" => "Conflict or reused idempotency key"},
       "410" => %{"description" => "Personal-data subject erased"},
+      "415" => %{"description" => "Body without content-type application/json"},
       "422" => %{
         "description" =>
           "Invalid fields, missing idempotency key, key too long, or invariant rejection"

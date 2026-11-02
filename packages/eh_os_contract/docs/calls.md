@@ -93,6 +93,17 @@ give it. Each route is the name of a capability.
    URL. Browsers, proxies and servers can log the URL: [Write a read model and its
    query](read-models.md) tells what that means for personal data.
 
+A command and a recorded event must have the header `content-type: application/json`, also with an
+empty body. If the caller may make the call and the header is missing or different, the plug answers
+415. It dispatches nothing. A command with a scope gets 403 `outside_scope` instead, because the
+plug does not read the scope from that body.
+
+This header protects a person who is signed in with a cookie. A web page of another origin can send
+a form with the cookie of the person. But the browser asks your application before that page can
+send `content-type: application/json`. Do not let your CORS configuration allow credentials for an
+origin that you do not trust. Otherwise, a page of that origin can send a command to the plug as the
+person.
+
 The plug reads two headers, for a command and for a recorded event. `idempotency-key` gives the
 idempotency key. `x-correlation-id` gives the correlation, a UUID.
 
@@ -112,6 +123,7 @@ These are the main answers. `EhOsContract.Plug` lists each answer, with its body
 | conflict, or an idempotency key that the same actor used for another command | 409 |
 | no such capability | 404 |
 | a body that is not a JSON object, or a correlation id that is not a UUID | 400 |
+| a command or a recorded event without `content-type: application/json` | 415 |
 | personal data of an erased subject | 410 |
 | the host could not supply a field | 503 |
 

@@ -167,8 +167,17 @@ An erasure also does not reach these copies:
 - A read model delivered `:at_least_once` keeps its copy until it reads the event of the erasure.
   If `mix eh_os_contract.subscriptions --skip` moves it past that event, it keeps the copy. A
   `--reset` rebuilds it, and the replay forgets.
+- A read model delivered `:in_transaction` that is `failing` keeps its copy if its `forget/2` raises
+  an exception on its partial rows. The engine logs a warning, undoes what `forget/2` wrote, and the
+  erasure continues. A `--reset` rebuilds the read model, and the replay forgets. After a
+  `--skip`, the runner calls `forget/2` again when it reaches the erasure:
+  [Move a subscription past an event that fails](subscriptions.md#move-a-subscription-past-an-event-that-fails).
 - An effect that already sent personal data to an external system, such as a text message gateway,
   cannot take it back.
+
+Do not open a `Repo.transaction` in `forget/2`. If `forget/2` raises or rolls back inside it, the
+erasure fails. Make a second call of `forget/2` for one subject change nothing: the engine can call
+it twice for one erasure.
 
 ## An example
 
