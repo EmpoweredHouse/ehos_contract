@@ -30,20 +30,26 @@ this row is the only record of it.
 
 | Column | Value |
 | --- | --- |
+| `id` | the primary key |
 | `decided_at` | the time of the database when it wrote the row |
 | `subject` | the `sub` of the credential |
 | `kind` | `command`, `query` or `record` |
 | `capability` | the capability that the call needs |
 | `contract`, `contract_version` | the `id:` of the contract, and its version |
-| `scope_dimension`, `scope_value` | for a scoped call, the field and the value that the call asks for; the value is empty if the call does not give it |
+| `scope_dimension` | for a scoped call, the field of the scope, otherwise `NULL` |
+| `scope_value` | for a scoped call, the value that the call asks for, otherwise `NULL` |
 | `outcome` | `allowed` or `refused` |
-| `reason` | for a refusal, its reason, such as `missing_capability`; otherwise empty |
+| `reason` | for a refusal, its reason, such as `missing_capability`, otherwise `NULL` |
 
-The package records some scope values as `sha256:` and the hex digest of the value:
+A scope value is text that the caller sends, so the row does not always keep it as sent:
 
-- a value that a text column cannot hold: invalid UTF-8, or a NUL;
-- a value longer than 256 bytes;
-- a value that starts with `sha256:`.
+- **The engine passes no value that a grant cannot hold.** Such a value is not text, has a NUL,
+  is not valid UTF-8, or is longer than 255 bytes. The row then has `NULL` in
+  `scope_value`, as for a call without the value. The call gets a refusal.
+- **The package digests a value that starts with `sha256:`.** It records `sha256:` and the hex
+  digest of the value. So each `sha256:` value in the table is a digest that the package wrote.
+- **Code can call `EhOsContract.Auth.authorize/2` directly.** Then the package also digests a
+  value that a text column cannot hold, or that is longer than 256 bytes.
 
 So a value that an attacker made is refused like each other value, and does not make the request
 fail. The decision is the same: only the record changes.
@@ -70,9 +76,14 @@ the call is on:
 - **If the call is not in a transaction**, the row is one `INSERT` that commits on its own.
   `EhOsContract.Plug` calls this way.
 - **If the caller wraps `EhOsContract.dispatch/3` in its own transaction and rolls it back**, the
-  row goes too.
-- **If the package cannot write the row, the call fails.** The package makes no decision that it
-  did not record.
+  row goes too. A refusal then leaves no record at all.
+- **If the package cannot write the row, the call raises.** `EhOsContract.Plug` does not catch the exception, so
+  Phoenix answers 500. The
+  package makes no decision that it did not record.
+
+> **Do not roll back a transaction on a refusal.**
+> Your code can roll back its transaction for each `{:error, _}` of `dispatch/3`. Then each
+> refusal loses its only record. Call `dispatch/3` outside your transaction, or commit after a refusal.
 
 ## What does it cost?
 
@@ -80,18 +91,39 @@ Each call that gets to the package writes 1 row: 1 `INSERT`. For a query, it is 
 the call.
 Plan for 1 more write for each call.
 
-The table has 2 indexes: on `decided_at`, and on `subject` and `decided_at`. It has no other.
+The table has the index of its primary key, and 2 other indexes: on `decided_at`, and on `subject`
+and `decided_at`.
 
 ## How long are the rows kept?
 
 The application decides. The package deletes no row. A common choice is to keep the rows as long as
 the application keeps its own log.
 
-The index on `decided_at` makes a periodic delete cheap. Run it from a job, for example:
+The index on `decided_at` finds the old rows. Delete them in batches, from a job, for example:
 
 ```elixir
-MyApp.Repo.query!("DELETE FROM eh_os_contract_auth_decisions WHERE decided_at < now() - interval '400 days'")
+defmodule MyApp.PruneDecisions do
+  @batch """
+  DELETE FROM eh_os_contract_auth_decisions
+  WHERE id IN (
+    SELECT id FROM eh_os_contract_auth_decisions
+    WHERE decided_at < now() - interval '400 days'
+    ORDER BY decided_at
+    LIMIT 10000
+  )
+  """
+
+  def run do
+    case MyApp.Repo.query!(@batch) do
+      %{num_rows: 0} -> :ok
+      _more -> run()
+    end
+  end
+end
 ```
+
+Each batch is one short transaction. One `DELETE` of all old rows can take longer than the timeout
+of the repo, and then it deletes nothing.
 
 ## Next steps
 

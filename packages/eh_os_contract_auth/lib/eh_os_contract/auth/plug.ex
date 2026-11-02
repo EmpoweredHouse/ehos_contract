@@ -15,12 +15,12 @@ defmodule EhOsContract.Auth.Plug do
 
   A request with `authorization: Bearer <credential>` that `EhOsContract.Auth.verify/2`
   accepts goes on with `conn.assigns.eh_os_contract_actor` set. Anything else stops
-  here with 401 and a `www-authenticate: Bearer` header:
+  here with 401:
 
-  | Request | Body |
-  | --- | --- |
-  | no `authorization` header, or not a bearer one | `{"error": "no_credential"}` |
-  | a credential `verify/2` refuses | `{"error": "<reason>"}` — `expired`, `unknown_key`, … |
+  | Request | `www-authenticate` | Body |
+  | --- | --- | --- |
+  | no `authorization` header, not a bearer one, or an empty token | `Bearer` | `{"error": "no_credential"}` |
+  | a credential `verify/2` refuses | `Bearer error="invalid_token"` | `{"error": "<reason>"}` — `expired`, `unknown_key`, … |
 
   A refused credential is logged with its reason and nothing of the token. It gets
   no row in `eh_os_contract_auth_decisions`: a credential that does not verify names

@@ -12,8 +12,8 @@ engine verifies no credential. It asks an *Authorizer* what the actor of a crede
 package is that Authorizer for the credentials of EHOS. The engine does not depend on it.
 
 The package verifies each credential in the application, against the public keys of EHOS. It keeps
-the keys in the database of the application. So the application accepts credentials while EHOS is
-down, also after a restart. The package then writes a row for each decision, a refusal too.
+the keys in the database of the application. After its first fetch, the application accepts
+credentials while EHOS is down, also after a restart. The package then writes a row for each decision, a refusal too.
 
 The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
 defines each word of the contract language that these pages use. The words of the platform, such as
@@ -27,10 +27,12 @@ defines each word of the contract language that these pages use. The words of th
 | `EhOsContract.Auth` | the Authorizer of the engine, with a row for each decision |
 | `EhOsContract.Auth.Plug` | verifies the bearer token of a request in front of `EhOsContract.Plug` |
 | `mix eh_os_contract.manifest` | writes the application manifest that EHOS deploys from |
-| `EhOsContract.Auth.SignIn` | signs people in to the pages of the application, through EHOS |
+| `EhOsContract.Auth.SignIn`, `EhOsContract.Auth.Session` | signs people in to the pages of the application through EHOS, and keeps their sessions |
+| `EhOsContract.Auth.Workload` | holds the credential of the application itself, for the people and for mail |
 | `EhOsContract.Auth.People` | reads the people of the company |
 | `EhOsContract.Auth.Mail` | sends mail through EHOS |
 | `EhOsContract.Auth.Grants` | lets a person grant a role that their rule lets them give |
+| `EhOsContract.Auth.Egress` | sends a call to a host outside the installation through the proxy that EHOS gives |
 | `EhOsContract.Auth.Testing` | gives credentials and stand-ins to the tests of the application |
 
 ## Next steps

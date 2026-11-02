@@ -39,8 +39,7 @@ end
 
 Run `mix deps.get`.
 
-**Result:** `mix deps.get` fetches the two packages. If Mix refuses the two declarations of
-`eh_os_contract`, make the two `git:` and `sparse:` forms the same.
+**Result:** `mix deps.get` fetches the two packages.
 
 ## 2. Configure the package
 
@@ -60,7 +59,8 @@ config :eh_os_contract_auth,
   lowercase. The address has no path, no trailing slash, no user, no query and no fragment. Plain `http` is allowed
   only for `localhost`, `127.0.0.1` and `::1`.
 - `audience` must be exactly the `aud` that EHOS issues for this application.
-- Set `jwks_url` only if EHOS publishes its keys at another address. The address must use https.
+- Set `jwks_url` only if EHOS publishes its keys at another address. It has the same rules as
+  `issuer`, but it can have a path.
 
 In a release, read the two values from the environment that EHOS gives the workload. The section
 "Configuration from EHOS's environment" of the [README](../README.md) tells how.
@@ -110,19 +110,21 @@ options.
 **Result:** the application starts. The key process loads the last keys from its table, then
 fetches the keys of EHOS. `EhOsContract.Auth.ready?/0` returns `true` when the process holds a key.
 
-The application does not start, and the message tells what to fix, in these cases:
+The application does not start, and the message tells what to fix, in these cases among others:
 
 - `issuer` or `audience` is missing;
-- `issuer` is not an address that EHOS starts with;
-- the keys would come over plain `http` from a host that is not `localhost`, `127.0.0.1` or `::1`;
+- `issuer` is not an address that EHOS accepts as its issuer;
+- the address of the keys breaks the rules of step 2;
+- the child gets an option that it does not take, `url:` included;
 - `audience` is not `<application>/<environment>` with both parts, or its application part is not
   a name that EHOS gives an application;
 - the application part of `audience` is not exactly the `name:` of a domain with contracts;
 - another domain with contracts in the application declares a `publish`;
 - the domain of a contract is not loaded, so the package cannot compare its name.
 
-If EHOS does not answer, the application starts anyway. It refuses each credential with `:no_keys`
-until a fetch succeeds, and logs this at start.
+If EHOS does not answer, the application starts anyway, with the keys in its table. If the table
+has no key, as at the first start, the application refuses each credential with `:no_keys` until
+a fetch succeeds. It logs this at start.
 
 ## 5. Verify a credential
 
@@ -136,6 +138,10 @@ EhOsContract.Auth.verify(token)
 
 **Result:** `{:ok, actor}` gives the actor of the credential, with the capabilities that EHOS
 granted. [The credential](credential.md) tells what each refusal means.
+
+Without EHOS, a test of the application can make a credential with
+`EhOsContract.Auth.Testing.credential/3`. The section "In a host's tests" of the
+[README](../README.md) tells how.
 
 ## 6. Accept calls over HTTP
 

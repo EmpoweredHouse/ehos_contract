@@ -30,10 +30,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   says what the package does and lists its parts. `docs/getting-started.md` takes "Installation" and
   "Wiring it", with the result of each step. `docs/credential.md`, a Reference page, takes "The
   credential" and "Over HTTP". `docs/decisions.md` takes "Deciding, and recording every decision".
-  Hexdocs shows the three pages. The pages now say that `www-authenticate` is
-  `Bearer error="invalid_token"` for a refused credential, and that a recorded event gets a decision
-  row too. They also say that `verify/2` does not read `iat` or `jti`, and that an Authorizer of
-  the host's own that refuses first leaves no row. Links change: `#installation`, `#wiring-it`,
+  Hexdocs shows the three pages. The pages and the doc of `EhOsContract.Auth.Plug` now say that
+  `www-authenticate` is `Bearer error="invalid_token"` for a refused credential. The pages also say
+  that a recorded event gets a decision row too, and that `verify/2` does not read `iat` or `jti`.
+  A scope value that the engine cannot pass on, such as one past 255 bytes, is recorded as `NULL`,
+  not as its digest. A host's own Authorizer that refuses first leaves no row, and a rollback of
+  the caller's transaction removes the record of a refusal. The retention example now deletes in
+  batches. Links change: `#installation`, `#wiring-it`,
   `#deciding-and-recording-every-decision`, `#over-http` and `#the-credential` of the README are
   now the three pages. The other sections of the README stay, and move in later pull requests.
 

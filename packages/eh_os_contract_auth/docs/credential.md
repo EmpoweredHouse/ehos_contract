@@ -30,7 +30,7 @@ The claims that EHOS writes:
 | `exp` | when it expires | later than now, and 15 minutes from now or sooner |
 | `jti` | an identifier of this credential | not checked |
 | `cap` | the capabilities, sorted | a list of strings |
-| `scp` | for each scoped capability, the values that it grants, by field | a map of capability to `%{field => [value]}`, all strings; empty when absent |
+| `scp` | for each scoped capability, the values that it grants, by field | a map of capability to `%{field => [value]}`, all strings, or no claim |
 
 Example claims, with `iss`, `iat`, `exp` and `jti` left out:
 
@@ -41,6 +41,9 @@ Example claims, with `iss`, `iat`, `exp` and `jti` left out:
 
 `verify/2` does not read `iat` or `jti`. It keeps no list of credentials that it saw, so a
 credential works until it expires, each time that it is sent.
+
+The application does not ask EHOS if a grant is still valid. If EHOS removes a role, or a
+credential leaks, the credential works until its `exp`: 15 minutes or less.
 
 ## What does `verify/2` give?
 
@@ -67,19 +70,24 @@ An accepted credential becomes an `EhOsContract.Actor`:
 
 | Order | The check fails when | Refusal |
 | --- | --- | --- |
-| 1 | the header has `crit`, `alg` is not `"Ed25519"` (`EdDSA` too), the header has no `kid`, or the token is not a JWT | `:bad_signature` |
-| 2 | the application has no key at all: it never fetched a set of keys, or the key process does not run | `:no_keys` |
+| 1 | the token is not a JWT, the header has `crit` or no `kid`, or `alg` is anything but `"Ed25519"`, `"EdDSA"` included | `:bad_signature` |
+| 2 | the application holds no key: its table had none and no fetch succeeded, or the key process does not run | `:no_keys` |
 | 2 | no key in force has the thumbprint of `kid` | `:unknown_key` |
 | 3 | the signature does not match the key | `:bad_signature` |
 | 4 | `iss` is not the configured issuer | `:wrong_issuer` |
 | 5 | `aud` is not exactly the configured audience, as one string | `:wrong_audience` |
 | 6 | `exp` is not later than now, or is missing | `:expired` |
 | 7 | `exp` is more than 15 minutes from now | `:bad_signature` |
-| 8 | `sub` is not a string, is blank or has a NUL; `cap` is not a list of strings; `scp` has another form | `:bad_signature` |
+| 8 | `sub` is not a string, is blank or has a NUL | `:bad_signature` |
+| 8 | `cap` is not a list of strings, or `scp` has another form | `:bad_signature` |
 
 - **An unknown `kid` starts an early fetch of the keys**, at most one time in 30 seconds. Then
   `verify/2` looks for the key again. A credential that EHOS signed with a new key thus gets in
   without a restart.
+- **Each fetch closes the window for 30 seconds**: the scheduled fetch, an early fetch and a failed
+  fetch. In that window, a credential with a key that the application does not hold yet gets
+  `:unknown_key`. The next scheduled fetch
+  comes within 5 minutes.
 - **A credential that claims a longer life is not one that EHOS issues**, whoever signed it. The
   limit is the 10 minutes of EHOS, and 5 minutes for clocks that do not agree. So a key that
   leaked cannot make a credential that works for a year.
