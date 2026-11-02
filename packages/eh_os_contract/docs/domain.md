@@ -232,7 +232,8 @@ The check compares the relations with the references:
 - If no reference crosses a relation in either direction, the check warns
   `orphan-context-mapping`. For a relation to an external system, the check looks for a contract
   of the context that uses the system. The contract calls the system, depends on it, has a field that
-  the system issues, or acts through an actor that the system backs.
+  the system issues, or acts through an actor that the system backs. A `:separate_ways` relation is
+  not checked: the compiler refuses a reference across it.
 
 ## Why does a contract belong to one context?
 

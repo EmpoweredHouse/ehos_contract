@@ -374,7 +374,7 @@ should name it with `subdomain:`, or it is left over.
 
 **warning** · ESDM: `esdm/modeling/orphan-context-mapping`
 
-A relation between two contexts is crossed by no reference.
+A relation between two contexts, other than separate ways, is crossed by no reference.
 
 No contract of one context consumes a contract of the other, names an entity or a unit the
 other owns (`{:id, name}`) or uses a value it declares (`context:`), in either direction; for a relation to an external system, no contract
