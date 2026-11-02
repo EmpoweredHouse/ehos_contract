@@ -187,9 +187,12 @@ defmodule EhOsContract.ErasureTest do
       {key, _position} = fail_members!()
       Process.put(:shredding_rig_forget_fails, true)
 
-      ExUnit.CaptureLog.capture_log(fn ->
-        {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
-      end)
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          {:ok, :erased} = EhOsContract.erase(:member, "member-anna", actor: @officer)
+        end)
+
+      assert log =~ "its forget/2 raised Postgrex.Error"
 
       assert members() == [{"member-anna", "Anna Kowalska"}, {"member-bartek", "Bartek Nowak"}]
 

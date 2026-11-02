@@ -306,9 +306,10 @@ defmodule EhOsContract.Personal do
 
   # Ecto's nested transaction takes no savepoint, and a raise in one fails the
   # erasure's, so the savepoint is taken by hand. Rolling back to it also clears an
-  # error Postgres raised; it keeps the savepoint, so it is released after, and
-  # several failing read models in one erasure leave none behind. The row stays failing where it was: its runner takes the
-  # erasure again after a skip or a reset, and `forget/2` deletes nothing twice.
+  # error Postgres raised, but keeps the savepoint, so it is released after: several
+  # read models whose forget/2 raised in one erasure leave none open. The row stays
+  # failing where it was: its runner takes the erasure again after a skip or a
+  # reset, and a second `forget/2` changes nothing.
   defp forget_failing(repo, consumer, erased) do
     repo.query!("SAVEPOINT eh_os_contract_forget")
 
