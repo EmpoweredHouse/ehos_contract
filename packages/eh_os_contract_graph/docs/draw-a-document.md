@@ -46,8 +46,10 @@ defines both.
    />
    ```
 
-   `id` is the DOM id of the canvas, so make it unique on the page. `overlay` is optional.
-   `view` names the picture: see [Which view do I choose?](#which-view-do-i-choose).
+   `id` is the DOM id of the canvas, so make it unique on the page. `overlay` is optional. If
+   there is no overlay, pass `overlay={nil}`: a canvas that gets no `overlay` keeps the overlay
+   of its last render. `view` names the picture: see
+   [Which view do I choose?](#which-view-do-i-choose).
 
 4. Optional: to show the actors of a domain, add the table of its actors. Give it the graph
    document of the domain and the DOM id of a canvas of the same document:
