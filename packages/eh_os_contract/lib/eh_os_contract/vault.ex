@@ -56,7 +56,8 @@ defmodule EhOsContract.Vault do
 
   The check of step 4 is necessary. A node that still runs the configuration of
   step 1 wraps each new data key with the old key, also after the rewrap. After you
-  remove the old key, nothing can unwrap those data keys.
+  remove the old key, nothing can unwrap those data keys. If you skip the check, the
+  engine finds those data keys at the next boot, and does not start.
 
   A rotation does not rewrite an event.
 
@@ -67,12 +68,30 @@ defmodule EhOsContract.Vault do
   export `check/0`. So the default vault with no master key stops the deployment, not
   the first command with a personal field.
 
-  The engine does not try a wrap or an unwrap at boot. So a vault whose `c:check/0`
-  returns `:ok` starts, even if its wrap fails.
+  Then the engine unwraps one stored data key of each master key that the table
+  `eh_os_contract_subject_keys` names. If one does not unwrap, the engine does not
+  start. Its error gives the id of that master key and the count of its data keys.
+  This occurs when you remove a master key that still wraps data keys, or when you
+  change the bytes of a key and keep its id.
 
-  The check of the default vault reads only the configured keys, not the data keys.
-  It does not find a data key whose master key you removed. The first read of that
-  subject raises.
+  To start again, put that master key back in the vault, with the bytes that wrapped
+  its data keys, and deploy. To remove it, first run
+  `mix eh_os_contract.rewrap --expect <id of the current key>`.
+
+  If you changed the bytes of a key and kept its id, its data keys can need two sets
+  of bytes: the old bytes for the data keys from before the change, the new bytes for
+  the data keys from after it. No list of keys of `EhOsContract.Vault.Local` unwraps
+  both, because one id names one set of bytes. The engine tries only one data key
+  of each master key, so the check can pass. Then a read of a data key of the other
+  set raises an `ArgumentError`.
+
+  A master key that you destroyed cannot come back. While a data key names it, the
+  engine does not start. This occurs when you restore a backup that is older than the
+  rewrap. The engine gives no way to start past this check.
+
+  The engine does not try a wrap at boot. So a vault whose `c:check/0` returns `:ok`
+  starts, even if its wrap fails. The engine unwraps one data key of each master
+  key, not each data key.
   """
 
   @typedoc "What names a master key, stored beside each data key it wraps."
@@ -91,6 +110,15 @@ defmodule EhOsContract.Vault do
   Unwraps a key that `wrap/2` returned, with the master key that `kek_id` names and
   the same `context`. Returns `:error` if the vault does not hold that master key, or
   if the context or the wrapped key is not the same.
+
+  If a contract declares a personal field, the engine also calls it at boot, one time
+  for each master key that a stored data key names. At boot, `:error` stops the
+  engine, with an error that tells the operator to check the master key.
+
+  If the vault cannot answer now, for example because a key management service is
+  down, raise. Do not return `:error`. The engine does not start while the service
+  is down, so give each call a timeout. Do not put `context` or the wrapped key in
+  the exception: the context holds the id of the subject.
   """
   @callback unwrap(kek_id(), wrapped :: binary(), context :: binary()) :: {:ok, binary()} | :error
 

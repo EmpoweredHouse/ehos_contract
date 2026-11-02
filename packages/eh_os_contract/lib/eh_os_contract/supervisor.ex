@@ -20,6 +20,7 @@ defmodule EhOsContract.Supervisor do
     EhOsContract.Entities.check!(models)
     repo = EhOsContract.Config.fetch!(:repo)
     EhOsContract.Migrations.check!(repo)
+    EhOsContract.Personal.check_master_keys!(repo, models)
     EhOsContract.Personal.check_forgetting!(Implementations.index(nil).consumers)
     EhOsContract.Deployment.record!()
     EhOsContract.UndeclaredTypes.warn(repo, models)

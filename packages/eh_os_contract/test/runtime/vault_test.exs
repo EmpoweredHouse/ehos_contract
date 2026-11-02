@@ -85,6 +85,69 @@ defmodule EhOsContract.VaultTest do
       assert Vault.check!([Model.fetch(DispatchRig.Ledger)]) == :ok
     end
 
+    test "a data key whose master key left the vault does not start, and says which key" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      join!("membership-bartek", "member-bartek")
+      keys([{"kek-new", @new_kek}])
+
+      assert_raise ArgumentError,
+                   ~s(2 data keys are wrapped by master key "kek-old". The vault cannot unwrap ) <>
+                     ~s(the data key that the engine tried, so the engine cannot read the ) <>
+                     ~s(personal data of its subject. ) <>
+                     ~s(Put "kek-old" back in the vault, with the bytes that wrapped its data ) <>
+                     ~s(keys. Then run ) <>
+                     ~s(`mix eh_os_contract.rewrap --expect "kek-new"` before you remove it),
+                   fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
+
+      assert {:error, {{%ArgumentError{message: message}, _}, _}} =
+               start_supervised(EhOsContract)
+
+      assert message =~ ~s(2 data keys are wrapped by master key "kek-old")
+    end
+
+    test "a master key whose id stays and whose bytes changed does not start" do
+      keys([{"kek-1", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-1", @new_kek}])
+
+      assert_raise ArgumentError,
+                   ~s(1 data key is wrapped by master key "kek-1". The vault cannot unwrap ) <>
+                     ~s(the data key that the engine tried, so the engine cannot read the ) <>
+                     ~s(personal data of its subject. The vault wraps with "kek-1". Check that ) <>
+                     ~s(its bytes are the bytes that wrapped that data key),
+                   fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
+    end
+
+    test "a master key after one that unwraps is checked too" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+      join!("membership-celina", "member-celina")
+      keys([{"kek-new", @new_kek}])
+
+      assert_raise ArgumentError, ~r/^1 data key is wrapped by master key "kek-old"/, fn ->
+        Personal.check_master_keys!(Repo, [Model.fetch(Members)])
+      end
+    end
+
+    test "control: a vault that unwraps a data key of each master key starts" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+      join!("membership-celina", "member-celina")
+
+      assert Personal.check_master_keys!(Repo, [Model.fetch(Members)]) == :ok
+    end
+
+    test "control: contracts without personal fields do not read the data keys" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([])
+
+      assert Personal.check_master_keys!(Repo, [Model.fetch(DispatchRig.Ledger)]) == :ok
+    end
+
     test "a vault that is no EhOsContract.Vault is refused" do
       Application.put_env(:eh_os_contract, :vault, String)
       on_exit(fn -> Application.delete_env(:eh_os_contract, :vault) end)

@@ -115,7 +115,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   exception of the supplier, or of the entities read for such a command, now writes a `failed`
   command row when the transaction is the engine's own, with `failed_in` `"supplier"` or
   `"entities"`; before, it wrote no row.
-
+- **Breaking:** **the engine does not start when a stored data key does not unwrap** (#573). At boot,
+  the engine unwraps one data key of each master key that `eh_os_contract_subject_keys` names. If one
+  does not unwrap, it raises with the id of that master key and the count of its data keys. Before,
+  the vault checked only its configured keys. A host that removed a master key that still wraps data
+  keys, or changed the bytes of a key and kept its id, started, and the first read of each such
+  subject raised. Such a host now stops at boot, unless the data key that the engine tries still
+  unwraps, as one from after a change of bytes does: put the key back, and run
+  `mix eh_os_contract.rewrap --expect <id of the current key>` before you remove it. If the data
+  keys of a restored backup name a destroyed master key, the engine does not start either.
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
   does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).
