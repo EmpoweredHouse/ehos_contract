@@ -1,0 +1,1 @@
+Review-comment fixes (CodeRabbit): docs qualify the retry by transaction ownership; gift order product_id host-supplied so the test proves the read follows the supplier (reverse-checked: moving the read ahead fails 3 tests). 16-line test/doc change reviewed by the author inline. Gate EXIT=0.
