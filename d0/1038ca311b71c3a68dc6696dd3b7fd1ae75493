@@ -1,0 +1,1 @@
+Changelog wording only (a CodeRabbit comment on #566): 'a :system actor' becomes 'an actor of kind :system'. Documentation alone; docs_test.exs (which reads CHANGELOG.md's links) passes, 67 tests, 0 failures. No code changed since the gate on 583a80f2 (EXIT=0).
