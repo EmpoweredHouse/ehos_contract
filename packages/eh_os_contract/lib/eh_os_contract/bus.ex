@@ -1,59 +1,97 @@
 defmodule EhOsContract.Bus do
   @moduledoc """
-  How an integration event leaves one application and reaches another: the seam
-  between the engine and a transport.
-
-  The engine is on both sides of it. The relay publishes what a `publish` declares,
-  from the log, and advances its checkpoint when `c:publish/2` returns `:ok`; the
-  subscriber's inbox takes a message, commits what its policy decides, and only then
-  acknowledges. What sits between the two, and only that, is an adapter: this package
-  ships `EhOsContract.Bus.Local` for tests and development, and the transport adapters
-  (JetStream through `gnat`, EHOS's relay) are EHOS's. The library depends on none of
-  them.
+  Carries an integration event from one application to another. The bus is the
+  interface between the engine and a transport, such as a message broker.
 
       config :eh_os_contract, bus: {EhOsContract.Bus.Local, []}
 
+  The engine is on both sides of the bus:
+
+  - The *relay* reads from the log the events that a `publish` declares. It hands
+    them to `c:publish/2`.
+  - The *inbox* of the subscriber takes each message. It commits what its policies
+    decide, and only then acknowledges the message.
+
+  An *adapter* implements the bus between these two parts. This package supplies
+  `EhOsContract.Bus.Local`, for tests and for one node. The adapters for a real
+  transport, such as JetStream, are not in this library. The library depends on no
+  transport.
+
+  ## What occurs between the relay, the bus and the inbox?
+
+  ![The relay publishes each batch through the adapter in a transaction, and the durable consumer of an inbox acknowledges each message after its commit.](img/bus-callbacks.svg)
+
+  1. At boot, the engine starts the durable consumer of each inbox with
+     `c:consumer/2`. It starts each inbox before any relay.
+  2. The durable consumer subscribes to the transport under its name.
+  3. In a transaction, the relay publishes a batch of messages through `c:publish/2`.
+  4. The adapter hands the batch to the transport.
+  5. The adapter confirms with `:ok` when the transport holds each message. The relay
+     then moves its position, in the same transaction.
+  6. Later, the transport delivers each message to the durable consumer.
+  7. The durable consumer calls the handler of the inbox with the message.
+  8. The handler answers `:ack` after its commit, or `:nack`.
+  9. After `:ack`, the durable consumer acknowledges the message to the transport.
+     After `:nack`, it does not: the message stays with the transport, which delivers
+     it again later.
+
+  [How does an event reach another contract?](between-contracts.md)
+  tells the same path from the side of the contracts.
+
   ## What an adapter promises
 
-  `EhOsContract.Bus.Suite` checks what a test can see of this, and any adapter can run
-  it. It cannot see the absence of an order, nor how a relay treats an error, which
-  `EhOsContract.Relay` describes.
+  `EhOsContract.Bus.Suite` checks what a test can see of these promises. Any adapter
+  can run it. It cannot see that an order is absent, or how a relay handles an error.
+  `EhOsContract.Relay` tells about the relay.
 
-  - **`:ok` from `c:publish/2` means the transport holds every message of the batch.**
-    An error means it may hold some of them: the relay publishes the whole batch again,
-    under the same ids.
-  - **At least once.** A message reaches every durable consumer of its name that was
-    subscribed when it was published, and comes again until that consumer's handler
-    returns `:ack`. A handler that returns `:nack`, raises, exits or throws, and a
-    consumer that stops with a message in hand, get it again later. A consumer that
-    comes back under the same name gets what was published while it was down.
-  - **No order.** Messages may arrive in any order, and a redelivered one after a later
-    one. The relay publishes in log order, but nothing downstream may rely on it.
-  - **No deduplication is required.** A message published twice may arrive twice. The
-    inbox drops the second one by its key, so a transport that deduplicates (JetStream's
-    `Nats-Msg-Id`) saves work and changes no result.
-  - **Where a new consumer starts** is the adapter's, beyond one thing: it gets what is
-    published after it first subscribed. `EhOsContract.Bus.Local` gives it nothing
-    older.
-  - **No bound on redelivery.** A message whose handler never succeeds comes again for
-    as long as the transport keeps it. What stops it is the transport's own limit
-    (JetStream's `MaxDeliver`), not this behaviour, nor the inbox, which answers
-    `:nack` to what it cannot take, so that nothing is lost while it is put right
-    (`EhOsContract.Inbox`).
+  - **`:ok` from `c:publish/2` means that the transport holds each message of the
+    batch.** An error means that it can hold some of them. Then the relay publishes
+    the whole batch again, under the same ids.
+  - **At least once.** A message reaches each durable consumer of its name that was
+    subscribed when the message was published. It comes again until the handler of
+    that consumer returns `:ack`.
+    - A handler that returns `:nack`, raises, exits or throws gets the message again
+      later.
+    - A durable consumer that stops with a message in hand gets it again later.
+    - A durable consumer that comes back under the same name gets what was published while
+      it was down.
+  - **No order.** Messages can arrive in any order, and a message delivered again can
+    arrive after a later one. The relay publishes in the order of the log, but nothing
+    after it can rely on that order.
+  - **No deduplication is necessary.** A message published two times can arrive two
+    times. The inbox drops the second one by its key. A transport that deduplicates,
+    such as JetStream with `Nats-Msg-Id`, saves work, and changes no result.
+  - **The adapter decides where a new durable consumer starts.** One rule holds: it
+    gets what is published after it first subscribed.
+    `EhOsContract.Bus.Local` gives it nothing older.
+  - **No limit on deliveries.** A message whose handler never succeeds comes again for
+    as long as the transport keeps it. Only a limit of the transport stops it, such as
+    `MaxDeliver` of JetStream. The inbox answers `:nack` to what it cannot take, so
+    that nothing is lost while a person corrects the cause (`EhOsContract.Inbox`).
 
-  Who may consume a name is not the engine's question either. The subscriber's
-  `subscribe` derives the capability `<name>.subscribe`, EHOS grants it per environment,
-  and the transport adapter routes by the grant. An adapter that cannot
-  refuse an ungranted consumer grants every one.
+  ## Who can consume a name?
 
-  ## A message
+  The engine does not decide who can consume a name. The `subscribe` of the
+  subscriber derives the capability `<name>.subscribe`, where the name has no version.
+  It derives it only for an event that a policy handles. The platform that issues the
+  credentials grants the capability, and the adapter of the transport routes by the
+  grant. An adapter that cannot refuse a consumer without the grant lets each
+  consumer in.
 
-  `EhOsContract.Bus.Message` carries five things: the id, the key that tells one event
-  from another, the versioned name, the correlation and the payload. **The payload is
-  JSON**: string keys, and values a JSON encoder turns into text and back — what
-  arrives is what `Jason` decodes, not the Elixir terms that were sent.
-  `EhOsContract.Bus.Local` encodes and decodes it on the way, so a term a real
-  transport could not carry fails in a test and not in production.
+  ## What does a message carry?
+
+  `EhOsContract.Bus.Message` carries five things:
+
+  - the id;
+  - the key that tells one event from another;
+  - the name, with its version;
+  - the correlation;
+  - the payload.
+
+  **The payload is JSON**: string keys, and values that a JSON encoder turns into text
+  and back. What arrives is what `Jason` decodes, not the Elixir terms that were sent.
+  `EhOsContract.Bus.Local` encodes and decodes the payload on the way. So a term that
+  a real transport cannot carry fails in a test, not in production.
   """
 
   alias EhOsContract.Bus.Message
@@ -65,55 +103,71 @@ defmodule EhOsContract.Bus do
   @type handler :: (Message.t() -> verdict())
 
   @typedoc """
-  A durable consumer: its `name`, unique on the transport and kept across restarts; the
-  message names it takes; and the handler each delivery goes to. The engine names an
-  inbox's consumer `"<contract id>:inbox:<name>"`, with the dots of the id in it; an
-  adapter whose transport takes fewer characters in a consumer's name (JetStream's
-  durable names take no `.`) maps it, the same way every time and never two names to
-  one: `shop.stock` and `shop_stock` sharing a durable consumer would each get only part
-  of the messages.
+  A durable consumer:
+
+  - `name`: unique on the transport, and the same after a restart. The engine names
+    the consumer of an inbox `"<contract id>:inbox:<name>"`, with the dots of the id.
+  - `names`: the names of the messages that it takes.
+  - `handler`: the function that gets each delivery.
+
+  If the transport accepts fewer characters in a name, the adapter maps the name.
+  Example: a durable name of JetStream has no `.`. Map each name the same way each
+  time, and never two names to one. If `shop.stock` and `shop_stock` shared a durable
+  consumer, each would get only part of the messages.
   """
   # A consumer's name carries the contract's id, dots and all (plan DD, ID4, #178).
   @type consumer :: %{name: String.t(), names: [String.t(), ...], handler: handler()}
 
   @doc """
-  Hands `messages` to the transport, returning once it holds every one.
+  Hands `messages` to the transport. Returns when the transport holds each message.
 
-  **It is called inside a database transaction** — the relay's step, which holds its
-  row and a pooled connection until this returns — **so it returns within a few
-  seconds**, well under the repo's timeout (15 seconds by default): a broker that has
-  not confirmed by then is `{:error, :timeout}`. Wait for the confirmations of a
-  batch together, not one after another. `EhOsContract.Bus.Local` gives up after 5.
-  A call that outlives the repo's timeout loses the connection after the transport
-  took the batch, so the position never moves and the same batch goes out again and
-  again.
+  **The relay calls it inside a database transaction.** That transaction holds its
+  row and a pooled connection until the call returns. So return within a few seconds,
+  well under the timeout of the repo (15 seconds by default).
 
-  `{:error, reason}`, never an exit, **only for what trying again can fix**: a
-  transport that is down or slow. The relay then keeps its position, counts no
-  attempt, and tries again in five seconds, for as long as it takes. Anything trying
-  again will not fix raises — a payload JSON cannot encode, a message over the
-  broker's size limit, a subject it refuses — so that the relay stops at that event,
-  `failing`, where a person sees it, instead of retrying it forever.
+  - If the transport has not confirmed by then, return `{:error, :timeout}`.
+  - Wait for the confirmations of a batch together, not one after the other.
+  - `EhOsContract.Bus.Local` stops after 5 seconds.
+
+  If a call takes longer than the timeout of the repo, the relay loses its connection
+  after the transport took the batch. Then the position never moves, and the relay
+  publishes the same batch again and again.
+
+  **Return `{:error, reason}` only for an error that a new try can correct**: a
+  transport that is down or slow. Then the relay keeps its position, counts no
+  attempt, and tries again after 5 seconds, with no end. An exit counts as such an
+  error, but an adapter must return the error, not exit.
+
+  **Raise for an error that a new try does not correct.** Examples:
+
+  - a payload that JSON cannot encode;
+  - a message over the size limit of the broker;
+  - a subject that the broker refuses.
+
+  Then the relay publishes the batch again, one event at a time. It
+  publishes the events before the bad one, and stops at the bad one. After three
+  attempts, the relay is `failing` at that event, where a person sees it.
   """
   @callback publish(opts :: keyword(), messages :: [Message.t()]) :: :ok | {:error, term()}
 
   @doc """
-  The child that runs `consumer`: started, it subscribes under the consumer's name, and
-  delivers to its handler until it is stopped.
+  Returns the child spec of the process that runs `consumer`. When it starts, the
+  process subscribes under the name of the consumer. Then it delivers each message to
+  the handler, until it stops.
 
-  **It is subscribed once its start has returned.** The engine starts every inbox
-  before any relay, and relies on this for nothing a relay publishes to be published,
-  in one node, before the inbox that takes it listens (`EhOsContract.Inbox`).
+  **The consumer is subscribed when its start returns.** The engine starts each inbox
+  before any relay. So in one node, a relay publishes nothing before the inbox that
+  takes it listens (`EhOsContract.Inbox`).
 
-  **Its start returns quickly**, subscribed or failed: the engine's boot waits for it,
-  one inbox after another, so a start that waits on a transport that does not answer
-  holds the host's boot for as long. A transport that is down is an error at once; the
-  engine starts the child again later.
+  **The start returns quickly**, subscribed or failed. The boot of the engine waits
+  for each start, one inbox after the other. A start that waits for a transport that
+  does not answer holds the boot of the host for as long. If the transport is down,
+  return an error at once. The engine starts the child again later.
 
-  **Its state and its exit reasons carry no credentials.** What OTP reports of a
-  process that stops — its last state and its reason, in the log — is the adapter's,
-  out of the engine's reach: keep a connection's secrets out of the reason, and out of
-  the state with `format_status/1`.
+  **The state and the exit reasons hold no credentials.** When a process stops, OTP
+  writes its last state and its reason to the log. The engine cannot control that.
+  Keep the secrets of a connection out of the reason, and out of the state with
+  `format_status/1`.
   """
   @callback consumer(opts :: keyword(), consumer()) :: Supervisor.child_spec()
 

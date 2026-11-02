@@ -1,38 +1,55 @@
 defmodule Mix.Tasks.EhOsContract.Gen.Migration do
-  @shortdoc "Writes the migration that creates a read model's table"
+  @shortdoc "Writes the migration that creates the table of a read model"
 
   @moduledoc """
-  Writes the Ecto migration that creates the table of a read model that names one
-  (`table:` and `key:`), from its declaration, so the migration does not list the
-  read model's fields a second time by hand.
+  Writes the Ecto migration that creates the table of a read model. The task reads
+  the fields from the declaration of the read model, so you do not write them a
+  second time. The read model must declare `table:` and `key:`.
 
       mix eh_os_contract.gen.migration Lending.Contracts.Membership member_directory
       mix eh_os_contract.gen.migration --all
 
-  The first form writes the migration of one read model. `--all` writes one for every
-  read model with a table that no migration of the repo creates yet, a migration whose
-  source holds `table(:<table>`.
+  - The first form writes the migration of one read model. It takes any compiled
+    contract. If the read model has no table, the task stops with an error.
+  - `--all` writes a migration for each read model whose table no migration of the
+    repo creates yet. A migration creates the table if its source holds
+    `table(:<table>`. It reads only the contracts of `config :eh_os_contract,
+    applications:`.
+  - `--migrations-path DIR` writes into another directory.
 
-  Each migration creates the table with:
+  ## What the migration creates
 
-    * one column per field, of the type its field is stored as: text for an identifier,
-      a string and an enum's member, `bigint` for an integer, `numeric`, `boolean`,
-      `date`, `timestamp` with microseconds, `jsonb` for a value made of fields and for
-      a list of them, an array for a list of anything else;
-    * the read model's `key:` as the primary key;
-    * `null: false` on every required field, except a personal one, which an erasure
-      blanks;
-    * an index on each field a row is looked up by besides its key: a subject's
-      identifier, which `forget/2` deletes by, and a query's scope.
+  - A column for each field, of the type that stores the field:
+    - `text` for an identifier, a string and a member of an enum;
+    - `bigint` for an integer;
+    - `numeric`, `boolean` and `date` for a decimal, a boolean and a date;
+    - `timestamp` with microseconds for a timestamp;
+    - `jsonb` for a domain value with fields, and for a list of them;
+    - the column of the inner type for a domain value with an inner type;
+    - an array for a list of anything else.
+  - The `key:` of the read model as the primary key.
+  - `null: false` on each required field, except a personal field. An erasure blanks
+    a personal field.
+  - An index on each field that finds a row, other than the key. These fields are the
+    identifier of a subject, which `forget/2` deletes by, and the scope of a query.
 
-  It is written into the repo's migrations, `priv/<repo>/migrations` unless the repo's
-  `:priv` says otherwise, named `<timestamp>_create_<table>.exs`, and it is the
-  application's from then on: add to it, alter the table in a later migration, and let
-  `EhOsContract.Testing.assert_read_model_tables/1` hold the table to the contract. The
-  task never overwrites a migration, and writes nothing for a read model without a
-  table.
+  ## Where the task writes it
 
-  `--migrations-path DIR` writes into another directory.
+  The task writes the migration into the migrations of the repo:
+  `priv/<repo>/migrations`, unless the `:priv` of the repo says otherwise. The file
+  name is `<timestamp>_create_<table>.exs`.
+
+  After that, the migration belongs to the application. Add to it, or change the
+  table in a later migration. `EhOsContract.Testing.assert_read_model_tables/1` holds
+  the table to the contract.
+
+  The task never writes over a migration:
+
+  - If a migration `create_<table>` exists, the task stops with an error.
+  - With `--all`, if two read models name one table, the task stops before it
+    writes anything. The form for one read model does not check this; the compiler
+    refuses it.
+  - With `--all`, the task writes nothing for a read model without a table.
   """
 
   use Boundary, classify_to: EhOsContract

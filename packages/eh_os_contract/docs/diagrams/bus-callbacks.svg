@@ -1,0 +1,155 @@
+<!-- title: What occurs between the relay, the bus and the inbox? -->
+<!-- desc: The relay publishes each batch through the adapter in a transaction, and the durable consumer of an inbox acknowledges each message after its commit. -->
+<!-- words: relay, bus, inbox -->
+<!-- technical: Transport -->
+<!-- verbs: starts, subscribes, publishes, hands, confirms, delivers, calls, answers, acknowledges -->
+<!-- parts: relay = -, bus = -, transport = -, inbox = - -->
+<svg viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="bus-callbacks-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon class="head" points="0 0, 8 3, 0 6"/></marker>
+  </defs>
+
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- The transaction of the relay -->
+  <rect class="zone" x="70" y="240" width="370" height="140" rx="8"/>
+  <rect class="mask" x="86" y="234" width="124" height="12" rx="2"/>
+  <text class="zlabel" x="90" y="243">ONE TRANSACTION</text>
+
+  <!-- Lifelines -->
+  <line class="rule" x1="130" y1="120" x2="130" y2="556"/>
+  <line class="rule" x1="380" y1="120" x2="380" y2="556"/>
+  <line class="rule" x1="630" y1="120" x2="630" y2="556"/>
+  <line class="rule" x1="880" y1="120" x2="880" y2="556"/>
+
+  <!-- Messages, top to bottom -->
+  <line class="arr" x1="880" y1="168" x2="381" y2="168" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="380" y1="212" x2="629" y2="212" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="130" y1="284" x2="379" y2="284" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="380" y1="324" x2="629" y2="324" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="380" y1="364" x2="131" y2="364" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="uses" x1="630" y1="424" x2="381" y2="424" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="380" y1="464" x2="879" y2="464" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="880" y1="504" x2="381" y2="504" marker-end="url(#bus-callbacks-arrow)"/>
+  <line class="arr" x1="380" y1="544" x2="629" y2="544" marker-end="url(#bus-callbacks-arrow)"/>
+
+  <!-- Connector labels, numbered to match the key -->
+  <rect class="mask" x="652" y="146" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="662" cy="153" r="6"/>
+  <text class="badget" x="662" y="156" text-anchor="middle">1</text>
+  <text class="lbl" x="674" y="156">STARTS</text>
+
+  <rect class="mask" x="392" y="190" width="104" height="14" rx="2"/>
+  <circle class="badge" cx="402" cy="197" r="6"/>
+  <text class="badget" x="402" y="200" text-anchor="middle">2</text>
+  <text class="lbl" x="414" y="200">SUBSCRIBES</text>
+
+  <rect class="mask" x="142" y="262" width="96" height="14" rx="2"/>
+  <circle class="badge" cx="152" cy="269" r="6"/>
+  <text class="badget" x="152" y="272" text-anchor="middle">3</text>
+  <text class="lbl" x="164" y="272">PUBLISHES</text>
+
+  <rect class="mask" x="458" y="302" width="68" height="14" rx="2"/>
+  <circle class="badge" cx="468" cy="309" r="6"/>
+  <text class="badget" x="468" y="312" text-anchor="middle">4</text>
+  <text class="lbl" x="480" y="312">HANDS</text>
+
+  <rect class="mask" x="142" y="342" width="88" height="14" rx="2"/>
+  <circle class="badge" cx="152" cy="349" r="6"/>
+  <text class="badget" x="152" y="352" text-anchor="middle">5</text>
+  <text class="lbl" x="164" y="352">CONFIRMS</text>
+
+  <rect class="mask" x="392" y="402" width="88" height="14" rx="2"/>
+  <circle class="badge" cx="402" cy="409" r="6"/>
+  <text class="badget" x="402" y="412" text-anchor="middle">6</text>
+  <text class="lbl" x="414" y="412">DELIVERS</text>
+
+  <rect class="mask" x="652" y="442" width="60" height="14" rx="2"/>
+  <circle class="badge" cx="662" cy="449" r="6"/>
+  <text class="badget" x="662" y="452" text-anchor="middle">7</text>
+  <text class="lbl" x="674" y="452">CALLS</text>
+
+  <rect class="mask" x="652" y="482" width="80" height="14" rx="2"/>
+  <circle class="badge" cx="662" cy="489" r="6"/>
+  <text class="badget" x="662" y="492" text-anchor="middle">8</text>
+  <text class="lbl" x="674" y="492">ANSWERS</text>
+
+  <rect class="mask" x="392" y="522" width="124" height="14" rx="2"/>
+  <circle class="badge" cx="402" cy="529" r="6"/>
+  <text class="badget" x="402" y="532" text-anchor="middle">9</text>
+  <text class="lbl" x="414" y="532">ACKNOWLEDGES</text>
+
+  <!-- The relay of the publisher -->
+  <rect class="knock" x="66" y="64" width="128" height="56" rx="6"/>
+  <rect id="bus-callbacks-relay" class="n-back" x="66" y="64" width="128" height="56" rx="6"/>
+  <text class="name" x="130" y="88" text-anchor="middle">Relay</text>
+  <text class="sub" x="130" y="106" text-anchor="middle">of the publisher</text>
+
+  <!-- The bus: the adapter -->
+  <rect class="knock" x="316" y="64" width="128" height="56" rx="6"/>
+  <rect id="bus-callbacks-bus" class="n-focal" x="316" y="64" width="128" height="56" rx="6"/>
+  <text class="name" x="380" y="88" text-anchor="middle">Bus</text>
+  <text class="sub" x="380" y="106" text-anchor="middle">the adapter</text>
+
+  <!-- The transport -->
+  <rect class="knock" x="566" y="64" width="128" height="56" rx="6"/>
+  <rect id="bus-callbacks-transport" class="n-ext" x="566" y="64" width="128" height="56" rx="6"/>
+  <text class="name" x="630" y="88" text-anchor="middle">Transport</text>
+  <text class="sub" x="630" y="106" text-anchor="middle">a message broker</text>
+
+  <!-- The inbox of the subscriber -->
+  <rect class="knock" x="816" y="64" width="128" height="56" rx="6"/>
+  <rect id="bus-callbacks-inbox" class="n-back" x="816" y="64" width="128" height="56" rx="6"/>
+  <text class="name" x="880" y="88" text-anchor="middle">Inbox</text>
+  <text class="sub" x="880" y="106" text-anchor="middle">of the subscriber</text>
+
+  <!-- Key: the numbered connectors in words -->
+  <g class="key">
+  <line class="rule" x1="40" y1="588" x2="960" y2="588"/>
+  <text class="eyes" x="40" y="608">HOW TO READ IT</text>
+
+  <circle class="badge" cx="46" cy="628" r="6"/>
+  <text class="badget" x="46" y="631" text-anchor="middle">1</text>
+  <text class="keyt" x="60" y="632">At boot, the engine starts the durable consumer of each inbox.</text>
+  <circle class="badge" cx="46" cy="652" r="6"/>
+  <text class="badget" x="46" y="655" text-anchor="middle">2</text>
+  <text class="keyt" x="60" y="656">The durable consumer subscribes to the transport under its name.</text>
+  <circle class="badge" cx="46" cy="676" r="6"/>
+  <text class="badget" x="46" y="679" text-anchor="middle">3</text>
+  <text class="keyt" x="60" y="680">In a transaction, the relay publishes a batch through publish/2.</text>
+  <circle class="badge" cx="46" cy="700" r="6"/>
+  <text class="badget" x="46" y="703" text-anchor="middle">4</text>
+  <text class="keyt" x="60" y="704">The adapter hands the batch to the transport.</text>
+  <circle class="badge" cx="46" cy="724" r="6"/>
+  <text class="badget" x="46" y="727" text-anchor="middle">5</text>
+  <text class="keyt" x="60" y="728">The adapter confirms with :ok. The relay moves its position.</text>
+
+  <circle class="badge" cx="526" cy="628" r="6"/>
+  <text class="badget" x="526" y="631" text-anchor="middle">6</text>
+  <text class="keyt" x="540" y="632">Later, the transport delivers each message to the durable consumer.</text>
+  <circle class="badge" cx="526" cy="652" r="6"/>
+  <text class="badget" x="526" y="655" text-anchor="middle">7</text>
+  <text class="keyt" x="540" y="656">The durable consumer calls the handler of the inbox.</text>
+  <circle class="badge" cx="526" cy="676" r="6"/>
+  <text class="badget" x="526" y="679" text-anchor="middle">8</text>
+  <text class="keyt" x="540" y="680">The handler answers :ack after its commit, or :nack.</text>
+  <circle class="badge" cx="526" cy="700" r="6"/>
+  <text class="badget" x="526" y="703" text-anchor="middle">9</text>
+  <text class="keyt" x="540" y="704">After :ack, the durable consumer acknowledges it to the transport.</text>
+  </g>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="756" x2="960" y2="756"/>
+  <rect class="n-focal" x="40" y="772" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="781">The subject</text>
+  <rect class="n-back" x="150" y="772" width="14" height="10" rx="2"/>
+  <text class="legt" x="170" y="781">The engine</text>
+  <rect class="n-ext" x="280" y="772" width="14" height="10" rx="2"/>
+  <text class="legt" x="300" y="781">Outside the application</text>
+  <line class="arr" x1="480" y1="777" x2="507" y2="777" marker-end="url(#bus-callbacks-arrow)"/>
+  <text class="legt" x="516" y="781">A call</text>
+  <line class="uses" x1="580" y1="777" x2="607" y2="777" marker-end="url(#bus-callbacks-arrow)"/>
+  <text class="legt" x="616" y="781">Asynchronous</text>
+  </g>
+</svg>

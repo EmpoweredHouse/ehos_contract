@@ -25,10 +25,20 @@ defmodule EhOsContract.Docs.ModulePages do
 
     # Command-line tasks
 
-    The `mix` tasks of `eh_os_contract`, as each one's documentation describes it. Run
-    `mix help <task>` for the same text in a terminal.
+    This page gives each `mix` task of `eh_os_contract`: what it does, its options, and
+    what stops it. It is for a developer or an operator who runs the tasks. Each section
+    is the documentation of its task. `mix help <task>` prints the same text in a
+    terminal.
 
-    #{Enum.map_join(tasks, "\n", &task_section/1)}\
+    #{Enum.map_join(tasks, "\n", &task_section/1)}
+    ## Next steps
+
+    - [The rules](rules.md): each rule that `mix eh_os_contract.check` reports.
+    - [The conformance report](conformance.md): what `mix eh_os_contract.report` prints.
+    - [Repair or replay a subscription](subscriptions.md): when to skip or reset a
+      subscription.
+    - [Manage the keys and the backups of personal data](master-keys.md): the rotation
+      that `mix eh_os_contract.rewrap` ends.
     """
   end
 
@@ -43,10 +53,20 @@ defmodule EhOsContract.Docs.ModulePages do
 
     # Behaviours
 
-    What a host may put in place of the library's own implementation. Each is named in
-    the [configuration](configuration.md) under the key after its name.
+    This page gives each behaviour that a host can implement in place of the
+    implementation of the engine. For each one, it tells what the engine asks, and what
+    the implementation promises. It is for a developer who writes such a module. The [configuration](configuration.md)
+    names each implementation, under the key after the name of its behaviour.
 
-    #{Enum.map_join(behaviours, "\n", &behaviour_section(&1, keys))}\
+    #{Enum.map_join(behaviours, "\n", &behaviour_section(&1, keys))}
+    ## Next steps
+
+    - [The configuration](configuration.md): each key, with its default.
+    - [Write an Authorizer](authorizer.md): add a rule of your own to the check of a call.
+    - [How does an event reach another contract?](between-contracts.md): the relay, the
+      bus and the inbox, from the side of the contracts.
+    - [Manage the keys and the backups of personal data](master-keys.md): rotate a
+      master key, or keep the keys in a key management service.
     """
   end
 

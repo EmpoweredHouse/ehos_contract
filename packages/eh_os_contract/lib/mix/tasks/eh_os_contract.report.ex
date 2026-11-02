@@ -1,23 +1,58 @@
 defmodule Mix.Tasks.EhOsContract.Report do
-  @shortdoc "Prints the conformance report for a period: what the code did against what the contracts say"
+  @shortdoc "Prints the conformance report: what the code did against what the contracts say"
 
   @moduledoc """
-  Prints the conformance report of the application for a period: a section for each
-  contract, then one for each process module, if there are any.
+  Prints the conformance report of the application for a period. The report has a
+  section for each contract, then a section for each process module.
 
-  Each contract's section answers four questions about it: which declared paths were
-  never taken, which transitions happened that the contract does not declare, which
-  promises were broken, and which version of the contract was deployed, and since
-  when. Around them it shows what explains the answers: steps in progress or
-  failing, scenarios never observed, declarations that changed, and events written
-  under earlier versions.
+  > **The task starts the whole application.**
+  > The report reads the log through the repo of the application, so the task starts the
+  > application. Run it only with the code that is deployed. The task records a
+  > deployment. It starts the subscriptions, the relays, the inboxes and Oban. So
+  > effects can call external systems from where you run it, and an inbox can take
+  > messages from the transport. If your code differs from the deployed code, the
+  > recorded deployment changes which version the report calls deployed, and the
+  > boundary of a changed promise. The engine rebuilds each changed process manager at
+  > once. It also rebuilds each changed read model that has `reset/0`. A rebuilt read
+  > model is empty until it catches up. A rebuilt process manager forgets its runs, and
+  > learns them again from the log. An event appended before it reaches the head never
+  > gets a reaction. A timer due by then is dropped, unless its job is still in the
+  > queue. The deployed nodes then rebuild the same consumers again at their next boot.
+  > To read the report of a running host without this, use the [JSON API of the
+  > dashboard](conformance.md#the-dashboard).
 
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --until 2026-07-31T23:59:59Z
       mix eh_os_contract.report --since 2026-07-01T00:00:00Z --output july.md
 
-  `--since` and `--until` take ISO 8601 times with an offset (`Z`), and either may
-  be left out. The task starts the application, since the report reads the log
-  through its repo. `--output` writes the report to a file.
+  | Option | Value | If you leave it out |
+  | --- | --- | --- |
+  | `--since` | the start of the period, ISO 8601 with an offset (`Z`) | the period has no start |
+  | `--until` | the end of the period, ISO 8601 with an offset | the period has no end |
+  | `--output` | a file | the report goes to the terminal |
+
+  A time without an offset stops the task with an error. The moment of judgement is
+  always the current time.
+
+  ## What the report answers
+
+  The report answers four questions:
+
+  1. Which declared paths were never taken?
+  2. Which transitions occurred that the contract does not declare?
+  3. Which promises were broken?
+  4. Which version of the contract is deployed, and since when?
+
+  The section of a contract answers questions 1, 2 and 4. The section of a process
+  module answers question 3. Around the answers, the report shows what explains
+  them:
+
+  - steps in progress or failing;
+  - scenarios never observed;
+  - declarations that changed;
+  - events written under earlier versions.
+
+  [The conformance report](conformance.md) tells what each section says, and which
+  events each number reads.
   """
 
   use Boundary, classify_to: EhOsContract

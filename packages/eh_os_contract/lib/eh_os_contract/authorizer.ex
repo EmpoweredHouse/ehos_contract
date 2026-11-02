@@ -1,36 +1,48 @@
 defmodule EhOsContract.Authorizer do
   @moduledoc """
-  The question dispatch and query ask about a credential's actor: may it do this?
+  Decides if the actor of a credential can make a call: a command, a query or a
+  recorded event.
 
       config :eh_os_contract, authorizer: MyApp.Authorizer
 
-  The engine asks it about every command, query and recorded event that arrives
-  with a credential, before anything else runs. It is not asked about the
-  application's own code — a `:system` actor or a reaction — which the contract
-  holds to its declarations instead.
+  The engine asks the Authorizer about each call that arrives with a credential,
+  before anything else runs. It does not ask about the code of the application: a
+  `:system` actor or a reaction. The contract holds that code to its declarations.
 
-  **The decision is `check/2`**, and it reads nothing but the actor and the request:
+  A declaration that no person can use has no capability. The engine refuses a call
+  to it with `:missing_capability`, and does not ask the Authorizer.
 
-    * `{:error, :missing_capability}` — the credential does not grant the capability;
-    * `{:error, :unscoped_grant}` — the capability is scoped and the credential
-      carries no values for it. Empty is not "all": a grant without values is a
-      grant nobody finished, and it is refused;
-    * `{:error, :outside_scope}` — the value asked for is not among them.
+  ## What does the check refuse?
 
-  Values are compared as the strings the credential carries, so a
-  granted value that is not of the field's type matches nothing.
+  `check/2` is the decision. It reads only the actor and the request. It returns
+  `:ok`, or refuses with one of these reasons:
 
-  **An implementation may narrow what a credential grants, and never widen it.**
-  `EhOsContract.Authorizer.Default`, used when nothing is configured, is `check/2`
-  alone. `eh_os_contract_auth` calls `check/2` and records a row for each decision.
-  Whatever the configured implementation answers, the engine runs `check/2` again
-  after an `:ok` and raises when that refuses, so a mistake in an implementation
-  fails loudly instead of letting a call through. It follows that grants travel in
-  the credential, as EHOS issues them.
+  | Reason | The credential |
+  | --- | --- |
+  | `:missing_capability` | does not grant the capability. |
+  | `:unscoped_grant` | grants a scoped capability with no values. An empty grant is not "all": it is an unfinished grant, and `check/2` refuses it. |
+  | `:outside_scope` | grants values, but not the value of the request. |
 
-  A refusal writes nothing, neither to the log nor to the table of commands
-  (`eh_os_contract_commands`): the row that
-  records it belongs to the implementation.
+  `check/2` compares the values as the strings that the credential carries. So a
+  granted value that is not of the type of the field matches nothing.
+
+  ## What can an implementation of your own do?
+
+  An implementation can narrow what a credential grants. It can never widen it.
+
+  - If the configuration names no implementation, the engine uses
+    `EhOsContract.Authorizer.Default`, which is `check/2` alone.
+  - `eh_os_contract_auth` calls `check/2`, and records a row for each decision.
+  - After an `:ok` of any implementation, the engine runs `check/2` again. If
+    `check/2` refuses, the engine raises `EhOsContract.Authorizer.WidenedError`. So
+    an error in an implementation stops the call, and does not let it through.
+
+  So the grants travel in the credential, as the platform that issues the credential
+  gives them. [Write an Authorizer](authorizer.md) tells how to add a rule of your own.
+
+  A refusal writes nothing to the log or to the table of commands
+  (`eh_os_contract_commands`). A row that records the refusal belongs to the
+  implementation.
   """
 
   alias EhOsContract.Actor
@@ -80,7 +92,10 @@ defmodule EhOsContract.Authorizer do
   @typedoc "Why a request is refused. An implementation may have reasons of its own."
   @type reason :: :missing_capability | :unscoped_grant | :outside_scope | atom()
 
-  @doc "Whether `actor` may make `request`."
+  @doc """
+  Returns `:ok` if `actor` can make `request`, or `{:error, reason}`. A reason of
+  your own is an atom.
+  """
   @callback authorize(Actor.t(), Request.t()) :: :ok | {:error, reason()}
 
   @doc """

@@ -2,9 +2,10 @@ defmodule Mix.Tasks.EhOsContract.View do
   @shortdoc "Prints the domain as a tree: contexts, contracts, units, consumers and processes"
 
   @moduledoc """
-  Prints the application's domain as a tree for a terminal: its contexts, and in
-  each its contracts, their units, consumers and queries; then its process modules,
-  each with its stages in order and the events each includes, by contract.
+  Prints the domain of the application as a tree in a terminal. The tree gives the
+  contexts, and in each context its contracts with their units, consumers and
+  queries. Then it gives the process modules, each with its stages in order and the
+  events of each stage, by contract.
 
       mix eh_os_contract.view                                   # the whole domain
       mix eh_os_contract.view circulation                       # one context, without the processes
@@ -12,8 +13,10 @@ defmodule Mix.Tasks.EhOsContract.View do
       mix eh_os_contract.view --details                         # with what each row declares
       mix eh_os_contract.view --domain lending                  # when there is more than one domain
 
-  The domain, its contracts and process modules are found among the modules of
-  `config :eh_os_contract, applications:`. `--output` writes the tree to a file.
+  A path is `<context>` or `<context>/<name>`. The task takes one path at most.
+
+  The task finds the domain, its contracts and its process modules among the modules
+  of `config :eh_os_contract, applications:`. `--output` writes the tree to a file.
   """
 
   use Boundary, classify_to: EhOsContract

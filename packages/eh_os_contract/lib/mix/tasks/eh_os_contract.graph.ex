@@ -1,11 +1,10 @@
 defmodule Mix.Tasks.EhOsContract.Graph do
-  @shortdoc "Gives a contract's, a process's or a domain's graph.v1 document, or the log over it"
+  @shortdoc "Gives the graph.v1 document of a contract, a process module or a domain, or the log over it"
 
   @moduledoc """
-  The `graph.v1` document a renderer is given (`EhOsContract.Graph.Document`), of one
-  contract or process module the registry finds — that is, of the binary that runs — or
-  of its domain, and with `--overlay` what the log says over it
-  (`EhOsContract.Graph.Overlay`).
+  Gives the `graph.v1` document of a contract, a process module or a domain. A
+  renderer draws this document (`EhOsContract.Graph.Document`). With `--overlay`, the
+  task also gives what the log says over it (`EhOsContract.Graph.Overlay`).
 
       mix eh_os_contract.graph --contract lending.circulation --output circulation.json
       mix eh_os_contract.graph --contract lending.circulation --overlay --since 2026-07-01T00:00:00Z
@@ -13,33 +12,79 @@ defmodule Mix.Tasks.EhOsContract.Graph do
       mix eh_os_contract.graph --domain lending --output lending.json
       mix eh_os_contract.graph --output-dir graph
 
-  `--contract` names a contract by its `id:`, `--process` a process module by its
-  `id:`; a process module may share its id with a contract, so they are two options.
-  Without either the task gives the domain's document — its context map, its contracts
-  and process modules and what flows between them, its actors — and `--domain` names
-  the domain by its `name:`, which it may leave out when the application has one. The
-  bytes are the ones the API serves, every object's keys in order, so two of them
-  compare with `diff`. A document holds every fact of its
-  contract or domain, whatever a renderer draws of them; the pictures are the
-  renderer's (`eh_os_contract_graph`), which the dashboard mounts.
+  | Option | Value |
+  | --- | --- |
+  | `--contract` | the `id:` of a contract |
+  | `--process` | the `id:` of a process module. It can be the same as the `id:` of a contract, so the two are different options. |
+  | `--domain` | the `name:` of a domain. You can leave it out if the application has one domain. |
+  | `--overlay` | adds what the log says |
+  | `--since` | the start of the period of the overlay, ISO 8601. A time without an offset is UTC. It needs `--overlay`. The overlay has no end of the period. |
+  | `--output` | a file for the document |
+  | `--output-dir` | a directory for each document of the application. It takes no other option. |
 
-  `--output-dir` writes every document of the application in one run, into a directory
-  that does not exist yet or is empty: each domain's as `domain.<module>.json`
-  (`domain.Lending.Domain.json`), each contract's as `contract.<id>.json` and each process
-  module's as `process.<id>.json`, named as the renderer's loader names them,
-  each the bytes `--output` writes for it. It is what a pipeline sends with a deployment,
-  so it boots the project once rather than once per document. It writes no overlay, and
-  refuses a directory that holds anything, so a document of a contract removed since an
-  earlier run is never sent with the rest.
-  `mix eh_os_contract.bundle`, in `eh_os_contract_auth`, writes these documents with the
-  manifest and an index of their digests, the bundle EHOS takes.
+  Give one of `--contract`, `--process` and `--domain`, or none of them. With none,
+  the task gives the document of the domain. The task takes no argument other than
+  these options. A wrong combination stops it with an error.
 
-  Use `--output`: Erlang keeps stdout in latin1 when it is not a terminal, and
-  every label of a document is written in the client's language. Without it the
-  document is the only thing the task writes to stdout: what the application logs as
-  it starts (`--overlay` starts it) goes to stderr, so `> graph.json` is the document
-  alone — once the project is compiled, since Mix prints its compilation to stdout
-  before the task runs.
+  ## What a document holds
+
+  The task finds a contract or a process module in the registry. So the document
+  shows the code that runs.
+
+  - The document of a domain holds its context map, its contracts and process
+    modules, what flows between them, and its actors.
+  - A document holds each fact of its contract or domain, also the facts that a
+    renderer does not draw. The renderer `eh_os_contract_graph` draws the pictures,
+    and the dashboard mounts it.
+  - The bytes are the bytes that the API serves, with the keys of each object in
+    order. So you can compare two documents with `diff`.
+
+  ## Add what the log says over the document
+
+  > **`--overlay` starts the whole application.**
+  > Run it only with the code that is deployed. The task records a deployment. It starts
+  > the subscriptions, the relays, the inboxes and Oban. So effects can call external
+  > systems from where you run it, and an inbox can take messages from the transport. If
+  > your code differs from the deployed code, the engine rebuilds each changed process
+  > manager at once. It also rebuilds each changed read model that has `reset/0`. A
+  > rebuilt read model is empty until it catches up. A rebuilt process manager forgets
+  > its runs, and learns them again from the log. An event appended before it reaches
+  > the head never gets a reaction. A timer due by then is dropped, unless its job is
+  > still in the queue. The deployed nodes then rebuild the same consumers again at
+  > their next boot.
+
+  The overlay reads the log through the repo of the application, so the task starts
+  the application.
+
+  ## Write each document of the application
+
+  `--output-dir` writes each document of the application in one run. A pipeline sends
+  these documents with a deployment. The project loads one time, not one time for
+  each document.
+
+  - The directory must not exist yet, or must be empty. So a document of a contract
+    that you removed after an earlier run is never sent with the rest.
+  - The document of a domain is `domain.<module>.json` (`domain.Lending.Domain.json`).
+  - The document of a contract is `contract.<id>.json`. The document of a process
+    module is `process.<id>.json`. The loader of the renderer uses these names.
+  - Each file holds the bytes that `--output` writes for it.
+  - The task writes no overlay.
+
+  `mix eh_os_contract.bundle`, in `eh_os_contract_auth`, writes these documents with
+  the manifest and an index of their digests. That is the bundle that the platform
+  deploys from.
+
+  ## Write the document to a file
+
+  Use `--output`. Erlang keeps the standard output in latin1 when it is not a
+  terminal. Each label of a document is in the language of the client.
+
+  Without `--output`, the task writes the document to the standard output. When the
+  application starts (`--overlay`), the task moves the log of the application to the
+  standard error. But the code of the application can still print to the standard
+  output, so `> graph.json` can hold more than the document. If you need the document
+  alone, use `--output`. Mix also prints the compile to the standard output before the
+  task runs.
   """
 
   use Boundary, classify_to: EhOsContract
