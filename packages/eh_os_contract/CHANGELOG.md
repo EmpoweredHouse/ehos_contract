@@ -71,8 +71,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   HTTP; a raise in `publish/2` makes the relay `failing` after three attempts, not at once; the
   report's contract section answers questions 1, 2 and 4, and a process module's section question 3;
   a name of a command, a query or a recorded event is unique in its domain, not in the application.
-- **Breaking: the rewrap takes the id of the new master key, and refuses a vault that wraps with
-  another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
 - **Breaking:** **The rewrap takes the id of the new master key, and refuses a vault that wraps
   with another key** (#541). Run `mix eh_os_contract.rewrap --expect 2026-09`, or call
   `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09")`. If the first key of the list is not that
