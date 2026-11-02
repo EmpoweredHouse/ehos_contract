@@ -88,8 +88,8 @@ the call is on:
 
 ## What does it cost?
 
-Each call that gets to the package writes 1 row: 1 `INSERT`. For a query, it is the only write of
-the call.
+Each call that gets to the package writes 1 row: 1 `INSERT`. For a query, it is the only write that
+the package and the engine make. The code of the query can write more.
 Plan for 1 more write for each call.
 
 The table has the index of its primary key, and 2 other indexes: on `decided_at`, and on `subject`
