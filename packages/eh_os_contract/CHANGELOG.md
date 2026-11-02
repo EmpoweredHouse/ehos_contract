@@ -102,6 +102,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **Moves a verdict:** **dispatch asks the supplier inside its transaction, and again on a retry**
+  (#563). A command or a recorded event with a field `supplied_by: :host` gets the value from
+  `EhOsContract.Supplier` inside the transaction that appends its events. If the stream changed and
+  dispatch tries again, it asks again. So `supply/2` can lock the rows that it reads, and a
+  concurrent save of them can no longer change the fact before the append. Before, dispatch asked
+  one time, before its transaction, and used that answer for every retry. Such a command that reads
+  entities (`reads:`) now reads them in the same transaction, after the answer. The verdict moves
+  because a supplier that answers fields that do not fit now writes a `failed` command row, with
+  `failed_in` `"supplier"`, when the transaction is the engine's own; before, it wrote no row.
+
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
   does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.
 - **Breaking:** **`EhOsContract.Plug` refuses a command or a recorded event that is not JSON** (#558).

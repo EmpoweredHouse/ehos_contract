@@ -30,18 +30,29 @@ defmodule EhOsContract.Supplier do
 
   ## When the engine asks
 
-  The engine asks one time for each command or recording, for all of its supplied
-  fields. `given` holds the other fields, decoded. The engine asks:
+  The engine asks one time for each attempt of a command or recording, for all of its
+  supplied fields. `given` holds the other fields, decoded. The engine asks:
 
   1. after it authorizes the caller;
-  2. after it checks what the caller sent: its own fields and its idempotency key.
+  2. after it checks what the caller sent: its own fields and its idempotency key;
+  3. inside the transaction that appends the events, before it reads the unit.
 
-  It does not ask for a retry of a request that it accepted under its idempotency
-  key. That retry gets its receipt. The engine sets no time limit on the call. If the
-  source of the data can hang, the implementation must limit the time.
+  The answer and the events are in one transaction. So `supply/2` can lock the rows
+  that it reads, for example with `SELECT ... FOR UPDATE`, and a concurrent save of
+  those rows waits until the events are appended. Without a lock, the answer can be
+  stale when the engine appends.
 
-  The code of the host can dispatch inside a transaction that appended before. Then
-  each other writer of the log waits for the answer. So make `supply/2` fast.
+  If the stream of the unit changed after the engine read it, the engine tries the
+  command again, in a new transaction, and asks again. A command that reads entities
+  (`reads:`) reads them in the same transaction, after the answer.
+
+  The engine does not ask for a retry of a request that it accepted under its
+  idempotency key. That retry gets its receipt. The engine sets no time limit on the
+  call. If the source of the data can hang, the implementation must limit the time.
+
+  The transaction stays open while `supply/2` runs. If the code of the host dispatches
+  inside a transaction that appended before, each other writer of the log waits for
+  the answer. So make `supply/2` fast.
 
   `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
   page with `EhOsContract.Form` can pass it. Without it, the code of the application
@@ -54,7 +65,8 @@ defmodule EhOsContract.Supplier do
   The answer holds exactly the fields that the engine asked for, each of its type. If
   it does not, or if a value breaks an invariant of a domain value, the engine raises.
   The message names the field, never its value. Such an answer is an error in the
-  code of the host.
+  code of the host. If the transaction is the engine's own, the engine also records
+  the command as failed, with `failed_in` `"supplier"`.
 
   If a contract declares a supplied field, the node does not start without an
   implementation. The implementation must be loaded and export `supply/2`. The engine

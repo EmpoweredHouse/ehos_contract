@@ -439,7 +439,8 @@ end
 
 - Through `EhOsContract.call/3` and `EhOsContract.Plug`, a request that sends the field is refused
   with `{:invalid, [scanned: :supplied]}`.
-- After the engine authorizes the caller, the supplier gives the value.
+- After the engine authorizes the caller, the supplier gives the value. The engine asks inside the
+  transaction that appends the events, so the supplier can lock what it reads.
 - If the supplier cannot give it, the result is `{:not_supplied, reason}`, an HTTP 503. The engine
   writes nothing.
 - A call of `dispatch/3` from your own code is trusted, as each other field of the struct is. The

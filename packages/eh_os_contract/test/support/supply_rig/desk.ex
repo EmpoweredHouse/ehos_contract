@@ -46,13 +46,45 @@ defmodule SupplyRig.Desk do
 end
 
 defmodule SupplyRig.Visit do
-  @moduledoc "**Invented.** Closes a visit with what it is given."
+  @moduledoc """
+  **Invented.** Closes a visit with what it is given.
+
+  A test can make the next closing append to the same stream behind the decision's
+  back, `Process.put(:supply_rig_race, true)`, so that the append meets a stream that
+  moved: the conflict dispatch retries.
+  """
 
   use SupplyRig.Desk, aggregate: :visit
 
   @impl true
-  def close_visit(%CloseVisit{} = c, _state),
-    do: emit(%Closed{visit_id: c.visit_id, code: c.code, reported: c.reported})
+  def close_visit(%CloseVisit{} = c, _state) do
+    if Process.delete(:supply_rig_race), do: race(c.visit_id)
+    emit(%Closed{visit_id: c.visit_id, code: c.code, reported: c.reported})
+  end
+
+  # Another writer's event in the stream, appended at the version the decision read.
+  defp race(id) do
+    repo = Application.fetch_env!(:eh_os_contract, :repo)
+    stream = EhOsContract.Key.stream(:visit, [id])
+    version = length(EhOsContract.Store.read_stream(repo, stream, 0))
+
+    {:ok, _} =
+      EhOsContract.Store.append(
+        repo,
+        [
+          %{
+            type: "supply_rig.desk.closed",
+            contract: EhOsContract.Model.fetch(SupplyRig.Desk).id,
+            contract_version: "race",
+            correlation_id: Ecto.UUID.generate(),
+            actor: "system:race",
+            occurred_at: EhOsContract.Clock.now(),
+            payload: %{"visit_id" => id, "code" => "R1", "reported" => false}
+          }
+        ],
+        {:stream, stream, version}
+      )
+  end
 end
 
 defmodule SupplyRig.Visits do
