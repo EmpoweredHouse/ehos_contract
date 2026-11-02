@@ -146,8 +146,12 @@ The engine keeps no cache of data keys: a cache on another node would outlive an
 read of personal data asks the vault to unwrap the keys of its subjects. With a KMS, each command
 and each batch of a read model that touches personal data waits for the KMS, and counts against its
 quota. A replay or a rebuild of a read model asks for each subject again. For a smaller rewrap
-batch, call `EhOsContract.Personal.rewrap!(MyApp.Repo, "2026-09", 50)`; the Mix task takes no
-batch size.
+batch, give the id that `current/0` returns, and the batch size; the Mix task takes no batch size:
+
+<!-- not compiled: the host's repository and key -->
+```elixir
+EhOsContract.Personal.rewrap!(MyApp.Repo, "projects/my-app/keys/personal-data/versions/2", 50)
+```
 
 <a id="restore-a-backup-older-than-an-erasure"></a>
 
