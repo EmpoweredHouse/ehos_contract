@@ -127,6 +127,18 @@ defmodule EhOsContract.Check.Catalog do
       """
     },
     %{
+      id: "scoped-actor-with-unscoped-query",
+      level: :warn,
+      esdm: nil,
+      summary: "An actor with scope dimensions may ask an unscoped query.",
+      text: """
+      The actor's other grants can be narrowed to named dimensions, but this query answers the rows of
+      every value: a lead granted one warehouse reads the rows of all of them. Declare the query's
+      `scope` when its read model has one of those dimensions, or use a different actor when reading
+      across the application is deliberate.
+      """
+    },
+    %{
       id: "declaration-without-implementation",
       level: :warn,
       esdm: nil,

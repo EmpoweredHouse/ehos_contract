@@ -99,6 +99,17 @@ The actor's other grants can be narrowed to named dimensions, but this command's
 application-wide. Declare the command's `scope` when it acts on one of those dimensions, or use
 a different actor when application-wide authority is deliberate.
 
+## `scoped-actor-with-unscoped-query`
+
+**warning**
+
+An actor with scope dimensions may ask an unscoped query.
+
+The actor's other grants can be narrowed to named dimensions, but this query answers the rows of
+every value: a lead granted one warehouse reads the rows of all of them. Declare the query's
+`scope` when its read model has one of those dimensions, or use a different actor when reading
+across the application is deliberate.
+
 ## `declaration-without-implementation`
 
 **warning**

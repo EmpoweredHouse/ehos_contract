@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **`mix eh_os_contract.check` warns about a scoped actor with an unscoped query** (#559). The new
+  warning `scoped-actor-with-unscoped-query` names a query that has an actor with a scope in `by:`
+  and no `scope:`. Such a query answers the rows of each value: a lead with a grant for warehouse 7
+  reads the rows of warehouse 12. Before, only an unscoped command got a warning. A contract with
+  such a query now gets one warning for each scoped actor of the query.
+
 ### Changed
 
 - **The page on authorization is split by what a reader asks** (#517). `docs/authorization.md` is a

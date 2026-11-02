@@ -211,6 +211,63 @@ defmodule EhOsContract.CheckCompletenessDomainTest do
     assert Finding.place(finding) == {"scoped_actor.ex", 17}
   end
 
+  test "a scoped actor may not ask an application-wide query; control: a scoped query, an unscoped actor" do
+    compile(
+      """
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedQueryDomain do
+        use EhOsContract.Domain, name: :scoped_query, language: :en
+
+        subdomain :core, "Core", type: :core
+        context :warehouse, "Warehouse", subdomain: :core
+        actor :lead, :human, "Warehouse lead", scope: [:warehouse_id]
+        actor :manager, :human, "Operations manager"
+      end
+
+      defmodule EhOsContract.CheckCompletenessDomainTest.ScopedQueryContract do
+        use EhOsContract.Contract,
+          domain: EhOsContract.CheckCompletenessDomainTest.ScopedQueryDomain,
+          context: :warehouse, id: "scoped_query.scoped_query_contract"
+
+        aggregate :pick_list, "Pick list" do
+          identity [:warehouse_id, :order_id]
+          command :assign, "Assign", by: :lead, scope: :warehouse_id, emits: :assigned
+          event :assigned, "Assigned"
+        end
+
+        read_model :open_pick_lists, "Open pick lists", projects: [:assigned] do
+          field :warehouse_id, :id
+          field :order_id, :id
+        end
+
+        query :all_open, "All open pick lists", reads: :open_pick_lists, by: [:lead]
+
+        query :open_in_warehouse, "Open pick lists in a warehouse",
+          reads: :open_pick_lists,
+          by: [:lead],
+          scope: :warehouse_id do
+          param :warehouse_id, :id
+        end
+
+        query :every_open, "Every open pick list", reads: :open_pick_lists, by: [:manager]
+      end
+      """,
+      "scoped_query.ex"
+    )
+
+    contract = EhOsContract.CheckCompletenessDomainTest.ScopedQueryContract
+
+    assert [%Finding{message: message} = finding] =
+             for(
+               f <- Completeness.findings([contract]),
+               f.rule == "scoped-actor-with-unscoped-query",
+               do: f
+             )
+
+    assert message =~ "actor :lead"
+    assert message =~ "query :all_open"
+    assert Finding.place(finding) == {"scoped_query.ex", 26}
+  end
+
   test "an external nothing uses; control: one an actor stands for, one an effect calls" do
     assert [{message, {"clinic.ex", 15}}] = findings("orphan-external-system")
     assert message =~ "external :ledger"

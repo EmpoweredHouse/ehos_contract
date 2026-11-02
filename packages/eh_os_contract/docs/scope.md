@@ -133,6 +133,10 @@ not fail on a cast.
 not. The command then takes each warehouse. `mix eh_os_contract.check` warns about this:
 `scoped-actor-with-unscoped-command`. Give the command `scope:` too.
 
+**A lead reads the rows of another warehouse.** The actor and the command have a scope, but the
+query does not. The query then answers the rows of each warehouse. `mix eh_os_contract.check` warns
+about this: `scoped-actor-with-unscoped-query`. Give the query `scope:` too.
+
 **A `:system` actor sees all the rows.** The engine does not narrow a `:system` actor that `by:`
 names, for a command or a query. This is correct: the code of the application has no grant.
 
