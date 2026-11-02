@@ -30,7 +30,8 @@ defmodule Mix.Tasks.EhOsContract.Pages do
 
   ## What it deletes, and what stops it
 
-  The task reads and changes nothing outside `--output`.
+  The task compiles the project first, as `mix compile` does. Then it reads, writes
+  and deletes pages only inside `--output`, except through the symbolic links below.
 
   - It deletes a page that the model no longer has. It deletes only a file that starts
     with the marker line of the pages of the domain. It also deletes a `graph.v1`
