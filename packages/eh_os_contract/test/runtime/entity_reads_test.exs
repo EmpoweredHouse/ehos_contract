@@ -144,7 +144,7 @@ defmodule EhOsContract.EntityReadsTest do
       error = assert_raise ArgumentError, fn -> Entities.check!(@models) end
 
       assert error.message =~
-               "ReadRig.Orders declares commands [:place_order] that read entities, and no " <>
+               "ReadRig.Orders declares commands [:place_order, :place_gift_order] that read entities, and no " <>
                  "entities implementation is configured"
     end
 
@@ -160,6 +160,45 @@ defmodule EhOsContract.EntityReadsTest do
       assert Entities.check!(@models) == :ok
       Application.delete_env(:eh_os_contract, :entities)
       assert Entities.check!([EhOsContract.Model.fetch(SupplyRig.Desk)]) == :ok
+    end
+  end
+
+  describe "a command that reads an entity and has a field the host supplies" do
+    @gift_clerk Actor.credential("u-1", ["read_rig.place_gift_order"])
+
+    defp gift(opts) do
+      EhOsContract.call(
+        {:command, "read_rig.place_gift_order"},
+        %{"order_id" => "order-1", "product_id" => "product-tea", "quantity" => 3},
+        Keyword.merge([actor: @gift_clerk], opts)
+      )
+    end
+
+    test "reads the entity inside the transaction, after the host supplies" do
+      Process.put(:supply_rig_answer, fn _actor, _request ->
+        send(self(), {:fetched_when_supplied, fetched()})
+        {:ok, %{wrapping: 2}}
+      end)
+
+      assert {:ok, %Receipt{events: [%Placed{total: 14}]}} = gift([])
+      assert_received {:fetched_when_supplied, []}
+      assert fetched() == ["product-tea"]
+    end
+
+    test "a request accepted under its key while the host answered gets that receipt" do
+      # The same request, sent again while the first waits for the host's answer: the
+      # second is accepted first, inside the same transaction here.
+      Process.put(:supply_rig_answer, fn _actor, _request ->
+        if Process.put(:read_rig_supplied, true) == nil,
+          do: {:ok, %Receipt{}} = gift(idempotency_key: "gift-1")
+
+        {:ok, %{wrapping: 2}}
+      end)
+
+      assert {:ok, %Receipt{duplicate: true, events: [%Placed{total: 14}]}} =
+               gift(idempotency_key: "gift-1")
+
+      assert [%{payload: %{"total" => 14}}] = Repo.all(Event)
     end
   end
 end

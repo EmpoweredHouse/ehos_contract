@@ -47,12 +47,27 @@ defmodule EhOsContract.Supplier do
   (`reads:`) reads them in the same transaction, after the answer.
 
   The engine does not ask for a retry of a request that it accepted under its
-  idempotency key. That retry gets its receipt. The engine sets no time limit on the
-  call. If the source of the data can hang, the implementation must limit the time.
+  idempotency key. That retry gets its receipt.
 
-  The transaction stays open while `supply/2` runs. If the code of the host dispatches
-  inside a transaction that appended before, each other writer of the log waits for
-  the answer. So make `supply/2` fast.
+  ## What the transaction asks of `supply/2`
+
+  - **Make it fast.** The transaction holds a connection of the pool of the repository
+    while `supply/2` runs. Each request that waits for a slow system holds one
+    connection, and the other work of the application waits for the pool. The engine
+    sets no time limit on the call, so limit the time of each call to another system.
+    If the code of the host dispatches inside a transaction that appended before, each
+    other writer of the log also waits.
+  - **Lock in one order.** The engine takes the lock of the log after `supply/2`. So do
+    not lock rows that a read model or a reaction delivered `:in_transaction` writes:
+    the two locks in the other order can deadlock. The engine does not try a command
+    again after a deadlock.
+  - **Let a failed query raise.** After a query fails, Postgres refuses each next
+    query of the transaction, and the engine cannot finish it. Do not catch the error
+    and return `{:error, reason}`.
+  - **Know what is kept.** What `supply/2` writes to the database commits with the
+    transaction, also when the engine refuses the command. It rolls back when the
+    engine tries the command again. A call to another system is not rolled back, and
+    the engine can make it up to 3 times for one command.
 
   `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
   page with `EhOsContract.Form` can pass it. Without it, the code of the application

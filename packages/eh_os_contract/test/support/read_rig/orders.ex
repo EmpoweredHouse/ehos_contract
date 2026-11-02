@@ -3,8 +3,9 @@ defmodule ReadRig.Orders do
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
   Placing an order reads the product it names: the order is refused for a product no
-  longer on sale, and its total is the product's price as read. Cancelling one reads
-  nothing, so its decision keeps two arguments.
+  longer on sale, and its total is the product's price as read. A gift order reads it
+  too, and adds the wrapping, which the host supplies. Cancelling one reads nothing, so
+  its decision keeps two arguments.
   """
 
   use EhOsContract.Contract, domain: ReadRig.Domain, context: :shop, id: "read_rig.orders"
@@ -26,6 +27,16 @@ defmodule ReadRig.Orders do
       reads: [product: :product_id] do
       field :product_id, {:id, :product}
       field :quantity, :integer
+    end
+
+    command :place_gift_order, "Place a gift order",
+      by: :clerk,
+      emits: :placed,
+      rejects: :product_on_sale,
+      reads: [product: :product_id] do
+      field :product_id, {:id, :product}
+      field :quantity, :integer
+      field :wrapping, :integer, supplied_by: :host
     end
 
     command :cancel_order, "Cancel the order",
@@ -57,6 +68,12 @@ defmodule ReadRig.Orders do
     given_entity :product, %{product_id: "product-tea", price: 4, on_sale: true, discount: 1}
     command :place_order, %{product_id: "product-tea", quantity: 3}
     expect :placed, %{total: 9}
+  end
+
+  scenario "a gift order adds the wrapping to the total" do
+    given_entity(:product, %{product_id: "product-tea", price: 4, on_sale: true})
+    command :place_gift_order, %{product_id: "product-tea", quantity: 3, wrapping: 2}
+    expect :placed, %{product_id: "product-tea", total: 14}
   end
 
   scenario "a product no longer on sale is not ordered" do
@@ -102,6 +119,19 @@ defmodule ReadRig.Order do
         order_id: c.order_id,
         product_id: c.product_id,
         total: (product.price - (product.discount || 0)) * c.quantity
+      })
+    else
+      reject(:product_on_sale)
+    end
+  end
+
+  @impl true
+  def place_gift_order(%PlaceGiftOrder{} = c, _state, %{product: product}) do
+    if product.on_sale do
+      emit(%Placed{
+        order_id: c.order_id,
+        product_id: c.product_id,
+        total: product.price * c.quantity + c.wrapping
       })
     else
       reject(:product_on_sale)

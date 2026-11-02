@@ -108,9 +108,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   dispatch tries again, it asks again. So `supply/2` can lock the rows that it reads, and a
   concurrent save of them can no longer change the fact before the append. Before, dispatch asked
   one time, before its transaction, and used that answer for every retry. Such a command that reads
-  entities (`reads:`) now reads them in the same transaction, after the answer. The verdict moves
-  because a supplier that answers fields that do not fit now writes a `failed` command row, with
-  `failed_in` `"supplier"`, when the transaction is the engine's own; before, it wrote no row.
+  entities (`reads:`) now reads them in the same transaction, after the answer, and again on a retry.
+  For a command that creates a unit with a generated identity, `Supplier.Request.given` now holds
+  that identity. The `Supplier` docs say what the transaction asks of `supply/2`: the connection it
+  holds, the order of locks, and what is kept after a refusal. The verdict moves because an
+  exception of the supplier, or of the entities read for such a command, now writes a `failed`
+  command row when the transaction is the engine's own, with `failed_in` `"supplier"` or
+  `"entities"`; before, it wrote no row.
 
 - **`scoped-actor-with-unscoped-command` no longer warns about a `:system` actor** (#559). Dispatch
   does not narrow an actor of kind `:system`, so the command's `scope` narrows nothing for it.

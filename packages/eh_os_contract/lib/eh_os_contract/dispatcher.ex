@@ -71,7 +71,7 @@ defmodule EhOsContract.Dispatcher do
          :ok <- keyed(ctx),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
          job = job(:command, model, declaration, command, ctx, values),
-         {:ok, job} <- unsupplied(job, &prepared/1) do
+         {:ok, job} <- unsupplied(job, &once/1) do
       run(job, repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
@@ -97,7 +97,7 @@ defmodule EhOsContract.Dispatcher do
          :ok <- valid(callers(declaration, ctx), event, values, model.domain),
          :ok <- keyed(ctx),
          job = job(:record, model, declaration, event, ctx, values),
-         {:ok, job} <- unsupplied(job, &prepared/1) do
+         {:ok, job} <- unsupplied(job, &once/1) do
       run(job, repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
@@ -635,21 +635,31 @@ defmodule EhOsContract.Dispatcher do
          do: {:ok, struct(struct, given)}
   end
 
+  # Before the transaction, a retry of a command already accepted under its key gets its
+  # receipt without asking for entities: a row deleted since would turn the receipt into a
+  # refusal. Inside it, `attempt/2` has checked the key already.
+  defp once(%{declaration: %{reads: [_ | _]}} = job) do
+    with :new <- idempotent(repo(), job) do
+      prepared(job)
+    else
+      {:ok, receipt} -> {:replayed, receipt}
+      refused -> refused
+    end
+  end
+
+  defp once(job), do: prepared(job)
+
   # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
   # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
   # host's lookup does not hold the transaction open. No reaction issues such a command
   # (A8), so none is asked inside dispatch's own transaction, after its append lock; one
   # the host dispatches inside a transaction of its own is asked inside that. A command
-  # with supplied fields reads them inside the transaction, after the host supplies
-  # (`prepared/1`). A retry of a command already accepted under its key gets its receipt
-  # without asking: a row deleted since would turn the receipt into a refusal.
+  # with supplied fields reads them inside the transaction, after the host supplies, on
+  # every attempt (`prepared/1`).
   defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
-    with :new <- idempotent(repo(), job) do
+    stage("entities", fn ->
       Entities.read(job.model, job.declaration, job.command, job.ctx.actor)
-    else
-      {:ok, receipt} -> {:replayed, receipt}
-      refused -> refused
-    end
+    end)
   end
 
   defp read_entities(_job), do: {:ok, %{}}

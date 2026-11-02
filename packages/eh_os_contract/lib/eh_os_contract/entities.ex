@@ -63,6 +63,9 @@ defmodule EhOsContract.Entities do
   the command, and before the transaction of the decision.
 
   - If the decision meets a conflict and runs again, it decides on the same rows.
+  - If the command has a field that the host supplies (`EhOsContract.Supplier`), the
+    engine asks inside the transaction, after the supplier answers. If the decision
+    meets a conflict, the engine asks again in the new transaction.
   - A retry of a command that the engine accepted under its idempotency key gets its
     receipt, and the engine does not ask.
   - The engine sets no time limit on the call.
