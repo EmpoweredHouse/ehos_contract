@@ -51,6 +51,9 @@ Each route is `GET`. The examples use the mount `/api`.
 | `/api/graph/domain/<module>` | the graph document of the domain: its contexts, actors, contracts and process modules, and what goes between them |
 | `/api/graph/domain/<module>/overlay?since=…&until=…` | its overlay |
 
+Four routes are indexes: `/api/graph`, `/api/model`, `/api/openapi` and `/api/asyncapi`. If the
+application has nothing to list, each answers 200 with empty lists.
+
 On `/api/conformance`:
 
 - `contract` is optional if the application has exactly one contract.
@@ -96,7 +99,7 @@ The JSON Schemas ship with `eh_os_contract`: `priv/schema/graph.v1.json` and
 | --- | --- | --- |
 | 400 | `{"error": "bad_request", "detail": …}` | On `/api/conformance`: an unknown contract or process module, both given, no `contract` and no `process` when the application has 0 or more than 1 contract, or a parameter that does not parse. On an overlay: a time that does not parse, or a `since` after its `until`. |
 | 403 | `{"error": "forbidden"}` | The resolver refused the caller, on any route. |
-| 404 | `{"error": "not_found", "detail": …}` | A contract, process module or domain that the application does not have, on each route except `/api/conformance`, the overlays included. The API never answers an empty graph. |
+| 404 | `{"error": "not_found", "detail": …}` | A contract, process module or domain that the application does not have, on each route except `/api/conformance`, the overlays included. A contract, process module or domain that the application does not have never gets an empty graph document. |
 
 ## Who sees it
 
