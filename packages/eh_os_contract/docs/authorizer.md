@@ -66,15 +66,15 @@ Name the module in the configuration of the application:
 config :eh_os_contract, authorizer: MyApp.Authorizer
 ```
 
-> **Write a row for your own refusal.**
-> `EhOsContract.Auth` writes no row for a refusal that your rule gives before it. If you need each
-> decision in the table, write the row of the refusal yourself.
+> **A refusal of your own rule gets no row.**
+> `EhOsContract.Auth` writes a row only for the calls that it decides. It has no public function
+> that writes the row of another refusal.
 
 ## The result
 
 Dispatch asks `MyApp.Authorizer` about each call with a credential: a command, a query and a recorded
 event. A suspended account gets `{:error, :suspended}`, and nothing is decided or written. The engine
-does not ask the Authorizer about a `:system` actor or a policy.
+does not ask the Authorizer about a `:system` actor or a reaction.
 
 ## What can go wrong
 
@@ -90,5 +90,5 @@ same database goes too.
 ## Next steps
 
 - [How is a call authorized?](authorization.md): what `check/2` answers, and what each answer writes.
-- [Accept calls with a credential](calls.md): the doors that bring a call to dispatch.
+- [Accept calls with a credential](calls.md): the ways that bring a call to dispatch.
 - `EhOsContract.Authorizer`: the behaviour, on hexdocs.

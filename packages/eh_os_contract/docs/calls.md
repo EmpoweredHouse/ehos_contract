@@ -1,9 +1,9 @@
 # Accept calls with a credential
 
-This page tells how to bring a call with a *credential* to the contract: over HTTP, through another door
-of the application, or from code. It also tells how the code of the application calls as a `:system`
-actor. It is for a developer who builds an application on the engine. [The glossary](glossary.md)
-defines each word in italics.
+This page tells how to bring a call with a *credential* to the contract. A call comes over HTTP,
+through other code that carries raw data, or from code that builds the struct. It also tells how the code of the
+application calls as a `:system` actor. It is for a developer who builds an application on the
+engine. [The glossary](glossary.md) defines each word in italics.
 
 ## Before you start
 
@@ -117,16 +117,15 @@ These are the main answers. `EhOsContract.Plug` lists each answer, with its body
 
 **The plug asks the Authorizer first.** It asks also when the body or the fields do not fit. So a
 caller without the capability gets 403, and learns nothing about the fields of the declaration. Each
-request that gets to the Authorizer is one decision, and `eh_os_contract_auth` records it. A 404, a
-401 and a credential that fails the check of the plug get no decision.
+request that gets to the Authorizer is one decision, and `eh_os_contract_auth` records it. A 404
+and a 401 get no decision.
 
 **A problem or a refusal carries no value that the caller did not send.** A problem names the field.
 A refusal names its reason.
 
-## Call the contract from another door
+## Call the contract from other code
 
-The plug is one door to `EhOsContract.call/3`. Each other door that carries raw data calls it in the
-same way. Examples: a job that holds the credential of a person, or another API. Give it the name of
+The plug calls `EhOsContract.call/3`. Other code that carries raw data calls it in the same way. Examples: a job that holds the credential of a person, or another API. Give it the name of
 the capability, the data as it was sent, and the actor of the credential:
 
 <!-- not compiled: a call in the host's code -->
@@ -149,7 +148,7 @@ answers as `dispatch/3`, `record/3` or `query/3` does. It has these answers of i
 | `{:error, :not_an_object}` | the caller can make the call, and the data is not a map |
 | `{:error, :correlation_id_is_not_a_uuid}` | the caller can make the call, and the correlation id is not a UUID |
 
-A door that builds the structs itself loses this order. For this reason, the plug does not build
+Code that builds the structs itself loses this order. For this reason, the plug does not build
 them.
 
 `call/3` takes data with the types that JSON gives: a boolean as `true`, an integer as a number.
@@ -160,19 +159,16 @@ capability: `Form.changeset({:command, "calls_example.assign_pick_list"}, params
 the fields while the person types. The page then dispatches the struct with the actor of the
 person, and `dispatch/3` asks the Authorizer. Until the person sends the form, nothing asks the
 Authorizer. The form checks only the shape that the contract declares. That is the fields, their
-types, the members of an enum and the names of the invariants of its values. So a page shows a form only to the
-people that it is for.
+types, the members of an enum and the names of the invariants of its values. So a page shows a form
+only to the people that it is for.
 
 ## Dispatch from code
 
 From code, dispatch the struct of the command with the actor of the person. On a page,
 `EhOsContract.Auth.Session.actor/2` gives the actor of the person who signed in.
 
-> **Build an actor by hand only in a test, or to try the engine.**
-> `EhOsContract.Actor.credential/3` grants what you give it. In production, take the actor that a
-> plug built from a verified credential.
-
-This example builds the actor by hand:
+This example builds the actor by hand, which is correct only in a test or to try the engine. See
+the warning in "Before you start".
 
 <!-- not compiled: calls in the host's code -->
 ```elixir
@@ -221,8 +217,8 @@ test key. Send it through the plug, as a client does. The test key needs this li
 config :eh_os_contract_auth, pin_keys: true
 ```
 
-The package raises if the line is in another environment. So a running application trusts no key
-that the platform did not publish.
+The package raises if a test pins a key without the line. It does not check where the line is. In
+another environment, the line lets code trust a key that the platform did not publish.
 
 ## Next steps
 

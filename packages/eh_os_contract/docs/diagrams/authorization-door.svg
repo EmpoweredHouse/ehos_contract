@@ -133,7 +133,7 @@
   <text class="keyt" x="540" y="660">The reaction issues a command that its declaration names.</text>
   <circle class="badge" cx="526" cy="680" r="6"/>
   <text class="badget" x="526" y="683" text-anchor="middle">7</text>
-  <text class="keyt" x="540" y="684">As a :system actor, the code issues what the contract names.</text>
+  <text class="keyt" x="540" y="684">As a :system actor, the code issues or records what the contract names.</text>
   </g>
 
   <!-- Legend strip -->

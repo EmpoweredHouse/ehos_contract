@@ -149,4 +149,8 @@ Kinds of problems a review here found that neither file names yet:
   stages read each run whole, and the count of runs takes any run with an event in it. A page that
   gives one rule for all of them misleads. Found in #517.
 
+- A page that says a package guards something is read against the guard's condition: `pin_keys`
+  raises when the line is missing, not when it is in the wrong environment, so "the package raises
+  elsewhere" promised a guard that does not exist. Found in #517.
+
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

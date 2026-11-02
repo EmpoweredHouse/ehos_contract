@@ -139,10 +139,11 @@ credential encrypted in its own table, on the server. The browser holds only a r
 
 ## Which calls does the Authorizer check?
 
-The Authorizer checks each call that comes into the application from outside, through the *door*.
-The door is where a call with a credential enters: `EhOsContract.Plug`, or `EhOsContract.call/3`.
-The kind of actor decides. The engine always asks the Authorizer about an actor of a credential. It
-never asks about a `:system` actor or a reaction.
+The Authorizer checks each call that comes into the application from outside, with a credential.
+This page calls the place where such a call enters the door. The door is `EhOsContract.Plug`,
+`EhOsContract.call/3`, or a page that dispatches for a person who signed in. The kind
+of actor decides. The engine asks the Authorizer about an actor of a credential. It never asks about
+a `:system` actor or a reaction.
 
 ![A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names.](img/authorization-door.svg)
 
@@ -157,7 +158,7 @@ never asks about a `:system` actor or a reaction.
 
 | Origin of the call | Actor | What checks it |
 | --- | --- | --- |
-| A person, with a credential | `Actor.credential(sub, cap, scp)`, which the plug builds from a verified credential | the Authorizer: the credential grants the capability |
+| A person, with a credential | `Actor.credential(sub, cap, scp)`, which `eh_os_contract_auth` builds from a verified credential | the Authorizer: the credential grants the capability |
 | An external system, with its own credential | `Actor.credential/3` | the same, when the platform issues credentials to systems |
 | A policy or a process manager that takes an event | the engine builds it | the contract: the reaction names the command that it issues |
 | The code of the application: a job, an import | `Actor.system(:name)` | the contract: the domain declares the actor `:system`, and `by:` or `recorded_by:` names it |
@@ -265,7 +266,7 @@ Auth0, Keycloak or Entra ID:
 Two things are stronger than in a usual application:
 
 - The check is in one place, dispatch, not in each controller. A command without the capability
-  does not get to its decision, from any origin. This closes the most frequent weakness of web
+  does not get to its decision, from any origin with a credential. This closes the most frequent weakness of web
   applications, broken access control (OWASP A01).
 - The engine checks each row of a scoped query again, against the grant.
 
