@@ -65,8 +65,11 @@ If you want the authority in the whole application, name a different actor.
 
 If an actor with a scope is in the `by:` of a query without `scope`, the check warns
 `scoped-actor-with-unscoped-query`. The query then answers this actor the rows of each value of the
-dimension. Declare the `scope` of the query if its read model has one of the dimensions. If the
-actor must read the whole application, name a different actor.
+dimension. Declare the `scope` of the query if its read model has one of the dimensions, and move
+the actors without the dimension to a second query. If the actor must read the whole application,
+name a different actor.
+
+Both warnings are only for a `:human` actor. The engine does not narrow a `:system` actor.
 
 <a id="who-may-let-whom-in"></a>
 
