@@ -531,7 +531,8 @@ The answer holds exactly the fields that the engine asked for, each of its type.
 it does not, or if a value breaks an invariant of a domain value, the engine raises.
 The message names the field, never its value. Such an answer is an error in the
 code of the host. If the transaction is the engine's own, the engine also records
-the command as failed, with `failed_in` `"supplier"`.
+the command as failed, and the conformance report counts it as an attempt that
+failed.
 
 If a contract declares a supplied field, the node does not start without an
 implementation. The implementation must be loaded and export `c:EhOsContract.Supplier.supply/2`. The engine
