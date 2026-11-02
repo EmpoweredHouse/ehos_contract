@@ -60,12 +60,15 @@ defmodule EhOsContract.Entities do
 
   The engine asks one time for each entry of `reads:` of the command. It stops at the
   first `:not_found`. It asks after it authorizes the caller and checks the fields of
-  the command, and before the transaction of the decision.
+  the command. When it asks depends on the fields of the command:
 
-  - If the decision meets a conflict and runs again, it decides on the same rows.
-  - If the command has a field that the host supplies (`EhOsContract.Supplier`), the
-    engine asks inside the transaction, after the supplier answers. If the decision
-    meets a conflict, the engine asks again in the new transaction.
+  - If the engine asks `EhOsContract.Supplier` for a field of the command, the engine
+    asks inside the transaction of the decision, after the supplier answers. If the
+    decision meets a conflict and runs again, the engine asks again. Then `fetch/4`
+    holds the transaction as `supply/2` does: read "What the transaction asks of
+    `supply/2`" in `EhOsContract.Supplier`.
+  - Otherwise, the engine asks before the transaction of the decision. If the decision
+    meets a conflict and runs again, it decides on the same rows.
   - A retry of a command that the engine accepted under its idempotency key gets its
     receipt, and the engine does not ask.
   - The engine sets no time limit on the call.

@@ -649,13 +649,14 @@ defmodule EhOsContract.Dispatcher do
 
   defp once(job), do: prepared(job)
 
-  # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
-  # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
-  # host's lookup does not hold the transaction open. No reaction issues such a command
-  # (A8), so none is asked inside dispatch's own transaction, after its append lock; one
-  # the host dispatches inside a transaction of its own is asked inside that. A command
-  # with supplied fields reads them inside the transaction, after the host supplies, on
-  # every attempt (`prepared/1`).
+  # Plan DD, T2a (#240): the entities the command reads. For a command whose fields are
+  # all the caller's, asked of the host once, before the transaction dispatch owns, so a
+  # conflict's retry decides on the same rows and the host's lookup does not hold the
+  # transaction open. No reaction issues such a command (A8), so none is asked inside
+  # dispatch's own transaction, after its append lock; one the host dispatches inside a
+  # transaction of its own is asked inside that. Issue #563: for a command with supplied
+  # fields, asked inside the transaction after the host supplies, on every attempt
+  # (`prepared/1`), since an entity may be named by a supplied field.
   defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
     stage("entities", fn ->
       Entities.read(job.model, job.declaration, job.command, job.ctx.actor)

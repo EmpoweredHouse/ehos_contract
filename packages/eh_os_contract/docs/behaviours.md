@@ -283,12 +283,15 @@ the row is not an error.
 
 The engine asks one time for each entry of `reads:` of the command. It stops at the
 first `:not_found`. It asks after it authorizes the caller and checks the fields of
-the command, and before the transaction of the decision.
+the command. When it asks depends on the fields of the command:
 
-- If the decision meets a conflict and runs again, it decides on the same rows.
-- If the command has a field that the host supplies (`EhOsContract.Supplier`), the
-  engine asks inside the transaction, after the supplier answers. If the decision
-  meets a conflict, the engine asks again in the new transaction.
+- If the engine asks `EhOsContract.Supplier` for a field of the command, the engine
+  asks inside the transaction of the decision, after the supplier answers. If the
+  decision meets a conflict and runs again, the engine asks again. Then `c:EhOsContract.Entities.fetch/4`
+  holds the transaction as `supply/2` does: read "What the transaction asks of
+  `supply/2`" in `EhOsContract.Supplier`.
+- Otherwise, the engine asks before the transaction of the decision. If the decision
+  meets a conflict and runs again, it decides on the same rows.
 - A retry of a command that the engine accepted under its idempotency key gets its
   receipt, and the engine does not ask.
 - The engine sets no time limit on the call.
@@ -506,9 +509,10 @@ idempotency key. That retry gets its receipt.
   query of the transaction, and the engine cannot finish it. Do not catch the error
   and return `{:error, reason}`.
 - **Know what is kept.** What `c:EhOsContract.Supplier.supply/2` writes to the database commits with the
-  transaction, also when the engine refuses the command. It rolls back when the
-  engine tries the command again. A call to another system is not rolled back, and
-  the engine can make it up to 3 times for one command.
+  transaction, also when the engine refuses the command. It rolls back if the engine
+  raises. If the transaction is the engine's own, it also rolls back when the engine
+  tries the command again after a conflict. A call to another system is not rolled
+  back, and the engine can make it up to 3 times for one command.
 
 `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
 page with `EhOsContract.Form` can pass it. Without it, the code of the application

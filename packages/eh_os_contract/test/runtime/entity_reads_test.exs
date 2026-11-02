@@ -2,7 +2,8 @@ defmodule EhOsContract.EntityReadsTest do
   @moduledoc """
   Plan DD, T2a (#240): a command that `reads:` an entity is decided with the row the
   host's `EhOsContract.Entities` gives, asked once per command and before the
-  transaction; a row not there refuses the command as a field naming nothing; a row
+  transaction (inside it, after the host supplies, for a command with a supplied
+  field); a row not there refuses the command as a field naming nothing; a row
   that does not fit its entity raises; and what was read is kept on the command's row.
   On the invented `ReadRig.Orders`, with `ReadRig.Entities` configured for the suite.
   """
@@ -176,13 +177,21 @@ defmodule EhOsContract.EntityReadsTest do
 
     test "reads the entity inside the transaction, after the host supplies" do
       Process.put(:supply_rig_answer, fn _actor, _request ->
-        send(self(), {:fetched_when_supplied, fetched()})
+        send(self(), {:fetched_when_supplied, fetched(), Repo.in_transaction?()})
         {:ok, %{wrapping: 2}}
       end)
 
       assert {:ok, %Receipt{events: [%Placed{total: 14}]}} = gift([])
-      assert_received {:fetched_when_supplied, []}
+      assert_received {:fetched_when_supplied, [], true}
       assert fetched() == ["product-tea"]
+    end
+
+    test "a row that does not fit is the command's failure, in the entities" do
+      Process.put(:supply_rig_answer, {:ok, %{wrapping: 2}})
+      Process.put({:read_rig_row, "product-tea"}, :a_row_of_no_shape)
+
+      assert_raise ArgumentError, fn -> gift([]) end
+      assert [%{outcome: "failed", failed_in: "entities"}] = Repo.all(CommandRecord)
     end
 
     test "a request accepted under its key while the host answered gets that receipt" do

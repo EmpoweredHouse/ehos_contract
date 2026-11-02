@@ -65,9 +65,10 @@ defmodule EhOsContract.Supplier do
     query of the transaction, and the engine cannot finish it. Do not catch the error
     and return `{:error, reason}`.
   - **Know what is kept.** What `supply/2` writes to the database commits with the
-    transaction, also when the engine refuses the command. It rolls back when the
-    engine tries the command again. A call to another system is not rolled back, and
-    the engine can make it up to 3 times for one command.
+    transaction, also when the engine refuses the command. It rolls back if the engine
+    raises. If the transaction is the engine's own, it also rolls back when the engine
+    tries the command again after a conflict. A call to another system is not rolled
+    back, and the engine can make it up to 3 times for one command.
 
   `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
   page with `EhOsContract.Form` can pass it. Without it, the code of the application
