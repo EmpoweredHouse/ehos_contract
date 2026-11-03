@@ -86,12 +86,18 @@ Add `EhOsContract.Auth.SignIn` to the supervision tree, after `EhOsContract.Auth
 `sign_in:` is configured:
 
 ```elixir
-sign_in = if Application.get_env(:eh_os_contract_auth, :sign_in), do: [EhOsContract.Auth.SignIn], else: []
+sign_in =
+  if Application.get_env(:eh_os_contract_auth, :sign_in),
+    do: [EhOsContract.Auth.SignIn],
+    else: []
+
 children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ sign_in
 ```
 
 Without `sign_in:`, the child refuses to start, so a host without the condition does not boot in
-development or in tests.
+development or in tests. Without the child, nobody can sign in. A page behind the session sends the
+browser to sign in, and the sign-in answers 503. If the browser still has a session cookie from an
+earlier run, a page behind the session answers 500.
 
 If EHOS uses a certificate authority of its own, give its file to this child too:
 `{EhOsContract.Auth.SignIn, cacertfile: ca}`.
@@ -126,26 +132,38 @@ Encrypt the cookie session, and give it `same_site: "Lax"` and `secure: true`:
 
 ```elixir
 # endpoint.ex
-plug Plug.Session,
+@session_options [
   store: :cookie,
   key: "__Host-my_app",
   signing_salt: "...",
   encryption_salt: "...",
   same_site: "Lax",
   secure: true
+]
+
+socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
+plug Plug.Session, @session_options
 ```
+
+Give the LiveView socket the same options. With another cookie name, `mount/3` gets an empty
+session.
 
 The cookie keeps the `state`, the nonce and the PKCE verifier of the sign-in between the redirect
 and the callback, so encrypt it. `Plug.Session` sets no `SameSite` attribute by default, and
 browsers do not agree on what to do without one. With `"Lax"`, a browser does not send the cookie
-with a form that a page of another site posts. If EHOS is on another site than the application,
-do not use `"Strict"`. A browser then does not send the cookie when EHOS redirects back to the
+with a form that a page of another site posts. Do not use `"Strict"`. A link in a webmail, for
+example, can start the sign-in from another site. The browser then does not send the cookie to the
 callback, and the sign-in fails.
 
 Plug marks the cookie `Secure` by itself only when the request uses https. TLS can end before the
 application, so set `secure: true`. Without it, a browser can send the session cookie over plain
 http. With the prefix `__Host-` in the name, the browser refuses this cookie from another host of the
 same domain, such as another application.
+
+A browser drops a `Secure` cookie that comes over plain http, except from `localhost`. If you
+develop over plain http on another name, such as a LAN address, set `secure: false` and a name
+without `__Host-` for development only. Otherwise each form post fails with
+`Plug.CSRFProtection.InvalidCSRFTokenError`.
 
 Forward `/auth/ehos` to the routes of the package, in a scope that fetches the session and protects
 from forgery:
@@ -236,8 +254,9 @@ end
 The plug sets `conn.assigns.eh_os_contract_actor`, as `EhOsContract.Auth.Plug` does for a bearer
 credential.
 
-Do not put `protect_from_forgery` in this pipeline, and put no other route in it. It refuses each
-JSON call that does not send the CSRF token in `x-csrf-token`. `EhOsContract.Plug` has its own
+Do not put `protect_from_forgery` in this pipeline. It refuses each JSON call without the CSRF token
+in `x-csrf-token`. Pipe no other route through this pipeline. Another route there has no
+CSRF check, and the parsers of the endpoint read a form body for it. `EhOsContract.Plug` has its own
 protection: it accepts a command or a
 recorded event only with `content-type: application/json`. A browser asks the application before a
 page of another origin can send that type. So do not let the CORS configuration allow credentials
@@ -296,9 +315,10 @@ EHOS alone uses the idle limit, `EHOS_SIGN_IN_IDLE`. EHOS refuses a refresh toke
 for that time. The session then ends at the next renewal.
 
 Without a `max_age` on the cookie, the cookie ends when the browser closes, and the person signs in
-again. To keep the session after the browser closes, give the cookie a `max_age` equal to
-`absolute_limit`. The row of the session, not the
-cookie, decides when the session ends.
+again. To keep the session after the browser closes, give the cookie a `max_age` that is not shorter than
+`absolute_limit`. The endpoint reads `max_age` at compile time, so use the highest limit that the
+installation can set: 366 days. A longer cookie does no harm, because the row of the session, not
+the cookie, decides when the session ends.
 
 ## Where does the application keep a session?
 

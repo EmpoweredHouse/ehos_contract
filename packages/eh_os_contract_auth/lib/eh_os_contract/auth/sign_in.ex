@@ -26,7 +26,11 @@ defmodule EhOsContract.Auth.SignIn do
       end
 
       # the supervision tree, after EhOsContract.Auth, where sign_in: is configured
-      sign_in = if Application.get_env(:eh_os_contract_auth, :sign_in), do: [EhOsContract.Auth.SignIn], else: []
+      sign_in =
+        if Application.get_env(:eh_os_contract_auth, :sign_in),
+          do: [EhOsContract.Auth.SignIn],
+          else: []
+
       children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ sign_in
 
   EHOS also gives `EHOS_CLIENT_ID` to an application that only reads the people or sends

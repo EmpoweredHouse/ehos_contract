@@ -40,7 +40,11 @@ if client_id = System.get_env("EHOS_CLIENT_ID") do
 end
 
 # the supervision tree
-workload = if Application.get_env(:eh_os_contract_auth, :workload), do: [EhOsContract.Auth.Workload], else: []
+workload =
+  if Application.get_env(:eh_os_contract_auth, :workload),
+    do: [EhOsContract.Auth.Workload],
+    else: []
+
 children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ workload
 ```
 
@@ -62,7 +66,7 @@ The child refuses to start, and the boot of the host stops, in each of these cas
 - The key file is not the one private Ed25519 JWK that EHOS gives.
 
 `config :eh_os_contract_auth, :people` and the child `EhOsContract.Auth.People` are the older names
-of this configuration and this child. They still start the process, with the name
+of this configuration and this child. If you keep `people:`, check that key in the condition. They still start the process, with the name
 `EhOsContract.Auth.Workload`, and log a warning. If you configure `:workload` and `:people`, the
 child refuses to start.
 

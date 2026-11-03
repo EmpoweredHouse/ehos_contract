@@ -4,7 +4,8 @@ This page tells a developer how a signed-in person grants a role to another pers
 the application. For example, an accountant names the representative of a client, and EHOS invites
 the representative with the client role and no other role.
 
-The application decides nothing about the grant. It sends the request of the person to EHOS. EHOS
+The application does not decide if the person can give the role. It sends the request of the
+person to EHOS. EHOS
 checks the rule against a role that the person holds there, and invites the other person by mail.
 EHOS records who granted the role, and through which application.
 
@@ -37,8 +38,9 @@ as `clinic.client`. The task refuses an actor with `may_grant:` that holds no ca
 
 ## 2. Grant the role from a page
 
-Before you call EHOS, check on the server that the actor of the person can grant the role. EHOS
-checks it again, but each call uses one token request of the application, also when EHOS refuses
+Record the command of the application first, through `EhOsContract.dispatch/3` or
+`EhOsContract.Plug`. The engine then checks that the actor of the person has its capability. Call
+EHOS only after that. Each call uses one token request of the application, also when EHOS refuses
 it. Put the route behind `protect_from_forgery`, as [Sign people in through EHOS](sign-in.md) tells.
 
 After the application records its own command, ask `EhOsContract.Auth.Grants.granter/0` for the

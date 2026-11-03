@@ -37,15 +37,22 @@ Req reads none of these variables. Attach `EhOsContract.Auth.Egress` to the clie
 host:
 
 ```elixir
-Req.new(base_url: "https://registry.example.org", redirect: false, receive_timeout: 10_000)
+Req.new(base_url: "https://registry.example.org", redirect: false, retry: false)
 |> EhOsContract.Auth.Egress.attach()
 |> Req.get!(url: "/companies/123")
 ```
 
-The host outside the installation is not under your control. By default, Req follows its redirects
-and reads an answer of any size. A redirect to a plain `http` address goes directly, not through the
-proxy, so it can reach a service inside the installation. Give `redirect: false` unless the host
-needs redirects, and check the size of what you read.
+The host outside the installation is not under your control. Req has defaults that let it decide
+too much:
+
+- **Req follows redirects.** A redirect to a plain `http` address, or to a host that `NO_PROXY`
+  names, goes directly, not through the proxy. So it can reach a service inside the installation.
+  Give `redirect: false` unless the host needs redirects.
+- **Req tries a `GET` 3 more times**, and `receive_timeout` limits each wait for data, not the whole
+  call. Give `retry: false`, and run the call in a task with a deadline if a person waits for it.
+- **Req reads the whole answer into memory**, and decompresses it, before it gives it to you. It
+  has no size limit. To stop at a size, read the body with an `into:` function that halts past the
+  limit, and give `decode_body: false`.
 
 Attach it after each step of your own that changes the URL of a request. The plugin then decides on
 the URL that the client sends.
