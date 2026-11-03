@@ -129,13 +129,16 @@ jobs:
           path: packages/eh_os_contract_web/deps
           key: eh-os-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
 
-      # The credential verifier (v2 stage EA), same shape: its gate runs as a
-      # separate Mix project via package_test_auth/1 in sandbox/mix.exs.
+      # The credential verifier (v2 stage EA): its gate runs as a separate Mix project via
+      # package_test_auth/1 in sandbox/mix.exs. Its `:dev` dependencies come from the private
+      # ehos-tools, so its children are listed and those left out, as the engine's above.
       # docs.yml copies this key and path.
       - name: Cache credential verifier deps
         uses: actions/cache@v4
         with:
-          path: packages/eh_os_contract_auth/deps
+          path: |
+            packages/eh_os_contract_auth/deps/*
+            !packages/eh_os_contract_auth/deps/ehos_*
           key: eh-os-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       # The graph renderer (plan E13b): its gate runs as a separate Mix project via

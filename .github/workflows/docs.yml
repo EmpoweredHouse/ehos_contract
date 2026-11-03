@@ -118,7 +118,9 @@ jobs:
       - name: Restore credential verifier deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract_auth/deps
+          path: |
+            packages/eh_os_contract_auth/deps/*
+            !packages/eh_os_contract_auth/deps/ehos_*
           key: eh-os-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       - name: Restore graph renderer deps

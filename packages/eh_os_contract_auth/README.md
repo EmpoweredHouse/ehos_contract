@@ -261,7 +261,8 @@ children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, auth}]
 `EHOS_SIGN_IN_APPLICATIONS` and `EHOS_SIGN_IN_ABSOLUTE` are for signing people in to the
 application in a browser, through EHOS: [Sign people in through EHOS](docs/sign-in.md). EHOS also
 gives `EHOS_CLIENT_ID` and `EHOS_CLIENT_KEY_FILE` to an application that only reads the people or
-sends mail, so only `EHOS_SIGN_IN_APPLICATIONS` tells that the application signs people in.
+sends mail. Only `EHOS_SIGN_IN_APPLICATIONS` tells that the application signs people in. Such an
+application maps them to `workload:`: [Read the people of the company](docs/people.md).
 
 ## In a host's tests
 

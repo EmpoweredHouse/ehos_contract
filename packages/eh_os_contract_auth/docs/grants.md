@@ -37,6 +37,10 @@ as `clinic.client`. The task refuses an actor with `may_grant:` that holds no ca
 
 ## 2. Grant the role from a page
 
+Before you call EHOS, check on the server that the actor of the person can grant the role. EHOS
+checks it again, but each call uses one token request of the application, also when EHOS refuses
+it. Put the route behind `protect_from_forgery`, as [Sign people in through EHOS](sign-in.md) tells.
+
 After the application records its own command, ask `EhOsContract.Auth.Grants.granter/0` for the
 module that grants, and give it the request of the person:
 
@@ -54,8 +58,8 @@ case EhOsContract.Auth.Grants.granter().grant(conn, email: email, name: name, ro
 end
 ```
 
-`granter/0` gives `EhOsContract.Auth.Grants` where `sign_in:` is configured. In development, in a
-release without EHOS and in tests, it gives a stand-in: [Use people, grants and mail where EHOS does
+`granter/0` gives `EhOsContract.Auth.Grants` where `sign_in:` is configured. Elsewhere, it gives a
+module that does not call EHOS: [Use people, grants and mail where EHOS does
 not answer](without-ehos.md).
 
 | Option | Value |
@@ -136,7 +140,7 @@ correct. Examples are an empty `email:` or `role:`, a string that is not UTF-8, 
 
 EHOS takes 60 token requests a minute or fewer from the client of the application, and the
 credential of the [workload](people.md) counts too. Each grant exchanges one time. So show the grant
-only to people whose role can give a role.
+only to people whose role can give a role, and limit how often one person can grant.
 
 ## Next steps
 

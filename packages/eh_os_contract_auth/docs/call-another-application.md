@@ -31,8 +31,12 @@ the other application, which verifies it.
 Send the credential as a bearer token:
 
 ```elixir
-Req.get!("https://ledger.production.ehos.localhost/visits", auth: {:bearer, token})
+address = EhOsContract.Auth.SignIn.config().applications["ledger"]
+Req.get!(address <> "/visits", auth: {:bearer, token})
 ```
+
+Take the address from the configuration, not from the code. EHOS issued the credential for that
+address, and another host must not get it.
 
 Keep the credential on the server. Do not put it in the assigns of a LiveView or in a page. The
 browser then gets it, and the session otherwise keeps each token of EHOS away from the browser.

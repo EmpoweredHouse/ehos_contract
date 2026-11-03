@@ -26,19 +26,27 @@ manages people agrees.
 
 ## 2. Configure the credential of the application
 
-Map the two variables to `workload:`, and add `EhOsContract.Auth.Workload` to the supervision tree:
+Where EHOS gives the two variables, map them to `workload:`, and add `EhOsContract.Auth.Workload`
+to the supervision tree:
 
 ```elixir
 # config/runtime.exs, beside issuer:
-config :eh_os_contract_auth,
-  workload: [
-    client_id: System.fetch_env!("EHOS_CLIENT_ID"),
-    client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE")
-  ]
+if client_id = System.get_env("EHOS_CLIENT_ID") do
+  config :eh_os_contract_auth,
+    workload: [
+      client_id: client_id,
+      client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE")
+    ]
+end
 
 # the supervision tree
-children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Workload]
+workload = if Application.get_env(:eh_os_contract_auth, :workload), do: [EhOsContract.Auth.Workload], else: []
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ workload
 ```
+
+Without `workload:`, the child refuses to start. In development, in tests, and in a release without
+EHOS, nothing is configured. The pages then get the answers of [Use people, grants and mail where
+EHOS does not answer](without-ehos.md).
 
 If EHOS uses a certificate authority of its own, give its file to this child too:
 `{EhOsContract.Auth.Workload, cacertfile: ca}`.
@@ -73,8 +81,8 @@ directory = EhOsContract.Auth.People.directory()
 # %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
 ```
 
-`directory/0` gives `EhOsContract.Auth.People` where `workload:` is configured. In development, in a
-release without EHOS and in tests, it gives a stand-in: [Use people, grants and mail where EHOS does
+`directory/0` gives `EhOsContract.Auth.People` where `workload:` is configured. Elsewhere, it gives
+a module that does not call EHOS: [Use people, grants and mail where EHOS does
 not answer](without-ehos.md).
 
 `list/1` takes these options:
@@ -93,7 +101,7 @@ An option that EHOS would refuse raises `ArgumentError` before the package asks 
 `after:` value raises too.
 
 To read every person at one time, use `EhOsContract.Auth.People.all/1`. It reads pages of 500, and
-answers `{:error, :too_many}` if there are more than 10,000 people, or more than its `max:`. It
+answers `{:error, :too_many}` if there are more people than its `max:`, 10,000 by default. It
 never gives a part of the list. It can make 21 calls one after another, so do not use it in a
 request that a person waits for.
 
@@ -107,7 +115,7 @@ person. On the page, show the email beside the name, because 2 people can have t
 ## How does the application get its credential?
 
 The workload process gets the credential at the token endpoint of EHOS, with the client credentials
-grant, and signs the request with the client key.
+grant, and signs the request with the client key. EHOS issues the credential for 10 minutes.
 
 - It keeps the credential until 60 seconds before it expires, and gets a new one in the background.
   If that fails, it keeps the credential that is still valid.

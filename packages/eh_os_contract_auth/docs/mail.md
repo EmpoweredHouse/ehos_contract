@@ -27,7 +27,7 @@ needs:
 
 | Level | Recipients |
 | --- | --- |
-| `internal` | the people in the directory of EHOS, by their id; EHOS finds the address and never gives it to the application |
+| `internal` | the people in the directory of EHOS, by their id; EHOS finds the address of each person |
 | `external` | any address too |
 
 `reply_domains` is optional. It names the domains where the application receives the answers.
@@ -46,6 +46,7 @@ Ask `EhOsContract.Auth.Mail.sender/0` for the module that sends, and give it the
     subject: "A document waits for your approval",
     text: "Open it at https://office.example.org/d/42.",
     html: ~s(<p>Open it <a href="https://office.example.org/d/42">here</a>.</p>),
+    verify_html: true,
     reply_to: {:address, "t-42@reply.office.example.org"},
     attachments: [%{filename: "approval.pdf", content_type: "application/pdf", content: pdf}],
     idempotency_key: key
@@ -55,7 +56,7 @@ Ask `EhOsContract.Auth.Mail.sender/0` for the module that sends, and give it the
 ```
 
 `sender/0` gives `EhOsContract.Auth.Mail` where `workload:` is configured. Elsewhere, it gives a
-stand-in that sends nothing: [Use people, grants and
+module that sends nothing: [Use people, grants and
 mail where EHOS does not answer](without-ehos.md).
 
 | Option | Value |
@@ -77,7 +78,7 @@ or `Phoenix.HTML.html_escape/1` does. EHOS does not escape it.
 
 With `verify_html: true`, EHOS refuses HTML that has a script, a form, a frame or an event attribute.
 It also refuses an address with a scheme other than `http`, `https`, `mailto`, `tel` or `cid`. This is a second
-check, not a sanitizer: EHOS never changes the HTML. EHOS 0.21.0 or later reads this option. An
+check, not a sanitizer. EHOS 0.21.0 or later reads this option, and never changes the HTML. An
 earlier EHOS ignores it, and cleans the HTML itself.
 
 EHOS always refuses an attachment that is an executable, a script or an encrypted archive. The mail
@@ -130,7 +131,7 @@ it raises `ArgumentError` for:
 - a value of the wrong type, or a string that is not UTF-8;
 - `idempotency_key: nil`.
 
- The error names the option, never its value.
+The error names the option, never its value.
 
 ## What can go wrong
 

@@ -63,7 +63,7 @@ if ehos_sign_in_applications = System.get_env("EHOS_SIGN_IN_APPLICATIONS") do
 end
 ```
 
-The package reads no environment variable itself. `config/runtime.exs` maps each one.
+The sign-in reads no environment variable itself. `config/runtime.exs` maps each one.
 
 | Key | What it is |
 | --- | --- |
@@ -82,11 +82,16 @@ compares them character by character.
 
 ## 2. Start the sign-in process
 
-Add `EhOsContract.Auth.SignIn` to the supervision tree, after `EhOsContract.Auth`:
+Add `EhOsContract.Auth.SignIn` to the supervision tree, after `EhOsContract.Auth`, only where
+`sign_in:` is configured:
 
 ```elixir
-children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.SignIn]
+sign_in = if Application.get_env(:eh_os_contract_auth, :sign_in), do: [EhOsContract.Auth.SignIn], else: []
+children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ sign_in
 ```
+
+Without `sign_in:`, the child refuses to start, so a host without the condition does not boot in
+development or in tests.
 
 If EHOS uses a certificate authority of its own, give its file to this child too:
 `{EhOsContract.Auth.SignIn, cacertfile: ca}`.
@@ -117,23 +122,30 @@ Each call to EHOS uses https, follows no redirect, reads 64 KiB or less, and sto
 
 ## 3. Add the routes and protect the session
 
-Encrypt the cookie session, and give it `same_site: "Lax"`:
+Encrypt the cookie session, and give it `same_site: "Lax"` and `secure: true`:
 
 ```elixir
 # endpoint.ex
 plug Plug.Session,
   store: :cookie,
-  key: "_my_app",
+  key: "__Host-my_app",
   signing_salt: "...",
   encryption_salt: "...",
-  same_site: "Lax"
+  same_site: "Lax",
+  secure: true
 ```
 
 The cookie keeps the `state`, the nonce and the PKCE verifier of the sign-in between the redirect
 and the callback, so encrypt it. `Plug.Session` sets no `SameSite` attribute by default, and
 browsers do not agree on what to do without one. With `"Lax"`, a browser does not send the cookie
-with a form that a page of another site posts. Do not use `"Strict"`. A browser then does not send
-the cookie when EHOS redirects back to the callback, and the sign-in fails.
+with a form that a page of another site posts. If EHOS is on another site than the application,
+do not use `"Strict"`. A browser then does not send the cookie when EHOS redirects back to the
+callback, and the sign-in fails.
+
+Plug marks the cookie `Secure` by itself only when the request uses https. TLS can end before the
+application, so set `secure: true`. Without it, a browser can send the session cookie over plain
+http. With the prefix `__Host-` in the name, the browser refuses this cookie from another host of the
+same domain, such as another application.
 
 Forward `/auth/ehos` to the routes of the package, in a scope that fetches the session and protects
 from forgery:
@@ -176,6 +188,9 @@ end
 each request to the application, also when another site makes the request. So each `POST`, `PUT`,
 `PATCH` or `DELETE` route of the host behind the session needs `protect_from_forgery`. Each form or
 `fetch()` of its pages then sends the CSRF token.
+
+`protect_from_forgery` does not check a `GET` request, and with `"Lax"` a link on another site sends
+the cookie. So a `GET` route behind the session must change nothing.
 
 **Result:** a person who opens `/visits/7` without a session goes to EHOS, signs in, and comes back
 to `/visits/7`.
@@ -221,8 +236,9 @@ end
 The plug sets `conn.assigns.eh_os_contract_actor`, as `EhOsContract.Auth.Plug` does for a bearer
 credential.
 
-Do not put `protect_from_forgery` in this pipeline. It refuses each JSON call that does not send the
-CSRF token in `x-csrf-token`. `EhOsContract.Plug` has its own protection: it accepts a command or a
+Do not put `protect_from_forgery` in this pipeline, and put no other route in it. It refuses each
+JSON call that does not send the CSRF token in `x-csrf-token`. `EhOsContract.Plug` has its own
+protection: it accepts a command or a
 recorded event only with `content-type: application/json`. A browser asks the application before a
 page of another origin can send that type. So do not let the CORS configuration allow credentials
 for an origin that you do not trust.
@@ -280,8 +296,8 @@ EHOS alone uses the idle limit, `EHOS_SIGN_IN_IDLE`. EHOS refuses a refresh toke
 for that time. The session then ends at the next renewal.
 
 Without a `max_age` on the cookie, the cookie ends when the browser closes, and the person signs in
-again. To keep the session after the browser closes, give the cookie a `max_age` that is not shorter than
-`absolute_limit`. For example, use 366 days, the highest limit of EHOS. The row of the session, not the
+again. To keep the session after the browser closes, give the cookie a `max_age` equal to
+`absolute_limit`. The row of the session, not the
 cookie, decides when the session ends.
 
 ## Where does the application keep a session?
@@ -299,8 +315,8 @@ end
 ```
 
 - **The browser** holds a random token. The table holds only its SHA-256.
-- **The tokens of EHOS**, that is the refresh token, the ID token and each credential, are
-  encrypted. The key comes from `secret_key_base`. Each encrypted value is bound to its row and its
+- **The tokens of EHOS**: the package encrypts the refresh token, the ID token and each credential.
+  The key comes from `secret_key_base`. The package binds each encrypted value to its row and its
   column. So a backup, a replica or a dump holds nothing that a person can present.
 - **A new `SECRET_KEY_BASE`** signs everybody out, as it does through the cookie session.
 
@@ -323,7 +339,7 @@ The callback goes back to `return_to` only when it is a path of this application
 to `/`.
 
 `EhOsContract.Auth.SignIn.provider/1` tells if the child can sign a person in with what it has. It
-refuses a document of EHOS that does not have each of these:
+refuses a document of EHOS that does not have each of these, and names each item that is missing:
 
 - the `iss` parameter in the authorization response;
 - PKCE with `S256`;

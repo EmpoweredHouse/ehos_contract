@@ -27,9 +27,9 @@ gives:
 
 | Function | With EHOS configured | Without |
 | --- | --- | --- |
-| `People.directory/0` | `EhOsContract.Auth.People`, when `workload:` is configured | `EhOsContract.Auth.People.Directory.Unconfigured` |
+| `People.directory/0` | `EhOsContract.Auth.People`, when `workload:`, or its older name `people:`, is configured | `EhOsContract.Auth.People.Directory.Unconfigured` |
 | `Grants.granter/0` | `EhOsContract.Auth.Grants`, when `sign_in:` is configured | `EhOsContract.Auth.Grants.Unconfigured` |
-| `Mail.sender/0` | `EhOsContract.Auth.Mail`, when `workload:` is configured | `EhOsContract.Auth.Mail.Unconfigured` |
+| `Mail.sender/0` | `EhOsContract.Auth.Mail`, when `workload:`, or its older name `people:`, is configured | `EhOsContract.Auth.Mail.Unconfigured` |
 
 An `Unconfigured` module answers `{:error, :unavailable}`, which the page already tells in words.
 So configure EHOS in `config/runtime.exs` only when EHOS gives the credentials, and name no module
@@ -123,7 +123,9 @@ raises at the first call, not at boot. It raises in each of these cases:
 So a line of `config/dev.exs` that went into `config/config.exs` by mistake fails. It does not tell
 a person that someone was invited or that a message was sent.
 
-This check knows only these six stand-ins. In a release without the credentials of EHOS, nothing
+Each function checks only its own configuration. For example, a release with `workload:` and
+without `sign_in:` accepts `Grants.Local`, which answers each grant as made and mailed. This check
+knows only these six stand-ins. In a release without the credentials of EHOS, nothing
 refuses them. A module of your own is never refused. Name a stand-in only in `config/dev.exs` and
 `config/test.exs`.
 

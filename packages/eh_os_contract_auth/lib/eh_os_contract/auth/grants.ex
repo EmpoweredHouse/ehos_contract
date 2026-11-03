@@ -6,11 +6,11 @@ defmodule EhOsContract.Auth.Grants do
   @moduledoc """
   A signed-in person grants or revokes, from the application's own page, a role their
   role here may give: an accountant invites a client's representative with the client
-  role. The rule is `may_grant:` on the person's actor in the contract, carried to EHOS
+  role. The rule is `may_grant:` on the person's actor in the domain, carried to EHOS
   by the manifest; EHOS checks it, invites, mails and records.
 
       # a controller, after the application's own command is recorded
-      case EhOsContract.Auth.Grants.grant(conn, email: email, name: name, role: "taxvision.client") do
+      case EhOsContract.Auth.Grants.grant(conn, email: email, name: name, role: "clinic.client") do
         {:ok, %Grant{person_id: id, delivery: :mailed}} -> # keep the id; "invited"
         {:error, :beyond_rule} -> # "your role may not give that role"
         {:error, :unavailable} -> # "they were not invited; try again"
@@ -18,7 +18,7 @@ defmodule EhOsContract.Auth.Grants do
       end
 
       # later, with the id the grant answered
-      {:ok, _binding} = EhOsContract.Auth.Grants.revoke(conn, id, "taxvision.client")
+      {:ok, _binding} = EhOsContract.Auth.Grants.revoke(conn, id, "clinic.client")
 
   Both take the person's request: a `Plug.Conn` with its session fetched, or the
   session map a LiveView's `mount/3` is given, as `EhOsContract.Auth.Session` does;

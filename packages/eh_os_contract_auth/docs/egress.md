@@ -37,10 +37,15 @@ Req reads none of these variables. Attach `EhOsContract.Auth.Egress` to the clie
 host:
 
 ```elixir
-Req.new(base_url: "https://registry.example.org")
+Req.new(base_url: "https://registry.example.org", redirect: false, receive_timeout: 10_000)
 |> EhOsContract.Auth.Egress.attach()
 |> Req.get!(url: "/companies/123")
 ```
+
+The host outside the installation is not under your control. By default, Req follows its redirects
+and reads an answer of any size. A redirect to a plain `http` address goes directly, not through the
+proxy, so it can reach a service inside the installation. Give `redirect: false` unless the host
+needs redirects, and check the size of what you read.
 
 Attach it after each step of your own that changes the URL of a request. The plugin then decides on
 the URL that the client sends.
