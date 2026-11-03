@@ -94,8 +94,9 @@ sign_in =
 children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ sign_in
 ```
 
-Without `sign_in:`, the child refuses to start, so a host without the condition does not boot in
-development or in tests. Without the child, nobody can sign in. A page behind the session sends the
+The child refuses to start without `sign_in:`. So if you list it without this condition, the host
+does not boot in development or in tests. With the condition, the host boots without the child, and
+nobody can sign in. A page behind the session sends the
 browser to sign in, and the sign-in answers 503. If the browser still has a session cookie from an
 earlier run, a page behind the session answers 500.
 
