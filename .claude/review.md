@@ -19,8 +19,8 @@ amend or rebase leaves the new `HEAD` without one. The hook is a reminder for th
 access control. It reads the `HEAD` of the directory the command runs in — the one a leading
 `cd <dir> &&` names, else the session's working directory, so a worktree is checked as itself and
 not as the main checkout — not the branch the pull request will carry (`--head`). It does not see
-the command behind `env`, a variable set before it (`GH_REPO=… gh pr create`), `bash -c` or a
-shell keyword (`time`), with a global flag before `pr`
+the command behind `env`, `bash -c` or a shell keyword (`time`), or after a variable set before it
+(`GH_REPO=… gh pr create`). It does not see it with a global flag before `pr`
 (`gh -R <repo> pr …`), or split by quotes or a backslash at the end of a line. It lets everything
 through on a machine without `jq`, and it refuses `--help` too (`gh help pr create` works). Keeping
 to the steps is what makes the note mean something.
@@ -80,15 +80,17 @@ EHOS's repositories alike).
 The `ehos-dev:pull-request` skill writes the description and opens the pull request. This section
 gives the rules that are this repository's own.
 
-`.claude/settings.team.json` pins a tag of `ehos-dev` that has the skill. Claude Code reads the
-copy in `.claude/settings.local.json`, one per worktree (`CONTRIBUTING.md`, "Working with Claude
-Code"). If the session does not have the skill, first check the `ref` in that copy, and move it to
-the tag of `settings.team.json`. Otherwise the plugin did not load, or Claude Code still holds an
-older version. Tell the user, who can run `/reload-plugins` or restart. In a run with no user, stop
-and report it.
+`.claude/settings.team.json` pins a tag of `ehos-dev` that has the skill. Claude Code does not
+read that file: it reads the maintainer's copy in `.claude/settings.local.json`, one per worktree,
+and the user's own settings (`CONTRIBUTING.md`, "Working with Claude Code"). If the session does
+not have the skill, tell the user. Name the `ref` that each of these files gives, if it is older
+than the tag in `settings.team.json`. The maintainer moves it by hand and runs `/reload-plugins`
+or restarts. In a run with no user, stop and report it.
 
-The skill says that the gate refuses `--head`, `--repo`, `GH_REPO` and a commit in the same
-command. This repository's hook does not refuse them ("Recording the review"). Do not use them.
+The skill says that its review gate refuses `--head`, `--repo`, `GH_REPO` and a commit in the same
+command. This repository's hook refuses none of them. It ignores the flags, and it reads `HEAD`
+before a commit in the same command runs. Do not use these flags or their short forms (`-H`,
+`-R`), and open the pull request in a command of its own.
 
 - **The base** is `main`, and the pull request is not a draft: CI's gate does not run on a draft.
 - **The title** is a short sentence that says what changes for a reader, as a commit subject is.
