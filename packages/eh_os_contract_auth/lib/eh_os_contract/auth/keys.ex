@@ -9,7 +9,8 @@ defmodule EhOsContract.Auth.Keys do
   the property `joken_jwks` lacks: its keys live only in a process's memory.
 
     * **Every five minutes** it fetches again, so a key removed from the JWKS stops
-      being trusted within that interval, with nobody restarting anything.
+      being trusted at the next fetch that succeeds, with nobody restarting anything.
+      While no fetch succeeds, the removed key stays in force.
     * **An unknown `kid`** asks for an early fetch, at most once every thirty
       seconds. Every fetch counts towards that, the scheduled ones and the failed
       ones too.

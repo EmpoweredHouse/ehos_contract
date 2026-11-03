@@ -50,7 +50,7 @@ package fetches the keys only over `https`. It allows plain `http` only on `loca
 The table of the key process is the source of the keys, and its memory is a copy.
 
 - **At start**, the process loads the last good keys from its table. Then it fetches the JWKS.
-- **Every 5 minutes**, it fetches the JWKS again, counted from the end of the last fetch. If EHOS
+- **Every 5 minutes**, it fetches the JWKS again, counted from the end of the last scheduled fetch. If EHOS
   removes a key, a compromised key for example, the next successful fetch removes it. Nobody
   restarts anything.
 - **A credential with an unknown `kid`** starts an early fetch. The process fetches early at most
@@ -81,9 +81,9 @@ occurs in these cases:
 - the process cannot read its table at start, and no fetch succeeded since;
 - the key process does not run.
 
-The process logs it at start. In these cases, "EHOS is down" becomes "nobody gets in".
-`EhOsContract.Auth.ready?/0` returns `false` in each of them. Use it in the health check of the
-application.
+In the first two cases, the process logs it at start. In each case, "EHOS is down" becomes
+"nobody gets in". `EhOsContract.Auth.ready?/0` returns `false` in each of them. Use it in the health
+check of the application.
 
 After one fetch succeeds and the process writes the table, the application accepts credentials while
 EHOS is down, also after a restart.

@@ -35,8 +35,9 @@ config :eh_os_contract_auth,
 
 `issuer` also has no path and no trailing slash. `jwks_url` can have a path.
 
-The sign-in has stricter rules for its addresses: `https` only, also on loopback, and no port for
-the address of an application. [Sign people in through EHOS](sign-in.md) gives them.
+The sign-in and the workload client take an `issuer` with `https` only, also on loopback. The
+sign-in also takes no port in the address of an application. [Sign people in through
+EHOS](sign-in.md) gives its rules.
 
 These rules stop an address that two parsers read differently. Example:
 `http://evil.example\@localhost` could pass as `localhost`, but EHOS and a browser read its host as
@@ -89,8 +90,8 @@ The child takes no other option. The package then cannot weaken the fetch of the
 
 [Where do the keys come from?](keys.md) tells why each limit is there.
 
-> **Keep each option that changes where a request goes, or what it sends, out of `config :req,
-> default_options`.** Req adds the global options to the fetch of the keys. The package sets the
+> **Keep each option that changes where a request goes, what it sends, or what it does with the
+> answer, out of `config :req, default_options`.** Req adds the global options to the fetch of the keys. The package sets the
 > connection with its authority, the timeouts, the retries, the redirects and the body. Its options
 > replace the same global options. Each other global option gets to the fetch. Examples:
 >
@@ -120,7 +121,7 @@ from?](keys.md) tells what it accepts then.
 
 EHOS starts the workload with its settings in environment variables. The package reads only
 `EHOS_EGRESS_PROXY`, `NO_PROXY` and `no_proxy` itself, at each call through
-`EhOsContract.Auth.Egress`. The fetch of the keys reads no variable, and uses no proxy. The host
+`EhOsContract.Auth.Egress`. The fetch of the keys reads no proxy variable, and uses no proxy. The host
 reads the other variables in `config/runtime.exs` and in its supervision tree. The sign-in also
 needs `PHX_HOST` and `SECRET_KEY_BASE`, which Phoenix uses: [Sign people in through
 EHOS](sign-in.md).
@@ -129,7 +130,7 @@ EHOS](sign-in.md).
 | --- | --- | --- |
 | `EHOS_ISSUER` | always | `issuer` |
 | `EHOS_AUDIENCE` | always | `audience` |
-| `EHOS_CA_FILE` | when the installation uses a certificate authority of its own | `cacertfile:` of `EhOsContract.Auth`, and of the `sign_in:` and `workload:` configuration. Without it, their calls to EHOS fail. |
+| `EHOS_CA_FILE` | when the installation uses a certificate authority of its own | `cacertfile:` of the children `EhOsContract.Auth`, `EhOsContract.Auth.SignIn` and `EhOsContract.Auth.Workload`. Without it, their calls to EHOS fail. |
 | `EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` | to the container that serves, when `ehos.yaml` has `sign_in`, `needs.people` or `needs.mail` | `sign_in:` or `workload:` |
 | `EHOS_SIGN_IN_APPLICATIONS` | to the container that serves, when `ehos.yaml` has `sign_in` | `sign_in:`: [Sign people in through EHOS](sign-in.md) |
 | `EHOS_SIGN_IN_ABSOLUTE` | always, to each container | `sign_in:`, if the application signs people in |

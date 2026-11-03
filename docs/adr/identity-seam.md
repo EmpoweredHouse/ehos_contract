@@ -45,7 +45,7 @@
 >
 > **3 November 2026 — the README section moved.** The section the amendment of 27 September names is now
 > `packages/eh_os_contract_auth/docs/keys.md`, and what an application configures is in `docs/configuration.md`
-> of the same package (#517).
+> of the same package ([#517](https://github.com/EmpoweredHouse/eh-os-contract/issues/517)).
 
 # Identity — the boundary, before any decision
 

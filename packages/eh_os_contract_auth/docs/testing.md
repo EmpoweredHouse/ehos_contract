@@ -21,7 +21,7 @@ credential without the capability, and signs a browser in.
 >
 > - `EhOsContract.Auth.Keys.pin/2` adds a key;
 > - the `plug:` option of the `EhOsContract.Auth` child answers in place of the keys of EHOS;
-> - the `plug:` option of the `sign_in:` configuration answers in place of the sign-in of EHOS;
+> - the `plug:` option of the `EhOsContract.Auth.SignIn` child answers in place of the sign-in of EHOS;
 > - `sign_in/3` starts a sign-in stand-in that never calls EHOS;
 > - the `Testing` stand-ins answer for EHOS: [Use people, grants and mail where EHOS does not
 >   answer](without-ehos.md).
