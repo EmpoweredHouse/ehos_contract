@@ -1,0 +1,5 @@
+Step 9b PR 2 of #517. Two rounds of ehos-dev:pre-pr-review. Correctness (code-review high, voice, diagrams, elixir) and security/performance (by hand: engineering:code-review not in session; elixir, voice).
+R1 correctness: fixed: unguarded SignIn/Workload children (high), SignIn moduledoc before #454, changelog egress clause, auth deps cache excludes ehos_*, smaller wording and 2 restored facts. No change: vocabulary/0 copy; concept sections in how-tos.
+R1 security: fixed: cookie secure:true, no-CSRF pipeline carries EhOsContract.Plug alone, egress example on Req defaults, grant checked server-side, GET routes, stand-in check per config, mail address, verify_html, address from config. No change: diagrams job token reach; eh-os API page names.
+R2 (fixes): fixed: max_age not shorter than (366 days), Strict reason, secure over http in dev and LiveView socket options, without SignIn child, egress retry/body/NO_PROXY, grant check via engine, people: key in guard, formatter width. No change: Egress moduledoc example. Skipped (issue drafted): dashboard deps cache; whether EHOS counts renewals in its token limit.
+Gate EXIT=0 at 2e16762a; auth diagram check up to date.
