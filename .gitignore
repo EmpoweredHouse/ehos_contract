@@ -11,6 +11,8 @@ packages/eh_os_contract_auth/tmp/
 packages/*/_build/
 packages/*/cover/
 packages/*/deps/
+# `mix docs` without `--output` in a package.
+packages/*/doc/
 /.fetch
 erl_crash.dump
 *.ez

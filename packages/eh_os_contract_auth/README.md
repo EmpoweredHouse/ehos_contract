@@ -1,69 +1,53 @@
 # EhOsContract.Auth
 
-Verifies the credentials EHOS issues, for an application built on
-[EhOsContract](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract). It checks the signature locally, against keys it keeps in the
-application's own database, so the application keeps accepting credentials while EHOS is
-down, even after the application restarts.
+This package connects an application built on
+[`eh_os_contract`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/eh_os_contract)
+to EHOS, the platform that hosts it. This page is for a developer who connects such an application.
+It says what the package does, and links to the pages that tell you how to use it.
 
-The engine verifies nothing: it asks an `EhOsContract.Authorizer` what a credential's actor may
-do, and this package is the implementation for EHOS's credentials. The engine does not depend on it.
+## What does the package do?
 
-Its parts: `EhOsContract.Auth.verify/2` and the key store behind it, `EhOsContract.Auth` as the
-engine's `Authorizer` with a row for every decision, `EhOsContract.Auth.Plug` for a bearer token in
-front of `EhOsContract.Plug`, `mix eh_os_contract.manifest` for EHOS's application manifest,
-`EhOsContract.Auth.SignIn` for signing people in, `EhOsContract.Auth.People` for reading the
-company's people, `EhOsContract.Auth.Mail` for sending mail through EHOS, `EhOsContract.Auth.Grants` for a person granting a role their rule lets them give,
-and `EhOsContract.Auth.Testing` for a host's tests.
+People and systems call the application with a *credential*: a signed token that EHOS issues. The
+engine verifies no credential. It asks an *Authorizer* what the actor of a credential can do. This
+package is that Authorizer for the credentials of EHOS. The engine does not depend on it.
 
-## Installation
+The package verifies each credential in the application, against the public keys of EHOS. It keeps
+the keys in the database of the application. After one fetch succeeds, the application accepts
+credentials while EHOS is down, also after a restart. The package then writes a row for each
+decision, a refusal too.
 
-From git, beside the engine, with the same `git:` and `sparse:` shape:
+The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
+defines each word of the contract language that these pages use. The words of the platform, such as
+*installation* and *environment*, are the words of EHOS.
 
-```elixir
-def deps do
-  [
-    {:eh_os_contract,
-     git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
-     sparse: "packages/eh_os_contract"},
-    {:eh_os_contract_auth,
-     git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
-     sparse: "packages/eh_os_contract_auth"}
-  ]
-end
-```
+## What are its parts?
 
-It needs OTP 27 or later, which `oidcc`, the OpenID Connect client behind signing people in, requires.
+| Part | What it does |
+| --- | --- |
+| `EhOsContract.Auth.verify/2`, with the key process `EhOsContract.Auth.Keys` | verifies a credential and gives its actor |
+| `EhOsContract.Auth` | the Authorizer of the engine, with a row for each decision |
+| `EhOsContract.Auth.Plug` | verifies the bearer token of a request in front of `EhOsContract.Plug` |
+| `mix eh_os_contract.manifest` | writes the application manifest that EHOS deploys from |
+| `EhOsContract.Auth.SignIn`, `EhOsContract.Auth.Session` | signs people in to the pages of the application through EHOS, and keeps their sessions |
+| `EhOsContract.Auth.Workload` | holds the credential of the application itself, for the people and for mail |
+| `EhOsContract.Auth.People` | reads the people of the company |
+| `EhOsContract.Auth.Mail` | sends mail through EHOS |
+| `EhOsContract.Auth.Grants` | lets a person grant a role that their rule lets them give |
+| `EhOsContract.Auth.Egress` | sends a call to a host outside the installation through the proxy that EHOS gives |
+| `EhOsContract.Auth.Testing` | gives credentials and stand-ins to the tests of the application |
 
-## Wiring it
+## Next steps
 
-```elixir
-# config/config.exs
-config :eh_os_contract, authorizer: EhOsContract.Auth
+- [Get started](docs/getting-started.md): install the package, configure it, and accept a call with
+  a credential.
+- [The credential](docs/credential.md): what a credential holds, and when `verify/2` and the plug
+  refuse it.
+- [How is each decision recorded?](docs/decisions.md): the row for each decision, what it costs, and
+  how long to keep it.
 
-config :eh_os_contract_auth,
-  issuer: "https://ehos.example.com",
-  audience: "clinic/production"
-  # jwks_url: defaults to the issuer's "/.well-known/jwks.json"
+## The sections that follow are moving
 
-# the application's supervision tree, after the repo
-children = [MyApp.Repo, EhOsContract, EhOsContract.Auth]
-
-# a migration
-defmodule MyApp.Repo.Migrations.AddEhOsContractAuth do
-  use Ecto.Migration
-
-  def up, do: EhOsContract.Auth.Migrations.up()
-  def down, do: EhOsContract.Auth.Migrations.down()
-end
-```
-
-The repo is the engine's, `config :eh_os_contract, :repo`.
-
-```elixir
-EhOsContract.Auth.verify(token)
-#=> {:ok, %EhOsContract.Actor{kind: :credential, subject: "u-81", capabilities: ..., scopes: ...}}
-#   | {:error, :expired | :unknown_key | :bad_signature | :wrong_audience | :wrong_issuer | :no_keys}
-```
+The sections below move to pages of their own in `docs/`. Until then, they stay here as they are.
 
 ## Generating the EHOS application manifest
 
@@ -685,57 +669,6 @@ A stand-in never answers for EHOS in a release. `directory/0` raises when it nam
 fails at the first call instead of telling a person someone was invited or a message sent. The
 `Testing` stand-ins also need `pin_keys: true`, as `EhOsContract.Auth.Testing`'s credentials do.
 
-## Deciding, and recording every decision
-
-`EhOsContract.Auth` is the `EhOsContract.Authorizer` the engine asks about every command and query
-that arrives with a credential. It decides with `EhOsContract.Authorizer.check/2` alone (the
-capability in `cap`, a scoped value among the values in `scp`) and writes 1 row to
-`eh_os_contract_auth_decisions` for every decision, a refusal as carefully as an acceptance: who, which capability, which contract and version, the scope value asked for, `allowed` or
-`refused`, and the reason. A scope value the table cannot hold (invalid UTF-8, a NUL), one past 256
-bytes, or one that starts `sha256:` is recorded as `sha256:` and its hex digest, so a crafted value is
-refused like any other instead of failing the request.
-
-The row records the authorization, not the command. A command allowed here may still be rejected on
-an invariant, and that is the engine's row in `eh_os_contract_commands`: two records, two rows. The row
-goes through the connection the call is on, so a caller that wraps `EhOsContract.dispatch/3` in a
-transaction of its own and rolls it back rolls the row back too. A row that cannot be written fails
-the call.
-
-**What it costs.** Every command and query that arrives with a credential writes that row: one
-`INSERT`, committed on its own before the engine's transaction starts, and for a query the only write
-the call makes. A refusal is recorded as carefully as an acceptance, and a refusal cannot be written
-inside a transaction that never starts. Budget for one extra write per
-call; the table carries no index beyond `decided_at` and `(subject, decided_at)`.
-
-**How long rows are kept is the application's decision.** Nothing here deletes them. The index on
-`decided_at` makes a periodic cleanup cheap, for instance from a job:
-
-```elixir
-MyApp.Repo.query!("DELETE FROM eh_os_contract_auth_decisions WHERE decided_at < now() - interval '400 days'")
-```
-
-A common choice is to keep them as long as the application keeps its own log.
-
-## Over HTTP
-
-```elixir
-pipeline :commands do
-  plug :accepts, ["json"]
-  plug EhOsContract.Auth.Plug
-end
-
-scope "/api" do
-  pipe_through :commands
-  forward "/", EhOsContract.Plug, contracts: [Clinic.Contracts.VisitSettlement]
-end
-```
-
-`EhOsContract.Auth.Plug` reads `authorization: Bearer <credential>`, and a credential `verify/2`
-accepts goes on as `conn.assigns.eh_os_contract_actor`. Anything else stops with 401 and
-`www-authenticate: Bearer`: `{"error": "no_credential"}` without one, `{"error": "<reason>"}` for
-a credential it refuses. A refused credential is logged with its reason and gets no row, because it
-names nobody; the rows are the decisions about actors that did verify.
-
 ## In a host's tests
 
 ```elixir
@@ -905,22 +838,6 @@ longer has it.
 
 Tests need neither EHOS nor a network: the package's own suite plays the JWKS endpoint with a
 function plug handed to Req.
-
-## The credential
-
-A JWT, `alg: "Ed25519"` and nothing else, with `iss`, `sub`, `aud` (one string), `iat`, `exp`,
-`jti`, `cap` (the capabilities, sorted), and `scp` when a capability is scoped:
-
-```json
-{"sub": "u-81", "aud": "clinic/production", "cap": ["clinic.open_visits_for_clinic"],
- "scp": {"clinic.open_visits_for_clinic": {"clinic_id": ["7"]}}}
-```
-
-The grants travel in the credential. The application stores none and asks EHOS about none. A
-credential whose `exp` is more than 15 minutes away (EHOS's 10, and 5 for clocks that
-disagree) is refused as `:bad_signature`, whoever signed it, so a key that leaked cannot mint a
-credential that lives for a year; so is one whose header carries `crit`. `exp`
-is measured by `EhOsContract.Clock`, so a test moves time with `EhOsContract.Clock.at/2`.
 
 <!-- Decisions behind this page:
 contract v2 §16, D14 (docs/adr/contract-v2.md): the contract declares who may act; a separate package, this one, verifies who is acting.
