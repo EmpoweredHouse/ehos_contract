@@ -54,6 +54,19 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   only the six stand-ins of the package. Links change: `#calling-a-host-outside-the-installation`,
   `#signing-people-in`, `#reading-the-companys-people`, `#sending-mail`, `#a-person-granting-a-role`
   and `#people-grants-and-mail-where-ehos-does-not-answer` of the README are now these pages.
+- **The README is only the overview: four pages take its last sections** (#517).
+  `docs/configuration.md` lists each key, each option of the child and each variable EHOS gives
+  the workload; `docs/keys.md`, with a diagram, says where the keys come from and how the key
+  process keeps them; `docs/testing.md` takes the host's tests; `docs/manifest.md` takes the
+  manifest and the bundle. The pages and the docs of `EhOsContract.Auth.Keys` and
+  `EhOsContract.Auth.Testing` now say that `pin_keys: true` is checked only for being set, not for
+  the environment it is set in, so it belongs in `config/test.exs` alone (#560). The manifest's
+  doc no longer lists scope values on a role binding among what EHOS added: EHOS carries none yet,
+  so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The manifest page says
+  that EHOS gives its client for `needs.people` and `needs.mail` too, not only for `sign_in`. Links
+  change: `#generating-the-ehos-application-manifest`, `#configuration-from-ehoss-environment`,
+  `#in-a-hosts-tests` and `#where-the-keys-come-from-and-what-to-configure-at-integration` of the
+  README are now these pages.
 
 ## [0.11.0] - 2026-11-01
 

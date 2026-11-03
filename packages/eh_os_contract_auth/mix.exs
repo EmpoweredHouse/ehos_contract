@@ -125,6 +125,10 @@ defmodule EhOsContract.Auth.MixProject do
         "docs/grants.md",
         "docs/egress.md",
         "docs/without-ehos.md",
+        "docs/testing.md",
+        "docs/configuration.md",
+        "docs/keys.md",
+        "docs/manifest.md",
         "CHANGELOG.md"
       ],
       # The changelog names what a release removed, and the names resolve nowhere

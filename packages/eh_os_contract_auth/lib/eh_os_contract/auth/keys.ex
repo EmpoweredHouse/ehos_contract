@@ -117,8 +117,9 @@ defmodule EhOsContract.Auth.Keys do
   `config :req, default_options` still applies, under these.
 
   `:plug` answers in place of the network, as `Req.Test` does, and is taken only
-  with `config :eh_os_contract_auth, pin_keys: true`, as in a test: whatever it
-  answers is trusted as EHOS's keys.
+  with `config :eh_os_contract_auth, pin_keys: true`: whatever it answers is trusted
+  as EHOS's keys. The line belongs in `config/test.exs` alone; nothing checks the
+  environment it is set in.
 
   However long each part takes, a fetch not finished in five seconds is abandoned as a
   failed one.
@@ -127,7 +128,7 @@ defmodule EhOsContract.Auth.Keys do
   allowed for `localhost`, `127.0.0.1` and `::1` only) or not an address every parser
   reads as written (a lowercase host, no user, query or fragment), on an interval
   shorter than five seconds, and on
-  `:plug` anywhere but a test.
+  `:plug` without `pin_keys: true`.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -210,13 +211,14 @@ defmodule EhOsContract.Auth.Keys do
 
   This is how `EhOsContract.Auth.Testing` gets its test key trusted, and nothing
   else calls it: a key pinned here verifies credentials exactly as EHOS's do. So it
-  works only where the configuration allows it, which is meant to be a test's:
+  works only where the configuration allows it:
 
       # config/test.exs
       config :eh_os_contract_auth, pin_keys: true
 
-  Anywhere else it raises, so no code in a running application can make it trust a
-  key EHOS did not publish.
+  Without the line it raises. The package checks only that the line is set, not the
+  environment it is set in: put it in `config/test.exs` alone. Set anywhere else, it
+  lets code in the running application trust a key EHOS did not publish.
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
