@@ -2,7 +2,8 @@ defmodule EhOsContract.EntityReadsTest do
   @moduledoc """
   Plan DD, T2a (#240): a command that `reads:` an entity is decided with the row the
   host's `EhOsContract.Entities` gives, asked once per command and before the
-  transaction; a row not there refuses the command as a field naming nothing; a row
+  transaction (inside it, after the host supplies, for a command with a supplied
+  field); a row not there refuses the command as a field naming nothing; a row
   that does not fit its entity raises; and what was read is kept on the command's row.
   On the invented `ReadRig.Orders`, with `ReadRig.Entities` configured for the suite.
   """
@@ -144,7 +145,7 @@ defmodule EhOsContract.EntityReadsTest do
       error = assert_raise ArgumentError, fn -> Entities.check!(@models) end
 
       assert error.message =~
-               "ReadRig.Orders declares commands [:place_order] that read entities, and no " <>
+               "ReadRig.Orders declares commands [:place_order, :place_gift_order] that read entities, and no " <>
                  "entities implementation is configured"
     end
 
@@ -160,6 +161,53 @@ defmodule EhOsContract.EntityReadsTest do
       assert Entities.check!(@models) == :ok
       Application.delete_env(:eh_os_contract, :entities)
       assert Entities.check!([EhOsContract.Model.fetch(SupplyRig.Desk)]) == :ok
+    end
+  end
+
+  describe "a command that reads an entity and has a field the host supplies" do
+    @gift_clerk Actor.credential("u-1", ["read_rig.place_gift_order"])
+
+    defp gift(opts) do
+      EhOsContract.call(
+        {:command, "read_rig.place_gift_order"},
+        %{"order_id" => "order-1", "quantity" => 3},
+        Keyword.merge([actor: @gift_clerk], opts)
+      )
+    end
+
+    test "reads the entity inside the transaction, after the host supplies" do
+      Process.put(:supply_rig_answer, fn _actor, _request ->
+        send(self(), {:fetched_when_supplied, fetched(), Repo.in_transaction?()})
+        {:ok, %{product_id: "product-tea", wrapping: 2}}
+      end)
+
+      assert {:ok, %Receipt{events: [%Placed{total: 14}]}} = gift([])
+      assert_received {:fetched_when_supplied, [], true}
+      assert fetched() == ["product-tea"]
+    end
+
+    test "a row that does not fit is the command's failure, in the entities" do
+      Process.put(:supply_rig_answer, {:ok, %{product_id: "product-tea", wrapping: 2}})
+      Process.put({:read_rig_row, "product-tea"}, :a_row_of_no_shape)
+
+      assert_raise ArgumentError, fn -> gift([]) end
+      assert [%{outcome: "failed", failed_in: "entities"}] = Repo.all(CommandRecord)
+    end
+
+    test "a request accepted under its key while the host answered gets that receipt" do
+      # The same request, sent again while the first waits for the host's answer: the
+      # second is accepted first, inside the same transaction here.
+      Process.put(:supply_rig_answer, fn _actor, _request ->
+        if Process.put(:read_rig_supplied, true) == nil,
+          do: {:ok, %Receipt{}} = gift(idempotency_key: "gift-1")
+
+        {:ok, %{product_id: "product-tea", wrapping: 2}}
+      end)
+
+      assert {:ok, %Receipt{duplicate: true, events: [%Placed{total: 14}]}} =
+               gift(idempotency_key: "gift-1")
+
+      assert [%{payload: %{"total" => 14}}] = Repo.all(Event)
     end
   end
 end

@@ -69,12 +69,10 @@ defmodule EhOsContract.Dispatcher do
            ),
          :ok <- valid(callers(declaration, ctx), command, values, model.domain),
          :ok <- keyed(ctx),
-         job = job(:command, model, declaration, command, ctx, values),
-         {:ok, command} <- supplied(job),
          {:ok, command} <- generate_identity(model, declaration, command, ctx),
-         :ok <- stream_fits(model, declaration, command),
-         {:ok, reads} <- read_entities(%{job | command: command}) do
-      run(Map.merge(job, %{command: command, reads: reads}), repo())
+         job = job(:command, model, declaration, command, ctx, values),
+         {:ok, job} <- unsupplied(job, &once/1) do
+      run(job, repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
       refused -> refused
@@ -99,9 +97,8 @@ defmodule EhOsContract.Dispatcher do
          :ok <- valid(callers(declaration, ctx), event, values, model.domain),
          :ok <- keyed(ctx),
          job = job(:record, model, declaration, event, ctx, values),
-         {:ok, event} <- supplied(job),
-         :ok <- stream_fits(model, declaration, event) do
-      run(%{job | command: event}, repo())
+         {:ok, job} <- unsupplied(job, &once/1) do
+      run(job, repo())
     else
       {:replayed, receipt} -> {:ok, receipt}
       refused -> refused
@@ -585,59 +582,85 @@ defmodule EhOsContract.Dispatcher do
 
   defp callers(declaration, _ctx), do: declaration.fields
 
-  # Plan T1: the fields the host gives, asked of it last before the unit is read — after
-  # authorization, so a caller who may not issue the command never makes the host look
-  # anything up, and after what the caller sent is found sound, so a request refused
-  # for its own fields or key is refused as such. A retry of a request already
-  # accepted under its key gets its receipt without asking: the answer would be thrown
-  # away, and a host that is down would turn the receipt into a refusal. The host's
-  # answer is held to the fields' types and invariants (`Supplier.run/6`).
-  defp supplied(%{ctx: %{supply: false}, command: struct}), do: {:ok, struct}
+  # Issue #563: a command or a recording with fields the host supplies is prepared inside
+  # the transaction, on every attempt (`attempt/2`); any other before it, once. `fun` runs
+  # on the side it belongs to, and the other side passes the job on as it is.
+  defp unsupplied(job, fun), do: if(supplies?(job), do: {:ok, job}, else: fun.(job))
+  defp supplied(job, fun), do: if(supplies?(job), do: fun.(job), else: {:ok, job})
 
-  defp supplied(job) do
-    %{model: model, declaration: declaration, ctx: ctx, command: struct} = job
+  defp supplies?(%{ctx: %{supply: supply}, declaration: declaration}),
+    do: supply and Supplier.fields(declaration.fields) != []
 
-    case Supplier.fields(declaration.fields) do
-      [] ->
-        {:ok, struct}
-
-      fields ->
-        with :new <- idempotent(repo(), job) do
-          names = Enum.map(fields, & &1.name)
-
-          request = %Supplier.Request{
-            kind: job.kind,
-            capability: capability(model, job.kind, declaration.name),
-            contract: model.module,
-            name: declaration.name,
-            fields: names,
-            given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
-          }
-
-          with {:ok, given} <-
-                 Supplier.run(ctx.actor, request, declaration.fields, job.values, model.domain),
-               do: {:ok, struct(struct, given)}
-        else
-          {:ok, receipt} -> {:replayed, receipt}
-          refused -> refused
-        end
-    end
+  # What the unit is read with once the command is whole: its stream id's length, and the
+  # entities it reads. Before the transaction for a command whose fields are all the
+  # caller's; inside it, after the host is asked, for one with supplied fields, whose
+  # stream id or entity may be among them.
+  defp prepared(job) do
+    with {:ok, command} <- supply(job),
+         :ok <- stream_fits(job.model, job.declaration, command),
+         job = %{job | command: command},
+         {:ok, reads} <- read_entities(job),
+         do: {:ok, Map.put(job, :reads, reads)}
   end
 
-  # Plan DD, T2a (#240): the entities the command reads, asked of the host once, before
-  # the transaction dispatch owns, so a conflict's retry decides on the same rows and the
-  # host's lookup does not hold the transaction open. No reaction issues such a command
-  # (A8), so none is asked inside dispatch's own transaction, after its append lock; one
-  # the host dispatches inside a transaction of its own is asked inside that. As for supplied fields, a
-  # retry of a command already accepted under its key gets its receipt without asking: a
-  # row deleted since would turn the receipt into a refusal.
-  defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
+  # Plan T1: the fields the host gives — after authorization, so a caller who may not
+  # issue the command never makes the host look anything up, and after what the caller
+  # sent is found sound, so a request refused for its own fields or key is refused as
+  # such. Issue #563: inside the transaction, again on a conflict's retry, so the host
+  # can lock what it reads in the transaction the events are appended in, and a fact a
+  # concurrent save changed is read again; a retry of a request already accepted under
+  # its key gets its receipt before the host is asked (`attempt/2`). The host's answer is
+  # held to the fields' types and invariants (`Supplier.run/6`).
+  defp supply(job) do
+    if supplies?(job), do: ask_host(job), else: {:ok, job.command}
+  end
+
+  defp ask_host(job) do
+    %{model: model, declaration: declaration, ctx: ctx, command: struct} = job
+    names = Enum.map(Supplier.fields(declaration.fields), & &1.name)
+
+    request = %Supplier.Request{
+      kind: job.kind,
+      capability: capability(model, job.kind, declaration.name),
+      contract: model.module,
+      name: declaration.name,
+      fields: names,
+      given: struct |> Map.from_struct() |> Map.drop([:__meta__ | names])
+    }
+
+    with {:ok, given} <-
+           stage("supplier", fn ->
+             Supplier.run(ctx.actor, request, declaration.fields, job.values, model.domain)
+           end),
+         do: {:ok, struct(struct, given)}
+  end
+
+  # Before the transaction, a retry of a command already accepted under its key gets its
+  # receipt without asking for entities: a row deleted since would turn the receipt into a
+  # refusal. Inside it, `attempt/2` has checked the key already.
+  defp once(%{declaration: %{reads: [_ | _]}} = job) do
     with :new <- idempotent(repo(), job) do
-      Entities.read(job.model, job.declaration, job.command, job.ctx.actor)
+      prepared(job)
     else
       {:ok, receipt} -> {:replayed, receipt}
       refused -> refused
     end
+  end
+
+  defp once(job), do: prepared(job)
+
+  # Plan DD, T2a (#240): the entities the command reads. For a command whose fields are
+  # all the caller's, asked of the host once, before the transaction dispatch owns, so a
+  # conflict's retry decides on the same rows and the host's lookup does not hold the
+  # transaction open. No reaction issues such a command (A8), so none is asked inside
+  # dispatch's own transaction, after its append lock; one the host dispatches inside a
+  # transaction of its own is asked inside that. Issue #563: for a command with supplied
+  # fields, asked inside the transaction after the host supplies, on every attempt
+  # (`prepared/1`), since an entity may be named by a supplied field.
+  defp read_entities(%{declaration: %{reads: [_ | _]}} = job) do
+    stage("entities", fn ->
+      Entities.read(job.model, job.declaration, job.command, job.ctx.actor)
+    end)
   end
 
   defp read_entities(_job), do: {:ok, %{}}
@@ -720,7 +743,8 @@ defmodule EhOsContract.Dispatcher do
 
   # One try: `{:ok, receipt}`, `{:error, _}`, or `:conflict` when the stream moved.
   defp attempt(%{kind: :record} = job, repo) do
-    with :new <- idempotent(repo, job) do
+    with :new <- idempotent(repo, job),
+         {:ok, job} <- supplied(job, &prepared/1) do
       unit = Enum.find(job.model.units, &(&1.name == job.declaration.unit))
       # Nothing is decided, so nothing is folded: the unit is read whole, as before.
       {recorded, condition} = read_unit(repo, job.model, unit, job.command, :all)
@@ -738,9 +762,9 @@ defmodule EhOsContract.Dispatcher do
   end
 
   defp attempt(job, repo) do
-    %{model: model, declaration: declaration, command: command, ctx: ctx} = job
-
-    with :new <- idempotent(repo, job) do
+    with :new <- idempotent(repo, job),
+         {:ok, job} <- supplied(job, &prepared/1) do
+      %{model: model, declaration: declaration, command: command, ctx: ctx} = job
       unit = Enum.find(model.units, &(&1.name == declaration.unit))
       impl = Implementations.fetch!(model, unit.kind, unit.name)
       folded = Implementations.folded_types(model, impl)

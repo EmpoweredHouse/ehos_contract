@@ -105,6 +105,45 @@ defmodule EhOsContract.SuppliedTest do
       assert Process.get(:supply_rig_asked) == nil
     end
 
+    test "the host is asked inside dispatch's transaction, where it can lock what it reads" do
+      Process.put(:supply_rig_answer, fn _actor, request ->
+        send(self(), {:in_transaction, request.kind, repo().in_transaction?()})
+
+        {:ok,
+         if(request.kind == :command,
+           do: %{reported: true},
+           else: %{arrived_at: SupplyRig.Supplier.arrived_at()}
+         )}
+      end)
+
+      assert {:ok, %Receipt{}} = close(%{"visit_id" => "v-1", "code" => "A1"})
+      assert_received {:in_transaction, :command, true}
+
+      assert {:ok, %Receipt{}} =
+               EhOsContract.call({:record, "supply_rig.arrival_noted"}, %{"visit_id" => "v-2"},
+                 actor: @clerk
+               )
+
+      assert_received {:in_transaction, :record, true}
+    end
+
+    test "a conflict's retry asks the host again, and is decided on the new answer" do
+      answers = :counters.new(1, [])
+
+      Process.put(:supply_rig_answer, fn _actor, _request ->
+        :counters.add(answers, 1, 1)
+        {:ok, %{reported: :counters.get(answers, 1) > 1}}
+      end)
+
+      Process.put(:supply_rig_race, true)
+
+      assert {:ok, %Receipt{}} = close(%{"visit_id" => "v-1", "code" => "A1"})
+      assert :counters.get(answers, 1) == 2
+
+      # The race's own event rolled back with the attempt that met it.
+      assert [%{stream_version: 1, payload: %{"code" => "A1", "reported" => true}}] = events()
+    end
+
     test "the host's refusal is not_supplied, and nothing is written" do
       Process.put(:supply_rig_answer, {:error, :register_down})
 
@@ -137,6 +176,9 @@ defmodule EhOsContract.SuppliedTest do
 
       assert error.message =~
                "was asked for [:reported] of command :close_visit and answered [:code, :reported]"
+
+      assert [%{outcome: "failed", failed_in: "supplier"}] = rows(),
+             "asked inside the transaction, its defect is the command's failure"
     end
 
     test "a value that does not fit raises, naming the field and not the value" do

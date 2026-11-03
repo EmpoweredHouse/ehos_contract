@@ -283,9 +283,15 @@ the row is not an error.
 
 The engine asks one time for each entry of `reads:` of the command. It stops at the
 first `:not_found`. It asks after it authorizes the caller and checks the fields of
-the command, and before the transaction of the decision.
+the command. When it asks depends on the fields of the command:
 
-- If the decision meets a conflict and runs again, it decides on the same rows.
+- If the engine asks `EhOsContract.Supplier` for a field of the command, the engine
+  asks inside the transaction of the decision, after the supplier answers. If the
+  decision meets a conflict and runs again, the engine asks again. Then `c:EhOsContract.Entities.fetch/4`
+  holds the transaction as `supply/2` does: read "What the transaction asks of
+  `supply/2`" in `EhOsContract.Supplier`.
+- Otherwise, the engine asks before the transaction of the decision. If the decision
+  meets a conflict and runs again, it decides on the same rows.
 - A retry of a command that the engine accepted under its idempotency key gets its
   receipt, and the engine does not ask.
 - The engine sets no time limit on the call.
@@ -468,18 +474,50 @@ implementation for its value:
 
 ### When the engine asks
 
-The engine asks one time for each command or recording, for all of its supplied
-fields. `given` holds the other fields, decoded. The engine asks:
+The engine asks one time for each attempt of a command or recording, for all of its
+supplied fields. `given` holds the other fields, decoded. The engine asks:
 
 1. after it authorizes the caller;
-2. after it checks what the caller sent: its own fields and its idempotency key.
+2. after it checks what the caller sent: its own fields and its idempotency key;
+3. inside the transaction that appends the events, before it reads the unit.
 
-It does not ask for a retry of a request that it accepted under its idempotency
-key. That retry gets its receipt. The engine sets no time limit on the call. If the
-source of the data can hang, the implementation must limit the time.
+The answer and the events are in one transaction. So `c:EhOsContract.Supplier.supply/2` can lock the rows
+that it reads, for example with `SELECT ... FOR UPDATE`, and a concurrent save of
+those rows waits until the events are appended. Without a lock, the answer can be
+stale when the engine appends.
 
-The code of the host can dispatch inside a transaction that appended before. Then
-each other writer of the log waits for the answer. So make `c:EhOsContract.Supplier.supply/2` fast.
+If the stream of the unit changed after the engine read it, and the transaction is
+the engine's own, the engine tries the command again, in a new transaction, and asks
+again. In a transaction of the host, the engine returns `{:error, :conflict}`.
+
+If a command with a supplied field also reads entities (`reads:`), the engine reads
+them in the same transaction, after the answer, and again on each retry. A command
+with no supplied field reads its entities before the transaction
+(`EhOsContract.Entities`).
+
+The engine does not ask for a retry of a request that it accepted under its
+idempotency key. That retry gets its receipt.
+
+### What the transaction asks of `c:EhOsContract.Supplier.supply/2`
+
+- **Make it fast.** The transaction holds a connection of the pool of the repository
+  while `c:EhOsContract.Supplier.supply/2` runs. Each request that waits for a slow system holds one
+  connection, and the other work of the application waits for the pool. The engine
+  sets no time limit on the call, so limit the time of each call to another system.
+  If the code of the host dispatches inside a transaction that appended before, each
+  other writer of the log also waits.
+- **Lock in one order.** The engine takes the lock of the log after `c:EhOsContract.Supplier.supply/2`. So do
+  not lock rows that a read model or a reaction delivered `:in_transaction` writes:
+  the two locks in the other order can deadlock. The engine does not try a command
+  again after a deadlock.
+- **Let a failed query raise.** After a query fails, Postgres refuses each next
+  query of the transaction, and the engine cannot finish it. Do not catch the error
+  and return `{:error, reason}`.
+- **Know what is kept.** What `c:EhOsContract.Supplier.supply/2` writes to the database commits with the
+  transaction, also when the engine refuses the command. It rolls back if the engine
+  raises. If the transaction is the engine's own, it also rolls back when the engine
+  tries the command again after a conflict. A call to another system is not rolled
+  back, and the engine can make it up to 3 times for one command.
 
 `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
 page with `EhOsContract.Form` can pass it. Without it, the code of the application
@@ -492,7 +530,9 @@ caller sent.
 The answer holds exactly the fields that the engine asked for, each of its type. If
 it does not, or if a value breaks an invariant of a domain value, the engine raises.
 The message names the field, never its value. Such an answer is an error in the
-code of the host.
+code of the host. If the transaction is the engine's own, the engine also records
+the command as failed, and the conformance report counts it as an attempt that
+failed.
 
 If a contract declares a supplied field, the node does not start without an
 implementation. The implementation must be loaded and export `c:EhOsContract.Supplier.supply/2`. The engine
