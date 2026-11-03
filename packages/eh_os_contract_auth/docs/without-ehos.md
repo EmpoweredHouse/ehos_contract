@@ -69,7 +69,8 @@ config :eh_os_contract_auth,
 ```
 
 The `Testing` stand-ins need `pin_keys: true`, as the credentials of `EhOsContract.Auth.Testing`
-do.
+do. Put the line only in `config/test.exs`: the package does not check its environment, [Test the
+application without EHOS](testing.md) tells why.
 
 **Result:** a test gives the answers with `stub_people/1`, `stub_grants/1` and `stub_mail/1` of
 `EhOsContract.Auth.Testing`. A stub is seen by the process of the test and the processes that it

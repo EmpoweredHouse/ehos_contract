@@ -42,6 +42,10 @@
 > What the package decides beside D-64 is in [browser-session.md](browser-session.md). "The one rule" below
 > is read as it has been since 23 September: the discovery URL, the client and the token's verification
 > belong to `eh_os_contract_auth`, not to "the engine's domain code".
+>
+> **3 November 2026 — the README section moved.** The section the amendment of 27 September names is now
+> `packages/eh_os_contract_auth/docs/keys.md`, and what an application configures is in `docs/configuration.md`
+> of the same package (#517).
 
 # Identity — the boundary, before any decision
 

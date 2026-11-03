@@ -2,7 +2,8 @@
 
 This page lists what `eh_os_contract_auth` reads: its configuration, the options of its child, and
 the environment variables that EHOS gives the workload. It is for a developer who deploys an
-application on EHOS. [Get started](getting-started.md) shows the configuration one time, step by
+application on EHOS. The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
+defines each word of the contract language that this page uses. [Get started](getting-started.md) shows the configuration one time, step by
 step.
 
 ## The configuration
@@ -15,7 +16,7 @@ step.
 | `sign_in` | no | the sign-in of people through EHOS: [Sign people in through EHOS](sign-in.md) |
 | `workload` | no | the client of the application, for the people and for mail: [Read the people of the company](people.md) |
 | `people_directory`, `granter`, `mail_sender` | no | a stand-in for EHOS: [Use people, grants and mail where EHOS does not answer](without-ehos.md) |
-| `pin_keys` | no | `true` lets a test trust a key that EHOS did not publish: [Test the application without EHOS](testing.md) |
+| `pin_keys` | no | `true` lets code trust keys and answers that EHOS did not give. Set it only in `config/test.exs`: [Test the application without EHOS](testing.md) |
 
 ```elixir
 config :eh_os_contract_auth,
@@ -25,8 +26,7 @@ config :eh_os_contract_auth,
 
 ### The rules of each address
 
-`issuer`, `jwks_url` and the addresses of the sign-in must be addresses that each parser reads the
-same way:
+`issuer` and `jwks_url` must be addresses that each parser reads the same way:
 
 - the scheme is `https`. Plain `http` is allowed only for `localhost`, `127.0.0.1` and `::1`;
 - the host is in lowercase;
@@ -34,6 +34,9 @@ same way:
 - the address reads back exactly as you wrote it.
 
 `issuer` also has no path and no trailing slash. `jwks_url` can have a path.
+
+The sign-in has stricter rules for its addresses: `https` only, also on loopback, and no port for
+the address of an application. [Sign people in through EHOS](sign-in.md) gives them.
 
 These rules stop an address that two parsers read differently. Example:
 `http://evil.example\@localhost` could pass as `localhost`, but EHOS and a browser read its host as
@@ -86,13 +89,14 @@ The child takes no other option. The package then cannot weaken the fetch of the
 
 [Where do the keys come from?](keys.md) tells why each limit is there.
 
-> **Keep `plug:`, `adapter:`, `auth:`, `headers:` and `finch:` out of `config :req,
-> default_options`.** Req adds these global options to the fetch of the keys. The options of the
-> package replace the same global options: the connection with its authority, the timeouts, the
-> retries and the redirects. Each other global option gets to the fetch:
+> **Keep each option that changes where a request goes, or what it sends, out of `config :req,
+> default_options`.** Req adds the global options to the fetch of the keys. The package sets the
+> connection with its authority, the timeouts, the retries, the redirects and the body. Its options
+> replace the same global options. Each other global option gets to the fetch. Examples:
 >
-> - `plug:` or `adapter:` replaces the network, so the keys come from it;
-> - `auth:` or `headers:` goes to EHOS;
+> - `plug:`, `adapter:` or `plugins:` can replace the answer, so the keys come from it;
+> - `unix_socket:` or `finch_request:` changes where the request goes;
+> - `auth:`, `headers:`, `params:` or `aws_sigv4:` goes to EHOS;
 > - `finch:` makes each fetch fail, because the package always sets the connection.
 
 ### What stops the application at start
@@ -115,19 +119,23 @@ from?](keys.md) tells what it accepts then.
 ## The environment that EHOS gives the workload
 
 EHOS starts the workload with its settings in environment variables. The package reads only
-`EHOS_EGRESS_PROXY` and `NO_PROXY` itself, at each call through `EhOsContract.Auth.Egress`. The
-host reads the other variables in `config/runtime.exs` and in its supervision tree.
+`EHOS_EGRESS_PROXY`, `NO_PROXY` and `no_proxy` itself, at each call through
+`EhOsContract.Auth.Egress`. The fetch of the keys reads no variable, and uses no proxy. The host
+reads the other variables in `config/runtime.exs` and in its supervision tree. The sign-in also
+needs `PHX_HOST` and `SECRET_KEY_BASE`, which Phoenix uses: [Sign people in through
+EHOS](sign-in.md).
 
 | Variable | When EHOS gives it | Where the host puts it |
 | --- | --- | --- |
 | `EHOS_ISSUER` | always | `issuer` |
 | `EHOS_AUDIENCE` | always | `audience` |
-| `EHOS_CA_FILE` | when the installation uses a certificate authority of its own | `cacertfile:` of the child |
+| `EHOS_CA_FILE` | when the installation uses a certificate authority of its own | `cacertfile:` of `EhOsContract.Auth`, and of the `sign_in:` and `workload:` configuration. Without it, their calls to EHOS fail. |
 | `EHOS_CLIENT_ID`, `EHOS_CLIENT_KEY_FILE` | to the container that serves, when `ehos.yaml` has `sign_in`, `needs.people` or `needs.mail` | `sign_in:` or `workload:` |
 | `EHOS_SIGN_IN_APPLICATIONS` | to the container that serves, when `ehos.yaml` has `sign_in` | `sign_in:`: [Sign people in through EHOS](sign-in.md) |
-| `EHOS_SIGN_IN_ABSOLUTE` | when the installation sets how long a sign-in lasts | `sign_in:` |
-| `EHOS_SIGN_IN_IDLE` | with `EHOS_SIGN_IN_ABSOLUTE` | nowhere. EHOS alone uses it. |
-| `EHOS_EGRESS_PROXY` | when `ehos.yaml` has `needs.egress` | nowhere. The package reads it: [Call a host outside the installation](egress.md) |
+| `EHOS_SIGN_IN_ABSOLUTE` | always, to each container | `sign_in:`, if the application signs people in |
+| `EHOS_SIGN_IN_IDLE` | always, to each container | nowhere. EHOS alone uses it. |
+| `EHOS_EGRESS_PROXY`, `NO_PROXY`, `no_proxy` | when `ehos.yaml` has `needs.egress` | nowhere. `EhOsContract.Auth.Egress` reads them: [Call a host outside the installation](egress.md) |
+| `HTTPS_PROXY`, `https_proxy` | when `ehos.yaml` has `needs.egress` | nowhere. The package does not read them. Other HTTP clients of the application can. |
 
 Only `EHOS_SIGN_IN_APPLICATIONS` tells that the application signs people in. An application that
 only reads the people or sends mail maps the client to `workload:`.

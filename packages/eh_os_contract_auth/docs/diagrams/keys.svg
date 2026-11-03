@@ -1,5 +1,5 @@
 <!-- title: Where do the keys come from? -->
-<!-- desc: EHOS issues each credential, the key process of the application fetches the public keys of EHOS over HTTPS and keeps them in its table, and verify/2 checks each credential against them. -->
+<!-- desc: EHOS issues each credential; the key process fetches the public keys of EHOS over HTTPS and keeps them, and verify/2 checks each credential against them. -->
 <!-- words: application, credential -->
 <!-- technical: EHOS, Caller, Key process, Key table, EhOsContract.Auth.Keys, eh_os_contract_auth_keys, verify/2 -->
 <!-- verbs: issues, fetches, writes, loads, sends, checks -->
@@ -17,7 +17,7 @@
   <line class="arr" x1="590" y1="84" x2="709" y2="84" marker-end="url(#keys-arrow)"/>
   <line class="arr" x1="290" y1="252" x2="409" y2="252" marker-end="url(#keys-arrow)"/>
   <line class="arr" x1="500" y1="224" x2="500" y2="121" marker-end="url(#keys-arrow)"/>
-  <line class="uses" x1="710" y1="104" x2="591" y2="104" marker-end="url(#keys-arrow)"/>
+  <line class="arr" x1="710" y1="104" x2="591" y2="104" marker-end="url(#keys-arrow)"/>
 
   <!-- Connector labels, numbered to match the key -->
   <rect class="mask" x="212" y="164" width="72" height="14" rx="2"/>
@@ -112,8 +112,6 @@
   <rect class="n-store" x="540" y="464" width="14" height="10" rx="2"/>
   <text class="legt" x="560" y="473">Kept by the application</text>
   <line class="arr" x1="740" y1="469" x2="767" y2="469" marker-end="url(#keys-arrow)"/>
-  <text class="legt" x="776" y="473">A request or a call</text>
-  <line class="uses" x1="880" y1="469" x2="907" y2="469" marker-end="url(#keys-arrow)"/>
-  <text class="legt" x="916" y="473">At start</text>
+  <text class="legt" x="776" y="473">A request, a call or a read</text>
   </g>
 </svg>

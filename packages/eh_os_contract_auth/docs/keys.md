@@ -3,14 +3,16 @@
 The application must know that a credential comes from EHOS. It checks the signature of the
 credential against the public keys of EHOS. This page tells where those keys come from, why the
 application can trust them, and how the key process keeps them. It is for a developer who connects
-an application to EHOS, and for a reviewer of its security.
+an application to EHOS, and for a reviewer of its security. The [glossary of the
+engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
+defines each word of the contract language that this page uses.
 
 Nothing about the keys is configured in the application, except the address of EHOS and, sometimes,
 its certificate authority: [Configure the package](configuration.md).
 
 ## Who holds what?
 
-![EHOS issues each credential, the key process of the application fetches the public keys of EHOS over HTTPS and keeps them in its table, and verify/2 checks each credential against them.](img/keys.svg)
+![EHOS issues each credential; the key process fetches the public keys of EHOS over HTTPS and keeps them, and verify/2 checks each credential against them.](img/keys.svg)
 
 1. EHOS issues a credential, signed with the private key from its Kubernetes Secret.
 2. The key process fetches the public keys of EHOS over HTTPS, as a JWKS from
@@ -22,10 +24,10 @@ its certificate authority: [Configure the package](configuration.md).
 
 | What | Who makes it | Where it is | Who sees it |
 | --- | --- | --- | --- |
-| The Ed25519 key pair that signs credentials | the Helm chart of EHOS (`genPrivateKey "ed25519"`) when the Secret is missing, or the operator through `governance.signingKeys.existingSecret` | a Kubernetes Secret: `current.pem`, and `previous.pem` during a rotation | only the governance plane of EHOS, which mounts it read-only. It is never in a database, and no application sees it. |
+| The Ed25519 key pair that signs credentials | the Helm chart of EHOS (`genPrivateKey "ed25519"`) when the Secret is missing, or the installation administrator through `governance.signingKeys.existingSecret` | a Kubernetes Secret: `current.pem`, and `previous.pem` during a rotation | only the governance plane of EHOS, which mounts it read-only. It is never in a database, and no application sees it. |
 | The public keys (JWKS) | EHOS, from the Secret | `GET <issuer>/.well-known/jwks.json` | anyone. The key process fetches them and keeps a copy in its table. |
 | The `kid` in the header of a credential | nobody: it is the RFC 7638 thumbprint of the key | computed by EHOS when it signs, and by the key process from the JWKS | nobody configures it. The key process ignores a `kid` that the JWKS writes beside a key. |
-| The TLS certificate of the address of EHOS | the operator of the cluster: cert-manager, a public authority or an internal one | the ingress of EHOS | each fetch of the JWKS checks it |
+| The TLS certificate of the address of EHOS | the installation administrator: cert-manager, a public authority or an internal one | the ingress of EHOS | each fetch of the JWKS checks it |
 
 ## Why is the TLS certificate the trust anchor?
 
@@ -48,8 +50,9 @@ package fetches the keys only over `https`. It allows plain `http` only on `loca
 The table of the key process is the source of the keys, and its memory is a copy.
 
 - **At start**, the process loads the last good keys from its table. Then it fetches the JWKS.
-- **Every 5 minutes**, it fetches the JWKS again. If EHOS removes a key, a compromised key for
-  example, the application stops trusting it within 5 minutes. Nobody restarts anything.
+- **Every 5 minutes**, it fetches the JWKS again, counted from the end of the last fetch. If EHOS
+  removes a key, a compromised key for example, the next successful fetch removes it. Nobody
+  restarts anything.
 - **A credential with an unknown `kid`** starts an early fetch. The process fetches early at most
   one time in 30 seconds. Each fetch starts these 30 seconds again, a scheduled or a failed fetch
   too.
@@ -64,28 +67,36 @@ These answers are failed fetches:
 - a redirect;
 - an answer that is not complete after 5 seconds.
 
-If a migration or `VACUUM FULL` locks the table, the process waits 1 second or less. Then it logs
-the write as failed, and the next fetch writes the table again.
+If a migration or `VACUUM FULL` locks the table, the process waits 1 second or less for the lock.
+Then it logs the write as failed, and the next fetch writes the table again. The wait for a
+connection of the repo is the limit of the repo.
 
 ### When does nobody get in?
 
-An application that has never had a key refuses each credential with `:no_keys`, and logs it at
-start. This is the one case in which "EHOS is down" becomes "nobody gets in". The application also
-refuses with `:no_keys` while the key process does not run.
+The application refuses each credential with `:no_keys` when the key process holds no key. This
+occurs in these cases:
 
-`EhOsContract.Auth.ready?/0` returns `false` in both cases. Use it in the health check of the
+- the table has no key, and no fetch succeeded since the start. This is the first start, or every
+  write to the table failed;
+- the process cannot read its table at start, and no fetch succeeded since;
+- the key process does not run.
+
+The process logs it at start. In these cases, "EHOS is down" becomes "nobody gets in".
+`EhOsContract.Auth.ready?/0` returns `false` in each of them. Use it in the health check of the
 application.
 
-After one fetch succeeds, the keys are in the table. Then the application accepts credentials while
+After one fetch succeeds and the process writes the table, the application accepts credentials while
 EHOS is down, also after a restart.
 
 ## How does EHOS rotate its key?
 
-The rotation is manual, and the operator of EHOS does it:
+The rotation is manual, and the installation administrator does it:
 
-1. The operator moves `current` to `previous`, and adds a new `current`.
-2. The operator rolls out EHOS. EHOS signs with the new key, and the JWKS publishes both keys.
-3. After 10 minutes, the life of one credential, the operator removes `previous`.
+1. The installation administrator moves `current` to `previous`, and adds a new `current`.
+2. The installation administrator rolls out EHOS. EHOS signs with the new key, and the JWKS
+   publishes both keys.
+3. After 10 minutes, the life of one credential, the installation administrator removes
+   `previous`.
 
 The application does nothing:
 
@@ -97,8 +108,9 @@ The application does nothing:
 ## Limits
 
 - The fetch cannot go through a proxy, and cannot send a client certificate.
-- After EHOS removes a key, the application trusts it until the next scheduled fetch: 5 minutes or
-  less.
+- After EHOS removes a key, the application trusts it until a fetch succeeds. With the default
+  `refresh_every:`, that is about 5 minutes when EHOS answers. While the application cannot reach
+  EHOS, it keeps the key in force, and keeps it in its table after a restart too.
 
 ## Next steps
 

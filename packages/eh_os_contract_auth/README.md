@@ -66,18 +66,11 @@ defines each word of the contract language that these pages use. The words of th
 <!-- Decisions behind this page:
 contract v2 §16, D14 (docs/adr/contract-v2.md): the contract declares who may act; a separate package, this one, verifies who is acting.
 EHOS's decisions this package follows:
-- the credential, a ten-minute Ed25519 JWT with the key's thumbprint as kid; manual key rotation;
+- the credential, a ten-minute Ed25519 JWT with the key's thumbprint as kid;
 - keys kept in the application's own table; every decision recorded, a refusal as carefully as an acceptance;
-- the claims cap and scp, scope values carried in the credential;
-- ehos.yaml is EHOS's format, versioned by JSON Schema;
-- ehos.manifest/v2, ehos.yaml extended with what the contracts offer;
-- EHOS hands the workload its settings in the environment;
-- signing a person in through EHOS with OpenID Connect; the callback address;
-- the client key as a JWK, addresses as exact strings, an application's address as resource;
-- sign_in in ehos.yaml/v2, and applications naming only the others;
-- a capability names its declaration's kind, command, query or record;
-- contracts left out of the manifest, so an edit does not ask for registration.
+- the claims cap and scp; EHOS does not issue scope values yet (#561);
+- signing a person in through EHOS with OpenID Connect; the callback address.
 S2 (docs/adr/browser-session.md): the browser holds a random token, the row its SHA-256; the cookie session encrypted.
 S3 (docs/adr/browser-session.md): EHOS's tokens encrypted, each bound to its row and column.
-#89: the issuer and every address read alike by every parser.
+The pages in docs/ name the decisions behind each of them.
 -->

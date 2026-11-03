@@ -17,10 +17,12 @@ credential without the capability, and signs a browser in.
 
 > **Put `pin_keys: true` only in `config/test.exs`.** The package does not check the environment
 > of the line. It checks only that the line is there. With the line, code can make the application
-> trust a key that EHOS did not publish:
+> trust keys and answers that EHOS did not give:
 >
 > - `EhOsContract.Auth.Keys.pin/2` adds a key;
-> - the `plug:` option of the child answers in place of EHOS;
+> - the `plug:` option of the `EhOsContract.Auth` child answers in place of the keys of EHOS;
+> - the `plug:` option of the `sign_in:` configuration answers in place of the sign-in of EHOS;
+> - `sign_in/3` starts a sign-in stand-in that never calls EHOS;
 > - the `Testing` stand-ins answer for EHOS: [Use people, grants and mail where EHOS does not
 >   answer](without-ehos.md).
 
@@ -44,7 +46,9 @@ token = credential("u-anna", ["clinic.record_payment"])
 ```
 
 For a scoped capability, give its values as the third argument, as the `scp` claim carries them:
-`%{"clinic.open_visits" => %{"clinic_id" => ["7"]}}`.
+`%{"clinic.open_visits" => %{"clinic_id" => ["7"]}}`. EHOS does not issue scope values yet. So
+outside a test, each call to a scoped capability through EHOS gets `{:error, :unscoped_grant}`:
+[The application manifest](manifest.md#offers).
 
 **Result:** `token` is a credential that `verify/2` accepts:
 
@@ -88,10 +92,11 @@ capability. Then it asserts two things:
 - a capability that the contracts declare has no entry;
 - an entry names a capability that the contracts do not declare.
 
-So nobody can add a command without a check of its entry point.
+So the test fails when a contract in its list gets a capability without an entry.
 
 A capability `<name>.subscribe`, which a contract makes for each event that it takes from another
-application, needs no entry. It is the capability of the application, not of a person.
+application, needs no entry. The check fails on an entry for it, because it is the capability of
+the application, not of a person.
 
 The check proves that each entry point refuses. It does not prove that each path into the domain
 goes through an entry point.

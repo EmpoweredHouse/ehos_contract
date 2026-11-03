@@ -3,7 +3,9 @@
 EHOS deploys an image of the application with its *manifest*. The manifest is the `ehos.yaml` of
 the application, with what its contracts offer added. This page is for a developer who writes
 `ehos.yaml` and generates the manifest in CI. It tells what `mix eh_os_contract.manifest` reads,
-what it writes, and what it refuses.
+what it writes, and what it refuses. The [glossary of the
+engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/glossary.md)
+defines each word of the contract language that this page uses.
 
 `ehos.yaml` tells EHOS what the workload needs: a database, the routes that it serves, its health
 checks, and more. EHOS alone defines its format. The words of the platform, such as *installation*,
@@ -142,7 +144,8 @@ task finds the domain, refuses its name, and tells you to use `name: :"my-shop"`
 
 An EHOS that does not know the kinds `query` and `record` refuses a manifest that offers them.
 
-These things are not in `offers`, because the manifest has no field for them:
+These things are not in `offers`, because the manifest has no field for them, and EHOS refuses a
+field that it does not know:
 
 - a system actor, and a human actor without a capability;
 - the scopes of a capability;
@@ -164,7 +167,9 @@ deployment ask for `ehos.application.register`. `engine` is in the digest of the
 
 The task raises, and tells what to change, in these cases:
 
+- no domain is registered;
 - no domain has contracts, or two or more do and `ehos.yaml` names none of them;
+- the domain that `application` names has no contracts;
 - `application` names no domain, or two or more domains match it;
 - the name of the domain is not a name that EHOS takes;
 - two contracts declare the same capability;
@@ -250,8 +255,8 @@ needs:
 
 `needs.secrets` names each secret and holds no value:
 
-- People set each value in EHOS, for an environment, or as the default of a template for its
-  ephemeral environments.
+- People set each value in EHOS, for an environment, or as the default of an environment template
+  for its ephemeral environments.
 - EHOS refuses a deployment while a secret that it names has no value there.
 - The workload gets each secret as an environment variable, with the name in upper case:
   `smtp_password` becomes `SMTP_PASSWORD`. `config/runtime.exs` reads it.

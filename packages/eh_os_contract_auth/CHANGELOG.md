@@ -60,9 +60,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   process keeps them; `docs/testing.md` takes the host's tests; `docs/manifest.md` takes the
   manifest and the bundle. The pages and the docs of `EhOsContract.Auth.Keys` and
   `EhOsContract.Auth.Testing` now say that `pin_keys: true` is checked only for being set, not for
-  the environment it is set in, so it belongs in `config/test.exs` alone (#560). The manifest's
-  doc no longer lists scope values on a role binding among what EHOS added: EHOS carries none yet,
-  so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The manifest page says
+  the environment it is set in, so it belongs in `config/test.exs` alone, and list what the line
+  unlocks (#560). The doc of `EhOsContract.Auth.Manifest` says that no role binding in EHOS carries
+  scope values yet, so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The
+  pages also say that a key EHOS removed stays trusted while the application cannot reach EHOS,
+  which global Req options reach the fetch of the keys, and that `EHOS_CA_FILE` goes to the
+  sign-in and the workload too. The manifest page says
   that EHOS gives its client for `needs.people` and `needs.mail` too, not only for `sign_in`. Links
   change: `#generating-the-ehos-application-manifest`, `#configuration-from-ehoss-environment`,
   `#in-a-hosts-tests` and `#where-the-keys-come-from-and-what-to-configure-at-integration` of the
