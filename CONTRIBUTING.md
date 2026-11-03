@@ -227,7 +227,7 @@ stale, so each place links to the next instead.
 | [`ROADMAP.md`](ROADMAP.md) | Where are we, and what comes next? The programmes, each stage's status, a short paragraph per stage being planned, the link to its issue | When a stage starts or ends |
 | A GitHub issue | Why and how was this stage done? In short for anyone, then the technical detail, scope, expected result, decisions with the options they beat, the review | While the stage is worked on; closed by the pull request that says `Closes #N`, or by hand after its closing comment |
 | `docs/adr/` | What is the library meant to be? Its assumptions, the contract's rules and shapes, alternatives rejected for the design | When a stage changes an assumption or a rule later stages and applications rely on; always as a dated amendment that links the issue, never a silent rewrite |
-| A pull request | What changed in the code, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
+| A pull request | The problem and its fix in short for anyone, its risks, then what changed in the code, why, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
 | A package's `CHANGELOG.md` | What changed for a host, version by version | In the pull request that changes what a host sees ("Changelogs and releases", below) |
 | The code and its tests | What the library does | — |
 | `packages/eh_os_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
@@ -258,8 +258,10 @@ stage was carried out stays in its issue.
 5. **Decisions go on the issue as comments when they are made**, with the options that lost and why. One that
    changes what the library is meant to be also gets its dated amendment in `docs/adr/`, linking the issue,
    and the issue names it under "Changes to the design record".
-6. **A pull request** from the template. Its first line is `Closes #N` on the pull request that finishes the
-   issue, `Part of #N` on earlier ones, or `No issue: <why>` for a change that needs none — a typo, a
+6. **A pull request** from the template, whose sections go from the problem in plain words to the review. The
+   maintainers' `ehos-dev:pull-request` skill writes its description and opens it, with the rules that
+   `.claude/review.md` gives in "The pull request". Its first line is `Closes #N` on the pull request that
+   finishes the issue, `Part of #N` on earlier ones, or `No issue: <why>` for a change that needs none — a typo, a
    dependency bump. A check (`.github/workflows/pr-links-issue.yml`) fails a pull request that says none of
    them; it does not decide which one is right. A change a host can see has its line in the package's
    `CHANGELOG.md`, or the description says why not on a line `No changelog: <why>` (below).
@@ -355,8 +357,8 @@ Claude Code session opened here, and nothing the repository configures asks for 
 The maintainers add three things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
 - the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
-  with EHOS's other repositories, among them `pre-pr-review`, `stage-issue`, `release`, `elixir`, and `voice` and
-  `diagrams` for text a person reads and its diagrams;
+  with EHOS's other repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`,
+  `elixir`, and `voice` and `diagrams` for text a person reads and its diagrams;
 - the `diagram-design` plugin, from the same marketplace at one commit, which `diagrams` lays a diagram out with;
 - a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
 
