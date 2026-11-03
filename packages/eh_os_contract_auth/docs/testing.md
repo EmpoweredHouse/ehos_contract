@@ -1,7 +1,7 @@
 # Test the application without EHOS
 
 This page tells a developer how to test an application that uses `eh_os_contract_auth`, with no
-EHOS and no network. A test makes its own credentials, checks that each entry point refuses a
+running EHOS. A test makes its own credentials, checks that each entry point refuses a
 credential without the capability, and signs a browser in.
 
 ## Prerequisites
@@ -9,8 +9,12 @@ credential without the capability, and signs a browser in.
 - You did the steps of [Get started](getting-started.md). In the test environment, `issuer` and
   `audience` are set, and `EhOsContract.Auth` is in the supervision tree after the repo.
 - In `config/test.exs`, `issuer` is an address that does not answer, such as
-  `https://ehos.test`. The key process starts at once, and fetches the keys after it starts. That
-  fetch then fails, and goes to no real EHOS. The tests need only the test key of step 2.
+  `https://ehos.test`. The tests need only the test key of step 2. The key process fetches the
+  keys after it starts, and that fetch fails without a real EHOS. The first credential waits until
+  that fetch ends, 5 seconds at most. An address that no DNS resolves makes it end at once.
+- For tests with no network at all, give the child a plug in place of EHOS:
+  `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
+  with `pin_keys: true`, step 1.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These
