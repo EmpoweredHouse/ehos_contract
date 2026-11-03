@@ -176,6 +176,8 @@ recorded?](decisions.md)
   it.
 - [How is each decision recorded?](decisions.md): the row for each decision, what it costs, and how
   long to keep it.
+- [Sign people in through EHOS](sign-in.md): give the pages of the application a session for each
+  person.
 - [Accept calls with a credential](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/calls.md):
   the routes of `EhOsContract.Plug` and their answers.
 - [Generate the application manifest](../README.md#generating-the-ehos-application-manifest): tell

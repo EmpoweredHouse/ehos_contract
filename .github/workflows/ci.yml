@@ -215,9 +215,11 @@ jobs:
         working-directory: packages/eh_os_contract_web
         run: mix deps.get --only test
 
+      # `--only test`, as for the engine: the verifier's `:dev` dependencies, which draw its
+      # diagrams, live in the private ehos-tools.
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth
-        run: mix deps.get
+        run: mix deps.get --only test
 
       # `--only test`, as for the engine: the renderer's `:dev` dependencies, which draw its
       # diagrams, live in the private ehos-tools.
@@ -272,7 +274,7 @@ jobs:
         working-directory: sandbox
         run: mix check
 
-  # The diagrams of the engine and the graph renderer in `docs/img/` against their sources in
+  # The diagrams of the engine, the credential verifier and the graph renderer in `docs/img/` against their sources in
   # `docs/diagrams/`, by `mix ehos_diagrams.gen --check` in `:dev`. The generator and the design system it reads
   # live in the private ehos-tools, so this is the only job that gets a token for it, from
   # the "ehos-tools CI" GitHub App: it may only read that repository and expires within the
@@ -322,6 +324,18 @@ jobs:
 
       - name: mix ehos_diagrams.gen --check
         working-directory: packages/eh_os_contract
+        run: mix ehos_diagrams.gen --check
+
+      - name: Install credential verifier deps
+        working-directory: packages/eh_os_contract_auth
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
+        run: mix deps.get --only dev
+
+      - name: mix ehos_diagrams.gen --check, credential verifier
+        working-directory: packages/eh_os_contract_auth
         run: mix ehos_diagrams.gen --check
 
       - name: Install graph renderer deps

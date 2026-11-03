@@ -146,7 +146,8 @@ defmodule EhOsContractHost.MixProject do
     if status != 0, do: Mix.raise("the engine's own gate failed (packages/eh_os_contract)")
   end
 
-  # The diagrams of the engine and of the graph renderer against their sources (#520). The
+  # The diagrams of the engine, the credential verifier and the graph renderer against their
+  # sources (#520). The
   # generator is a `:dev` dependency from the private ehos-tools, so each package's own gate,
   # which runs in `:test`, leaves it out and anyone can run that. Here it runs where a
   # maintainer's `mix deps.get` fetched it; without it the gate says so and goes on, and CI's
@@ -156,6 +157,7 @@ defmodule EhOsContractHost.MixProject do
   defp package_diagrams(_args) do
     for {package, name} <- [
           {"eh_os_contract", "the engine"},
+          {"eh_os_contract_auth", "the credential verifier"},
           {"eh_os_contract_graph", "the graph renderer"}
         ] do
       dir = "../packages/#{package}"

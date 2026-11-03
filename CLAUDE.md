@@ -153,7 +153,8 @@ table of `docs/refusals.md` to it, and what a prose page says it covers (`<!-- c
 --warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
 `test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`), then
-`ehos_diagrams.gen --check` in `packages/eh_os_contract` and `packages/eh_os_contract_graph` under `:dev`, which
+`ehos_diagrams.gen --check` in `packages/eh_os_contract`, `packages/eh_os_contract_auth` and
+`packages/eh_os_contract_graph` under `:dev`, which
 holds the diagrams in `docs/img/` to their sources in `docs/diagrams/` (only where `mix deps.get` fetched the
 private ehos-tools; without it the gate
 says it did not check them, and CI's `diagrams` job does, except for a pull request from a fork or Dependabot,
