@@ -36,8 +36,8 @@ You need these:
 
 - Elixir 1.18 or later, and Erlang/OTP 27.
 - Docker, for PostgreSQL. PostgreSQL listens on port 5433.
-- Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine and the graph
-  renderer take their diagram generator from there, in `:dev` only. Without access, the gate does not check the
+- Optional: read access to EmpoweredHouse's private repository `ehos-tools`. The engine, the
+  credential verifier and the graph renderer take their diagram generator from there, in `:dev` only. Without access, the gate does not check the
   diagrams, and CI's `diagrams` job checks them. That job does not run for a pull request from a
   fork or from Dependabot, so nothing checks the diagrams of such a pull request (#527).
 
@@ -53,18 +53,22 @@ dependencies. From the root of the repository, fetch them as CI does:
 ```
 
 ```bash
-(cd packages/eh_os_contract_auth && mix deps.get)
+(cd packages/eh_os_contract_auth && mix deps.get --only test)
 ```
 
 ```bash
 (cd packages/eh_os_contract_graph && mix deps.get --only test)
 ```
 
-If you have access to `ehos-tools`, fetch all of the dependencies of the engine and of the graph
-renderer instead. Then the gate also checks the diagrams:
+If you have access to `ehos-tools`, fetch all of the dependencies of the engine, the credential
+verifier and the graph renderer instead. Then the gate also checks the diagrams:
 
 ```bash
 (cd packages/eh_os_contract && mix deps.get)
+```
+
+```bash
+(cd packages/eh_os_contract_auth && mix deps.get)
 ```
 
 ```bash
@@ -93,8 +97,8 @@ mix check
    engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
    `test/docs_test.exs`. These hold the generated pages and the examples of the prose pages to the
    code.
-6. After the engine, `ehos_diagrams.gen --check` in `:dev`, in the engine and in the graph
-   renderer, if the diagram generator is fetched there. It holds the diagrams to their sources.
+6. After the engine, `ehos_diagrams.gen --check` in `:dev`, in the engine, the credential verifier
+   and the graph renderer, if the diagram generator is fetched there. It holds the diagrams to their sources.
    Without the generator, the gate prints that it did not check the diagrams of that package.
 
 Check the exit code of `mix check` itself. If you pipe the output into `tail`, the exit code is the

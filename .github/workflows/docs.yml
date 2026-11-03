@@ -118,7 +118,9 @@ jobs:
       - name: Restore credential verifier deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract_auth/deps
+          path: |
+            packages/eh_os_contract_auth/deps/*
+            !packages/eh_os_contract_auth/deps/ehos_*
           key: eh-os-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
 
       - name: Restore graph renderer deps
@@ -142,9 +144,10 @@ jobs:
         working-directory: packages/eh_os_contract_web
         run: mix deps.get --only test
 
+      # `--only test`, as for the engine: the verifier's `:dev` dependencies draw its diagrams.
       - name: Install credential verifier deps
         working-directory: packages/eh_os_contract_auth
-        run: mix deps.get
+        run: mix deps.get --only test
 
       # `--only test`, as for the engine: the renderer's `:dev` dependencies draw its diagrams.
       - name: Install graph renderer deps

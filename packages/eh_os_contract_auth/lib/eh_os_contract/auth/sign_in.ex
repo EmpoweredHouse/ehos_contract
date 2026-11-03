@@ -11,24 +11,31 @@ defmodule EhOsContract.Auth.SignIn do
   the application's client, and the process that keeps EHOS's discovery document and
   keys.
 
-      # config/runtime.exs
-      config :eh_os_contract_auth,
-        issuer: System.fetch_env!("EHOS_ISSUER"),
-        audience: System.fetch_env!("EHOS_AUDIENCE"),
-        sign_in: [
-          client_id: System.fetch_env!("EHOS_CLIENT_ID"),
-          client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
-          address: "https://" <> System.fetch_env!("PHX_HOST"),
-          secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
-          applications: Jason.decode!(System.get_env("EHOS_SIGN_IN_APPLICATIONS", "{}")),
-          absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
-        ]
+      # config/runtime.exs, beside issuer: and audience:, where EHOS gives the sign-in its
+      # applications
+      if applications = System.get_env("EHOS_SIGN_IN_APPLICATIONS") do
+        config :eh_os_contract_auth,
+          sign_in: [
+            client_id: System.fetch_env!("EHOS_CLIENT_ID"),
+            client_key_file: System.fetch_env!("EHOS_CLIENT_KEY_FILE"),
+            address: "https://" <> System.fetch_env!("PHX_HOST"),
+            secret_key_base: System.fetch_env!("SECRET_KEY_BASE"),
+            applications: Jason.decode!(applications),
+            absolute_limit: String.to_integer(System.get_env("EHOS_SIGN_IN_ABSOLUTE", "43200"))
+          ]
+      end
 
-      # the supervision tree, after EhOsContract.Auth
-      children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.SignIn]
+      # the supervision tree, after EhOsContract.Auth, where sign_in: is configured
+      sign_in =
+        if Application.get_env(:eh_os_contract_auth, :sign_in),
+          do: [EhOsContract.Auth.SignIn],
+          else: []
 
-  The package reads no environment variable itself; the host maps them, as it maps
-  `EHOS_ISSUER`. `EHOS_CA_FILE` goes to this child as it goes to `EhOsContract.Auth`:
+      children = [MyApp.Repo, EhOsContract, EhOsContract.Auth] ++ sign_in
+
+  EHOS also gives `EHOS_CLIENT_ID` to an application that only reads the people or sends
+  mail, so `EHOS_SIGN_IN_APPLICATIONS` is what says it signs people in. The sign-in reads
+  no environment variable itself; the host maps them, as it maps `EHOS_ISSUER`. `EHOS_CA_FILE` goes to this child as it goes to `EhOsContract.Auth`:
   `{EhOsContract.Auth.SignIn, cacertfile: ca}`.
 
   **What is checked at boot.** `child_spec/1` raises, so a host's boot fails while its

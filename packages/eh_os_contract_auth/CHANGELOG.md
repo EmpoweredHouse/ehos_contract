@@ -38,6 +38,22 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   removes the record of a refusal. The retention example now deletes in batches. Links change: `#installation`, `#wiring-it`,
   `#deciding-and-recording-every-decision`, `#over-http` and `#the-credential` of the README are
   now the three pages. The other sections of the README stay, and move in later pull requests.
+- **Seven how-to pages take the README's sections on signing in, the people, mail, grants, calls
+  outside the installation and the stand-ins** (#517). `docs/sign-in.md` has a diagram of the sign-in,
+  configures `sign_in:` and starts its child only where EHOS gives `EHOS_SIGN_IN_APPLICATIONS` (#454),
+  as the doc of `EhOsContract.Auth.SignIn` now does too, since EHOS also gives its client to an
+  application that only reads the people or sends mail, and says how to protect a host's own routes
+  behind the session from forgery: `same_site: "Lax"` on the cookie with `secure: true`,
+  `protect_from_forgery` for the host's routes, and none in front of `EhOsContract.Plug` (#570).
+  `docs/call-another-application.md`, `docs/people.md`, `docs/mail.md`, `docs/grants.md`,
+  `docs/egress.md` and `docs/without-ehos.md` take the other sections. The pages now say that
+  `may_grant:` is written in the domain, that the grant example covers every `delivery`, that
+  `in_reply_to:` and `references:` take lists, that a people cursor also carries `state:`, which
+  errors a mail call gives in which case, that the egress plugin raises for a request that uses only
+  HTTP/2 also without `EHOS_EGRESS_PROXY`, and that the check against a stand-in in a release knows
+  only the six stand-ins of the package. Links change: `#calling-a-host-outside-the-installation`,
+  `#signing-people-in`, `#reading-the-companys-people`, `#sending-mail`, `#a-person-granting-a-role`
+  and `#people-grants-and-mail-where-ehos-does-not-answer` of the README are now these pages.
 
 ## [0.11.0] - 2026-11-01
 

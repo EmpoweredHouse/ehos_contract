@@ -6,7 +6,7 @@
 #   .github/scripts/build-docs.sh /tmp/eh-os-contract-docs "$(git rev-parse --abbrev-ref HEAD)"
 #
 # Dependencies must be fetched first (`mix deps.get`; `--only test` for the
-# engine, the dashboard and the graph renderer, whose `:dev` dependencies are private). The build runs under MIX_ENV=test,
+# engine, the dashboard, the credential verifier and the graph renderer, whose `:dev` dependencies are private). The build runs under MIX_ENV=test,
 # as the gate's `docs --warnings-as-errors` does, so it needs no database and no
 # credential, and fails on the same broken references the gate fails on.
 #

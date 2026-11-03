@@ -37,8 +37,33 @@ defmodule EhOsContract.Auth.MixProject do
       compilers: [:boundary] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      # `mix ehos_diagrams.gen [--check]`, in `:dev` only, as in the engine: the sandbox's gate
+      # runs the check when the generator is fetched, and CI in its `diagrams` job.
+      ehos_diagrams: [
+        sources: "docs/diagrams",
+        out: "docs/img",
+        vocabulary: {__MODULE__, :vocabulary, []},
+        pages: ["README.md", "docs/**/*.md"],
+        documents: ["README.md", "docs/**/*.md"]
+      ]
     ]
+  end
+
+  # What the labels of the diagrams are held to: each word the engine's glossary defines, in
+  # lower case, as in the graph renderer. EHOS's own words are not in this repository, so a
+  # diagram names them as technical. Read from the engine beside it, which is there wherever
+  # `ehos_diagrams` is, in this repository.
+  @doc false
+  def vocabulary do
+    words =
+      ~r/^\| \*\*([^*]+)\*\* \|/mu
+      |> Regex.scan(File.read!(Path.expand("../eh_os_contract/docs/glossary.md", __DIR__)),
+        capture: :all_but_first
+      )
+      |> Enum.map(fn [word] -> String.downcase(word) end)
+
+    %{words: words, alone: [], concepts: %{}, badges: []}
   end
 
   # `mix check` runs the tests, and those need MIX_ENV=test.
@@ -86,11 +111,20 @@ defmodule EhOsContract.Auth.MixProject do
   defp docs do
     [
       main: "readme",
+      # The diagrams `mix ehos_diagrams.gen` writes, which the pages link as `img/<id>.svg`.
+      assets: %{"docs/img" => "img"},
       extras: [
         "README.md",
         "docs/getting-started.md",
         "docs/credential.md",
         "docs/decisions.md",
+        "docs/sign-in.md",
+        "docs/call-another-application.md",
+        "docs/people.md",
+        "docs/mail.md",
+        "docs/grants.md",
+        "docs/egress.md",
+        "docs/without-ehos.md",
         "CHANGELOG.md"
       ],
       # The changelog names what a release removed, and the names resolve nowhere
@@ -191,7 +225,23 @@ defmodule EhOsContract.Auth.MixProject do
       {:stream_data, "~> 1.1", only: :test},
       # Holds every implementation of `People.Directory` and `Grants.Granter` but EHOS's to the
       # callbacks' types, as a host's Hammox mock would (#475). Never a dependency of a host.
-      {:hammox, "~> 0.7", only: :test}
+      {:hammox, "~> 0.7", only: :test},
+      # The diagrams of the pages: hand-laid sources in `docs/diagrams/`, checked and written
+      # into `docs/img/` by `mix ehos_diagrams.gen` (`ehos_diagrams:` above), at the commits the
+      # engine pins, for the reasons its `mix.exs` gives. `:dev` only: `mix deps.get --only test`
+      # fetches nothing private, so anyone can run this package's `mix check`.
+      {:ehos_diagrams, "~> 0.2.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_diagrams",
+       ref: "2198050364cee447b66b010ac31dfd6df9c9262e",
+       only: :dev,
+       runtime: false},
+      {:ehos_design, "~> 0.5.0",
+       github: "EmpoweredHouse/ehos-tools",
+       sparse: "packages/ehos_design",
+       ref: "8b2de14f3c6f7768c5ddb9f74f0595ec44acddd0",
+       only: :dev,
+       runtime: false}
     ]
   end
 end
