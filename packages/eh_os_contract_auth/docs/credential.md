@@ -118,8 +118,8 @@ can have any case. The plug gives the token to `verify/2`:
 - [How is each decision recorded?](decisions.md): what the package writes for each verified actor.
 - [How is a call authorized?](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/authorization.md):
   how the engine checks the capabilities and the scopes of the actor, and the limits of the check.
-- [Where the keys come from](../README.md#where-the-keys-come-from-and-what-to-configure-at-integration):
-  how the key process fetches, keeps and rotates the keys.
+- [Where do the keys come from?](keys.md): how the key process fetches, keeps and rotates the
+  keys.
 
 <!-- Decisions behind this page:
 EHOS's decisions this package follows: the credential, a ten-minute Ed25519 JWT with the key's

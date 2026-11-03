@@ -8,7 +8,7 @@ contract says. Other repositories install its packages from git (`sparse:`), lat
 | --- | --- |
 | `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md`, `docs/refusals.md` |
 | `packages/eh_os_contract_web/` | the mountable dashboard |
-| `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `README.md`) |
+| `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `docs/configuration.md`) |
 | `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
 | `sandbox/` | the development host `:eh_os_contract_host` and the test material: three invented case studies, lending, billing and fulfilment |
 | `docs/` | the design record (`docs/adr/`) |

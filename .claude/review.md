@@ -179,5 +179,9 @@ Kinds of problems a review here found that neither file names yet:
 - A page that says a package guards something is read against the guard's condition: `pin_keys`
   raises when the line is missing, not when it is in the wrong environment, so "the package raises
   elsewhere" promised a guard that does not exist. Found in #517.
+- A page that names an option is read against where the code takes it: `cacertfile:` and `plug:` are
+  options of a child (`EhOsContract.Auth.SignIn`, `EhOsContract.Auth.Workload`), not keys of its
+  `config :eh_os_contract_auth` block, and each refuses a key it does not take, so a host that
+  follows the page does not boot. Found in #517.
 
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

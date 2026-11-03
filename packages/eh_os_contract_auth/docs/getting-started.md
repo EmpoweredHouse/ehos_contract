@@ -66,8 +66,8 @@ config :eh_os_contract_auth,
   `/.well-known/jwks.json` of the issuer. It has the same rules as `issuer`, but it can have a
   path.
 
-In a release, read the two values from the environment that EHOS gives the workload. The section
-"Configuration from EHOS's environment" of the [README](../README.md) tells how.
+In a release, read the two values from the environment that EHOS gives the workload. [Configure
+the package](configuration.md#the-environment-that-ehos-gives-the-workload) tells how.
 
 **Result:** the engine asks `EhOsContract.Auth` about each call with a credential. Nothing runs
 yet: the package checks this configuration when its child starts, in step 4.
@@ -107,9 +107,8 @@ children = [MyApp.Repo, EhOsContract, EhOsContract.Auth]
 ```
 
 If EHOS uses a certificate authority of its own, give its file to the child:
-`{EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}`. [Where the keys come
-from](../README.md#where-the-keys-come-from-and-what-to-configure-at-integration) tells the other
-options.
+`{EhOsContract.Auth, cacertfile: "/etc/ehos/ca.pem"}`. [Configure the
+package](configuration.md#the-options-of-the-child) tells the other options.
 
 **Result:** the application starts. The key process loads the last keys from its table, then
 fetches the keys of EHOS. `EhOsContract.Auth.ready?/0` returns `true` when the process holds a key.
@@ -145,8 +144,8 @@ EhOsContract.Auth.verify(token)
 granted. [The credential](credential.md) tells what each refusal means.
 
 Without EHOS, a test of the application can make a credential with
-`EhOsContract.Auth.Testing.credential/3`. The section "In a host's tests" of the
-[README](../README.md) tells how.
+`EhOsContract.Auth.Testing.credential/3`. [Test the application without EHOS](testing.md) tells
+how.
 
 ## 6. Accept calls over HTTP
 
@@ -180,5 +179,5 @@ recorded?](decisions.md)
   person. The [overview](../README.md) lists the other tasks.
 - [Accept calls with a credential](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/eh_os_contract/docs/calls.md):
   the routes of `EhOsContract.Plug` and their answers.
-- [Generate the application manifest](../README.md#generating-the-ehos-application-manifest): tell
-  EHOS what the workload needs and what its contracts offer.
+- [The application manifest](manifest.md): tell EHOS what the workload needs and what its contracts
+  offer.

@@ -3,9 +3,10 @@ defmodule EhOsContract.Auth.Manifest do
   # `needs.people` with `ehos.manifest/v3`; `needs.database.seed` and `needs.secrets` with
   # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; `needs.egress` with
   # `ehos.manifest/v6`; `needs.mail` with `ehos.manifest/v7`; `needs.compute` with
-  # `ehos.manifest/v8`; a capability naming its declaration's kind; scope values on a binding;
-  # and `contracts` left out, so that an edit to a contract does not change EHOS's authority
-  # digest.
+  # `ehos.manifest/v8`; a capability naming its declaration's kind; and `contracts` left out, so
+  # that an edit to a contract does not change EHOS's authority digest. Scope values on a role
+  # binding are a decision of EHOS it has not built: its grants carry none, and no credential it
+  # issues has `scp` (#561).
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
   `ehos.manifest/v8` for an `ehos.yaml/v7`, `ehos.manifest/v7` for an `ehos.yaml/v6`,
@@ -44,8 +45,8 @@ defmodule EhOsContract.Auth.Manifest do
       an EHOS recent enough to know these kinds accepts; an earlier EHOS refuses a
       manifest that offers a query or a recording. Scopes and publications are absent:
       EHOS's manifest has no field for them yet, so a scoped command or query is offered,
-      and every call to it through EHOS is refused `:unscoped_grant` until a binding can
-      carry scope values.
+      and every call to it through EHOS is refused `:unscoped_grant` until a role binding
+      in EHOS can carry scope values, which none does yet.
     * `engine`, the `eh_os_contract` version that wrote it.
 
   `contracts` is not written. EHOS counts it in the manifest's authority digest, and
