@@ -112,9 +112,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   For a command that creates a unit with a generated identity, `Supplier.Request.given` now holds
   that identity. The `Supplier` docs say what the transaction asks of `supply/2`: the connection it
   holds, the order of locks, and what is kept after a refusal. The verdict moves because an
-  exception of the supplier, or of the entities read for such a command, now writes a `failed`
-  command row when the transaction is the engine's own, with `failed_in` `"supplier"` or
-  `"entities"`; before, it wrote no row.
+  exception of the supplier, or of the entities read for such a command, now records the command
+  as failed when the transaction is the engine's own, and the conformance report counts it as an
+  attempt that failed; before, the engine recorded nothing.
 - **Breaking:** **the engine does not start when a stored data key does not unwrap** (#573). At boot,
   the engine unwraps one data key of each master key that `eh_os_contract_subject_keys` names. If one
   does not unwrap, it raises with the id of that master key and the count of its data keys. Before,
