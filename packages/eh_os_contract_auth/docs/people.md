@@ -80,7 +80,11 @@ On a page, ask `EhOsContract.Auth.People.directory/0` for the people:
 directory = EhOsContract.Auth.People.directory()
 
 {:ok, %{people: people, next: next}} = directory.list(q: "ad", limit: 50)
-{:ok, %{people: more, next: _}} = directory.list(after: next)
+# next is nil on the last page
+if next do
+  {:ok, %{people: more, next: _}} = directory.list(after: next)
+end
+
 {:ok, person} = directory.get(id)
 # %EhOsContract.Auth.People.Person{id: "6f1c…", email: "ada@example.com", name: "Ada Lovelace", state: :joined}
 ```
@@ -96,7 +100,7 @@ not answer](without-ehos.md).
 | `q:` | the start of the name or the email, 2048 bytes or fewer |
 | `state:` | `:invited`, `:joined`, or a list of both; both when not given |
 | `limit:` | from 1 to 500 people on a page |
-| `after:` | the `next` of the page before, alone: it holds the `q:`, `state:` and `limit:` of the first page |
+| `after:` | the `next` of the page before, alone: it holds the `q:`, `state:` and `limit:` of the first page; `nil` raises |
 
 EHOS gives the people in the order of their emails, and never gives a disabled person in a list.
 `get/1` also gives a disabled person, with `state: :disabled`.

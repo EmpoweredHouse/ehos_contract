@@ -55,7 +55,7 @@ case EhOsContract.Auth.Grants.granter().grant(conn, email: email, name: name, ro
   {:ok, %Grant{delivery: :held}} -> # "they have a recent invitation; it still works"
   {:ok, %Grant{delivery: :none}} -> # "they can use the role at their next sign-in"
   {:error, :beyond_rule} -> # "your role cannot give that role"
-  {:error, :unavailable} -> # "we did not invite them; try again"
+  {:error, :unavailable} -> # "we could not confirm the invitation; try again"
   {:error, _reason} -> # the table below gives each reason
 end
 ```
@@ -138,7 +138,7 @@ correct. Examples are an empty `email:` or `role:`, a string that is not UTF-8, 
 | `:rate_limited` | The limit of EHOS on its token endpoint or its grant routes |
 | `:signed_out` | The session names nobody |
 | `:renewal_busy` | Another request of the session is renewing the credential, the credential has too few seconds left for the exchange, or EHOS could not renew it in the last 5 seconds. Ask again. |
-| `:unavailable` | EHOS cannot be reached, fails, or gives an answer that it never gives. The log tells which. |
+| `:unavailable` | EHOS cannot be reached, fails, or gives an answer that it never gives. The log tells which. If the connection fails after EHOS got the request, EHOS can have made the grant. A second request is safe. |
 
 EHOS takes 60 token requests a minute or fewer from the client of the application, and the
 credential of the [workload](people.md) counts too. Each grant exchanges one time. So show the grant
