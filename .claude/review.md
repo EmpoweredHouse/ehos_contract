@@ -76,11 +76,29 @@ EHOS's repositories alike).
 
 ## The pull request
 
-From the template. Its first line names the issue (`CONTRIBUTING.md`, "From an idea to `main`").
-Its "How it was tested" section says what you ran, with the gate's exit code. A change a host can
-see has its line in the package's `CHANGELOG.md`; for one without, the description says why on a
-line `No changelog: <why>`. Its "Review" section lists what each review found and what happened to
-each finding, or says the change is documentation only.
+The `ehos-dev:pull-request` skill writes the description and opens the pull request. This section
+gives the rules that are this repository's own. `.claude/settings.team.json` pins a tag of
+`ehos-dev` that has the skill. If the session does not have it, its plugin did not load or Claude
+Code still holds an older version: tell the user, who can run `/reload-plugins` or restart, and in a
+run with no user, stop and report it, as `CLAUDE.md` says for a skill of the plugin the session does
+not have. A maintainer who copied that file into `.claude/settings.local.json` moves the `ref` there
+too (`CONTRIBUTING.md`, "Working with Claude Code").
+
+- **The base** is `main`, and the pull request is not a draft: CI's gate does not run on a draft.
+- **The title** is a short sentence that says what changes for a reader, as a commit subject is.
+- **The first line** is `Closes #N`, `Part of #N` or `No issue: <why>`, which CI's
+  `pr-links-issue` check reads (`CONTRIBUTING.md`, "From an idea to `main`").
+- **A changelog line.** A change a host can see has its line under `## [Unreleased]` in the
+  package's `CHANGELOG.md`. Otherwise the description has a line `No changelog: <why>`, at the end
+  of "What", which CI's `Changelog` check reads (`CONTRIBUTING.md`, "Changelogs and releases").
+- **Codes.** Outside "In short", which has none, a refusal or rule code stands in parentheses after
+  its meaning: "a reaction to another context's event that leaves delivery out (X10)".
+- **How it was tested**, under "Automated", gives the gate, `mix check` in `sandbox/`, with its own
+  exit code.
+- **No sections of its own** beyond the template's.
+
+This repository has no `review section` check, which the template names: "Review" is filled all the
+same.
 
 ## Before a fix
 
