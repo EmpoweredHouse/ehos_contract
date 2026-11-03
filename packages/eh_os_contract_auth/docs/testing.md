@@ -11,7 +11,8 @@ credential without the capability, and signs a browser in.
 - In `config/test.exs`, `issuer` is an address that does not answer, such as
   `https://ehos.test`. The tests need only the test key of step 2. The key process fetches the
   keys after it starts, and that fetch fails without a real EHOS. The first credential waits until
-  that fetch ends, 5 seconds at most. An address that no DNS resolves makes it end at once.
+  that fetch ends. Use an address that no DNS resolves, so that the fetch ends at once. A fetch
+  can take 5 seconds, and the first credential then can fail with a timeout of its call.
 - For tests with no network at all, give the child a plug in place of EHOS:
   `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
   with `pin_keys: true`, step 1.

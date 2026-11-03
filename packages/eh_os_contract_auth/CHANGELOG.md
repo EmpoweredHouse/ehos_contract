@@ -67,9 +67,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   which global Req options reach the fetch of the keys, and that `EHOS_CA_FILE` goes to the
   sign-in and the workload too. The manifest page says
   that EHOS gives its client for `needs.people` and `needs.mail` too, not only for `sign_in`. Links
-  change: `#generating-the-ehos-application-manifest`, `#configuration-from-ehoss-environment`,
-  `#in-a-hosts-tests` and `#where-the-keys-come-from-and-what-to-configure-at-integration` of the
-  README are now these pages.
+  change: the README's `#generating-the-ehos-application-manifest` is now `docs/manifest.md`,
+  `#configuration-from-ehoss-environment` is `docs/configuration.md`, `#in-a-hosts-tests` is
+  `docs/testing.md`, and `#where-the-keys-come-from-and-what-to-configure-at-integration` is
+  `docs/keys.md` and `docs/configuration.md`.
 
 ## [0.11.0] - 2026-11-01
 
