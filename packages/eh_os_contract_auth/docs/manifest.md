@@ -73,7 +73,9 @@ An EHOS refuses a manifest of a version that is newer than its own.
 
 ## How does the task read `ehos.yaml`?
 
-The task reads the file as EHOS reads it, so it does not write a manifest that EHOS refuses.
+The task reads the file as EHOS reads it. So it refuses each file that the reader or the schema of
+EHOS refuses. EHOS can still refuse a manifest for a rule that the task does not check, as the list
+below tells.
 
 - **The file has 64 KiB or less.**
 - **The file has only what JSON can hold.** The task refuses each of these: an anchor, an alias, a

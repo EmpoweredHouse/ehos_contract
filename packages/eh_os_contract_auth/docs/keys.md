@@ -27,14 +27,16 @@ its certificate authority: [Configure the package](configuration.md).
 | The Ed25519 key pair that signs credentials | the Helm chart of EHOS (`genPrivateKey "ed25519"`) when the Secret is missing, or the installation administrator through `governance.signingKeys.existingSecret` | a Kubernetes Secret: `current.pem`, and `previous.pem` during a rotation | only the governance plane of EHOS, which mounts it read-only. It is never in a database, and no application sees it. |
 | The public keys (JWKS) | EHOS, from the Secret | `GET <issuer>/.well-known/jwks.json` | anyone. The key process fetches them and keeps a copy in its table. |
 | The `kid` in the header of a credential | nobody: it is the RFC 7638 thumbprint of the key | computed by EHOS when it signs, and by the key process from the JWKS | nobody configures it. The key process ignores a `kid` that the JWKS writes beside a key. |
-| The TLS certificate of the address of EHOS | the installation administrator: cert-manager, a public authority or an internal one | the ingress of EHOS | each fetch of the JWKS checks it |
+| The TLS certificate of the address of the keys: the issuer, or the host of `jwks_url` | the installation administrator: cert-manager, a public authority or an internal one | the ingress of EHOS | each fetch of the JWKS checks it |
 
 ## Why is the TLS certificate the trust anchor?
 
 The application trusts a credential because its signature agrees with a key from the JWKS. It trusts
-the JWKS because the JWKS came over HTTPS from the configured issuer. A person who can answer for
-that address can publish keys of their own. So the certificate of the address of EHOS is the one
-thing that an integration must get right.
+the JWKS because the JWKS came over HTTPS from the configured address: the issuer, or `jwks_url`
+when it is set. A person who can answer for that address can publish keys of their own. So the
+certificate of that address is the one thing that an integration must get right. If `jwks_url`
+names another host, that host is trusted as EHOS, and the `iss` of each credential must still be
+the issuer.
 
 The fetch checks the certificate against the certificate authorities of the system. If EHOS uses an
 internal authority, give it to the child with `cacertfile:` or `cacerts:`. EHOS gives its file as
@@ -102,8 +104,9 @@ The application does nothing:
 
 - A credential signed with the new key has a `kid` that the application does not know. This starts
   an early fetch.
-- The fetch every 5 minutes removes `previous` from memory and from the table after the JWKS drops
-  it.
+- The fetch every 5 minutes removes `previous` from memory after the JWKS drops it. It also removes
+  it from the table, if the write succeeds. If the write fails, the table keeps `previous`, and a
+  restart while EHOS cannot be reached loads it again.
 
 ## Limits
 

@@ -8,6 +8,9 @@ credential without the capability, and signs a browser in.
 
 - You did the steps of [Get started](getting-started.md). In the test environment, `issuer` and
   `audience` are set, and `EhOsContract.Auth` is in the supervision tree after the repo.
+- In `config/test.exs`, `issuer` is an address that does not answer, such as
+  `https://ehos.test`. The key process starts at once, and fetches the keys after it starts. That
+  fetch then fails, and goes to no real EHOS. The tests need only the test key of step 2.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These
@@ -148,11 +151,15 @@ Then a test tells whom EHOS knows and what it answers, and sees the mail that th
 to send:
 
 ```elixir
+# EHOS knows Ada; or answers as EHOS that has not agreed
 stub_people([%{id: "6f1c0a1e-0000-4000-8000-000000000001", email: "ada@example.com", name: "Ada"}])
 stub_people({:error, :not_agreed})
+
 stub_grants({:error, :beyond_rule})
 stub_mail({:error, :not_agreed})
 
+# the code under test sends mail, as the application does, such as through
+# EhOsContract.Auth.Mail.deliver/1; then:
 assert_received {:ehos_mail, message}
 assert message[:to] == [{:person, "6f1c0a1e-0000-4000-8000-000000000001"}]
 ```
