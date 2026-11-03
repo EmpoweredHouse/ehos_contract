@@ -15,8 +15,8 @@ its certificate authority: [Configure the package](configuration.md).
 ![EHOS issues each credential; the key process fetches the public keys of EHOS over HTTPS and keeps them, and verify/2 checks each credential against them.](img/keys.svg)
 
 1. EHOS issues a credential, signed with the private key from its Kubernetes Secret.
-2. The key process fetches the public keys of EHOS over HTTPS, as a JWKS from
-   `<issuer>/.well-known/jwks.json`. It checks the TLS certificate of EHOS.
+2. The key process fetches the public keys of EHOS over HTTPS, as a JWKS from `jwks_url`. By
+   default, that is `<issuer>/.well-known/jwks.json`. It checks the TLS certificate of that address.
 3. The key process writes the keys to its table, `eh_os_contract_auth_keys`.
 4. At start, the key process loads the last keys from its table.
 5. The caller sends the credential to the application.
@@ -25,7 +25,7 @@ its certificate authority: [Configure the package](configuration.md).
 | What | Who makes it | Where it is | Who sees it |
 | --- | --- | --- | --- |
 | The Ed25519 key pair that signs credentials | the Helm chart of EHOS (`genPrivateKey "ed25519"`) when the Secret is missing, or the installation administrator through `governance.signingKeys.existingSecret` | a Kubernetes Secret: `current.pem`, and `previous.pem` during a rotation | only the governance plane of EHOS, which mounts it read-only. It is never in a database, and no application sees it. |
-| The public keys (JWKS) | EHOS, from the Secret | `GET <issuer>/.well-known/jwks.json` | anyone. The key process fetches them and keeps a copy in its table. |
+| The public keys (JWKS) | EHOS, from the Secret | `GET <issuer>/.well-known/jwks.json`, or `jwks_url` when it is set | anyone. The key process fetches them and keeps a copy in its table. |
 | The `kid` in the header of a credential | nobody: it is the RFC 7638 thumbprint of the key | computed by EHOS when it signs, and by the key process from the JWKS | nobody configures it. The key process ignores a `kid` that the JWKS writes beside a key. |
 | The TLS certificate of the address of the keys: the issuer, or the host of `jwks_url` | the installation administrator: cert-manager, a public authority or an internal one | the ingress of EHOS | each fetch of the JWKS checks it |
 

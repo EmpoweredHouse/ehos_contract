@@ -42,8 +42,9 @@ defmodule EhOsContract.Auth.Testing do
   trusted like EHOS's, kept through refreshes, never written to the table. Pinning
   needs `config :eh_os_contract_auth, pin_keys: true`, and raises without it. Put the
   line in `config/test.exs` alone: the package does not check the environment it is
-  set in. No EHOS
-  and no network are needed. The claims are EHOS's — the configured `iss` and `aud`,
+  set in. No running EHOS is needed. The key process still makes its first fetch of the
+  keys, and the first credential waits for it; a `plug:` on the `EhOsContract.Auth` child
+  answers it without the network. The claims are EHOS's — the configured `iss` and `aud`,
   ten minutes of life from `EhOsContract.Clock.now/0`.
 
   **A browser signed in.** `sign_in/3` writes a session for a page behind

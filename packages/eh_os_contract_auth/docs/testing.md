@@ -92,7 +92,8 @@ capability. Then it asserts two things:
 
 - `eh_os_contract_auth_decisions` has one `refused` row with `missing_capability` for that
   credential;
-- the engine wrote no row to its log or to `eh_os_contract_commands`.
+- the number of rows in the log of the engine and in `eh_os_contract_commands` did not change. The
+  check counts the rows: it does not compare their content.
 
 **Result:** the test passes when each entry point refuses. The check also fails in these cases:
 

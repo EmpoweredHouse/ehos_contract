@@ -172,7 +172,8 @@ The task raises, and tells what to change, in these cases:
 - no domain is registered;
 - no domain has contracts, or two or more do and `ehos.yaml` names none of them;
 - the domain that `application` names has no contracts;
-- `application` names no domain, or two or more domains match it;
+- `application` names no domain, or two or more domains match it and none of them has exactly that
+  `name:`. A domain with exactly that `name:` wins over one whose `_` reads as `-`;
 - the name of the domain is not a name that EHOS takes;
 - two contracts declare the same capability;
 - the name of a command, a query, a recorded event or a role has more than 63 characters;
