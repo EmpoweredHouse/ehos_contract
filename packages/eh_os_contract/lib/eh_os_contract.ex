@@ -344,8 +344,9 @@ defmodule EhOsContract do
   `data:` holds the call to what the page decided, as it holds the changeset: the
   identity of the unit it gives replaces a value the params carry for it, and each other
   field it gives is the value when the params leave the field out. Its values are the
-  engine's, as `Form` takes them. A field the host supplies is the `EhOsContract.Supplier`'s,
-  not `data:`'s.
+  engine's, as `Form` takes them, and are read back as a form's text is: a blank string is
+  absent. Unlike `Form`, `call/3` refuses a field the host supplies in `data:`: it is the
+  `EhOsContract.Supplier`'s.
 
   `opts`: `actor:`, a credential's
   `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
@@ -358,8 +359,9 @@ defmodule EhOsContract do
 
   `EhOsContract.Form.refused/3` puts each answer back on the form's changeset.
 
-  It raises `ArgumentError` when `data:` is given without `form: true`, or names a field
-  the declaration does not have or the host supplies: the page's mistakes.
+  It raises `ArgumentError`, by the field's name, when `data:` is given without
+  `form: true`, or holds what `EhOsContract.Form.changeset/4` refuses in it, or a field the
+  host supplies: the page's mistakes.
 
   Besides what those three answer: `{:error, :not_found}` for a capability none of
   the contracts declares as that kind, `{:error, :no_actor}` without a credential,

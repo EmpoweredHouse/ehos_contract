@@ -376,7 +376,8 @@ defmodule EhOsContract.Form do
   @doc """
   The changeset with what `EhOsContract.call/3` refused put back on it, for the form to
   show, with the action `:insert`. It takes every reason `call/3` answers, and what
-  `dispatch/3`, `record/3` and `query/3` answer.
+  `dispatch/3`, `record/3` and `query/3` answer. An error the changeset already holds at
+  the same field is not put again.
 
     * `{:invalid, problems}`: each problem at its field, as `changeset/4` puts its own,
       and an entity the host does not have (`:unknown`, a company id that names no
@@ -537,6 +538,28 @@ defmodule EhOsContract.Form do
         raise ArgumentError,
               "data: names #{inspect(unknown)}, which #{inspect(command)} does not have"
     end
+  end
+
+  @doc false
+  # The checks `changeset/4` makes of `data:`, for `EhOsContract.call/3`, which takes the same
+  # `data:` (#589): a field `declaration` has, no identity dispatch generates, all of an identity
+  # of several fields or none, and each value of its field's type. Raises by the field's name.
+  @spec check_data!(Model.t(), map(), map()) :: :ok
+  def check_data!(model, declaration, data) do
+    known = Enum.map(declaration.fields, & &1.name)
+
+    case Map.keys(data) -- known do
+      [] ->
+        :ok
+
+      unknown ->
+        raise ArgumentError,
+              "data: names #{inspect(unknown)}, which #{declaration.name} does not have"
+    end
+
+    fixed = for field <- identity(model, declaration), Map.get(data, field) != nil, do: field
+    excluded = excluded(model, declaration)
+    data_fits!(model, declaration, data, Codec.values(model.domain), excluded, fixed)
   end
 
   # The page's data, held to what dispatch will hold the command to, so its mistakes fail

@@ -305,29 +305,37 @@ defmodule EhOsContract.Dispatcher do
         input
 
       data when not is_map(data) ->
-        raise ArgumentError, "call/3 takes data: as a map of fields, not #{inspect(data)}"
-
-      _data when not is_map(input) ->
-        input
+        raise ArgumentError, "call/3 takes data: as a map of fields"
 
       data ->
         unless form?(opts), do: raise(ArgumentError, "call/3 takes data: only with form: true")
-        merge_data(model, kind, declaration, input, data)
+        fields = if kind == :query, do: declaration.params, else: declaration.fields
+        :ok = check_data!(model, declaration, fields, data)
+
+        if is_map(input),
+          do: merge_data(model, fields, identity(model, declaration), input, data),
+          else: input
     end
   end
 
-  defp merge_data(model, kind, declaration, input, data) do
-    fields = if kind == :query, do: declaration.params, else: declaration.fields
-    supplied = Enum.map(Supplier.fields(fields), & &1.name)
+  # `Form.changeset/4`'s checks, and a field the host supplies, which is the `Supplier`'s.
+  defp check_data!(model, declaration, fields, data) do
+    :ok = EhOsContract.Form.check_data!(model, Map.put(declaration, :fields, fields), data)
+
+    case Enum.filter(Supplier.fields(fields), &(Map.get(data, &1.name) != nil)) do
+      [] ->
+        :ok
+
+      supplied ->
+        raise ArgumentError,
+              "call/3 got data: for #{inspect(Enum.map(supplied, & &1.name))}, which the host " <>
+                "supplies: the engine asks the Supplier for it"
+    end
+  end
+
+  defp merge_data(model, fields, identity, input, data) do
     by_name = Map.new(fields, &{&1.name, &1})
     values = Codec.values(model.domain)
-    identity = identity(model, declaration)
-
-    for {name, _value} <- data, not is_map_key(by_name, name) or name in supplied do
-      raise ArgumentError,
-            "call/3 got data: #{inspect(name)}, which #{declaration.name} does not declare as " <>
-              "a field the caller sends"
-    end
 
     for {name, value} <- data, value != nil, reduce: input do
       input ->

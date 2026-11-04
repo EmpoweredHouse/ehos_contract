@@ -138,7 +138,8 @@ Keep these things in the application:
 3. The changeset gives the errors of the shape: a missing field, a wrong type, a broken invariant of
    a domain value.
 4. The person submits the form. The page gets a `phx-submit` event.
-5. The page sends the params to `EhOsContract.call/3` with `form: true` and the actor of the person.
+5. The page sends the params to `EhOsContract.call/3` with `form: true`, the `data:` of the
+   changeset and the actor of the person.
 6. Dispatch checks the call: it asks the `EhOsContract.Authorizer` if the person can issue the
    command, and reads the params as the changeset reads them. Then it reads the history of the
    unit, and asks the implementation to decide.
@@ -340,8 +341,9 @@ defp notice(socket, _other), do: put_flash(socket, :error, "The invoice was not 
 `Form.changeset/4` also takes the module of an event that an actor records, or of a query.
 `call/3` takes their params with `form: true`, as for a command.
 
-- To record an event, build the changeset from the event. Send the params as `{:record, name}`.
-  A refusal comes back through `refused/3`, as for a command.
+- To record an event, build the changeset from the event. Send the params as `{:record, name}`,
+  with the same `data:` as the changeset. A refusal comes back through `refused/3`, as for a
+  command.
 - For a search form, or a filter over a read model, build the changeset from the query. A query has
   no identity: the changeset checks its params as fields. Send the params as `{:query, name}`.
 

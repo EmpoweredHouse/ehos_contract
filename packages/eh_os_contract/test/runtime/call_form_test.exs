@@ -170,18 +170,40 @@ defmodule EhOsContract.CallFormTest do
              }
     end
 
-    test "is the page's: taken only with form: true, and only for fields the caller sends" do
+    test "is the page's, held as Form holds it, and refused by the field's name" do
       assert_raise ArgumentError, ~r/data: only with form: true/, fn ->
         issue(@sent, @accountant, data: %{invoice_id: "i-1"})
       end
 
-      assert_raise ArgumentError, ~r/does not declare as a field the caller sends/, fn ->
+      assert_raise ArgumentError, ~r/data: names \[:no_such_field\]/, fn ->
         issue(@sent, @accountant, form: true, data: %{no_such_field: 1})
       end
 
+      assert_raise ArgumentError, ~r/a value its field's type.*\[:invoice_id\]/, fn ->
+        issue(@sent, @accountant, form: true, data: %{invoice_id: 42})
+      end
+
+      # Checked whatever the params are.
+      assert_raise ArgumentError, ~r/a value its field's type.*\[:invoice_id\]/, fn ->
+        issue("not a map", @accountant, form: true, data: %{invoice_id: 42})
+      end
+
+      any = Actor.credential("u-1", ["boundary_rig.join_waitlist", "value_rig.open_drawer"])
+      call = &EhOsContract.call({:command, &1}, %{}, actor: any, form: true, data: &2)
+
+      assert_raise ArgumentError, ~r/an identity dispatch generates.*\[:entry_id\]/, fn ->
+        call.("boundary_rig.join_waitlist", %{entry_id: "e-1"})
+      end
+
+      assert_raise ArgumentError,
+                   ~r/the rest of an identity of several fields.*\[:shift_id\]/,
+                   fn ->
+                     call.("value_rig.open_drawer", %{till_id: "t-1"})
+                   end
+
       clerk = Actor.credential("u-1", ["supply_rig.close_visit"])
 
-      assert_raise ArgumentError, ~r/data: :reported/, fn ->
+      assert_raise ArgumentError, ~r/data: for \[:reported\], which the host supplies/, fn ->
         EhOsContract.call(
           {:command, "supply_rig.close_visit"},
           %{"visit_id" => "v-1", "code" => "A1"},
