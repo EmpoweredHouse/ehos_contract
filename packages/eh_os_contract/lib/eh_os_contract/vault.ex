@@ -100,8 +100,9 @@ defmodule EhOsContract.Vault do
         keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}],
         destroyed: ["2026-03"]
 
-  - The engine does not try to unwrap the data keys of a destroyed key, at boot or
-    when it reads.
+  - The engine does not unwrap the data keys of a destroyed key when it reads. At
+    boot, it tries one of them: if the vault unwraps it, the key is not destroyed,
+    and the engine does not start.
   - The engine reads each subject with such a data key as erased: each personal field
     of the subject reads as `EhOsContract.Erased`, and a command that carries new
     personal data of the subject returns `{:error, :subject_erased}`.
@@ -135,7 +136,11 @@ defmodule EhOsContract.Vault do
 
   If a contract declares a personal field, the engine also calls it at boot, one time
   for each master key that a stored data key names. At boot, `:error` stops the
-  engine, with an error that tells the operator to check the master key.
+  engine, with an error that tells the operator to check the master key. For a master
+  key that `destroyed:` names, `:error` is the answer that lets the engine start.
+
+  For a master key that the key management service deleted, or holds for deletion,
+  return `:error`. Do not raise.
 
   If the vault cannot answer now, for example because a key management service is
   down, raise. Do not return `:error`. The engine does not start while the service

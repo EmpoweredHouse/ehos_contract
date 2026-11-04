@@ -445,7 +445,6 @@ defmodule EhOsContract.Personal do
   @spec erased_among(module(), [subject()]) :: MapSet.t({String.t(), String.t()})
   def erased_among(_repo, []), do: MapSet.new()
 
-  #
   # The data keys are asked before the erasures: an `erase/3` that commits between the
   # two queries deleted the keys and recorded the erasure in one transaction, so the
   # second query sees the erasure. The other order would see neither.
@@ -691,8 +690,8 @@ defmodule EhOsContract.Personal do
   # Raises when `models` declare a personal field and a stored data key is wrapped by
   # a master key the vault cannot unwrap with: one removed while it still wraps data
   # keys, or one whose id stayed and whose bytes changed. It unwraps one data key of
-  # each master key, so it reads a row for each, not the table. A master key that
-  # `destroyed:` names is not tried, and a warning counts its data keys. Called by the
+  # each master key, so it reads a row for each, not the table. A data key of a master
+  # key that `destroyed:` names must not unwrap, and a warning counts them. Called by the
   # engine's supervisor at boot, after `EhOsContract.Vault.check!/1`.
   @doc false
   @spec check_master_keys!(module(), [map()]) :: :ok
