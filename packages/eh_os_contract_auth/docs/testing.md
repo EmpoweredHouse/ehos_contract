@@ -26,7 +26,8 @@ credential without the capability, and signs a browser in.
 > **Put `pin_keys: true` only in `config/test.exs`.** The package trusts the line only where the
 > environment of Mix is `:test`, as in `mix test`. If another environment sets the line, the
 > children of the package do not start. A release without the `:mix` application has no
-> environment of Mix. With the line, code in the tests can make the application trust keys and
+> environment of Mix. A release that starts `:mix` takes the environment of Mix from `MIX_ENV`, so
+> keep the line out of the configuration of each release. With the line, code in the tests can make the application trust keys and
 > answers that EHOS did not give:
 >
 > - `EhOsContract.Auth.Keys.pin/2` adds a key;
@@ -208,5 +209,6 @@ that it ships to those types.
   copies.
 
 <!-- Decisions behind this page:
-#560, #591: pin_keys is trusted only in a run of mix test, and stops the boot anywhere else.
+#560, #591: pin_keys is trusted only where Mix's environment is :test, and stops the boot anywhere
+else.
 -->

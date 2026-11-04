@@ -325,9 +325,12 @@ defmodule EhOsContract.Auth.Keys do
   # `config.exs` or `runtime.exs` learns it before a release depends on it.
   @spec check_trust!(keyword(), String.t(), String.t()) :: :ok
   def check_trust!(opts, child, trusted_as) do
-    env = if pin_keys?(), do: mix_env()
+    # `pin_keys` read once, so the two checks below agree on it.
+    pin_keys? = pin_keys?()
+    env = if pin_keys?, do: mix_env()
+    trusted? = pin_keys? and env == :test
 
-    if pin_keys?() and env != :test do
+    if pin_keys? and not trusted? do
       raise ArgumentError,
             "config :eh_os_contract_auth, pin_keys: true is set where no test runs: Mix's " <>
               "environment is #{env_shown(env)}, not :test. The line lets code trust keys and " <>
@@ -335,7 +338,7 @@ defmodule EhOsContract.Auth.Keys do
               "config/config.exs, config/<environment>.exs and config/runtime.exs"
     end
 
-    if Keyword.has_key?(opts, :plug) and env != :test do
+    if Keyword.has_key?(opts, :plug) and not trusted? do
       raise ArgumentError,
             "#{child} takes plug: only where Mix's environment is :test, as in mix test, with " <>
               "config :eh_os_contract_auth, pin_keys: true in config/test.exs: whatever it " <>

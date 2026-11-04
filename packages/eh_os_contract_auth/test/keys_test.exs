@@ -632,7 +632,15 @@ defmodule EhOsContract.Auth.KeysTest do
 
     # In a node of its own: this one runs Mix, and its Mix cannot be stopped.
     test "where Mix's code is loaded but its application is not started, nothing is trusted" do
-      paths = Enum.flat_map(:code.get_path(), &["-pa", to_string(&1)])
+      # This project's code alone, run by the Elixir that runs this test.
+      build = Mix.Project.build_path()
+
+      paths =
+        for path <- :code.get_path(),
+            String.starts_with?(to_string(path), build),
+            do: ["-pa", to_string(path)]
+
+      elixir = Path.expand("../../bin/elixir", :code.lib_dir(:elixir))
 
       script = """
       Application.put_env(:eh_os_contract_auth, :pin_keys, true)
@@ -646,7 +654,7 @@ defmodule EhOsContract.Auth.KeysTest do
       end
       """
 
-      {out, 0} = System.cmd("elixir", paths ++ ["-e", script])
+      {out, 0} = System.cmd(elixir, List.flatten(paths) ++ ["-e", script])
 
       assert out ==
                "true\nfalse\nconfig :eh_os_contract_auth, pin_keys: true is set where no test " <>
