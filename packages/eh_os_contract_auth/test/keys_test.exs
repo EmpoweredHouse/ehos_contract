@@ -557,11 +557,47 @@ defmodule EhOsContract.Auth.KeysTest do
     Application.put_env(:eh_os_contract_auth, :pin_keys, false)
     on_exit(fn -> Application.put_env(:eh_os_contract_auth, :pin_keys, true) end)
 
-    assert_raise ArgumentError, ~r/pinning a key is for tests/, fn ->
+    assert_raise ArgumentError, ~r/pinning a key is for tests only/, fn ->
       Keys.pin(pair.public, keys)
     end
 
     assert Auth.verify(credential(pair), keys: keys) == {:error, :unknown_key}
+  end
+
+  # Mix's environment is given, not changed: the async tests beside these read it.
+  describe "test trust outside a run of mix test" do
+    test "is given in a run of mix test with pin_keys: true" do
+      assert Keys.test_trust?()
+      assert Keys.test_trust?(:test)
+      assert Keys.check_trust!([plug: {Req.Test, __MODULE__}], "the child", "EHOS") == :ok
+    end
+
+    test "is not given in another Mix environment, or where Mix is not loaded" do
+      refute Keys.test_trust?(:dev)
+      refute Keys.test_trust?(:prod)
+      refute Keys.test_trust?(nil)
+    end
+
+    test "pin_keys: true stops the boot in another Mix environment, or in a release" do
+      for env <- [:dev, :prod, nil] do
+        assert_raise ArgumentError, ~r/pin_keys: true is set where no test runs/, fn ->
+          Keys.check_trust!([], "the child", "EHOS", env)
+        end
+      end
+    end
+
+    test "with pin_keys: false, a plug is refused and the boot goes on without one" do
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+      on_exit(fn -> Application.put_env(:eh_os_contract_auth, :pin_keys, true) end)
+
+      for env <- [:test, :dev, nil] do
+        assert Keys.check_trust!([], "the child", "EHOS", env) == :ok
+
+        assert_raise ArgumentError, ~r/the child takes plug: only in a run of mix test/, fn ->
+          Keys.check_trust!([plug: {Req.Test, __MODULE__}], "the child", "EHOS", env)
+        end
+      end
+    end
   end
 
   test "pinning something that is not an Ed25519 key raises in the caller, not the process" do

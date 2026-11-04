@@ -366,11 +366,7 @@ defmodule EhOsContract.Auth.Testing do
   @doc false
   @spec stubbed!(:people | :grants | :mail, term()) :: term()
   def stubbed!(name, default) do
-    unless Keys.test_trust?() do
-      raise ArgumentError,
-            "EhOsContract.Auth.Testing.People, .Grants and .Mail are for tests only. Set config " <>
-              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
-    end
+    :ok = Keys.test_only!("EhOsContract.Auth.Testing.People, .Grants and .Mail")
 
     key = {__MODULE__, name}
 
