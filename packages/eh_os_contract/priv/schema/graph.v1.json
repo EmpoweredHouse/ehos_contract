@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:eh-os-contract:schema:graph.v1",
   "title": "eh_os_contract graph.v1",
-  "description": "A contract, a process module or a domain as a graph of facts: what is declared, with nothing of how it is drawn, which pictures it is shown in, or what the log holds. Nodes are grouped by kind and relations by type, every kind and type present; a relation goes from its source to its target and its type reads in that direction. Ids are opaque and unique in a document: a reader joins on them and never takes them apart. Every id resolves to a node of the same document, except those described as a reference into another document.",
+  "description": "A contract, a process module or a domain as a graph of facts: what is declared, with nothing of how it is drawn, which pictures it is shown in, or what the log holds. Nodes are grouped by kind and relations by type, every kind and type present, except a kind whose description says it was added after the format's first release; a relation goes from its source to its target and its type reads in that direction. Ids are opaque and unique in a document: a reader joins on them and never takes them apart. Every id resolves to a node of the same document, except those described as a reference into another document.",
   "oneOf": [
     {
       "$ref": "#/$defs/contract_document"
@@ -112,7 +112,7 @@
         },
         "nodes": {
           "type": "object",
-          "description": "The contract's declarations, and the domain's it names, by kind.",
+          "description": "The contract's declarations, and the domain's it names, by kind. Every kind is present, but those added after the format's first release (domain_service_function, domain_service_rule), which a document written before them leaves out.",
           "required": [
             "unit",
             "status",
@@ -213,6 +213,18 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/node_domain_service"
+              }
+            },
+            "domain_service_function": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_service_function"
+              }
+            },
+            "domain_service_rule": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node_domain_service_rule"
               }
             },
             "publication": {
@@ -1610,7 +1622,145 @@
                 }
               }
             }
+          },
+          "description": "Always empty: a service's functions are domain_service_function nodes, and their rules domain_service_rule nodes, each owned through of, so that no node holds every example of a service. Kept because this version of the format requires it; the next version drops it."
+        }
+      }
+    },
+    "node_domain_service_function": {
+      "type": "object",
+      "description": "A pure function of a domain service: arguments in, a result out, nothing written. Its rules are domain_service_rule nodes. Added after the format's first release: a document written before it has no list of this kind.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "of",
+        "arguments",
+        "returns"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "of": {
+          "type": "string",
+          "description": "The id of the domain service it belongs to."
+        },
+        "arguments": {
+          "$ref": "#/$defs/fields"
+        },
+        "returns": {
+          "type": "object",
+          "required": [
+            "type",
+            "required"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/type"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "default": {
+              "description": "Its default, redacted as the exported model is."
+            },
+            "personal_of": {
+              "type": "string",
+              "description": "The name of the field holding the id of the person whose personal data this is."
+            },
+            "subject": {
+              "type": "string",
+              "description": "The id of the subject whose id this field holds."
+            },
+            "value": {
+              "type": "string",
+              "description": "The id of the domain value its type is."
+            },
+            "refers_to": {
+              "type": "string",
+              "description": "The id of what it identifies: an entity of the domain, or a unit of this contract. A unit of another contract is in no node of this document, and the field then has no refers_to."
+            },
+            "issued_by": {
+              "type": "string",
+              "description": "The id of the external that gives it its value: its own, or its entity's identity's."
+            },
+            "supplied_by": {
+              "const": "host",
+              "description": "The host gives it, not the caller."
+            }
           }
+        }
+      }
+    },
+    "node_domain_service_rule": {
+      "type": "object",
+      "description": "A rule a domain service's function follows, as the business states it, with its examples, each a test of the function. Added after the format's first release: a document written before it has no list of this kind.",
+      "required": [
+        "id",
+        "name",
+        "label",
+        "source",
+        "of",
+        "examples"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "The declaration's name."
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where it comes from in the material."
+        },
+        "of": {
+          "type": "string",
+          "description": "The id of the domain_service_function it belongs to."
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "arguments",
+              "result"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "type": "array"
+              },
+              "result": {}
+            }
+          },
+          "description": "Each a call of the function: its arguments in order and its result, redacted as the exported model is."
         }
       }
     },

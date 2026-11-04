@@ -60,6 +60,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **Breaking:** **A domain service's functions and rules are nodes of their own in a contract's
+  graph document** (#594). Each function is a `domain_service_function` node, with its arguments and
+  its result, and each of its rules a `domain_service_rule` node, with its examples; each names its
+  owner in `of`. The `domain_service` node's `functions` is now always empty: a reader that took a
+  service's functions or a rule's examples from it reads the new nodes. Before, a service held every
+  example of every rule in one node, and EHOS refuses a document with a node of more than 2,000
+  values: a service with 97 examples made a node of 5,805, so EHOS refused its contract's document.
+  The `graph.v1` schema gains the two kinds as optional, so a document written before them still
+  holds to it.
 - **The glossary defines "graph document" and "overlay"** (#517). The pages of
   `eh_os_contract_web` and `eh_os_contract_graph` use both words.
 - **The docs of the behaviours and the Mix tasks are rewritten by the shared writing rules** (#517).

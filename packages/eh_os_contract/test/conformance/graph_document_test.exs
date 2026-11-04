@@ -48,6 +48,37 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
+  # #594: a domain service whose rules' examples hold more values than EHOS takes in one
+  # node (2,000), though each rule's alone holds fewer. Invented, as `Openings` is.
+  defmodule Tariffs do
+    @moduledoc false
+    use EhOsContract.Contract,
+      domain: DispatchRig.Domain,
+      context: :ledger,
+      id: "dispatch_rig.graph_tariffs"
+
+    aggregate :tariff, "Tariff" do
+      identity :tariff_id
+      command :set_tariff, "Set a tariff", by: :auditor, emits: :tariff_set
+      event :tariff_set, "Tariff set"
+    end
+
+    domain_service :pricing, "Pricing" do
+      function :price, "The price of an order" do
+        argument :quantity, :integer
+        argument :unit_price, :integer
+        returns :integer
+
+        rule :per_unit, "Each unit costs its price",
+          examples: for(q <- 1..300, do: {[q, 2], q * 2})
+
+        rule :no_units, "No units cost nothing", examples: for(p <- 1..300, do: {[0, p], 0})
+
+        rule :free_units, "Free units cost nothing", examples: for(q <- 1..300, do: {[q, 0], 0})
+      end
+    end
+  end
+
   # Plan DD, L3 (#286): fields that identify a unit, this contract's own and
   # `Openings`'s. Invented, as `Openings` is.
   defmodule Notes do
@@ -72,7 +103,7 @@ defmodule EhOsContract.GraphDocumentTest do
   # The registry's, and this file's, one of them with fields that identify units; and
   # every process module's.
   defp documents do
-    contracts = Registry.contracts() ++ [Openings, Notes]
+    contracts = Registry.contracts() ++ [Openings, Notes, Tariffs]
     modules = contracts ++ Registry.processes()
 
     for(c <- contracts, do: {c, Document.contract(c)}) ++
@@ -87,6 +118,8 @@ defmodule EhOsContract.GraphDocumentTest do
     "status" => ~w(unit),
     "invariant" => ~w(of),
     "constraint" => ~w(of),
+    "domain_service_function" => ~w(of),
+    "domain_service_rule" => ~w(of),
     "command" => ~w(unit),
     "event" => ~w(unit stage contract),
     "timer" => ~w(process_manager),
@@ -106,7 +139,7 @@ defmodule EhOsContract.GraphDocumentTest do
   defp fields(document) do
     for {kind, ns} <- document["nodes"],
         n <- ns,
-        key <- ~w(fields state params),
+        key <- ~w(fields state params arguments),
         is_list(n[key]),
         f <- n[key],
         do: {kind, f}
@@ -148,6 +181,11 @@ defmodule EhOsContract.GraphDocumentTest do
       r["from"] == from and r["to"] == to and Enum.all?(attrs, fn {k, v} -> r[k] == v end)
     end)
   end
+
+  # A node's values as EHOS counts them: each object, list and scalar.
+  defp ehos_values(%{} = map), do: 1 + Enum.sum_by(Map.values(map), &ehos_values/1)
+  defp ehos_values(list) when is_list(list), do: 1 + Enum.sum_by(list, &ehos_values/1)
+  defp ehos_values(_scalar), do: 1
 
   defp node(document, kind, id), do: Enum.find(document["nodes"][kind], &(&1["id"] == id))
 
@@ -290,6 +328,8 @@ defmodule EhOsContract.GraphDocumentTest do
     end
   end
 
+  @added_kinds ~w(domain_service_function domain_service_rule)
+
   test "the schema names every node kind and relation type the engine builds, and no other" do
     schema = Document.schema_path() |> File.read!() |> Jason.decode!()
 
@@ -301,7 +341,12 @@ defmodule EhOsContract.GraphDocumentTest do
       %{nodes: nodes, relations: relations} = EhOsContract.Graph.Facts.kinds(kind)
       props = schema["$defs"][document]["properties"]
 
-      assert Enum.sort(props["nodes"]["required"]) == Enum.sort(Enum.map(nodes, &to_string/1))
+      kinds = Enum.map(nodes, &to_string/1)
+      assert Enum.sort(Map.keys(props["nodes"]["properties"])) == Enum.sort(kinds)
+
+      # A kind added after the format's first release is optional, so a document an
+      # older engine wrote, which has none of it, still holds to the schema (#594).
+      assert Enum.sort(props["nodes"]["required"]) == Enum.sort(kinds -- @added_kinds)
 
       assert Enum.sort(props["relations"]["required"]) ==
                Enum.sort(Enum.map(relations, &to_string/1))
@@ -824,8 +869,12 @@ defmodule EhOsContract.GraphDocumentTest do
       assert %{"type" => "integer", "unit" => "cents"} = node(d, "value", money)
 
       # A function returning an entity's id says so, as a field would.
-      assert %{"functions" => [%{"returns" => returns, "arguments" => [argument]}]} =
-               node(d, "domain_service", id.(:domain_service, :lookup))
+      assert %{"returns" => returns, "arguments" => [argument]} =
+               node(
+                 d,
+                 "domain_service_function",
+                 id.(:domain_service_function, [:lookup, :service_for])
+               )
 
       assert returns == %{
                "type" => "id",
@@ -839,6 +888,47 @@ defmodule EhOsContract.GraphDocumentTest do
       assert %{"required" => false} = by_name["code"]
 
       assert %{"capability" => "graph_clinic.paid"} = node(d, "event", id.(:event, :paid))
+    end
+
+    test "a domain service's functions and rules are nodes of their own, owned through of",
+         %{d: d, id: id} do
+      service = id.(:domain_service, :lookup)
+      function = id.(:domain_service_function, [:lookup, :service_for])
+
+      # The service's node keeps `functions`, which graph.v1 requires, empty (#594).
+      assert %{"name" => "lookup", "label" => "Lookup", "functions" => []} =
+               node(d, "domain_service", service)
+
+      assert %{
+               "name" => "service_for",
+               "label" => "The service a contact books",
+               "of" => ^service
+             } =
+               node(d, "domain_service_function", function)
+
+      assert %{
+               "name" => "first",
+               "label" => "The first service",
+               "of" => ^function,
+               "examples" => [%{"arguments" => [%{"patient_id" => "p-1"}], "result" => "s-1"}]
+             } =
+               node(
+                 d,
+                 "domain_service_rule",
+                 id.(:domain_service_rule, [:lookup, :service_for, :first])
+               )
+
+      # Ownership is a field, not a relation: no relation ends at either.
+      ids =
+        MapSet.new([
+          service,
+          function,
+          id.(:domain_service_rule, [:lookup, :service_for, :first])
+        ])
+
+      for {_type, relations} <- d["relations"],
+          r <- relations,
+          do: refute(MapSet.member?(ids, r["to"]) or MapSet.member?(ids, r["from"]))
     end
 
     test "the domain's declarations a contract names carry their content", %{d: d, domain: domain} do
@@ -1367,6 +1457,20 @@ defmodule EhOsContract.GraphDocumentTest do
             key <- ~w(stage included terminal),
             do: refute(Map.has_key?(e, key), "#{e["id"]} has #{key}")
       end
+    end
+
+    # #594: EHOS refuses a document with a node of more than 2,000 values, every object,
+    # list and scalar in it counted.
+    test "no node holds every example of a domain service, and every example is kept" do
+      d = Document.contract(Tariffs)
+
+      for {kind, ns} <- d["nodes"],
+          n <- ns,
+          do: assert(ehos_values(n) <= 2_000, "#{kind} #{n["id"]} holds #{ehos_values(n)} values")
+
+      examples = for r <- d["nodes"]["domain_service_rule"], e <- r["examples"], do: e
+      assert length(examples) == 900
+      assert ehos_values(examples) > 2_000
     end
 
     test "an event's dependency is a relation to the domain's external" do
