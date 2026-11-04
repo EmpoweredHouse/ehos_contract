@@ -78,6 +78,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **Breaking:** **Test keys and plugs are trusted only in a run of `mix test`** (#591). Before, the
+  package checked only that `config :eh_os_contract_auth, pin_keys: true` was set. With the line in
+  `config.exs` or `runtime.exs`, code in a release could trust keys and answers that EHOS did not
+  give. Now `Keys.pin/2`, the `Testing` helpers and stand-ins, and the `plug:` option of each child
+  also need Mix's environment to be `:test`, read when they are called. A release has no Mix.
+  `EhOsContract.Auth`, `EhOsContract.Auth.SignIn` and `EhOsContract.Auth.Workload` do not start
+  when `pin_keys: true` is set outside a run of `mix test`. Move the line to `config/test.exs`.
+  `EhOsContract.Auth.Workload` now takes `plug:` only under the same rule, as the other two do.
 - **`Keys.pin/2` waits up to 10 seconds for the key process** (#591). The process can be in a fetch
   of the keys, such as the first one after it starts, which can take 5 seconds. Before, `pin/2`
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It

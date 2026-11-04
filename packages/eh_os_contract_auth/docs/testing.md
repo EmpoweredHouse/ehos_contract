@@ -15,7 +15,7 @@ credential without the capability, and signs a browser in.
   the fetch ends at once.
 - For tests with no network at all, give the child a plug in place of EHOS:
   `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
-  with `pin_keys: true`, step 1.
+  with `pin_keys: true` in a run of `mix test`, step 1.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These
@@ -23,16 +23,9 @@ credential without the capability, and signs a browser in.
 
 ## 1. Let the tests trust a test key
 
-> **Put `pin_keys: true` only in `config/test.exs`.** The package does not check the environment
-> of the line. It checks only that the line is there. With the line, code can make the application
-> trust keys and answers that EHOS did not give:
->
-> - `EhOsContract.Auth.Keys.pin/2` adds a key;
-> - the `plug:` option of the `EhOsContract.Auth` child answers in place of the keys of EHOS;
-> - the `plug:` option of the `EhOsContract.Auth.SignIn` child answers in place of the sign-in of EHOS;
-> - `sign_in/3` starts a sign-in stand-in that never calls EHOS;
-> - the `Testing` stand-ins answer for EHOS: [Use people, grants and mail where EHOS does not
->   answer](without-ehos.md).
+> **Put `pin_keys: true` only in `config/test.exs`.** The line lets the tests trust keys and
+> answers that EHOS did not give. The package trusts them only when `mix test` runs. If the line is
+> set in another environment, or in a release, the children of the package do not start.
 
 ```elixir
 # config/test.exs
@@ -190,6 +183,7 @@ that it ships to those types.
 | What you see | Cause and fix |
 | --- | --- |
 | `ArgumentError` that tells you to set `pin_keys: true` | `config/test.exs` does not have the line of step 1. Add it. |
+| `ArgumentError`: `pin_keys: true is set where no test runs` | The line of step 1 is in a file that another environment reads. Move it to `config/test.exs`. |
 | `ArgumentError`: the key process is not running | `EhOsContract.Auth` is not in the supervision tree of the test environment. Add it after the repo. |
 | `assert_every_entry_refuses/3` finds no `refused` row | The entry point does not call `EhOsContract.dispatch/3` or `EhOsContract.query/3`, or the authorizer is not `EhOsContract.Auth`. |
 | A stub has no effect | The stub was made in `setup_all`, which runs in another process. Make it in the test or in `setup`. |
@@ -204,6 +198,5 @@ that it ships to those types.
   copies.
 
 <!-- Decisions behind this page:
-#560: pin_keys is not bound to the test environment in code; the page says so, and the package's
-moduledocs say the same.
+#560, #591: pin_keys is trusted only in a run of mix test, and stops the boot anywhere else.
 -->
