@@ -18,6 +18,21 @@ defmodule EhOsContract.VaultTest do
   alias ShreddingRig.Members.Commands.Join
   alias ShreddingRig.Members.Events.Joined
 
+  defmodule RewrappedRepo do
+    @moduledoc false
+    # The test repo, on which a rewrap on another node moves every data key to
+    # "kek-new" right after the boot check samples them.
+    alias EhOsContract.TestRepo, as: Repo
+
+    def query!(sql, params, opts) do
+      sampled = Repo.query!(sql, params, opts)
+      Repo.query!("UPDATE eh_os_contract_subject_keys SET kek_id = 'kek-new'")
+      sampled
+    end
+
+    def one(query), do: Repo.one(query)
+  end
+
   @kek Base.encode64(:binary.copy(<<1>>, 32))
   @new_kek Base.encode64(:binary.copy(<<2>>, 32))
 
@@ -129,6 +144,14 @@ defmodule EhOsContract.VaultTest do
       assert_raise ArgumentError, ~r/^1 data key is wrapped by master key "kek-old"/, fn ->
         Personal.check_master_keys!(Repo, [Model.fetch(Members)])
       end
+    end
+
+    test "a master key whose data keys a rewrap moved after the sample starts" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}])
+
+      assert Personal.check_master_keys!(RewrappedRepo, [Model.fetch(Members)]) == :ok
     end
 
     test "control: a vault that unwraps a data key of each master key starts" do

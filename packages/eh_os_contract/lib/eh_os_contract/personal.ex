@@ -651,13 +651,20 @@ defmodule EhOsContract.Personal do
         :ok
 
       :error ->
-        count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
-
-        raise ArgumentError,
-              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
-                "unwrap the data key that the engine tried, so the engine cannot read the " <>
-                "personal data of its subject. " <> remedy(kek_id, Vault.current())
+        repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
+        |> refuse_master_key!(kek_id)
     end
+  end
+
+  # Counted apart from the sample: a rewrap on another node can move the last data keys
+  # off the key in between, and then nothing is left to refuse.
+  defp refuse_master_key!(0, _kek_id), do: :ok
+
+  defp refuse_master_key!(count, kek_id) do
+    raise ArgumentError,
+          "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
+            "unwrap the data key that the engine tried, so the engine cannot read the " <>
+            "personal data of its subject. " <> remedy(kek_id, Vault.current())
   end
 
   # The vault wraps with the id it cannot unwrap with, so its bytes under that id are

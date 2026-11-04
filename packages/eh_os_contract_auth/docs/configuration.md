@@ -100,6 +100,11 @@ The child takes no other option. The package then cannot weaken the fetch of the
 > - `auth:`, `headers:`, `params:` or `aws_sigv4:` goes to EHOS;
 > - `finch:` makes each fetch fail, because the package always sets the connection.
 
+> **Keep `SSLKEYLOGFILE` out of the environment of the application in production.** Finch, the
+> client under Req, writes the secrets of each TLS session to the file that the variable names. With
+> the file, a person who records the traffic can read it. This includes the fetch of the keys, the
+> sign-in and the credential of the workload. The package does not check the variable.
+
 ### What stops the application at start
 
 The child checks its configuration when the supervisor reads its child list. The application does

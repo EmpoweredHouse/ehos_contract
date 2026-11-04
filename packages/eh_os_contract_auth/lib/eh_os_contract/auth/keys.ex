@@ -234,7 +234,8 @@ defmodule EhOsContract.Auth.Keys do
     {kid, public} =
       ed25519(jwk) || raise ArgumentError, "only an Ed25519 public key can be pinned"
 
-    GenServer.call(name, {:pin, kid, public})
+    # The process answers after its start's fetch, which may take `@fetch_deadline`.
+    GenServer.call(name, {:pin, kid, public}, @call_timeout)
   end
 
   @doc "The thumbprints of the keys in force, sorted."

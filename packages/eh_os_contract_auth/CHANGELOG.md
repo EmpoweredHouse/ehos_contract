@@ -71,6 +71,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `#configuration-from-ehoss-environment` is `docs/configuration.md`, `#in-a-hosts-tests` is
   `docs/testing.md`, and `#where-the-keys-come-from-and-what-to-configure-at-integration` is
   `docs/keys.md` and `docs/configuration.md`.
+- **`docs/configuration.md` says that `SSLKEYLOGFILE` makes Finch write the TLS secrets of the
+  package's calls to a file** (#591). The key fetch, the sign-in and the workload credential use
+  Finch through Req. The package does not check the variable, so keep it out of production.
+
+### Fixed
+
+- **The first `Keys.pin/2` of a run waits up to 10 seconds for the key process** (#591). The process
+  answers after its first fetch of the keys, which can take 5 seconds. Before, `pin/2` waited
+  5 seconds, so the first `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout.
+  It now waits as long as `Keys.refresh/1` does.
 
 ## [0.11.0] - 2026-11-01
 

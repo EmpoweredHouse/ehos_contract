@@ -518,6 +518,25 @@ defmodule EhOsContract.Auth.KeysTest do
            ]).rows == [[0]]
   end
 
+  # The first pin of a run waits for the start's fetch, which can take as long as
+  # `GenServer.call/2`'s five seconds.
+  test "a pin waits for the key process as long as a refresh does" do
+    keys = start_keys(ehos({:keys, [key_pair()]}), repo: HeldRepo)
+    pinned = key_pair()
+
+    Application.put_env(:eh_os_contract_auth, HeldRepo, self())
+    on_exit(fn -> Application.delete_env(:eh_os_contract_auth, HeldRepo) end)
+    refresh = Task.async(fn -> Keys.refresh(keys) end)
+    assert_receive {:writing, writer}, 5_000
+
+    pin = Task.async(fn -> Keys.pin(pinned.public, keys) end)
+    Process.sleep(5_500)
+    send(writer, :go)
+
+    assert Task.await(refresh) == :ok
+    assert Task.await(pin) == pinned.kid
+  end
+
   test "pinning works only where the configuration allows it" do
     pair = key_pair()
     keys = start_keys(ehos({:keys, [key_pair()]}))
