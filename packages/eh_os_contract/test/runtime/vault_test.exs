@@ -159,7 +159,8 @@ defmodule EhOsContract.VaultTest do
       end
     end
 
-    test "data keys that a rewrap moved after the sample are checked under their new key" do
+    # The next test is the reverse check: the same move, to a key the vault cannot unwrap with.
+    test "control: data keys that a rewrap moved after the sample start under their new key" do
       keys([{"kek-old", @kek}])
       join!("membership-anna", "member-anna")
       keys([{"kek-new", @new_kek}])

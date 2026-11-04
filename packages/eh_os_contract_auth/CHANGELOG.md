@@ -71,9 +71,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `#configuration-from-ehoss-environment` is `docs/configuration.md`, `#in-a-hosts-tests` is
   `docs/testing.md`, and `#where-the-keys-come-from-and-what-to-configure-at-integration` is
   `docs/keys.md` and `docs/configuration.md`.
-- **`docs/configuration.md` says that `SSLKEYLOGFILE` makes Finch write TLS secrets to a file**
-  (#591). Finch, the client under Req, does this for each HTTPS call of the application, the calls of
-  the package included. The package does not check the variable, so keep it out of production.
+- **`docs/configuration.md` says what `SSLKEYLOGFILE` does to the application** (#591). Finch, the
+  client under Req, writes the TLS secrets of a pool with `keep_secrets: true` to the file that the
+  variable names, and the application does not start if Finch cannot open the file. The package does
+  not check the variable, so keep it out of production.
 
 ### Fixed
 
