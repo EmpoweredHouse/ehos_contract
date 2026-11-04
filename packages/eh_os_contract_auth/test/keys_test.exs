@@ -296,6 +296,17 @@ defmodule EhOsContract.Auth.KeysTest do
     assert Task.await(refresh) == :ok
   end
 
+  # Returns once a pin waits in the mailbox of the key process, which a held write keeps
+  # from taking it.
+  defp await_pin_queued(keys) do
+    {:messages, messages} = Process.info(Process.whereis(keys), :messages)
+
+    unless Enum.any?(messages, &match?({:"$gen_call", _from, {:pin, _kid, _public}}, &1)) do
+      Process.sleep(10)
+      await_pin_queued(keys)
+    end
+  end
+
   # A connection of its own, outside the sandbox, holds the table as a migration or
   # `VACUUM FULL` does, until the test ends, and commits nothing. Called before the
   # key process starts: the sandbox's transaction holds what that process touched
@@ -530,6 +541,9 @@ defmodule EhOsContract.Auth.KeysTest do
     assert_receive {:writing, writer}, 5_000
 
     pin = Task.async(fn -> Keys.pin(pinned.public, keys) end)
+    # The hold counts from the moment the pin is in the process's mailbox, not from the
+    # start of the task, so the old five seconds cannot cover it.
+    await_pin_queued(keys)
     Process.sleep(5_500)
     send(writer, :go)
 
