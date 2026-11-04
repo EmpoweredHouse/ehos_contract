@@ -534,6 +534,18 @@ defmodule EhOsContract.VaultTest do
       assert kek_ids() == ["kek-old", "kek-newer"]
     end
 
+    test "is refused when the vault still unwraps its data keys" do
+      restored!()
+      keys = [{"kek-new", @new_kek}, {"kek-old", @kek}]
+      Application.put_env(:eh_os_contract, Vault, keys: keys, destroyed: ["kek-old"])
+
+      assert_raise ArgumentError,
+                   ~s(config :eh_os_contract, EhOsContract.Vault, destroyed: names "kek-old", ) <>
+                     ~s(and the vault unwraps a data key of it. Name only the master keys that ) <>
+                     ~s(you destroyed),
+                   fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
+    end
+
     test "is refused when it is the key that the vault wraps with" do
       Application.put_env(:eh_os_contract, Vault,
         keys: [{"kek-new", @new_kek}],

@@ -202,7 +202,10 @@ defmodule EhOsContract.Consumer do
     repo = EhOsContract.Config.fetch!(:repo)
     keys = Personal.for_reading(repo, subjects)
 
-    # Only a subject without any key can have been erased, and only then is it asked.
+    # Only a subject without any key can have been erased, and only then is it asked. A
+    # subject has one key version, so a key under a destroyed master key, which
+    # `for_reading/2` leaves out, leaves it without any; a subject with a second version
+    # would need its own check here.
     keyed = MapSet.new(Map.keys(keys), fn {type, id, _version} -> {type, id} end)
 
     erased =

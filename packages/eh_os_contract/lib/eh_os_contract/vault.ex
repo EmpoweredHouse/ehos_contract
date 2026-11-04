@@ -48,7 +48,8 @@ defmodule EhOsContract.Vault do
      of step 2. If the first key of its list is another key, the task stops before it
      changes a data key.
   4. Do this step only when step 3 ended without an error. Just before the deploy,
-     count the data keys of each master key. Each row must name the new key:
+     count the data keys of each master key. Each row must name the new key, or a key
+     that `destroyed:` names:
 
          SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 
@@ -109,7 +110,8 @@ defmodule EhOsContract.Vault do
   - `EhOsContract.erase/3` deletes those data keys and records the erasure. Then the
     warning stops.
 
-  The engine does not start if `destroyed:` names the key that the vault wraps with.
+  The engine does not start if `destroyed:` names the key that the vault wraps with,
+  or a key whose data key the vault unwraps at boot.
   [Start on a backup whose master key you destroyed](master-keys.md#start-on-a-backup-whose-master-key-you-destroyed)
   gives the steps.
   """

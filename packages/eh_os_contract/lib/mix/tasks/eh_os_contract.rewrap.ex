@@ -33,13 +33,17 @@ defmodule Mix.Tasks.EhOsContract.Rewrap do
   > The task wraps with the first key of the list that it reads. With the
   > configuration of step 1, that key is the old key, not the key of `--expect`. The
   > task stops and changes no data key. Remove the old key only when the task ended
-  > without an error, and each row of `eh_os_contract_subject_keys` names the new key.
+  > without an error, and each row of `eh_os_contract_subject_keys` names the new key or a
+  > key that `destroyed:` names.
   > [Manage the keys and the backups of personal data](master-keys.md) gives each step
   > of a rotation.
 
   - The task works in batches of 500 data keys. Each batch is a transaction of its
     own. If the task stops, run it again.
   - Each batch skips the rows that another run or an erasure holds.
+  - The task leaves the data keys of each master key that
+    `config :eh_os_contract, EhOsContract.Vault, destroyed:` names. Nothing can unwrap
+    them.
   - If a data key of another master key is left at the end, the task raises. Another
     run or an erasure holds that key, or a node wrote it with the old key during the
     run. Run the

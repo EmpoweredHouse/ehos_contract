@@ -150,9 +150,17 @@ defmodule EhOsContract.Personal do
   @doc false
   @spec for_writing(module(), prepared()) :: {:ok, current_keys()} | {:error, :subject_erased}
   def for_writing(repo, prepared) do
-    if MapSet.size(erased_among(repo, prepared.subjects)) == 0,
-      do: {:ok, store(repo, prepared)},
-      else: {:error, :subject_erased}
+    # A subject with a key that `prepare/2` read has no key under a destroyed master key,
+    # while each subject has one key version: only the others are asked, under the lock.
+    unkeyed =
+      Enum.reject(prepared.subjects, fn {type, id} ->
+        Map.has_key?(prepared.existing, {Atom.to_string(type), id})
+      end)
+
+    if MapSet.size(lost_among(repo, unkeyed)) == 0 and
+         MapSet.size(recorded_among(repo, prepared.subjects)) == 0,
+       do: {:ok, store(repo, prepared)},
+       else: {:error, :subject_erased}
   end
 
   defp store(repo, %{existing: existing, created: created} = prepared) do
@@ -437,14 +445,13 @@ defmodule EhOsContract.Personal do
   @spec erased_among(module(), [subject()]) :: MapSet.t({String.t(), String.t()})
   def erased_among(_repo, []), do: MapSet.new()
 
+  #
+  # The data keys are asked before the erasures: an `erase/3` that commits between the
+  # two queries deleted the keys and recorded the erasure in one transaction, so the
+  # second query sees the erasure. The other order would see neither.
   def erased_among(repo, subjects) do
-    case Vault.destroyed() do
-      [] ->
-        recorded_among(repo, subjects)
-
-      destroyed ->
-        MapSet.union(recorded_among(repo, subjects), lost_among(repo, subjects, destroyed))
-    end
+    lost = lost_among(repo, subjects)
+    MapSet.union(lost, recorded_among(repo, subjects))
   end
 
   defp recorded_among(repo, subjects) do
@@ -465,6 +472,13 @@ defmodule EhOsContract.Personal do
     )
     |> MapSet.new()
   end
+
+  # The subjects among `subjects` with a data key under a destroyed master key. No
+  # query while no master key is destroyed.
+  defp lost_among(_repo, []), do: MapSet.new()
+  defp lost_among(repo, subjects), do: lost_among(repo, subjects, Vault.destroyed())
+
+  defp lost_among(_repo, _subjects, []), do: MapSet.new()
 
   defp lost_among(repo, subjects, destroyed) do
     {types, ids} = unzip(subjects)
@@ -696,11 +710,29 @@ defmodule EhOsContract.Personal do
     checked =
       for [kek_id | _] = sample <- samples(repo) do
         if kek_id in destroyed,
-          do: warn_destroyed(repo, kek_id),
+          do: check_destroyed!(sample),
           else: check_master_key!(repo, sample)
       end
 
-    if :moved in checked, do: check_again!(repo, rounds - 1)
+    if :moved in checked,
+      do: check_again!(repo, rounds - 1),
+      else: for({:destroyed, kek_id} <- checked, do: warn_destroyed(repo, kek_id))
+  end
+
+  # A key named destroyed that still unwraps is one that is not: its subjects would
+  # read as erased, the rewrap would leave them, and an operator who then removes the
+  # key from the vault would lose data that was readable.
+  defp check_destroyed!([kek_id, type, id, version, wrapped]) do
+    case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
+      :error ->
+        {:destroyed, kek_id}
+
+      {:ok, _key} ->
+        raise ArgumentError,
+              "config :eh_os_contract, EhOsContract.Vault, destroyed: names " <>
+                "#{inspect(kek_id)}, and the vault unwraps a data key of it. Name only the " <>
+                "master keys that you destroyed"
+    end
   end
 
   defp warn_destroyed(repo, kek_id) do

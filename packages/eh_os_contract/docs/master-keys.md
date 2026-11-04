@@ -72,7 +72,7 @@ read what the new nodes write, until the rollout ends.
 
 4. Do this step only when step 3 ended without an error, with the id of the new key. After you
    remove the old key, a data key that it still wraps cannot be unwrapped. Check the table of data
-   keys just before the deploy. Each row must name the new key:
+   keys just before the deploy. Each row must name the new key, or a key that `destroyed:` names:
 
    ```sql
    SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
@@ -247,8 +247,8 @@ While a data key names a master key that the vault cannot unwrap with, the engin
      destroyed: ["2026-03"]
    ```
 
-   Name only a key that you destroyed. If you name a key that you still have, the engine reads the
-   personal data of its subjects as erased, and refuses new personal data for them.
+   Name only a key that you destroyed. If the vault still unwraps a data key of a key that
+   `destroyed:` names, the engine does not start.
 
 2. Deploy.
 
@@ -274,6 +274,9 @@ While a data key names a master key that the vault cannot unwrap with, the engin
    **Result:** the engine starts without the warning.
 
 If the vault wraps with a key that `destroyed:` names, the engine does not start.
+
+The engine reads a subject of a destroyed key as erased, but its read models keep what they
+projected until `erase/3` makes them forget the subject. Do step 4 for each subject.
 
 ## What can go wrong
 
