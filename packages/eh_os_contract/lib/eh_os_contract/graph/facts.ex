@@ -33,10 +33,11 @@ defmodule EhOsContract.Graph.Facts do
   # `EhOsContract.Model.to_data/1` redacts it, so no personal value leaves in a
   # document.
   #
-  # **No node holds more than EHOS takes in one** (#594): EHOS refuses a document with a
-  # node of more than 2,000 values. A domain service's functions and rules are nodes of
+  # **A domain service's examples are split by rule** (#594): EHOS refuses a document
+  # with a node of more than 2,000 values. A service's functions and rules are nodes of
   # their own, each owned through `of`, so a service with many examples is not one node
-  # holding them all.
+  # holding them all. One rule's examples are still one node, and a value's invariant
+  # examples sit in the value's: nothing here keeps either under the bound (#598).
   #
   # **Scenarios** are neither nodes nor relations: a contract's are grouped by the
   # kind of their target (`unit`, `policy`, `process_manager`, `query`), each naming

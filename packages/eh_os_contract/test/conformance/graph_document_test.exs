@@ -182,7 +182,8 @@ defmodule EhOsContract.GraphDocumentTest do
     end)
   end
 
-  # A node's values as EHOS counts them: each object, list and scalar.
+  # A node's values as EHOS counts them: each object, list and scalar, not an object's
+  # keys (`values/2` in eh-os's `Ehos.Landscape.Document`).
   defp ehos_values(%{} = map), do: 1 + Enum.sum_by(Map.values(map), &ehos_values/1)
   defp ehos_values(list) when is_list(list), do: 1 + Enum.sum_by(list, &ehos_values/1)
   defp ehos_values(_scalar), do: 1
