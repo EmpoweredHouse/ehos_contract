@@ -518,7 +518,7 @@ defmodule EhOsContract.Auth.KeysTest do
            ]).rows == [[0]]
   end
 
-  # The first pin of a run waits for the start's fetch, which can take as long as
+  # A pin queued behind a fetch, such as the start's, can wait longer than
   # `GenServer.call/2`'s five seconds.
   test "a pin waits for the key process as long as a refresh does" do
     keys = start_keys(ehos({:keys, [key_pair()]}), repo: HeldRepo)

@@ -220,6 +220,9 @@ defmodule EhOsContract.Auth.Keys do
   Without the line it raises. The package checks only that the line is set, not the
   environment it is set in: put it in `config/test.exs` alone. Set anywhere else, it
   lets code in the running application trust a key EHOS did not publish.
+
+  The process answers after a fetch that is in progress, such as the first one after
+  it starts. `pin/2` waits 10 seconds for it, and exits after that.
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
@@ -234,7 +237,8 @@ defmodule EhOsContract.Auth.Keys do
     {kid, public} =
       ed25519(jwk) || raise ArgumentError, "only an Ed25519 public key can be pinned"
 
-    # The process answers after its start's fetch, which may take `@fetch_deadline`.
+    # The process answers after a fetch in progress, which may take `@fetch_deadline`,
+    # and the write of the table after it.
     GenServer.call(name, {:pin, kid, public}, @call_timeout)
   end
 
