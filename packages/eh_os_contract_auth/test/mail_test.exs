@@ -500,9 +500,11 @@ defmodule EhOsContract.Auth.MailTest do
 
       Application.put_env(:eh_os_contract_auth, :pin_keys, false)
 
-      assert_raise ArgumentError, ~r/Workload takes plug: only in a run of mix test/, fn ->
-        Workload.child_spec(plug: plug)
-      end
+      assert_raise ArgumentError,
+                   ~r/Workload takes plug: only where Mix.s environment is :test/,
+                   fn ->
+                     Workload.child_spec(plug: plug)
+                   end
     end
   end
 

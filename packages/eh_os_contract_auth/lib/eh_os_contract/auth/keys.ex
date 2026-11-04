@@ -216,9 +216,9 @@ defmodule EhOsContract.Auth.Keys do
       # config/test.exs
       config :eh_os_contract_auth, pin_keys: true
 
-  It raises without the line, and outside a run of `mix test`: Mix's environment is
-  read when `pin/2` is called, and a release has no Mix, so code in a running
-  application cannot trust a key EHOS did not publish.
+  It raises without the line, and when Mix's environment is not `:test`, as in
+  `mix test`. The environment is read when `pin/2` is called, and a release built
+  without the `:mix` application has none, so `pin/2` trusts no key there.
 
   The process answers after a fetch that is in progress, such as the first one after
   it starts. `pin/2` waits 10 seconds for it, and exits after that.
@@ -311,20 +311,22 @@ defmodule EhOsContract.Auth.Keys do
   @doc false
   # Whether keys and answers EHOS did not give may be trusted here: a pinned key, a plug
   # in place of the network, a stand-in of `EhOsContract.Auth.Testing`. It takes
-  # `pin_keys: true` in a run of `mix test` (#591). Mix's environment is read when asked,
-  # not at compile time: a dependency compiles in `:prod` whatever the host's environment
-  # is. A release has no Mix, so it never trusts them. `env` is given by this package's
-  # tests alone, which cannot change Mix's environment under the async tests beside them.
-  @spec test_trust?(atom() | nil) :: boolean()
-  def test_trust?(env \\ mix_env()), do: pin_keys?() and env == :test
+  # `pin_keys: true` and Mix's environment `:test` (#591). The environment is read when
+  # asked, not at compile time: a dependency compiles in `:prod` whatever the host's
+  # environment is. A release built without the `:mix` application has none, so it never
+  # trusts them.
+  @spec test_trust?() :: boolean()
+  def test_trust?, do: pin_keys?() and mix_env() == :test
 
   @doc false
   # Called by the check of each child that takes `plug:`: `EhOsContract.Auth`'s,
   # `EhOsContract.Auth.SignIn`'s and `EhOsContract.Auth.Workload`'s. `pin_keys: true`
   # outside a test stops the boot rather than being ignored, so a host that set it in
   # `config.exs` or `runtime.exs` learns it before a release depends on it.
-  @spec check_trust!(keyword(), String.t(), String.t(), atom() | nil) :: :ok
-  def check_trust!(opts, child, trusted_as, env \\ mix_env()) do
+  @spec check_trust!(keyword(), String.t(), String.t()) :: :ok
+  def check_trust!(opts, child, trusted_as) do
+    env = if pin_keys?(), do: mix_env()
+
     if pin_keys?() and env != :test do
       raise ArgumentError,
             "config :eh_os_contract_auth, pin_keys: true is set where no test runs: Mix's " <>
@@ -333,10 +335,11 @@ defmodule EhOsContract.Auth.Keys do
               "config/config.exs, config/<environment>.exs and config/runtime.exs"
     end
 
-    if Keyword.has_key?(opts, :plug) and not test_trust?(env) do
+    if Keyword.has_key?(opts, :plug) and env != :test do
       raise ArgumentError,
-            "#{child} takes plug: only in a run of mix test, with config :eh_os_contract_auth, " <>
-              "pin_keys: true in config/test.exs: whatever it answers is trusted as #{trusted_as}"
+            "#{child} takes plug: only where Mix's environment is :test, as in mix test, with " <>
+              "config :eh_os_contract_auth, pin_keys: true in config/test.exs: whatever it " <>
+              "answers is trusted as #{trusted_as}"
     end
 
     :ok
@@ -348,8 +351,8 @@ defmodule EhOsContract.Auth.Keys do
   def test_only!(what) do
     unless test_trust?() do
       raise ArgumentError,
-            "#{what} is for tests only: it needs config :eh_os_contract_auth, pin_keys: true " <>
-              "in config/test.exs, and a run of mix test"
+            "#{what}: for tests only. It needs config :eh_os_contract_auth, pin_keys: true " <>
+              "in config/test.exs, and Mix's environment :test, as in mix test"
     end
 
     :ok
@@ -357,9 +360,13 @@ defmodule EhOsContract.Auth.Keys do
 
   defp pin_keys?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
 
-  defp mix_env, do: if(Code.ensure_loaded?(Mix), do: Mix.env())
+  # Mix's code can be on the path without the application started, as in `elixir` or
+  # `iex` without `-S mix`, or a release that loads `:mix` alone: `Mix.env/0` raises there.
+  defp mix_env do
+    if List.keymember?(Application.started_applications(), :mix, 0), do: Mix.env()
+  end
 
-  defp env_shown(nil), do: "not loaded, as in a release"
+  defp env_shown(nil), do: "not there, since the :mix application is not started"
   defp env_shown(env), do: inspect(env)
 
   @impl GenServer
