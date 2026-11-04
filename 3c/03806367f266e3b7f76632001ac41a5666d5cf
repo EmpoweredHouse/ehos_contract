@@ -1,0 +1,1 @@
+Documentation alone (ROADMAP.md only, .claude/review.md): neither review ran. Checked the claim instead: each of the 13 listed PRs is MERGED and belongs to #517; no Mermaid outside docs/adr/; ehos_diagrams.gen --check passes in the three packages (18+2+1). Gate mix check in sandbox/ EXIT=0 at 3c038063.
