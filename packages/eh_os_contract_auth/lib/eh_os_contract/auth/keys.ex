@@ -118,8 +118,8 @@ defmodule EhOsContract.Auth.Keys do
   `config :req, default_options` still applies, under these.
 
   `:plug` answers in place of the network, as `Req.Test` does, and is taken only
-  in a run of `mix test` with `config :eh_os_contract_auth, pin_keys: true`: whatever
-  it answers is trusted as EHOS's keys.
+  with `config :eh_os_contract_auth, pin_keys: true` where Mix's environment is `:test`,
+  as in `mix test`: whatever it answers is trusted as EHOS's keys.
 
   However long each part takes, a fetch not finished in five seconds is abandoned as a
   failed one.
@@ -127,8 +127,8 @@ defmodule EhOsContract.Auth.Keys do
   It raises on an option it does not take, when `:url` is not https (plain http is
   allowed for `localhost`, `127.0.0.1` and `::1` only) or not an address every parser
   reads as written (a lowercase host, no user, query or fragment), on an interval
-  shorter than five seconds, on `:plug` outside a run of `mix test` with
-  `pin_keys: true`, and on `pin_keys: true` outside a run of `mix test`.
+  shorter than five seconds, on `:plug` without that trust, and on `pin_keys: true`
+  where Mix's environment is not `:test`.
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do

@@ -15,7 +15,7 @@ credential without the capability, and signs a browser in.
   the fetch ends at once.
 - For tests with no network at all, give the child a plug in place of EHOS:
   `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
-  with `pin_keys: true` in a run of `mix test`, step 1.
+  with `pin_keys: true` where the environment of Mix is `:test`, step 1.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These
@@ -23,9 +23,19 @@ credential without the capability, and signs a browser in.
 
 ## 1. Let the tests trust a test key
 
-> **Put `pin_keys: true` only in `config/test.exs`.** The line lets the tests trust keys and
-> answers that EHOS did not give. The package trusts them only when `mix test` runs. If the line is
-> set in another environment, or in a release, the children of the package do not start.
+> **Put `pin_keys: true` only in `config/test.exs`.** The package trusts the line only where the
+> environment of Mix is `:test`, as in `mix test`. If another environment sets the line, the
+> children of the package do not start. A release without the `:mix` application has no
+> environment of Mix. With the line, code in the tests can make the application trust keys and
+> answers that EHOS did not give:
+>
+> - `EhOsContract.Auth.Keys.pin/2` adds a key;
+> - the `plug:` option of the `EhOsContract.Auth` child answers in place of the keys of EHOS;
+> - the `plug:` option of the `EhOsContract.Auth.SignIn` child answers in place of the sign-in of EHOS;
+> - the `plug:` option of the `EhOsContract.Auth.Workload` child answers in place of the API of EHOS;
+> - `sign_in/3` starts a sign-in stand-in that never calls EHOS;
+> - the `Testing` stand-ins answer for EHOS: [Use people, grants and mail where EHOS does not
+>   answer](without-ehos.md).
 
 ```elixir
 # config/test.exs
