@@ -147,9 +147,9 @@ Keep these things in the application:
 9. `EhOsContract.Form.refused/3` puts the reason on the changeset.
 10. The page shows the error on the form, in the words of the application.
 
-`call/3` is the door of each call with a credential, also of a call to `/api`. So a form gets the
-same checks as another caller: the Authorizer before the fields, a refusal of a field that the host
-supplies, and the `EhOsContract.Supplier` for that field.
+`EhOsContract.Plug` sends each call to `/api` through `call/3` too. So a form gets the same checks
+as another caller: the Authorizer before the fields, a refusal of a field that the host supplies,
+and the `EhOsContract.Supplier` for that field.
 
 The steps below write this code.
 
@@ -234,9 +234,8 @@ The key comes from the browser. If dispatch accepts the command, it writes the k
 
 On `phx-submit`, send the params of the form to `EhOsContract.call/3`, with `form: true`.
 
-- Put the identity of the invoice in the params. `call/3` reads the identity from the params, and
-  the changeset reads it from `data:`. So the page puts the same value in both places. `Map.put/3`
-  replaces a value of the identity that the person sent.
+- Give `call/3` the same `data:` as the changeset. The identity in `data:` replaces a value of the
+  identity that the person sent. A field that the params leave out gets its value from `data:`.
 - Give `call/3` the key of the form, so that a second submit of the same form is the same command.
   If dispatch accepted the first command, it returns the receipt of that command, also if the
   person changed the form.
@@ -244,17 +243,14 @@ On `phx-submit`, send the params of the form to `EhOsContract.call/3`, with `for
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
 def handle_event("save", %{"issue_invoice" => params}, socket) do
-  id = socket.assigns.invoice_id
-
-  case EhOsContract.call(
-         {:command, "forms_example.issue_invoice"},
-         Map.put(params, "invoice_id", id),
+  case EhOsContract.call({:command, "forms_example.issue_invoice"}, params,
          actor: socket.assigns.actor,
          form: true,
+         data: data(socket),
          idempotency_key: socket.assigns.form_key
        ) do
     {:ok, _receipt} ->
-      {:noreply, push_navigate(socket, to: ~p"/invoices/#{id}")}
+      {:noreply, push_navigate(socket, to: ~p"/invoices/#{socket.assigns.invoice_id}")}
 
     {:error, reason} ->
       changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
@@ -265,7 +261,8 @@ end
 ```
 
 `call/3` reads the params as the changeset reads them. So a field that the changeset refuses comes
-back from `call/3` as `{:invalid, problems}`, and `refused/3` puts it at its field.
+back from `call/3` as `{:invalid, problems}`. `refused/3` does not put an error again that the
+changeset already holds.
 
 A rule of a unit names no field. So `refused/3` puts a rejection on `:base`, the errors of the whole
 form. To show it at a field, name the field:
@@ -412,11 +409,10 @@ The `EhOsContract.Authorizer` checks the capability and its scope.
 - A field in the params, also a blank one, comes from the params. A `<select multiple>`, or a
   checkbox, sends nothing when the person chooses nothing. So it needs a hidden blank input to clear
   the value in `data:`. `<.input type="checkbox">` shows one.
+- `call/3` does the same with the same `data:`. Without `data:`, `call/3` reads only the params,
+  so a field that the page does not show is absent.
 - A field that the page does not show is not protected: params that carry it set it. Put a value
   that the page decides into the params, with `Map.put/3`, before `call/3`.
-- `call/3` reads only the params. A value of `data:` that the form does not send does not get to
-  `call/3`. Put the identity in the params, and show each other field that the command needs, or
-  put it in the params too.
 
 **Each change sends each row.** A LiveView reads the whole form on each `phx-change`. Limit the size
 of what a form can send, where the host gets it: the `max_frame_size` of the socket, and the
@@ -429,7 +425,8 @@ so its text is not a timestamp. Add them in the page, or make the field a `:date
 **Some fields do not come from the person.**
 
 - A field that the host supplies (`supplied_by: :host`): `call/3` asks the
-  `EhOsContract.Supplier` for it. If the params carry the field, `call/3` refuses it.
+  `EhOsContract.Supplier` for it. If the params carry a value for the field, `call/3` refuses it.
+  A blank value is absent, as for each other field.
 - An identity that dispatch generates, for a unit that the command creates.
 - The identity in `data:`. `Form` ignores the identity in the params, and does not show it back
   from them. Only the identity is kept this way. Another field in `data:` is a first value that the

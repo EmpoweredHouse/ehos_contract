@@ -13,12 +13,16 @@ defmodule EhOsContract.Form do
   "a form" is any input that arrives as text, a CSV import or a console among them, not
   only an HTML page.
 
+      data = %{invoice_id: socket.assigns.invoice_id}
+
       # mount, and phx-change="validate"
-      changeset = EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params)
+      changeset = EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params, data: data)
       assign(socket, :form, to_form(changeset, action: :validate))
 
       # phx-submit="save": the person's credential sends the params, as /api does
-      case EhOsContract.call({:command, "billing.issue_invoice"}, params, actor: actor, form: true) do
+      case EhOsContract.call({:command, "billing.issue_invoice"}, params,
+             actor: actor, form: true, data: data
+           ) do
         {:ok, _receipt} ->
           ...
 
@@ -73,9 +77,9 @@ defmodule EhOsContract.Form do
       `generated: :uuid`, which dispatch gives;
     * the identity of the unit the form edits: the page puts it in `data:`, and a value
       the params carry for it is ignored, so a person cannot point the form at another
-      unit through the form. `EhOsContract.call/3` reads the identity from the params, so
-      the page puts the same value there before it sends them. Only the identity is held
-      so: any other field `data:` gives is a value the params may change. Holding the form to its unit is not access: who
+      unit through the form. `EhOsContract.call/3` holds the call so when the page gives it
+      the same `data:`. Only the identity is held so: any other field `data:` gives is a
+      value the params may change. Holding the form to its unit is not access: who
       may act on which unit is the `EhOsContract.Authorizer`'s and the host's to say. When
       `data:` holds none, as on a form that creates a unit under an identity the person
       types, it is read from the params like any other field.
@@ -161,7 +165,8 @@ defmodule EhOsContract.Form do
       the value `data:` gives it, so an edit form need not render every field; one the
       params carry, even blank, is read from them. Leaving a field off the page does not
       protect it, since params that carry it set it: a value the page decides goes into
-      the struct after `to_struct/1`.
+      the params before `EhOsContract.call/3` (`Map.put/3`), or into the struct after
+      `to_struct/1`.
 
   The changeset is valid when the params hold everything the command needs, in its
   types; it has no `action`, which `Phoenix.Component.to_form/2` is given.
@@ -358,7 +363,8 @@ defmodule EhOsContract.Form do
   shows its errors.
 
   The fields the changeset does not take from the params are as `data:` gave them, or
-  nil: dispatch supplies the host's, and gives a generated identity.
+  nil: dispatch with `supply: true` supplies the host's, and dispatch gives a generated
+  identity.
   """
   @spec to_struct(t()) :: {:ok, struct()} | {:error, t()}
   def to_struct(%Ecto.Changeset{valid?: true} = changeset),
@@ -407,8 +413,11 @@ defmodule EhOsContract.Form do
   def refused(%Ecto.Changeset{data: %command{}} = changeset, reason, opts \\ []) do
     at = at!(command, Keyword.get(opts, :at, []))
 
+    # An error the changeset already holds is not put twice: `call/3` reads the params as the
+    # changeset does, so a field's problem comes back from it as the changeset found it.
     reason
     |> refusal_errors(at, shown(changeset))
+    |> Enum.reject(&(&1 in changeset.errors))
     |> Enum.reduce(%{changeset | action: :insert}, fn {field, {message, keys}}, changeset ->
       Ecto.Changeset.add_error(changeset, field, message, keys)
     end)

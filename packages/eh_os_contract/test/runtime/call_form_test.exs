@@ -99,15 +99,98 @@ defmodule EhOsContract.CallFormTest do
     assert issue(@sent, @stranger, form: true) == {:error, :missing_capability}
   end
 
-  test "refuses a field the host supplies in a form's params, and asks the Supplier for it" do
+  test "refuses a field the host supplies in a form's params, takes it blank as absent, and asks the Supplier" do
     clerk = Actor.credential("u-1", ["supply_rig.close_visit"])
     close = &EhOsContract.call({:command, "supply_rig.close_visit"}, &1, actor: clerk, form: true)
 
-    assert close.(%{"visit_id" => "v-1", "code" => "A1", "reported" => ""}) ==
+    assert close.(%{"visit_id" => "v-1", "code" => "A1", "reported" => "false"}) ==
              {:error, {:invalid, [reported: :supplied]}}
 
-    assert {:ok, %Receipt{}} = close.(%{"visit_id" => "v-1", "code" => "A1"})
+    assert {:ok, %Receipt{}} = close.(%{"visit_id" => "v-1", "code" => "A1", "reported" => " "})
     assert [%{payload: %{"code" => "A1", "reported" => true}}] = repo().all(Event)
+  end
+
+  test "records an event and asks a query from a form's params" do
+    clerk =
+      Actor.credential(
+        "u-1",
+        [
+          "dispatch_rig.open_account",
+          "dispatch_rig.balance_confirmed",
+          "dispatch_rig.balances_for_branch"
+        ],
+        %{"dispatch_rig.balances_for_branch" => %{"branch_id" => ["b-7"]}}
+      )
+
+    call = &EhOsContract.call(&1, &2, actor: clerk, form: true)
+
+    assert {:ok, %Receipt{}} =
+             call.({:command, "dispatch_rig.open_account"}, %{
+               "account_id" => "a-1",
+               "branch_id" => "b-7"
+             })
+
+    assert {:ok, %Receipt{}} =
+             call.({:record, "dispatch_rig.balance_confirmed"}, %{"account_id" => "a-1"})
+
+    assert {:ok, [%{account_id: "a-1"}]} =
+             call.({:query, "dispatch_rig.balances_for_branch"}, %{"branch_id" => "b-7"})
+  end
+
+  describe "data:" do
+    test "holds the form to its unit: the identity replaces what the params carry, under either key" do
+      params = @sent |> Map.put("invoice_id", "i-other") |> Map.put(:invoice_id, "i-other")
+
+      assert {:ok, %Receipt{}} =
+               issue(params, @accountant, form: true, data: %{invoice_id: "i-1"})
+
+      assert [%Event{stream_id: "invoice:i-1"}] = repo().all(Event)
+    end
+
+    test "gives each other field when the params leave it out, and the params win when they carry it" do
+      data = %{
+        invoice_id: "i-1",
+        note: "Kept",
+        method: :card,
+        due_on: ~D[2026-09-01],
+        items: [%Line{title: "Kept", quantity: 4}]
+      }
+
+      params = Map.drop(@sent, ["invoice_id", "note", "method", "items"])
+
+      assert {:ok, %Receipt{}} = issue(params, @accountant, form: true, data: data)
+
+      assert [%Event{payload: payload}] = repo().all(Event)
+
+      assert Map.take(payload, ["note", "method", "due_on", "items"]) == %{
+               "note" => "Kept",
+               "method" => "card",
+               "due_on" => "2026-08-14",
+               "items" => [%{"title" => "Kept", "quantity" => 4}]
+             }
+    end
+
+    test "is the page's: taken only with form: true, and only for fields the caller sends" do
+      assert_raise ArgumentError, ~r/data: only with form: true/, fn ->
+        issue(@sent, @accountant, data: %{invoice_id: "i-1"})
+      end
+
+      assert_raise ArgumentError, ~r/does not declare as a field the caller sends/, fn ->
+        issue(@sent, @accountant, form: true, data: %{no_such_field: 1})
+      end
+
+      clerk = Actor.credential("u-1", ["supply_rig.close_visit"])
+
+      assert_raise ArgumentError, ~r/data: :reported/, fn ->
+        EhOsContract.call(
+          {:command, "supply_rig.close_visit"},
+          %{"visit_id" => "v-1", "code" => "A1"},
+          actor: clerk,
+          form: true,
+          data: %{reported: true}
+        )
+      end
+    end
   end
 
   describe "refused/3 on what call/3 answers" do
@@ -122,11 +205,9 @@ defmodule EhOsContract.CallFormTest do
       # The page's changeset has the identity in data:, not in the params.
       changeset = Form.refused(changeset(Map.delete(params, "invoice_id")), reason)
 
+      # Once: the changeset already holds the error call/3 gives back.
       assert Keyword.get_values(changeset.errors, :amount) ==
-               [
-                 {"can't be blank", [validation: :required]},
-                 {"can't be blank", [validation: :required]}
-               ]
+               [{"can't be blank", [validation: :required]}]
 
       assert Keyword.get_values(changeset.errors, :base) ==
                [{"can't be blank", [validation: :required, field: :invoice_id]}]
@@ -142,10 +223,7 @@ defmodule EhOsContract.CallFormTest do
         Form.refused(changeset(params), {:invalid, [period: {:invariant, :written_as_month}]})
 
       assert Keyword.get_values(changeset.errors, :period) ==
-               List.duplicate(
-                 {"is invalid", [validation: :invariant, invariant: :written_as_month]},
-                 2
-               )
+               [{"is invalid", [validation: :invariant, invariant: :written_as_month]}]
     end
 
     test "leaves every answer that is no field's to the page, the action set" do

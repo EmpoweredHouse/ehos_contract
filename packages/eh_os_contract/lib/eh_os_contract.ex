@@ -335,24 +335,31 @@ defmodule EhOsContract do
   text, as a query string carries them. With `form: true`, it is what an HTML form
   sends, read as `EhOsContract.Form` reads it: every value as text, at every level, a
   field left blank as absent, and a list as `inputs_for` sends its rows. A page sends
-  the params of its form so, and the identity of the unit it edits among them:
+  the params of its form so, with the `data:` it gave `EhOsContract.Form.changeset/4`:
 
-      EhOsContract.call(
-        {:command, "billing.issue_invoice"},
-        Map.put(params, "invoice_id", invoice_id),
-        actor: actor, form: true
+      EhOsContract.call({:command, "billing.issue_invoice"}, params,
+        actor: actor, form: true, data: %{invoice_id: invoice_id}
       )
+
+  `data:` holds the call to what the page decided, as it holds the changeset: the
+  identity of the unit it gives replaces a value the params carry for it, and each other
+  field it gives is the value when the params leave the field out. Its values are the
+  engine's, as `Form` takes them. A field the host supplies is the `EhOsContract.Supplier`'s,
+  not `data:`'s.
 
   `opts`: `actor:`, a credential's
   `EhOsContract.Actor`, required — a `:system` actor is the application's own code,
   which dispatches structs; `contracts:`, the contracts this door serves (every
-  registered one by default); `form:`, `true` for a form's params, set by the page's
-  code, never taken from the caller; for a command or a recording `idempotency_key:` and
+  registered one by default); `form:`, `true` for a form's params, and `data:`, with
+  `form: true` only, both set by the page's code, never taken from the caller; for a command or a recording `idempotency_key:` and
   `correlation_id:`, the latter a UUID's text; for a query `min_position:` and `wait:`,
   to read a write, as `query/3` takes them — set by the door's own code, an integer
   each, never taken from the caller: `wait:` bounds how long the call polls.
 
   `EhOsContract.Form.refused/3` puts each answer back on the form's changeset.
+
+  It raises `ArgumentError` when `data:` is given without `form: true`, or names a field
+  the declaration does not have or the host supplies: the page's mistakes.
 
   Besides what those three answer: `{:error, :not_found}` for a capability none of
   the contracts declares as that kind, `{:error, :no_actor}` without a credential,

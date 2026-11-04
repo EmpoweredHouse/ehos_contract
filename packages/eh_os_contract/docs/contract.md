@@ -444,7 +444,7 @@ end
 - If the supplier cannot give it, the result is `{:not_supplied, reason}`, an HTTP 503. The engine
   writes nothing.
 - A call of `dispatch/3` from your own code is trusted, as each other field of the struct is. The
-  engine asks the supplier only if you pass `supply: true`, as a form does
+  engine asks the supplier only if you pass `supply: true`. `call/3` passes it, also for a form
   ([Forms](forms.md)).
 - Only a field of a command, or of a recorded event, can be supplied
   ([`F10`](refusals.md#refusals-f)).
