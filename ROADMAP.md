@@ -52,7 +52,7 @@ applications moved to them.
 
 | Stage | What | Issue | Status |
 | --- | --- | --- | --- |
-| Docs by the writing rules | Each hand-written page rewritten by `ehos-dev:voice` and `ehos-dev:diagrams`, `contract.md` first | #517 | ◐ |
+| Docs by the writing rules | Each hand-written page rewritten by `ehos-dev:voice` and `ehos-dev:diagrams`, `contract.md` first | #517 | ☑ #523, #532, #535, #538, #540, #545, #546, #554, #556, #564, #574, #577, #585, #588, #590 |
 
 ## Earlier programmes
 
