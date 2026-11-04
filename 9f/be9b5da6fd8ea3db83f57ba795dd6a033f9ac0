@@ -1,0 +1,1 @@
+CodeRabbit nitpick (hold counted from task start) -> fixed, reverse-checked (5 s call times out). Review of the fix (code-review + ehos-dev:elixir): misplaced lock_table! comment -> fixed; match on private pin message shape -> no change needed (a change fails the test loudly at the 10 s call). auth mix check rc=0, keys_test 41/0.
