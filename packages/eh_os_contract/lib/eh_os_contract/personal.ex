@@ -54,6 +54,9 @@ defmodule EhOsContract.Personal do
   @keys "eh_os_contract_subject_keys"
   @erasures "eh_os_contract_erasures"
   @erased "eh_os_contract.subject_erased"
+  # How many times the boot takes the samples of the master keys while a rewrap moves
+  # the data keys under it.
+  @check_rounds 3
 
   @typedoc "A subject: its type, as the domain declares it, and its id."
   @type subject :: {atom(), String.t()}
@@ -641,9 +644,26 @@ defmodule EhOsContract.Personal do
   @doc false
   @spec check_master_keys!(module(), [map()]) :: :ok
   def check_master_keys!(repo, models) do
-    if Enum.any?(models, &declares?/1), do: Enum.each(samples(repo), &check_master_key!(repo, &1))
+    if Enum.any?(models, &declares?/1), do: check_samples!(repo, @check_rounds)
     :ok
   end
+
+  # A key's data keys are counted apart from the sample, and a rewrap on another node
+  # can move the last of them in between. They moved to a master key the samples may
+  # not hold, so the samples are taken again, a bounded number of times.
+  defp check_samples!(repo, rounds) do
+    checked = repo |> samples() |> Enum.map(&check_master_key!(repo, &1))
+    if :moved in checked, do: check_again!(repo, rounds - 1)
+  end
+
+  defp check_again!(_repo, 0) do
+    raise ArgumentError,
+          "The data keys moved to another master key while the engine checked them, " <>
+            "#{@check_rounds} times. A rewrap is likely running on another node. Start the " <>
+            "engine again when the rewrap ends"
+  end
+
+  defp check_again!(repo, rounds), do: check_samples!(repo, rounds)
 
   defp check_master_key!(repo, [kek_id, type, id, version, wrapped]) do
     case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
@@ -651,13 +671,18 @@ defmodule EhOsContract.Personal do
         :ok
 
       :error ->
-        count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
-
-        raise ArgumentError,
-              "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
-                "unwrap the data key that the engine tried, so the engine cannot read the " <>
-                "personal data of its subject. " <> remedy(kek_id, Vault.current())
+        repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
+        |> refuse_master_key!(kek_id)
     end
+  end
+
+  defp refuse_master_key!(0, _kek_id), do: :moved
+
+  defp refuse_master_key!(count, kek_id) do
+    raise ArgumentError,
+          "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}. The vault cannot " <>
+            "unwrap the data key that the engine tried, so the engine cannot read the " <>
+            "personal data of its subject. " <> remedy(kek_id, Vault.current())
   end
 
   # The vault wraps with the id it cannot unwrap with, so its bytes under that id are

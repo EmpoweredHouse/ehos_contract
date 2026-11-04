@@ -100,6 +100,14 @@ The child takes no other option. The package then cannot weaken the fetch of the
 > - `auth:`, `headers:`, `params:` or `aws_sigv4:` goes to EHOS;
 > - `finch:` makes each fetch fail, because the package always sets the connection.
 
+> **Keep `SSLKEYLOGFILE` out of the environment of the application in production.** Finch, the
+> client under Req, opens the file that the variable names when Req asks it for a pool. Req does
+> this when the application starts, and again for each call of the package. Finch writes the TLS
+> secrets of a connection to the file when its pool sets `keep_secrets: true` in `transport_opts`.
+> The package does not set it, but a pool of the application can. With the file, a person who
+> records the traffic can read it. If Finch cannot open the file, the application does not start.
+> The package does not check the variable.
+
 ### What stops the application at start
 
 The child checks its configuration when the supervisor reads its child list. The application does
