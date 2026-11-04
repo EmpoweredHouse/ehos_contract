@@ -637,13 +637,33 @@ both, because one id names one set of bytes. The engine tries only one data key
 of each master key, so the check can pass. Then a read of a data key of the other
 set raises an `ArgumentError`.
 
-A master key that you destroyed cannot come back. While a data key names it, the
-engine does not start. This occurs when you restore a backup that is older than the
-rewrap. The engine gives no way to start past this check.
-
 The engine does not try a wrap at boot. So a vault whose `c:EhOsContract.Vault.check/0` returns `:ok`
 starts, even if its wrap fails. The engine unwraps one data key of each master
 key, not each data key.
+
+### A master key that you destroyed
+
+A master key that you destroyed cannot come back. A backup that is older than the
+rewrap can still hold data keys that it wrapped. While a data key names it, the
+engine does not start. To start, name the key in the configuration:
+
+    config :eh_os_contract, EhOsContract.Vault,
+      keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}],
+      destroyed: ["2026-03"]
+
+- The engine does not try to unwrap the data keys of a destroyed key, at boot or
+  when it reads.
+- The engine reads each subject with such a data key as erased: each personal field
+  of the subject reads as `EhOsContract.Erased`, and a command that carries new
+  personal data of the subject returns `{:error, :subject_erased}`.
+- The rewrap leaves those data keys as they are.
+- At boot, the engine logs a warning with the count of those data keys.
+- `EhOsContract.erase/3` deletes those data keys and records the erasure. Then the
+  warning stops.
+
+The engine does not start if `destroyed:` names the key that the vault wraps with.
+[Start on a backup whose master key you destroyed](master-keys.md#start-on-a-backup-whose-master-key-you-destroyed)
+gives the steps.
 
 ### Callbacks
 

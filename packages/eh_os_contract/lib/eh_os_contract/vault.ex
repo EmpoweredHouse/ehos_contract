@@ -85,13 +85,33 @@ defmodule EhOsContract.Vault do
   of each master key, so the check can pass. Then a read of a data key of the other
   set raises an `ArgumentError`.
 
-  A master key that you destroyed cannot come back. While a data key names it, the
-  engine does not start. This occurs when you restore a backup that is older than the
-  rewrap. The engine gives no way to start past this check.
-
   The engine does not try a wrap at boot. So a vault whose `c:check/0` returns `:ok`
   starts, even if its wrap fails. The engine unwraps one data key of each master
   key, not each data key.
+
+  ## A master key that you destroyed
+
+  A master key that you destroyed cannot come back. A backup that is older than the
+  rewrap can still hold data keys that it wrapped. While a data key names it, the
+  engine does not start. To start, name the key in the configuration:
+
+      config :eh_os_contract, EhOsContract.Vault,
+        keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}],
+        destroyed: ["2026-03"]
+
+  - The engine does not try to unwrap the data keys of a destroyed key, at boot or
+    when it reads.
+  - The engine reads each subject with such a data key as erased: each personal field
+    of the subject reads as `EhOsContract.Erased`, and a command that carries new
+    personal data of the subject returns `{:error, :subject_erased}`.
+  - The rewrap leaves those data keys as they are.
+  - At boot, the engine logs a warning with the count of those data keys.
+  - `EhOsContract.erase/3` deletes those data keys and records the erasure. Then the
+    warning stops.
+
+  The engine does not start if `destroyed:` names the key that the vault wraps with.
+  [Start on a backup whose master key you destroyed](master-keys.md#start-on-a-backup-whose-master-key-you-destroyed)
+  gives the steps.
   """
 
   @typedoc "What names a master key, stored beside each data key it wraps."
@@ -154,6 +174,12 @@ defmodule EhOsContract.Vault do
   @spec current() :: kek_id()
   def current, do: impl().current()
 
+  # The master keys that `config :eh_os_contract, EhOsContract.Vault, destroyed:` names.
+  # Called by personal.ex.
+  @doc false
+  @spec destroyed() :: [kek_id()]
+  def destroyed, do: __MODULE__ |> EhOsContract.Config.get() |> Keyword.get(:destroyed, [])
+
   # Raises when `contracts` — v2 models — declare a personal field and the configured
   # vault is not ready. What the engine runs at boot.
   @doc false
@@ -171,11 +197,28 @@ defmodule EhOsContract.Vault do
             do: vault.check(),
             else: {:error, "#{inspect(vault)} does not implement #{inspect(__MODULE__)}"}
 
-        with {:error, reason} <- result do
-          raise ArgumentError,
-                "#{Enum.map_join(personal, ", ", &inspect(&1.module))} declare personal fields, " <>
-                  "and the vault cannot encrypt them: #{reason}"
+        case result do
+          :ok ->
+            check_current!(vault.current())
+
+          {:error, reason} ->
+            raise ArgumentError,
+                  "#{Enum.map_join(personal, ", ", &inspect(&1.module))} declare personal fields, " <>
+                    "and the vault cannot encrypt them: #{reason}"
         end
     end
+  end
+
+  # A data key wrapped by a key named destroyed would read as erased as soon as it is
+  # stored.
+  defp check_current!(current) do
+    if current in destroyed() do
+      raise ArgumentError,
+            "config :eh_os_contract, EhOsContract.Vault, destroyed: names #{inspect(current)}, " <>
+              "the master key that the vault wraps with. Name only the master keys that you " <>
+              "destroyed"
+    end
+
+    :ok
   end
 end

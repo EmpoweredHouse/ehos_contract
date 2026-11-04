@@ -50,6 +50,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Added
 
+- **A master key that you destroyed can be named in the configuration** (#578).
+  `config :eh_os_contract, EhOsContract.Vault, destroyed: ["2026-03"]` lets the engine start when a
+  restored backup holds data keys that a destroyed master key wraps. The engine does not try to
+  unwrap those data keys, and reads their subjects as erased. The rewrap leaves them, and
+  `erase/3` deletes them and records the erasure. At boot, a warning counts them. Before, the
+  engine did not start, and the Mix tasks that start it did not run.
 - **`mix eh_os_contract.check` warns about a scoped actor with an unscoped query** (#559). The new
   warning `scoped-actor-with-unscoped-query` names a query that has an actor with a scope in `by:`
   and no `scope:`. Such a query answers the rows of each value: a lead with a grant for warehouse 7

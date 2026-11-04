@@ -1,7 +1,8 @@
 # Manage the keys and the backups of personal data
 
 This page tells how to rotate a master key, and how to keep the master keys in a key management
-service. It also tells how to restore a backup that is older than an erasure. It is for a developer or an operator of an application whose contracts declare personal
+service. It also tells how to restore a backup that is older than an erasure, and how to start the
+engine on a backup whose master key you destroyed. It is for a developer or an operator of an application whose contracts declare personal
 fields. [The glossary](glossary.md) defines each word in italics.
 
 A *master key* wraps the *data key* of each subject.
@@ -229,6 +230,51 @@ the time of the first erasure and who asked for it.
 
 If you have no record of the erasures, the restore makes those subjects readable again.
 
+<a id="start-on-a-backup-whose-master-key-you-destroyed"></a>
+
+## Start on a backup whose master key you destroyed
+
+A backup that is older than a rewrap holds data keys that the old master key wraps. If you
+destroyed that key, nothing can unwrap those data keys. The personal data of their subjects is lost.
+While a data key names a master key that the vault cannot unwrap with, the engine does not start.
+
+1. Name the destroyed key in the configuration, beside the keys of the vault:
+
+   <!-- not compiled: the host's configuration -->
+   ```elixir
+   config :eh_os_contract, EhOsContract.Vault,
+     keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}],
+     destroyed: ["2026-03"]
+   ```
+
+   Name only a key that you destroyed. If you name a key that you still have, the engine reads the
+   personal data of its subjects as erased, and refuses new personal data for them.
+
+2. Deploy.
+
+   **Result:** the engine starts. It logs a warning with the count of the data keys that the
+   destroyed key wraps. It reads each personal field of their subjects as
+   `EhOsContract.Erased`. A command that carries new personal data of such a subject returns
+   `{:error, :subject_erased}`. The rewrap leaves those data keys as they are.
+
+3. Find the subjects whose data keys the destroyed key wraps:
+
+   ```sql
+   SELECT subject_type, subject_id FROM eh_os_contract_subject_keys WHERE kek_id = '2026-03';
+   ```
+
+4. Call `erase/3` for each subject. Give it an actor for the person who restores.
+
+   **Result:** the engine deletes those data keys, records each erasure, and appends the event
+   `eh_os_contract.subject_erased`. Each read model that projects personal data forgets the
+   subject. At the next boot, the warning does not show.
+
+5. When no data key names the destroyed key, remove it from `destroyed:`, and deploy.
+
+   **Result:** the engine starts without the warning.
+
+If the vault wraps with a key that `destroyed:` names, the engine does not start.
+
 ## What can go wrong
 
 The rewrap raises with one of these messages:
@@ -247,13 +293,13 @@ one does not unwrap, the engine does not start, and raises with this message:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| `… wrapped by master key …. The vault cannot unwrap the data key that the engine tried … Put … back in the vault` | You removed a master key that still wraps data keys, or you changed the bytes of a key that is not the first of the list. | Put that key back in the list, with the bytes that wrapped the data keys, and deploy. Then run the rewrap before you remove the key. |
+| `… wrapped by master key …. The vault cannot unwrap the data key that the engine tried … Put … back in the vault` | You removed a master key that still wraps data keys, or you changed the bytes of a key that is not the first of the list. | Put that key back in the list, with the bytes that wrapped the data keys, and deploy. Then run the rewrap before you remove the key. If you destroyed the key, do the steps of [Start on a backup whose master key you destroyed](#start-on-a-backup-whose-master-key-you-destroyed). |
 | `… wrapped by master key …. The vault cannot unwrap the data key that the engine tried … The vault wraps with …` | You changed the bytes of the first key of the list, and kept its id. A rewrap does not help: it skips the data keys of the first key. | Put the bytes that wrapped that data key back, and deploy. If the vault wrapped data keys with the new bytes too, no list of keys unwraps both sets: choose which set stays readable. The engine cannot repair the other set. |
 
 The engine checks one data key of each master key, not each data key. The count in the message is
 the count of data keys that name the master key, not the count that does not unwrap. A master key that you
 destroyed cannot come back. If you restore a backup that is older than the rewrap, its data keys
-name the destroyed key, and the engine does not start.
+name the destroyed key, and the engine does not start until `destroyed:` names that key.
 
 A destroyed master key cannot unwrap a data key that it wraps, also in a backup. Before you destroy
 it, make sure that you do not need to restore such a backup.
