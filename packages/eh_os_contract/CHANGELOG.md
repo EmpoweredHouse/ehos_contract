@@ -102,11 +102,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
-- **The check of the master keys at boot passes when a rewrap moved the data keys in between**
-  (#579). If a data key does not unwrap, the engine counts the data keys of its master key in a
-  second statement. A rewrap on another node can move the last of them to the current key before
-  that count. Before, the engine then refused to start with "0 data keys are wrapped by master
-  key …". It now starts, as the next boot did.
+- **The check of the master keys at boot checks again when a rewrap moved the data keys in
+  between** (#579). If a data key does not unwrap, the engine counts the data keys of its master key
+  in a second statement. A rewrap on another node can move the last of them to another master key
+  before that count. Before, the engine then refused to start with "0 data keys are wrapped by
+  master key …". It now takes the samples again and checks the key that holds the data keys now.
+  If the data keys move again 3 times, it refuses to start and says that a rewrap is likely running.
 - **Moves a verdict:** **dispatch asks the supplier inside its transaction, and again on a retry**
   (#563). A command or a recorded event with a field `supplied_by: :host` gets the value from
   `EhOsContract.Supplier` inside the transaction that appends its events. If the stream changed and

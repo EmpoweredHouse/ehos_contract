@@ -20,17 +20,25 @@ defmodule EhOsContract.VaultTest do
 
   defmodule RewrappedRepo do
     @moduledoc false
-    # The test repo, on which a rewrap on another node moves every data key to
-    # "kek-new" right after the boot check samples them.
+    # The test repo, on which another node changes the data keys right after the boot
+    # check samples them: each sample runs the next of the test's `:after_sample`
+    # functions.
     alias EhOsContract.TestRepo, as: Repo
 
     def query!(sql, params, opts) do
       sampled = Repo.query!(sql, params, opts)
-      Repo.query!("UPDATE eh_os_contract_subject_keys SET kek_id = 'kek-new'")
+      run_next(Process.get(:after_sample, []))
       sampled
     end
 
     def one(query), do: Repo.one(query)
+
+    defp run_next([]), do: :ok
+
+    defp run_next([next | rest]) do
+      Process.put(:after_sample, rest)
+      next.()
+    end
   end
 
   @kek Base.encode64(:binary.copy(<<1>>, 32))
@@ -42,6 +50,11 @@ defmodule EhOsContract.VaultTest do
   end
 
   defp keys(keys), do: Application.put_env(:eh_os_contract, Vault, keys: keys)
+
+  # What a node would leave whose vault names the bytes of the old key with `kek_id`: the
+  # rows under a new id, wrapped as before.
+  defp relabel!(kek_id),
+    do: Repo.query!("UPDATE eh_os_contract_subject_keys SET kek_id = $1", [kek_id])
 
   describe "the default vault" do
     test "wraps with the first key, unwraps with any, and only in the same context" do
@@ -146,12 +159,44 @@ defmodule EhOsContract.VaultTest do
       end
     end
 
-    test "a master key whose data keys a rewrap moved after the sample starts" do
+    test "data keys that a rewrap moved after the sample are checked under their new key" do
       keys([{"kek-old", @kek}])
       join!("membership-anna", "member-anna")
       keys([{"kek-new", @new_kek}])
 
+      Process.put(:after_sample, [
+        fn ->
+          keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+          Personal.rewrap!(Repo, "kek-new")
+          keys([{"kek-new", @new_kek}])
+        end
+      ])
+
       assert Personal.check_master_keys!(RewrappedRepo, [Model.fetch(Members)]) == :ok
+    end
+
+    test "data keys moved after the sample to a key the vault cannot unwrap with do not start" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}])
+      Process.put(:after_sample, [fn -> relabel!("kek-new") end])
+
+      assert_raise ArgumentError, ~r/^1 data key is wrapped by master key "kek-new"/, fn ->
+        Personal.check_master_keys!(RewrappedRepo, [Model.fetch(Members)])
+      end
+    end
+
+    test "data keys that move after each sample do not start, and say why" do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}])
+      Process.put(:after_sample, Enum.map(["kek-a", "kek-b", "kek-c"], &fn -> relabel!(&1) end))
+
+      assert_raise ArgumentError,
+                   "The data keys moved to another master key while the engine checked them, " <>
+                     "3 times. A rewrap is likely running on another node. Start the engine " <>
+                     "again when the rewrap ends",
+                   fn -> Personal.check_master_keys!(RewrappedRepo, [Model.fetch(Members)]) end
     end
 
     test "control: a vault that unwraps a data key of each master key starts" do
