@@ -257,7 +257,7 @@ defmodule EhOsContract.Dispatcher do
     fields = if kind == :query, do: declaration.params, else: declaration.fields
     values = Codec.values(model.domain)
 
-    with {:ok, decoded} <- decoded(fields, input, values, kind),
+    with {:ok, decoded} <- decoded(fields, input, values, kind, Keyword.get(opts, :form) == true),
          :ok <- correlation(kind, Keyword.get(opts, :correlation_id)) do
       generated = if kind == :record, do: :event, else: kind
       {:ok, struct!(Model.module_for(model, generated, declaration.name), decoded)}
@@ -266,7 +266,7 @@ defmodule EhOsContract.Dispatcher do
 
   # Plan T1: a field the host supplies is not the caller's to send — present at all,
   # even as `null`, it is refused by name — and is not decoded from the request.
-  defp decoded(fields, input, values, kind) do
+  defp decoded(fields, input, values, kind, form?) do
     supplied = Supplier.fields(fields)
     # Under either key: `Codec.decode/4` reads an atom's too, from Elixir code.
     sent =
@@ -274,7 +274,9 @@ defmodule EhOsContract.Dispatcher do
           Map.has_key?(input, Atom.to_string(f.name)) or Map.has_key?(input, f.name),
           do: {f.name, :supplied}
 
-    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query), sent} do
+    # `form: true` reads what an HTML form sends (#589), as `EhOsContract.Form` does.
+    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query, form: form?),
+          sent} do
       # `nil` until the host supplies it, once the caller is authorized.
       {{:ok, decoded}, []} -> {:ok, Enum.into(supplied, decoded, &{&1.name, nil})}
       {{:ok, _decoded}, sent} -> {:error, {:invalid, sent}}

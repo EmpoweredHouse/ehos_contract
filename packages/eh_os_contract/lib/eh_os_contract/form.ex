@@ -9,26 +9,28 @@ defmodule EhOsContract.Form do
 
   A form that records an event (one an actor records, `recorded_by:`) or asks a query
   (a search or a filter over a read model) is built the same way, from the event's fields
-  or the query's params, for `EhOsContract.record/3` or `EhOsContract.query/3`. And
+  or the query's params. And
   "a form" is any input that arrives as text, a CSV import or a console among them, not
   only an HTML page.
 
       # mount, and phx-change="validate"
-      changeset = EhOsContract.Form.changeset(Billing.Contracts.Invoicing, Commands.IssueInvoice, params)
+      changeset = EhOsContract.Form.changeset({:command, "billing.issue_invoice"}, params)
       assign(socket, :form, to_form(changeset, action: :validate))
 
-      # phx-submit="save"
-      with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
-           {:ok, _receipt} <- EhOsContract.dispatch(Billing.Contracts.Invoicing, command, actor: actor) do
-        ...
-      else
-        {:error, %Ecto.Changeset{} = changeset} ->
-          assign(socket, :form, to_form(changeset))
+      # phx-submit="save": the person's credential sends the params, as /api does
+      case EhOsContract.call({:command, "billing.issue_invoice"}, params, actor: actor, form: true) do
+        {:ok, _receipt} ->
+          ...
 
         {:error, reason} ->
           changeset = EhOsContract.Form.refused(changeset, reason, at: [period_open: :period])
           assign(socket, :form, to_form(changeset))
       end
+
+  `EhOsContract.call/3` with `form: true` reads the params as this module does, and asks
+  the `EhOsContract.Authorizer` before it reads them, as for every caller with a
+  credential. The changeset is the person's feedback: its errors while they type, and
+  what `call/3` refused.
 
   **What it reads** is what a form sends: every value as text, a field left blank
   (`""`, or only spaces) as absent, a list as `inputs_for` sends its rows. A select's
@@ -65,15 +67,15 @@ defmodule EhOsContract.Form do
 
   **What it does not take from the params:**
 
-    * a field the host supplies (`supplied_by: :host`): the page fills it in `data:`, or
-      passes `supply: true` to `EhOsContract.dispatch/3`, which then asks the
-      `EhOsContract.Supplier`;
+    * a field the host supplies (`supplied_by: :host`): `EhOsContract.call/3` asks the
+      `EhOsContract.Supplier` for it, and refuses it in the params;
     * the identity of a unit the command creates, when the unit's identity is
       `generated: :uuid`, which dispatch gives;
     * the identity of the unit the form edits: the page puts it in `data:`, and a value
       the params carry for it is ignored, so a person cannot point the form at another
-      unit through the form. Only the identity is held so: any other field `data:` gives
-      is a value the params may change. Holding the form to its unit is not access: who
+      unit through the form. `EhOsContract.call/3` reads the identity from the params, so
+      the page puts the same value there before it sends them. Only the identity is held
+      so: any other field `data:` gives is a value the params may change. Holding the form to its unit is not access: who
       may act on which unit is the `EhOsContract.Authorizer`'s and the host's to say. When
       `data:` holds none, as on a form that creates a unit under an identity the person
       types, it is read from the params like any other field.
@@ -81,7 +83,7 @@ defmodule EhOsContract.Form do
   What the form has that the command does not, a search box or a picker's query, stays
   the application's: put it in another changeset, or read it from the params yourself.
 
-  **What dispatch refuses comes back to the form** through `refused/3`: a field's problem
+  **What `call/3` refuses comes back to the form** through `refused/3`: a field's problem
   at the field, and a rejection at the field the application names for its rule, or
   above the fields.
 
@@ -112,7 +114,7 @@ defmodule EhOsContract.Form do
   Like `changeset/4`, it checks the shape the contract declares, its fields, their types,
   an enum's members and the names of its values' invariants, and asks no
   `EhOsContract.Authorizer`: whether the person may issue it is asked when it is sent, by
-  `dispatch/3`, `record/3` or `query/3`. Show the form only to whom the page means to.
+  `EhOsContract.call/3`. Show the form only to whom the page means to.
 
   Raises `ArgumentError` when none of the contracts declares a capability of that kind and
   name.
@@ -366,8 +368,9 @@ defmodule EhOsContract.Form do
     do: {:error, %{changeset | action: :insert}}
 
   @doc """
-  The changeset with what dispatch refused put back on it, for the form to show, with the
-  action `:insert`.
+  The changeset with what `EhOsContract.call/3` refused put back on it, for the form to
+  show, with the action `:insert`. It takes every reason `call/3` answers, and what
+  `dispatch/3`, `record/3` and `query/3` answer.
 
     * `{:invalid, problems}`: each problem at its field, as `changeset/4` puts its own,
       and an entity the host does not have (`:unknown`, a company id that names no
@@ -381,8 +384,10 @@ defmodule EhOsContract.Form do
       rule names no field, and the rejection carries none of the values, so which field
       it is about is the application's to say;
     * anything else, a capability the person lacks, an idempotency key, the host failing
-      to supply a field: the changeset unchanged but for its action. None of those is a
-      field's, and the page says it in its own words, from the reason it holds.
+      to supply a field, a unit not created yet (`:not_created`), a credential missing
+      (`:no_actor`), a capability no contract declares (`:not_found`): the changeset
+      unchanged but for its action. None of those is a field's, and the page says it in
+      its own words, from the reason it holds.
 
   `opts`:
 
@@ -390,7 +395,7 @@ defmodule EhOsContract.Form do
       at: `at: [period_open: :period]`.
 
   ```elixir
-  {:error, %EhOsContract.Rejection{invariant: :period_open}} = EhOsContract.dispatch(...)
+  {:error, %EhOsContract.Rejection{invariant: :period_open}} = EhOsContract.call(...)
   changeset = EhOsContract.Form.refused(changeset, reason, at: [period_open: :period])
   changeset.errors
   #=> [period: {"was refused", [validation: :rejected, invariant: :period_open]}]
