@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-05
+
 ### Changed
 
 - **The README is split into pages by what a reader asks** (#517). The README says what the
