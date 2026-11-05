@@ -1,7 +1,7 @@
 defmodule EhOsContract.GraphRenderer.MixProject do
   use Mix.Project
 
-  @version "0.9.1-dev"
+  @version "0.9.1"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   # The pages ExDoc builds, in the order a reader takes them.
   @extras [

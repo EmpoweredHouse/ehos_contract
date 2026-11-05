@@ -25,8 +25,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-05
+
 ### Changed
 
+- **Breaking:** **the engine is required at `~> 0.14.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
 - **The README is split into pages by what a reader asks** (#517). The README says what the dashboard
   shows. Two how-tos, `docs/mount-the-dashboard.md` and `docs/who-can-see-it.md`, and a Reference
   page, `docs/api.md`, take the rest, and hexdocs shows them. The pages now say that

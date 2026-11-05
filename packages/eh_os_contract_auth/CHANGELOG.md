@@ -24,8 +24,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-05
+
 ### Changed
 
+- **Breaking:** **the engine is required at `~> 0.14.0`**, however it is fetched: by version from Hex, and also
+  when this package comes from git or a path. A host with an older engine is refused at `mix deps.get`.
 - **The README starts as an overview, and three pages take its first sections** (#517). The README
   says what the package does and lists its parts. `docs/getting-started.md` takes "Installation" and
   "Wiring it", with the result of each step. `docs/credential.md`, a Reference page, takes "The
@@ -83,7 +87,6 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   each call asked Req for a pool, and Finch opened the file again and did not close it, so a
   long-running application ran out of file descriptors. A `connect_options:` in
   `config :req, default_options` still does not get to the calls of the package.
-
 - **`Keys.pin/2` waits up to 10 seconds for the key process** (#591). The process can be in a fetch
   of the keys, such as the first one after it starts, which can take 5 seconds. Before, `pin/2`
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It
