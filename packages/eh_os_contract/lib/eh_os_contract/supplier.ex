@@ -75,8 +75,8 @@ defmodule EhOsContract.Supplier do
     tries the command again after a conflict. A call to another system is not rolled
     back, and the engine can make it up to 3 times for one command.
 
-  `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, and a
-  page with `EhOsContract.Form` can pass it. Without it, the code of the application
+  `dispatch/3` and `record/3` ask only with `supply: true`. `call/3` sets it, also for a
+  page that sends its form with `form: true`. Without it, the code of the application
   fills the supplied fields itself. The engine trusts that struct, and checks those
   fields as it checks each other field. So do not fill a supplied field from what a
   caller sent.

@@ -165,12 +165,13 @@ them.
 
 `call/3` takes data with the types that JSON gives: a boolean as `true`, an integer as a number.
 The values of a query can also come as text, as a URL carries them. A
-form sends text: `"false"` for a checkbox, `"42"` for an amount. A page reads a form through
-[`EhOsContract.Form`](forms.md). The form takes the module of the declaration, or the same name of the
-capability: `Form.changeset({:command, "calls_example.assign_pick_list"}, params)`. It checks
-the fields while the person types. The page then dispatches the struct with the actor of the
-person, and `dispatch/3` asks the Authorizer. Until the person sends the form, nothing asks the
-Authorizer. The form checks only the shape that the contract declares. That is the fields, their
+form sends text: `"false"` for a checkbox, `"42"` for an amount. With `form: true`, `call/3` reads
+the params of a form as text, a blank field as absent, and rows as `inputs_for` sends them. A page
+checks the form through [`EhOsContract.Form`](forms.md) while the person types, with the module of
+the declaration or the same name of the capability:
+`Form.changeset({:command, "calls_example.assign_pick_list"}, params)`. On submit, the page sends
+the params to `call/3` with `form: true` and the actor of the person, and `call/3` asks the
+Authorizer. Until the person sends the form, nothing asks the Authorizer. The form checks only the shape that the contract declares. That is the fields, their
 types, the members of an enum and the names of the invariants of its values. So a page shows a form
 only to the people that it is for.
 
@@ -229,13 +230,13 @@ test key. Send it through the plug, as a client does. The test key needs this li
 config :eh_os_contract_auth, pin_keys: true
 ```
 
-The package raises if a test pins a key without the line. It does not check where the line is. In
-another environment, the line lets code trust a key that the platform did not publish.
+The package raises if a test pins a key without the line, or where the environment of Mix is not
+`:test`. If another environment sets the line, the children of the package do not start.
 
 ## Next steps
 
 - [How is a call authorized?](authorization.md): what the Authorizer answers, and what each answer
   writes.
 - [Narrow a call to the values of a grant](scope.md): the scope that `outside_scope` refers to.
-- [Issue a command from a form](forms.md): read the text of a form before a dispatch.
+- [Issue a command from a form](forms.md): check the text of a form, and send it through `call/3`.
 - `EhOsContract.Plug` and `EhOsContract.call/3`: the reference, on hexdocs.

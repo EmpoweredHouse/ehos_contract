@@ -83,6 +83,19 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It
   now waits as long as `Keys.refresh/1` does.
 
+### Security
+
+- **Breaking:** **Test keys and plugs are trusted only where Mix's environment is `:test`** (#591).
+  Before, the package checked only that `config :eh_os_contract_auth, pin_keys: true` was set. With
+  the line in `config.exs` or `runtime.exs`, code in a release could trust keys and answers that
+  EHOS did not give. Now `Keys.pin/2`, the `Testing` helpers and stand-ins, and the `plug:` option
+  of each child also need Mix's environment to be `:test`, as in `mix test`, read when they are
+  called. A release without the `:mix` application has no environment of Mix.
+  `EhOsContract.Auth`, `EhOsContract.Auth.SignIn` and `EhOsContract.Auth.Workload` do not start
+  when `pin_keys: true` is set and Mix's environment is not `:test`. Move the line to
+  `config/test.exs`. `EhOsContract.Auth.Workload` now takes `plug:` only under the same rule, as
+  the other two do.
+
 ## [0.11.0] - 2026-11-01
 
 ### Security

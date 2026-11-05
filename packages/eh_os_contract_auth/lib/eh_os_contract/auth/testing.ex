@@ -40,9 +40,8 @@ defmodule EhOsContract.Auth.Testing do
   **The test key.** `credential/3` signs with an Ed25519 key made once per test run
   and pinned in the running `EhOsContract.Auth.Keys` (`EhOsContract.Auth.Keys.pin/2`):
   trusted like EHOS's, kept through refreshes, never written to the table. Pinning
-  needs `config :eh_os_contract_auth, pin_keys: true`, and raises without it. Put the
-  line in `config/test.exs` alone: the package does not check the environment it is
-  set in. No running EHOS is needed. The key process still makes its first fetch of the
+  needs `config :eh_os_contract_auth, pin_keys: true` in `config/test.exs` and Mix's
+  environment `:test`, as in `mix test`, and raises without them. No running EHOS is needed. The key process still makes its first fetch of the
   keys, and the first credential waits for it; a `plug:` on the `EhOsContract.Auth` child
   answers it without the network. The claims are EHOS's — the configured `iss` and `aud`,
   ten minutes of life from `EhOsContract.Clock.now/0`.
@@ -73,7 +72,7 @@ defmodule EhOsContract.Auth.Testing do
   Mox or Hammox can instead `defmock` the three behaviours and `stub_with/2` them with
   `EhOsContract.Auth.People.Directory.Static`, `EhOsContract.Auth.Grants.Local` and
   `EhOsContract.Auth.Mail.Local`. Like the test key, the three `Testing` stand-ins answer
-  only with `pin_keys: true`, and raise without it.
+  only with `pin_keys: true` where Mix's environment is `:test`, and raise without it.
 
   A stub is made in the test itself, or in a `setup` block, which runs in the test's
   process; one made in `setup_all` runs in another process, which the test does not name
@@ -366,11 +365,7 @@ defmodule EhOsContract.Auth.Testing do
   @doc false
   @spec stubbed!(:people | :grants | :mail, term()) :: term()
   def stubbed!(name, default) do
-    unless Keys.test_trust?() do
-      raise ArgumentError,
-            "EhOsContract.Auth.Testing.People, .Grants and .Mail are for tests only. Set config " <>
-              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
-    end
+    :ok = Keys.test_only!("EhOsContract.Auth.Testing.People, .Grants and .Mail")
 
     key = {__MODULE__, name}
 

@@ -143,7 +143,7 @@ defmodule EhOsContract.Auth.PackageTest do
     test "fails the boot on a plug in place of the network, except in a test" do
       Application.put_env(:eh_os_contract_auth, :pin_keys, false)
 
-      assert_raise ArgumentError, ~r/plug: only in a test/, fn ->
+      assert_raise ArgumentError, ~r/plug: only where Mix.s environment is :test/, fn ->
         EhOsContract.Auth.child_spec(plug: {Req.Test, __MODULE__})
       end
     end

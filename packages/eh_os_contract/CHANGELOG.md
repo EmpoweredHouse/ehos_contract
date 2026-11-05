@@ -56,6 +56,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   unwrap those data keys, and reads their subjects as erased. The rewrap leaves them, and
   `erase/3` deletes them and records the erasure. At boot, a warning counts them. Before, the
   engine did not start, and the Mix tasks that start it did not run.
+- **`EhOsContract.call/3` takes a form's params with `form: true`** (#589). It reads them as
+  `EhOsContract.Form` does: every value as text, a blank field as absent, and the rows that
+  `inputs_for` sends. A page sends a person's command through `call/3`, as `/api` does: the
+  `Authorizer` is asked before the fields are read, a field the host supplies is refused in the
+  params, and the `Supplier` is asked for it. With `form: true`, `call/3` also takes `data:`, as
+  `Form.changeset/4` does, with the same checks: its identity replaces a value the params carry for
+  it, and its other fields are the values the params leave out. A field the host supplies is
+  refused in `data:`. `Form.refused/3` takes each answer of `call/3`, and
+  does not put an error twice that the changeset already holds. `docs/forms.md` and its diagram
+  show this path. `dispatch/3` with `Form.to_struct/1` still works.
 - **`mix eh_os_contract.check` warns about a scoped actor with an unscoped query** (#559). The new
   warning `scoped-actor-with-unscoped-query` names a query that has an actor with a scope in `by:`
   and no `scope:`. Such a query answers the rows of each value: a lead with a grant for warehouse 7

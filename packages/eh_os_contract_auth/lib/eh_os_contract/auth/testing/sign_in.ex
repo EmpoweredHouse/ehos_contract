@@ -20,11 +20,7 @@ defmodule EhOsContract.Auth.Testing.SignIn do
   # answers `SignIn.config/1` when this returns. Only where test keys may be pinned.
   @spec ensure_started(atom()) :: :ok
   def ensure_started(name) do
-    unless Keys.test_trust?() do
-      raise ArgumentError,
-            "a stand-in for EhOsContract.Auth.SignIn is for tests only. Set config " <>
-              ":eh_os_contract_auth, pin_keys: true in config/test.exs"
-    end
+    :ok = Keys.test_only!("a stand-in for EhOsContract.Auth.SignIn")
 
     # A name is registered before `init/1` has made its table, so a test that finds it taken by a
     # stand-in still starting waits for it: a call is answered only once `init/1` has returned.

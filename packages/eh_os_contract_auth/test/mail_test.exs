@@ -493,6 +493,19 @@ defmodule EhOsContract.Auth.MailTest do
       Application.delete_env(:eh_os_contract_auth, :workload)
       assert_raise ArgumentError, ~r/:workload is missing/, fn -> Workload.child_spec([]) end
     end
+
+    test "a plug in place of EHOS is taken only where test keys may be pinned", %{ehos: ehos} do
+      plug = &serve(ehos, &1)
+      assert %{id: Workload} = Workload.child_spec(plug: plug)
+
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+
+      assert_raise ArgumentError,
+                   ~r/Workload takes plug: only where Mix.s environment is :test/,
+                   fn ->
+                     Workload.child_spec(plug: plug)
+                   end
+    end
   end
 
   defp restore(previous) do
