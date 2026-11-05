@@ -229,8 +229,8 @@ test key. Send it through the plug, as a client does. The test key needs this li
 config :eh_os_contract_auth, pin_keys: true
 ```
 
-The package raises if a test pins a key without the line. It does not check where the line is. In
-another environment, the line lets code trust a key that the platform did not publish.
+The package raises if a test pins a key without the line, or where the environment of Mix is not
+`:test`. If another environment sets the line, the children of the package do not start.
 
 ## Next steps
 

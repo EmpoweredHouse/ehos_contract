@@ -49,7 +49,7 @@ defmodule EhOsContract.Auth.Workload do
 
   require Logger
 
-  alias EhOsContract.Auth.Address
+  alias EhOsContract.Auth.{Address, Keys}
   alias EhOsContract.Auth.SignIn.{ClientKey, Http}
   alias EhOsContract.Auth.Workload.Config
 
@@ -341,6 +341,10 @@ defmodule EhOsContract.Auth.Workload do
             "config :eh_os_contract_auth, issuer: is #{Address.shown(issuer)}, which is not " <>
               "https://<host>[:port] alone, the issuer EHOS's workload client calls"
     end
+
+    # Whatever a plug answers is trusted as EHOS's token endpoint and API, as `plug:` is
+    # for `EhOsContract.Auth.SignIn`.
+    :ok = Keys.check_trust!(opts, "EhOsContract.Auth.Workload", "EHOS's token endpoint")
 
     {key, workload} = workload!(all)
 

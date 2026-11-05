@@ -635,14 +635,9 @@ defmodule EhOsContract.Auth.SignIn do
   end
 
   defp http!(opts) do
-    if Keyword.has_key?(opts, :plug) and not Keys.test_trust?() do
-      # Whatever the plug answers is trusted as EHOS, as `plug:` is for
-      # `EhOsContract.Auth.Keys`.
-      raise ArgumentError,
-            "EhOsContract.Auth.SignIn takes plug: only in a test: whatever it answers is " <>
-              "trusted as EHOS. Set config :eh_os_contract_auth, pin_keys: true in " <>
-              "config/test.exs"
-    end
+    # Whatever the plug answers is trusted as EHOS, as `plug:` is for
+    # `EhOsContract.Auth.Keys`.
+    :ok = Keys.check_trust!(opts, "EhOsContract.Auth.SignIn", "EHOS")
 
     opts |> Keyword.take([:cacertfile, :cacerts, :plug]) |> Map.new()
   end

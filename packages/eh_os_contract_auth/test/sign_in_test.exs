@@ -202,7 +202,7 @@ defmodule EhOsContract.Auth.SignInTest do
     test "a plug in place of EHOS is taken only where test keys may be pinned", %{ehos: ehos} do
       Application.put_env(:eh_os_contract_auth, :pin_keys, false)
 
-      assert_raise ArgumentError, ~r/plug: only in a test/, fn ->
+      assert_raise ArgumentError, ~r/plug: only where Mix.s environment is :test/, fn ->
         SignIn.child_spec(plug: FakeEhos.plug(ehos))
       end
     end

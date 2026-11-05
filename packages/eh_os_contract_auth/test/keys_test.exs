@@ -557,11 +557,112 @@ defmodule EhOsContract.Auth.KeysTest do
     Application.put_env(:eh_os_contract_auth, :pin_keys, false)
     on_exit(fn -> Application.put_env(:eh_os_contract_auth, :pin_keys, true) end)
 
-    assert_raise ArgumentError, ~r/pinning a key is for tests/, fn ->
+    assert_raise ArgumentError, ~r/pinning a key: for tests only/, fn ->
       Keys.pin(pair.public, keys)
     end
 
     assert Auth.verify(credential(pair), keys: keys) == {:error, :unknown_key}
+  end
+
+  # A module that is not async runs after the async ones, alone: Mix's environment can be
+  # changed here, and is put back after each test.
+  describe "test trust where Mix's environment is not :test" do
+    setup do
+      on_exit(fn ->
+        Mix.env(:test)
+        Application.put_env(:eh_os_contract_auth, :pin_keys, true)
+      end)
+    end
+
+    test "is given with pin_keys: true and Mix's environment :test" do
+      assert Keys.test_trust?()
+      assert Keys.check_trust!([plug: {Req.Test, __MODULE__}], "the child", "EHOS") == :ok
+    end
+
+    test "pin_keys: true stops the boot in another environment" do
+      for env <- [:dev, :prod] do
+        Mix.env(env)
+        refute Keys.test_trust?()
+
+        assert_raise ArgumentError,
+                     ~r/pin_keys: true is set where no test runs: Mix's environment is #{inspect(env)}/,
+                     fn ->
+                       Keys.check_trust!([], "the child", "EHOS")
+                     end
+      end
+    end
+
+    test "a key, the sign-in stand-in and the Testing stand-ins are refused in another environment" do
+      pair = key_pair()
+      keys = start_keys(ehos({:keys, [key_pair()]}))
+      Mix.env(:dev)
+
+      assert_raise ArgumentError, ~r/pinning a key: for tests only/, fn ->
+        Keys.pin(pair.public, keys)
+      end
+
+      assert_raise ArgumentError,
+                   ~r/a stand-in for EhOsContract.Auth.SignIn: for tests only/,
+                   fn ->
+                     EhOsContract.Auth.Testing.SignIn.ensure_started(:stand_in_refused)
+                   end
+
+      assert_raise ArgumentError, ~r/Testing.People, .Grants and .Mail: for tests only/, fn ->
+        EhOsContract.Auth.Testing.People.list()
+      end
+
+      Mix.env(:test)
+      assert Auth.verify(credential(pair), keys: keys) == {:error, :unknown_key}
+    end
+
+    test "with pin_keys: false, a plug is refused and the boot goes on without one" do
+      Application.put_env(:eh_os_contract_auth, :pin_keys, false)
+
+      for env <- [:test, :dev] do
+        Mix.env(env)
+        assert Keys.check_trust!([], "the child", "EHOS") == :ok
+
+        assert_raise ArgumentError,
+                     ~r/the child takes plug: only where Mix's environment is :test/,
+                     fn ->
+                       Keys.check_trust!([plug: {Req.Test, __MODULE__}], "the child", "EHOS")
+                     end
+      end
+    end
+
+    # In a node of its own: this one runs Mix, and its Mix cannot be stopped.
+    test "where Mix's code is loaded but its application is not started, nothing is trusted" do
+      # This project's code alone, run by the Elixir that runs this test.
+      build = Mix.Project.build_path()
+
+      paths =
+        for path <- :code.get_path(),
+            String.starts_with?(to_string(path), build),
+            do: ["-pa", to_string(path)]
+
+      elixir = Path.expand("../../bin/elixir", :code.lib_dir(:elixir))
+
+      script = """
+      Application.put_env(:eh_os_contract_auth, :pin_keys, true)
+      IO.inspect(Code.ensure_loaded?(Mix))
+      IO.inspect(EhOsContract.Auth.Keys.test_trust?())
+
+      try do
+        EhOsContract.Auth.Keys.check_trust!([], "the child", "EHOS")
+      rescue
+        e in ArgumentError -> IO.puts(e.message)
+      end
+      """
+
+      {out, 0} = System.cmd(elixir, List.flatten(paths) ++ ["-e", script])
+
+      assert out ==
+               "true\nfalse\nconfig :eh_os_contract_auth, pin_keys: true is set where no test " <>
+                 "runs: Mix's environment is not there, since the :mix application is not " <>
+                 "started, not :test. The line lets code trust keys and answers EHOS did not " <>
+                 "give. Put it in config/test.exs alone, and remove it from config/config.exs, " <>
+                 "config/<environment>.exs and config/runtime.exs\n"
+    end
   end
 
   test "pinning something that is not an Ed25519 key raises in the caller, not the process" do

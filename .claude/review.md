@@ -177,8 +177,16 @@ Kinds of problems a review here found that neither file names yet:
   gives one rule for all of them misleads. Found in #517.
 
 - A page that says a package guards something is read against the guard's condition: `pin_keys`
-  raises when the line is missing, not when it is in the wrong environment, so "the package raises
-  elsewhere" promised a guard that does not exist. Found in #517.
+  once raised when the line was missing, not when it was in the wrong environment, so "the package
+  raises elsewhere" promised a guard that did not exist. Found in #517; the guard came in #591.
+- A guard that should hold only in a test is read for where its condition is evaluated: a
+  dependency compiles in `:prod` whatever the host's environment, so a compile-time `Mix.env()` in
+  a package never sees `:test`. Read it when the guard is asked. Found in #591.
+- A gate beside another test run on the shared database fails with `connection not available`,
+  not on code: give each run its own `MIX_TEST_PARTITION`. Found in #591.
+- A reverse check mutates a file a fix also changed: commit the fix first, mutate, then
+  `git restore <file>`. `git checkout -- <file>` after an uncommitted fix removes the fix too.
+  Found in #591.
 - A page that names an option is read against where the code takes it: `cacertfile:` and `plug:` are
   options of a child (`EhOsContract.Auth.SignIn`, `EhOsContract.Auth.Workload`), not keys of its
   `config :eh_os_contract_auth` block, and each refuses a key it does not take, so a host that
