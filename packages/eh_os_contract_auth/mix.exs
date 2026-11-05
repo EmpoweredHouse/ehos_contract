@@ -70,7 +70,7 @@ defmodule EhOsContract.Auth.MixProject do
   def cli, do: [preferred_envs: [check: :test]]
 
   def application do
-    [extra_applications: [:logger, :crypto]]
+    [mod: {EhOsContract.Auth.Application, []}, extra_applications: [:logger, :crypto]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]

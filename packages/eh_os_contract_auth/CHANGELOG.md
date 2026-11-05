@@ -78,6 +78,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
+- **A call to EHOS no longer leaves a file open when `SSLKEYLOGFILE` is set** (#595). The package
+  starts one Finch pool for each set of connection options, and its calls go through it. Before,
+  each call asked Req for a pool, and Finch opened the file again and did not close it, so a
+  long-running application ran out of file descriptors. A `connect_options:` in
+  `config :req, default_options` still does not get to the calls of the package.
+
 - **`Keys.pin/2` waits up to 10 seconds for the key process** (#591). The process can be in a fetch
   of the keys, such as the first one after it starts, which can take 5 seconds. Before, `pin/2`
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It

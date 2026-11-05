@@ -160,7 +160,7 @@ defmodule EhOsContract.Auth.SignIn.Http do
       |> then(&if body, do: Keyword.put(&1, :body, body), else: &1)
       |> Kernel.++(Keyword.take(Map.to_list(config), [:plug]))
 
-    case Req.request(options) do
+    case EhOsContract.Auth.Pools.request(options) do
       {:ok, %Req.Response{body: :too_large, status: status}} ->
         {:too_large, status}
 
