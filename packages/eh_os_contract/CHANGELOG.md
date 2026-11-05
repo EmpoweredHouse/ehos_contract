@@ -54,9 +54,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **A master key that you destroyed can be named in the configuration** (#578).
   `config :eh_os_contract, EhOsContract.Vault, destroyed: ["2026-03"]` lets the engine start when a
-  restored backup holds data keys that a destroyed master key wraps. The engine does not try to
-  unwrap those data keys, and reads their subjects as erased. The rewrap leaves them, and
-  `erase/3` deletes them and records the erasure. At boot, a warning counts them. Call
+  restored backup holds data keys that a destroyed master key wraps. When it reads, the engine does
+  not unwrap those data keys, and reads their subjects as erased. At boot, it tries one data key of
+  each destroyed master key, and does not start if the vault unwraps it. The rewrap leaves them,
+  and `erase/3` deletes them and records the erasure. At boot, a warning counts them. Call
   `EhOsContract.erase/3` for each of those subjects, as `docs/master-keys.md` says: until then, the
   read models keep what they projected of them. A command with new personal data for such a
   subject gets `{:error, :subject_erased}`. While `destroyed:` names a key, a read that meets a
