@@ -1,0 +1,1 @@
+CodeRabbit fix: sent/3 reads the scope under either key. One line, reviewed by hand against Codec.decode/4; reverse-checked by its new test. Gate: mix check in sandbox/, exit 0.
