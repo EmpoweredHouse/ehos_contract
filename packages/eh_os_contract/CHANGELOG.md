@@ -56,8 +56,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `config :eh_os_contract, EhOsContract.Vault, destroyed: ["2026-03"]` lets the engine start when a
   restored backup holds data keys that a destroyed master key wraps. The engine does not try to
   unwrap those data keys, and reads their subjects as erased. The rewrap leaves them, and
-  `erase/3` deletes them and records the erasure. At boot, a warning counts them. Before, the
-  engine did not start, and the Mix tasks that start it did not run.
+  `erase/3` deletes them and records the erasure. At boot, a warning counts them. Call
+  `EhOsContract.erase/3` for each of those subjects: until then, its read models keep what they
+  projected. A command with new personal data for such a subject gets
+  `{:error, :subject_erased}`. While `destroyed:` names a key, each read of personal data and each
+  dispatch with personal data runs one more query. Before, the engine did not start, and the Mix
+  tasks that start it did not run.
 - **`EhOsContract.call/3` takes a form's params with `form: true`** (#589). It reads them as
   `EhOsContract.Form` does: every value as text, a blank field as absent, and the rows that
   `inputs_for` sends. A page sends a person's command through `call/3`, as `/api` does: the
@@ -173,8 +177,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `forget/2` that raises or rolls back inside a `Repo.transaction` of its own still fails the
   erasure. The task's list says "while it replays the log" for a subscription that failed during a
   rebuild or a process manager's replay, and `--skip` of an unknown key says that the key is not a
-  subscription, not that it is not failing. The storage goes to
-  version 5, which keeps that status: add a migration calling `EhOsContract.Migrations.up(version: 5)`; the engine refuses to start on version 4. The migration
+  subscription, not that it is not failing. The storage goes to version 5, which keeps that
+  status: add a migration that calls `EhOsContract.Migrations.up(version: 5)`. The engine refuses
+  to start on version 4. The migration
   marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
   boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
   queries read part of the rows. Another kind that is `failing` at the upgrade goes back to

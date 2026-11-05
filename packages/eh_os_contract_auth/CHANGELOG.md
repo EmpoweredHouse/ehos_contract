@@ -63,9 +63,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the workload; `docs/keys.md`, with a diagram, says where the keys come from and how the key
   process keeps them; `docs/testing.md` takes the host's tests; `docs/manifest.md` takes the
   manifest and the bundle. The pages and the docs of `EhOsContract.Auth.Keys` and
-  `EhOsContract.Auth.Testing` now say that `pin_keys: true` is checked only for being set, not for
-  the environment it is set in, so it belongs in `config/test.exs` alone, and list what the line
-  unlocks (#560). The doc of `EhOsContract.Auth.Manifest` says that no role binding in EHOS carries
+  `EhOsContract.Auth.Testing` now say that `pin_keys: true` belongs in `config/test.exs` alone, and
+  list what the line unlocks (#560); the line under "Security" says what the package now checks. The doc of `EhOsContract.Auth.Manifest` says that no role binding in EHOS carries
   scope values yet, so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The
   pages also say that a key EHOS removed stays trusted while the application cannot reach EHOS,
   which global Req options reach the fetch of the keys, and that `EHOS_CA_FILE` goes to the
@@ -82,11 +81,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
-- **A call to EHOS no longer leaves a file open when `SSLKEYLOGFILE` is set** (#595). The package
-  starts one Finch pool for each set of connection options, and its calls go through it. Before,
-  each call asked Req for a pool, and Finch opened the file again and did not close it, so a
-  long-running application ran out of file descriptors. A `connect_options:` in
-  `config :req, default_options` still does not get to the calls of the package.
+- **With `SSLKEYLOGFILE` set, the package opens the file once for each pool, not on each call to
+  EHOS** (#595). The package starts one Finch pool for each set of connection options, and its calls
+  go through it. Before, each call asked Req for a pool, and Finch opened the file again and did not
+  close it, so a long-running application ran out of file descriptors. A pool that stops and starts
+  again still leaves the file of the old pool open (#607). A `connect_options:` or `finch:` in
+  `config :req, default_options` still does not get to the calls of the package. The package now
+  starts an application of its own, which holds the pools: a host that lists
+  `eh_os_contract_auth` with `runtime: false`, or starts its children before that application
+  starts, gets an exit from the key process at start. Let Mix start `:eh_os_contract_auth`.
 - **`Keys.pin/2` waits up to 10 seconds for the key process** (#591). The process can be in a fetch
   of the keys, such as the first one after it starts, which can take 5 seconds. Before, `pin/2`
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It
@@ -99,11 +102,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   the line in `config.exs` or `runtime.exs`, code in a release could trust keys and answers that
   EHOS did not give. Now `Keys.pin/2`, the `Testing` helpers and stand-ins, and the `plug:` option
   of each child also need Mix's environment to be `:test`, as in `mix test`, read when they are
-  called. A release without the `:mix` application has no environment of Mix.
+  called. A release without the `:mix` application has no environment of Mix. A release that
+  starts `:mix` takes the environment from `MIX_ENV`, so keep the line out of every release's
+  configuration. A suite that runs `mix test` under another environment, such as `MIX_ENV=ci`,
+  loses the test key and the stand-ins: run it under `:test`.
   `EhOsContract.Auth`, `EhOsContract.Auth.SignIn` and `EhOsContract.Auth.Workload` do not start
   when `pin_keys: true` is set and Mix's environment is not `:test`. Move the line to
   `config/test.exs`. `EhOsContract.Auth.Workload` now takes `plug:` only under the same rule, as
-  the other two do.
+  the other two do. A `plug:` or `adapter:` in `config :req, default_options` still answers in
+  place of EHOS in every environment (#601): keep it out of every configuration but the tests'.
 
 ## [0.11.0] - 2026-11-01
 

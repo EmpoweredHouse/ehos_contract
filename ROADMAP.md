@@ -10,12 +10,15 @@ with the options they beat, its review and its pull requests; this file holds on
 
 - **Released:** v0.14.0, with the engine 0.14.0 (a form's command sent through `call/3` with `form: true`
   and `data:`, a destroyed master key named in the configuration so that the engine starts on a backup, and a
-  warning for a scoped actor with an unscoped query), `eh_os_contract_auth` 0.12.0 (test keys and plugs
-  trusted only where Mix's environment is `:test`, and one Finch pool for each set of connection options, so
-  `SSLKEYLOGFILE` no longer leaves files open), `eh_os_contract_graph` 0.9.1 and `eh_os_contract_web` 0.9.0
-  (their READMEs split into pages; the verifier and the dashboard require the engine at `~> 0.14.0`); the
-  plugin's skills at 0.14.3. Applications install them from git. The pull request after the tag moves each
-  released package to its next patch's `-dev`.
+  warning for a scoped actor with an unscoped query; breaking: the storage at version 5 needs a migration,
+  `EhOsContract.Plug` answers 415 to a `POST` that is not JSON, the rewrap takes `--expect`, and the boot
+  refuses a stored data key that does not unwrap; two changes move a verdict), `eh_os_contract_auth` 0.12.0
+  (test keys and plugs trusted only where Mix's environment is `:test`, one Finch pool for each set of
+  connection options, so `SSLKEYLOGFILE` no longer opens a file on each call, and the engine required at
+  `~> 0.14.0`), `eh_os_contract_web` 0.9.0 (its README split into pages, and the engine required at
+  `~> 0.14.0`) and `eh_os_contract_graph` 0.9.1 (its README split into pages); the plugin's skills at
+  0.14.3. Applications install them from git. The pull request after the tag moves each released package
+  to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
