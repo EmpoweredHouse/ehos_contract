@@ -154,13 +154,13 @@ defmodule EhOsContract.Auth.SignIn.Http do
         retry: false,
         decode_body: false,
         receive_timeout: deadline,
-        connect_options: connect_options(config),
+        finch: EhOsContract.Auth.Pools.finch(connect_options(config)),
         into: &at_most(&1, &2, Map.get(config, :max_body, @max_body))
       ]
       |> then(&if body, do: Keyword.put(&1, :body, body), else: &1)
       |> Kernel.++(Keyword.take(Map.to_list(config), [:plug]))
 
-    case Req.request(options) do
+    case EhOsContract.Auth.Pools.request(options) do
       {:ok, %Req.Response{body: :too_large, status: status}} ->
         {:too_large, status}
 

@@ -508,7 +508,7 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   defp request(state) do
-    case Req.get(state.url, state.request_options) do
+    case EhOsContract.Auth.Pools.request([method: :get, url: state.url] ++ state.request_options) do
       {:ok, %Req.Response{status: 200, body: :too_large}} ->
         {:error, :too_large}
 
@@ -548,7 +548,7 @@ defmodule EhOsContract.Auth.Keys do
         authority -> [timeout: @connect_timeout, transport_opts: authority]
       end
 
-    [into: &at_most/2, connect_options: connect_options] ++
+    [into: &at_most/2, finch: EhOsContract.Auth.Pools.finch(connect_options)] ++
       @request_options ++ Keyword.take(opts, [:plug])
   end
 
