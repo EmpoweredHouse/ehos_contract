@@ -64,8 +64,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   process keeps them; `docs/testing.md` takes the host's tests; `docs/manifest.md` takes the
   manifest and the bundle. The pages and the docs of `EhOsContract.Auth.Keys` and
   `EhOsContract.Auth.Testing` now say that `pin_keys: true` belongs in `config/test.exs` alone, and
-  list what the line unlocks (#560); the line under "Security" says what the package now checks. The doc of `EhOsContract.Auth.Manifest` says that no role binding in EHOS carries
-  scope values yet, so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The
+  list what the line unlocks (#560); the line under "Security" says what the package now checks.
+  The doc of `EhOsContract.Auth.Manifest` says that no role binding in EHOS carries scope values
+  yet, so a scoped capability called through EHOS gets `:unscoped_grant` (#561). The
   pages also say that a key EHOS removed stays trusted while the application cannot reach EHOS,
   which global Req options reach the fetch of the keys, and that `EHOS_CA_FILE` goes to the
   sign-in and the workload too. The manifest page says
@@ -81,15 +82,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Fixed
 
-- **With `SSLKEYLOGFILE` set, the package opens the file once for each pool, not on each call to
+- **With `SSLKEYLOGFILE` set, the package opens the file when a pool starts, not on each call to
   EHOS** (#595). The package starts one Finch pool for each set of connection options, and its calls
   go through it. Before, each call asked Req for a pool, and Finch opened the file again and did not
   close it, so a long-running application ran out of file descriptors. A pool that stops and starts
-  again still leaves the file of the old pool open (#607). A `connect_options:` or `finch:` in
+  again still leaves the files of the old pool open (#607). A `connect_options:` or `finch:` in
   `config :req, default_options` still does not get to the calls of the package. The package now
-  starts an application of its own, which holds the pools: a host that lists
-  `eh_os_contract_auth` with `runtime: false`, or starts its children before that application
-  starts, gets an exit from the key process at start. Let Mix start `:eh_os_contract_auth`.
+  starts an application of its own, which holds the pools. While that application is not started, as
+  with `runtime: false` on the dependency, the key process cannot fetch the keys and refuses every
+  credential with `:no_keys`, and the calls of the sign-in fail.
 - **`Keys.pin/2` waits up to 10 seconds for the key process** (#591). The process can be in a fetch
   of the keys, such as the first one after it starts, which can take 5 seconds. Before, `pin/2`
   waited 5 seconds, so `Testing.credential/3` or `Testing.sign_in/3` could exit with a timeout. It
@@ -110,7 +111,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   when `pin_keys: true` is set and Mix's environment is not `:test`. Move the line to
   `config/test.exs`. `EhOsContract.Auth.Workload` now takes `plug:` only under the same rule, as
   the other two do. A `plug:` or `adapter:` in `config :req, default_options` still answers in
-  place of EHOS in every environment (#601): keep it out of every configuration but the tests'.
+  place of EHOS in every environment, and a `plugins:`, `unix_socket:` or `finch_request:` there
+  changes where its requests go (#601): keep it out of every configuration but the tests'.
 
 ## [0.11.0] - 2026-11-01
 

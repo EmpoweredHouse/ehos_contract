@@ -57,11 +57,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   restored backup holds data keys that a destroyed master key wraps. The engine does not try to
   unwrap those data keys, and reads their subjects as erased. The rewrap leaves them, and
   `erase/3` deletes them and records the erasure. At boot, a warning counts them. Call
-  `EhOsContract.erase/3` for each of those subjects: until then, its read models keep what they
-  projected. A command with new personal data for such a subject gets
-  `{:error, :subject_erased}`. While `destroyed:` names a key, each read of personal data and each
-  dispatch with personal data runs one more query. Before, the engine did not start, and the Mix
-  tasks that start it did not run.
+  `EhOsContract.erase/3` for each of those subjects, as `docs/master-keys.md` says: until then, the
+  read models keep what they projected of them. A command with new personal data for such a
+  subject gets `{:error, :subject_erased}`. While `destroyed:` names a key, a read that meets a
+  subject without a readable data key runs one more query, and a dispatch that meets one runs two.
+  Before, the engine did not start, and the Mix tasks that start it did not run.
 - **`EhOsContract.call/3` takes a form's params with `form: true`** (#589). It reads them as
   `EhOsContract.Form` does: every value as text, a blank field as absent, and the rows that
   `inputs_for` sends. A page sends a person's command through `call/3`, as `/api` does: the
@@ -164,27 +164,26 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   that send no content type, or another one, must send `application/json`, also for an empty body.
   The OpenAPI document lists the 415 for each command, so the digest of each contract with a command
   changes.
-- **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550). Before,
-  `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A read
-  model delivered `:in_transaction` then never got the events after the skipped one, and a process
-  manager reacted to the history after it: it issued commands and set timers for past events. Now a
-  skip puts the subscription back in the status it failed in, so the rebuild or the replay continues
-  after the event. Dispatch also leaves a `failing` read model delivered `:in_transaction` alone, as
-  a `rebuilding` one; the runner takes those events after the skip, and a query with
-  `min_position:` waits for it. An erasure still calls its `forget/2` at once (#557), but inside a
-  savepoint: if `forget/2` raises on the partial rows, the engine undoes what it wrote, logs a
-  warning, and the erasure continues. Before, that raise failed the erasure, and every later one. A
-  `forget/2` that raises or rolls back inside a `Repo.transaction` of its own still fails the
+- **Breaking:** **Moves a verdict:** **a skip during a rebuild continues the rebuild** (#550).
+  Before, `mix eh_os_contract.subscriptions --skip` always put the subscription back to `running`. A
+  read model delivered `:in_transaction` then never got the events after the skipped one, and a
+  process manager reacted to the history after it: it issued commands and set timers for past
+  events. Now a skip puts the subscription back in the status it failed in, so the rebuild or the
+  replay continues after the event. Dispatch also leaves a `failing` read model delivered
+  `:in_transaction` alone, as a `rebuilding` one; the runner takes those events after the skip, and
+  a query with `min_position:` waits for it. An erasure still calls its `forget/2` at once (#557),
+  but inside a savepoint: if `forget/2` raises on the partial rows, the engine undoes what it wrote,
+  logs a warning, and the erasure continues. Before, that raise failed the erasure, and every later
+  one. A `forget/2` that raises or rolls back inside a `Repo.transaction` of its own still fails the
   erasure. The task's list says "while it replays the log" for a subscription that failed during a
   rebuild or a process manager's replay, and `--skip` of an unknown key says that the key is not a
-  subscription, not that it is not failing. The storage goes to version 5, which keeps that
-  status: add a migration that calls `EhOsContract.Migrations.up(version: 5)`. The engine refuses
-  to start on version 4. The migration
-  marks a read model delivered `:in_transaction` that is `failing` at the upgrade `stale`: the next
-  boot empties it through `reset/0` and rebuilds it from the start, and until the rebuild ends its
-  queries read part of the rows. Another kind that is `failing` at the upgrade goes back to
-  `running` on a skip, as before: reset a process manager that failed during its replay instead of
-  skipping it.
+  subscription, not that it is not failing. The storage goes to version 5, which keeps that status:
+  add a migration that calls `EhOsContract.Migrations.up(version: 5)`. The engine refuses to start
+  on version 4. The migration marks a read model delivered `:in_transaction` that is `failing` at
+  the upgrade `stale`: the next boot empties it through `reset/0` and rebuilds it from the start,
+  and until the rebuild ends its queries read part of the rows. Another kind that is `failing` at
+  the upgrade goes back to `running` on a skip, as before: reset a process manager that failed
+  during its replay instead of skipping it.
 - **`mix eh_os_contract.check` no longer warns that a `:separate_ways` relation is crossed by no
   reference** (`orphan-context-mapping`, #537). The relation says that the two contexts do not depend on
   each other, and the compiler refuses a reference across it. The only way to silence the warning was to
