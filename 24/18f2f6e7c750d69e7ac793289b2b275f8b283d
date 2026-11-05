@@ -1,0 +1,1 @@
+CodeRabbit nitpick: a test that Workload refuses pin_keys: true in :dev. Test only, reviewed by hand. Gate: mix check in sandbox/, exit 0.
