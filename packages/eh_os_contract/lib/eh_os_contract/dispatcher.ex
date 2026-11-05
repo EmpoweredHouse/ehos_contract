@@ -419,7 +419,8 @@ defmodule EhOsContract.Dispatcher do
   # record what it is asked.
   # A form's blank is no value, as the codec reads it: the same request as a field left out.
   defp sent(input, dimension, form?) do
-    value = Map.get(input, Atom.to_string(dimension))
+    # Under either key, as `Codec.decode/4` reads a field.
+    value = Map.get(input, Atom.to_string(dimension), Map.get(input, dimension))
 
     cond do
       form? and blank?(value) -> nil

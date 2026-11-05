@@ -137,6 +137,21 @@ defmodule EhOsContract.CallFormTest do
              call.({:query, "dispatch_rig.balances_for_branch"}, %{"branch_id" => "b-7"})
   end
 
+  test "asks the Authorizer with the scope under either key, when another field does not decode" do
+    move = "dispatch_rig.move_account"
+    clerk = Actor.credential("u-1", [move], %{move => %{"branch_id" => ["b-7"]}})
+    call = &EhOsContract.call({:command, move}, &1, actor: clerk, form: true)
+
+    # An identifier sent as rows does not decode, so the scope is read as it was sent.
+    for branch_id <- [:branch_id, "branch_id"] do
+      assert {:error, {:invalid, _problems}} =
+               call.(%{branch_id => "b-7", "account_id" => %{"0" => "a-1"}})
+    end
+
+    assert call.(%{:branch_id => "b-9", "account_id" => %{"0" => "a-1"}}) ==
+             {:error, :outside_scope}
+  end
+
   describe "data:" do
     test "holds the form to its unit: the identity replaces what the params carry, under either key" do
       params = @sent |> Map.put("invoice_id", "i-other") |> Map.put(:invoice_id, "i-other")
