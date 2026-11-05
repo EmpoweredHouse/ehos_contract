@@ -154,7 +154,7 @@ defmodule EhOsContract.Auth.SignIn.Http do
         retry: false,
         decode_body: false,
         receive_timeout: deadline,
-        finch: EhOsContract.Auth.Pools.finch(connect_options(config)),
+        connect_options: connect_options(config),
         into: &at_most(&1, &2, Map.get(config, :max_body, @max_body))
       ]
       |> then(&if body, do: Keyword.put(&1, :body, body), else: &1)

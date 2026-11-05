@@ -79,7 +79,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Fixed
 
 - **A call to EHOS no longer leaves a file open when `SSLKEYLOGFILE` is set** (#595). The package
-  starts one Finch pool for each set of connection options, and its calls go through it. Before,
+  starts one Finch pool for each set of connection options and each address of EHOS, and its calls
+  go through it. Before,
   each call asked Req for a pool, and Finch opened the file again and did not close it, so a
   long-running application ran out of file descriptors. A `connect_options:` in
   `config :req, default_options` still does not get to the calls of the package.

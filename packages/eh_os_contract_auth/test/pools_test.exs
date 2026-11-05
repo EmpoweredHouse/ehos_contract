@@ -1,80 +1,164 @@
 defmodule EhOsContract.Auth.PoolsTest do
   @moduledoc """
   The Finch pools that the package's calls to EHOS go through (#595): one for each set
-  of connection options, started once. Given `connect_options:`, Req asked for a pool on
-  each call, and with `SSLKEYLOGFILE` set Finch opened the file each time and never
-  closed it.
+  of pool options, started once. Given `connect_options:`, Req asked for a pool on each
+  call, and with `SSLKEYLOGFILE` set Finch opened the file each time and never closed
+  it.
 
-  `async: false`: the test sets `SSLKEYLOGFILE`, which is global.
+  `async: false`: the tests set `SSLKEYLOGFILE` and `config :req, default_options`,
+  which are global.
   """
 
   use ExUnit.Case, async: false
 
   alias EhOsContract.Auth.Pools
 
+  @supervisor EhOsContract.Auth.Pools.Supervisor
+
+  setup do
+    key_log = System.get_env("SSLKEYLOGFILE")
+    defaults = Application.get_env(:req, :default_options)
+
+    on_exit(fn ->
+      if key_log,
+        do: System.put_env("SSLKEYLOGFILE", key_log),
+        else: System.delete_env("SSLKEYLOGFILE")
+
+      if defaults,
+        do: Application.put_env(:req, :default_options, defaults),
+        else: Application.delete_env(:req, :default_options)
+    end)
+  end
+
   @tag :tmp_dir
   test "calls at once start one pool for their options, and open SSLKEYLOGFILE once", %{
     tmp_dir: dir
   } do
-    previous = System.get_env("SSLKEYLOGFILE")
-
-    on_exit(fn ->
-      if previous,
-        do: System.put_env("SSLKEYLOGFILE", previous),
-        else: System.delete_env("SSLKEYLOGFILE")
-    end)
-
     System.put_env("SSLKEYLOGFILE", Path.join(dir, "keys.log"))
+
+    # One port, as a child calls one EHOS: Finch opens the file again for each host.
+    port = closed_port()
 
     # The control: a pool opens the file when it starts, as Finch does for each pool.
     before = open_files()
-    Pools.finch(options())
+    refused(connect_options(), port)
     opened = open_files() - before
     assert opened > 0
 
-    options = options()
-    before = open_files()
+    options = connect_options()
+    {files, pools} = {open_files(), pools()}
 
-    names =
-      1..20
-      |> Enum.map(fn _ -> Task.async(fn -> Pools.finch(options) end) end)
-      |> Task.await_many()
-      |> Enum.uniq()
+    1..20
+    |> Enum.map(fn _ -> Task.async(fn -> refused(options, port) end) end)
+    |> Task.await_many()
 
-    assert [[name: name]] = names
-    assert is_pid(Process.whereis(name))
-    for _ <- 1..20, do: assert(Pools.finch(options) == [name: name])
+    for _ <- 1..20, do: refused(options, port)
 
-    assert open_files() - before == opened
+    assert pools() - pools == 1
+    assert open_files() - files == opened
   end
 
-  test "other connection options get a pool of their own" do
-    assert Pools.finch(timeout: 2_000) != Pools.finch(timeout: 2_001)
-    assert Pools.finch(timeout: 2_000) == Pools.finch(timeout: 2_000)
+  test "other connection options, or another origin, get a pool of their own" do
+    {port, other_port} = {closed_port(), closed_port()}
+    {options, other_options} = {connect_options(), connect_options()}
+    pools = pools()
+
+    refused(options, port)
+    refused(other_options, port)
+    refused(options, other_port)
+    refused(options, port)
+
+    assert pools() - pools == 3
+  end
+
+  @tag :tmp_dir
+  test "a pool that does not start fails the call, and the next calls, not the package", %{
+    tmp_dir: dir
+  } do
+    System.put_env("SSLKEYLOGFILE", Path.join([dir, "no such directory", "keys.log"]))
+    pools = Process.whereis(Pools)
+
+    for _ <- 1..5 do
+      assert_raise RuntimeError, ~r/the Finch pool of the calls to EHOS did not start: /, fn ->
+        refused(connect_options())
+      end
+    end
+
+    assert Process.whereis(Pools) == pools
+  end
+
+  test "a pool that stops is started again by the next call" do
+    options = connect_options()
+    refused(options)
+
+    # No other test runs beside this one, which is not async: every pool can stop.
+    for {_, pid, _, _} <- DynamicSupervisor.which_children(@supervisor),
+        do: Process.exit(pid, :kill)
+
+    wait_until(fn -> pools() == 0 and named_pools() == [] end)
+
+    refused(options)
+    assert pools() == 1
   end
 
   test "a call goes through its pool, and a global connect_options: does not get to it" do
-    previous = Application.get_env(:req, :default_options)
-
-    on_exit(fn ->
-      if previous,
-        do: Application.put_env(:req, :default_options, previous),
-        else: Application.delete_env(:req, :default_options)
-    end)
-
     Application.put_env(:req, :default_options, connect_options: [timeout: 1])
-    url = "http://127.0.0.1:#{answering_server()}/"
 
     assert {:ok, %Req.Response{status: 200, body: "ok"}} =
-             Pools.request(url: url, finch: Pools.finch(options()), retry: false)
+             Pools.request(
+               url: "http://127.0.0.1:#{answering_server({127, 0, 0, 1})}/",
+               connect_options: connect_options(),
+               retry: false
+             )
+  end
+
+  test "a call to an IPv6 address gets a pool that speaks IPv6" do
+    assert {:ok, %Req.Response{status: 200, body: "ok"}} =
+             Pools.request(
+               url: "http://[::1]:#{answering_server({0, 0, 0, 0, 0, 0, 0, 1})}/",
+               connect_options: connect_options(),
+               retry: false
+             )
+  end
+
+  # A call refused at a closed port: it starts the pool of its options, and sends nothing.
+  defp refused(options, port \\ closed_port()) do
+    assert {:error, %Req.TransportError{reason: :econnrefused}} = call(options, port)
+  end
+
+  # The names of the pools still registered: a pool's processes stop after it.
+  defp named_pools do
+    for name <- Process.registered(),
+        String.starts_with?(Atom.to_string(name), "Elixir.EhOsContract.Auth.Pools.Pool_"),
+        do: name
+  end
+
+  defp wait_until(done?, tries \\ 100) do
+    cond do
+      done?.() -> :ok
+      tries == 0 -> flunk("the pools did not stop")
+      true -> Process.sleep(10) && wait_until(done?, tries - 1)
+    end
+  end
+
+  defp call(options, port),
+    do: Pools.request(url: "http://127.0.0.1:#{port}/", connect_options: options, retry: false)
+
+  defp closed_port do
+    {:ok, listen} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
+    {:ok, port} = :inet.port(listen)
+    :ok = :gen_tcp.close(listen)
+    port
   end
 
   # Options of their own, so that the pool is new to the test.
-  defp options, do: [timeout: 1_000 + System.unique_integer([:positive])]
+  defp connect_options, do: [timeout: 1_000 + System.unique_integer([:positive])]
 
-  # A server on loopback that answers one request with 200 and "ok".
-  defp answering_server do
-    {:ok, listen} = :gen_tcp.listen(0, [:binary, active: false, ip: {127, 0, 0, 1}])
+  defp pools, do: DynamicSupervisor.count_children(@supervisor).active
+
+  # A server at `ip` that answers one request with 200 and "ok".
+  defp answering_server(ip) do
+    {:ok, listen} = :gen_tcp.listen(0, [:binary, active: false, ip: ip])
     {:ok, port} = :inet.port(listen)
 
     spawn_link(fn ->

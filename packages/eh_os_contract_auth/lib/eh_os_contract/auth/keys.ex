@@ -548,7 +548,7 @@ defmodule EhOsContract.Auth.Keys do
         authority -> [timeout: @connect_timeout, transport_opts: authority]
       end
 
-    [into: &at_most/2, finch: EhOsContract.Auth.Pools.finch(connect_options)] ++
+    [into: &at_most/2, connect_options: connect_options] ++
       @request_options ++ Keyword.take(opts, [:plug])
   end
 
