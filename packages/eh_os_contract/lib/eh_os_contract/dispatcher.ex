@@ -231,6 +231,8 @@ defmodule EhOsContract.Dispatcher do
 
     with {:ok, model, declaration} <- route(contracts, kind, capability),
          {:ok, actor} <- credential(Keyword.get(opts, :actor)) do
+      input = with_data(model, kind, declaration, input, opts)
+
       case prepare(model, kind, declaration, input, opts) do
         {:ok, struct} ->
           run_call(kind, model, struct, actor, opts)
@@ -238,7 +240,7 @@ defmodule EhOsContract.Dispatcher do
         {:error, problem} ->
           sent = if is_map(input), do: input, else: %{}
 
-          case permit_undecoded(model, kind, declaration, actor, sent) do
+          case permit_undecoded(model, kind, declaration, actor, sent, form?(opts)) do
             :ok -> {:error, problem}
             refused -> refused
           end
@@ -257,7 +259,7 @@ defmodule EhOsContract.Dispatcher do
     fields = if kind == :query, do: declaration.params, else: declaration.fields
     values = Codec.values(model.domain)
 
-    with {:ok, decoded} <- decoded(fields, input, values, kind),
+    with {:ok, decoded} <- decoded(fields, input, values, kind, form?(opts)),
          :ok <- correlation(kind, Keyword.get(opts, :correlation_id)) do
       generated = if kind == :record, do: :event, else: kind
       {:ok, struct!(Model.module_for(model, generated, declaration.name), decoded)}
@@ -266,19 +268,92 @@ defmodule EhOsContract.Dispatcher do
 
   # Plan T1: a field the host supplies is not the caller's to send — present at all,
   # even as `null`, it is refused by name — and is not decoded from the request.
-  defp decoded(fields, input, values, kind) do
+  defp decoded(fields, input, values, kind, form?) do
     supplied = Supplier.fields(fields)
-    # Under either key: `Codec.decode/4` reads an atom's too, from Elixir code.
+    # Under either key: `Codec.decode/4` reads an atom's too, from Elixir code. A form's
+    # blank is absent, as for every other field, and as `EhOsContract.Form` drops it.
     sent =
       for f <- supplied,
-          Map.has_key?(input, Atom.to_string(f.name)) or Map.has_key?(input, f.name),
+          key <- [Atom.to_string(f.name), f.name],
+          Map.has_key?(input, key),
+          not (form? and blank?(Map.get(input, key))),
+          uniq: true,
           do: {f.name, :supplied}
 
-    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query), sent} do
+    # `form: true` reads what an HTML form sends (#589), as `EhOsContract.Form` does.
+    case {Codec.decode(fields -- supplied, input, values, strings: kind == :query, form: form?),
+          sent} do
       # `nil` until the host supplies it, once the caller is authorized.
       {{:ok, decoded}, []} -> {:ok, Enum.into(supplied, decoded, &{&1.name, nil})}
       {{:ok, _decoded}, sent} -> {:error, {:invalid, sent}}
       {{:error, problems}, sent} -> {:error, {:invalid, problems ++ sent}}
+    end
+  end
+
+  defp form?(opts), do: Keyword.get(opts, :form) == true
+
+  defp blank?(value), do: is_binary(value) and String.trim(value) == ""
+
+  # #589: `data:` with `form: true` holds a form to what the page decided, as
+  # `EhOsContract.Form` does: the identity `data:` gives replaces what the params carry for
+  # it, under either key, and each other field it gives is the value when the params leave
+  # the field out. Its values are the engine's (an atom, a `Date`), put in the params in the
+  # external form the codec reads back.
+  defp with_data(model, kind, declaration, input, opts) do
+    case Keyword.get(opts, :data) do
+      nil ->
+        input
+
+      data when not is_map(data) ->
+        raise ArgumentError, "call/3 takes data: as a map of fields"
+
+      data ->
+        unless form?(opts), do: raise(ArgumentError, "call/3 takes data: only with form: true")
+        fields = if kind == :query, do: declaration.params, else: declaration.fields
+        :ok = check_data!(model, declaration, fields, data)
+
+        if is_map(input),
+          do: merge_data(model, fields, identity(model, declaration), input, data),
+          else: input
+    end
+  end
+
+  # `Form.changeset/4`'s checks, and a field the host supplies, which is the `Supplier`'s.
+  defp check_data!(model, declaration, fields, data) do
+    :ok = EhOsContract.Form.check_data!(model, Map.put(declaration, :fields, fields), data)
+
+    case Enum.filter(Supplier.fields(fields), &(Map.get(data, &1.name) != nil)) do
+      [] ->
+        :ok
+
+      supplied ->
+        raise ArgumentError,
+              "call/3 got data: for #{inspect(Enum.map(supplied, & &1.name))}, which the host " <>
+                "supplies: the engine asks the Supplier for it"
+    end
+  end
+
+  defp merge_data(model, fields, identity, input, data) do
+    by_name = Map.new(fields, &{&1.name, &1})
+    values = Codec.values(model.domain)
+
+    for {name, value} <- data, value != nil, reduce: input do
+      input ->
+        key = Atom.to_string(name)
+        external = Codec.encode_value(by_name[name].type, value, values)
+
+        cond do
+          name in identity -> input |> Map.delete(name) |> Map.put(key, external)
+          Map.has_key?(input, key) or Map.has_key?(input, name) -> input
+          true -> Map.put(input, key, external)
+        end
+    end
+  end
+
+  defp identity(model, declaration) do
+    case Enum.find(model.units, &(&1.name == Map.get(declaration, :unit, :none))) do
+      %{identity: identity} -> identity
+      _boundary_or_none -> []
     end
   end
 
@@ -314,37 +389,44 @@ defmodule EhOsContract.Dispatcher do
   # UUID: the request either of them would make, with a scope value as it was sent.
   # Asked first, a caller without the capability learns nothing about the
   # declaration's fields, and every request is still one decision (v2 §11).
-  defp permit_undecoded(model, :command, declaration, actor, input) do
+  defp permit_undecoded(model, :command, declaration, actor, input, form?) do
     scope =
       case Map.get(declaration, :scope) do
         nil -> nil
-        dimension -> scope_request(dimension, sent(input, dimension))
+        dimension -> scope_request(dimension, sent(input, dimension, form?))
       end
 
     permit(model, declaration, actor, scope)
   end
 
-  defp permit_undecoded(model, :record, declaration, actor, _input),
+  defp permit_undecoded(model, :record, declaration, actor, _input, _form?),
     do: permit_record(model, declaration, actor)
 
-  defp permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input),
+  defp permit_undecoded(model, :query, %{scope: nil} = declaration, actor, _input, _form?),
     do: permit_query(model, declaration, actor, nil)
 
-  defp permit_undecoded(model, :query, declaration, actor, input) do
+  defp permit_undecoded(model, :query, declaration, actor, input, form?) do
     permit_query(
       model,
       declaration,
       actor,
-      scope_request(declaration.scope, sent(input, declaration.scope))
+      scope_request(declaration.scope, sent(input, declaration.scope, form?))
     )
   end
 
   # A scope value as the request sent it, when it is text an identifier may be: one with a NUL,
   # invalid UTF-8 or past 255 bytes is no value any grant holds, and the `Authorizer` may
   # record what it is asked.
-  defp sent(input, dimension) do
-    value = Map.get(input, Atom.to_string(dimension))
-    if Codec.text?(value) and byte_size(value) <= 255, do: value
+  # A form's blank is no value, as the codec reads it: the same request as a field left out.
+  defp sent(input, dimension, form?) do
+    # Under either key, as `Codec.decode/4` reads a field.
+    value = Map.get(input, Atom.to_string(dimension), Map.get(input, dimension))
+
+    cond do
+      form? and blank?(value) -> nil
+      Codec.text?(value) and byte_size(value) <= 255 -> value
+      true -> nil
+    end
   end
 
   defp permit(model, declaration, actor), do: permit(model, declaration, actor, nil)

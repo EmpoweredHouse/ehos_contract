@@ -131,20 +131,26 @@ Keep these things in the application:
 
 ## What occurs from a keystroke to a refusal?
 
-![The page builds the changeset on each change; on submit, it dispatches the command, and puts the refusal of dispatch back on the form.](img/form-refusal.svg)
+![The page builds the changeset on each change; on submit, it sends the params to call/3, and puts the refusal of dispatch back on the form.](img/form-refusal.svg)
 
 1. The person types in the form. The page gets a `phx-change` event.
 2. The page builds the changeset with `EhOsContract.Form.changeset/4`.
 3. The changeset gives the errors of the shape: a missing field, a wrong type, a broken invariant of
    a domain value.
 4. The person submits the form. The page gets a `phx-submit` event.
-5. `EhOsContract.Form.to_struct/1` converts a valid changeset into the struct of the command.
-6. The page dispatches the command with the actor of the person.
-7. Dispatch reads the history of the unit, and asks the implementation to decide.
-8. The implementation rejects the command on the invariant of the unit.
-9. Dispatch returns `{:error, reason}` to the page.
-10. `EhOsContract.Form.refused/3` puts the reason on the changeset.
-11. The page shows the error on the form, in the words of the application.
+5. The page sends the params to `EhOsContract.call/3` with `form: true`, the `data:` of the
+   changeset and the actor of the person.
+6. Dispatch checks the call: it asks the `EhOsContract.Authorizer` if the person can issue the
+   command, and reads the params as the changeset reads them. Then it reads the history of the
+   unit, and asks the implementation to decide.
+7. The implementation rejects the command on the invariant of the unit.
+8. Dispatch returns `{:error, reason}` to the page.
+9. `EhOsContract.Form.refused/3` puts the reason on the changeset.
+10. The page shows the error on the form, in the words of the application.
+
+`EhOsContract.Plug` sends each call to `/api` through `call/3` too. So a form gets the same checks
+as another caller: the Authorizer before the fields, a refusal of a field that the host supplies,
+and the `EhOsContract.Supplier` for that field.
 
 The steps below write this code.
 
@@ -227,33 +233,37 @@ The key comes from the browser. If dispatch accepts the command, it writes the k
 
 ## Send the command, and put the refusal on the form
 
-On `phx-submit`, convert the changeset into the command, and dispatch it. Give dispatch the key of
-the form, so that a second submit of the same form is the same command. If dispatch accepted the
-first command, it returns the receipt of that command, also if the person changed the form. But
-first, the changed form must pass the changeset, and dispatch checks the capability and the fields.
+On `phx-submit`, send the params of the form to `EhOsContract.call/3`, with `form: true`.
+
+- Give `call/3` the same `data:` as the changeset. The identity in `data:` replaces a value of the
+  identity that the person sent. A field that the params leave out gets its value from `data:`.
+- Give `call/3` the key of the form, so that a second submit of the same form is the same command.
+  If dispatch accepted the first command, it returns the receipt of that command, also if the
+  person changed the form.
 
 <!-- not compiled: a function of the host's LiveView -->
 ```elixir
 def handle_event("save", %{"issue_invoice" => params}, socket) do
-  changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
-
-  with {:ok, command} <- EhOsContract.Form.to_struct(changeset),
-       {:ok, _receipt} <-
-         EhOsContract.dispatch(Invoicing, command,
-           actor: socket.assigns.actor,
-           idempotency_key: socket.assigns.form_key
-         ) do
-    {:noreply, push_navigate(socket, to: ~p"/invoices/#{command.invoice_id}")}
-  else
-    {:error, %Ecto.Changeset{} = changeset} ->
-      {:noreply, assign(socket, :form, to_form(changeset))}
+  case EhOsContract.call({:command, "forms_example.issue_invoice"}, params,
+         actor: socket.assigns.actor,
+         form: true,
+         data: data(socket),
+         idempotency_key: socket.assigns.form_key
+       ) do
+    {:ok, _receipt} ->
+      {:noreply, push_navigate(socket, to: ~p"/invoices/#{socket.assigns.invoice_id}")}
 
     {:error, reason} ->
+      changeset = EhOsContract.Form.changeset(Invoicing, IssueInvoice, params, data: data(socket))
       changeset = EhOsContract.Form.refused(changeset, reason)
       {:noreply, socket |> assign(:form, to_form(changeset)) |> notice(reason)}
   end
 end
 ```
+
+`call/3` reads the params as the changeset reads them. So a field that the changeset refuses comes
+back from `call/3` as `{:invalid, problems}`. `refused/3` does not put an error again that the
+changeset already holds.
 
 A rule of a unit names no field. So `refused/3` puts a rejection on `:base`, the errors of the whole
 form. To show it at a field, name the field:
@@ -329,12 +339,13 @@ defp notice(socket, _other), do: put_flash(socket, :error, "The invoice was not 
 ## Record an event, or ask a query, from a form
 
 `Form.changeset/4` also takes the module of an event that an actor records, or of a query.
-`Form.to_struct/1` gives the struct that each of them takes.
+`call/3` takes their params with `form: true`, as for a command.
 
-- To record an event, build the changeset from the event. Its struct goes to `EhOsContract.record/3`.
-  A refusal comes back through `refused/3`, as for a command.
-- For a search form, or a filter over a read model, build the changeset from the query. A query has no identity:
-  the changeset checks its params as fields. Its struct goes to `EhOsContract.query/3`.
+- To record an event, build the changeset from the event. Send the params as `{:record, name}`,
+  with the same `data:` as the changeset. A refusal comes back through `refused/3`, as for a
+  command.
+- For a search form, or a filter over a read model, build the changeset from the query. A query has
+  no identity: the changeset checks its params as fields. Send the params as `{:query, name}`.
 
 <!-- not compiled: code of the host's LiveView -->
 ```elixir
@@ -342,11 +353,11 @@ defp notice(socket, _other), do: put_flash(socket, :error, "The invoice was not 
 # example's command.
 changeset = EhOsContract.Form.changeset(Invoicing, Invoicing.Queries.InvoicesOfPeriod, params)
 
-with {:ok, query} <- EhOsContract.Form.to_struct(changeset),
-     {:ok, rows} <- EhOsContract.query(Invoicing, query, actor: socket.assigns.actor) do
-  assign(socket, rows: rows, filter: to_form(changeset, action: :validate))
-else
-  {:error, %Ecto.Changeset{} = changeset} -> assign(socket, :filter, to_form(changeset))
+case EhOsContract.call({:query, "forms_example.invoices_of_period"}, params,
+       actor: socket.assigns.actor,
+       form: true
+     ) do
+  {:ok, rows} -> assign(socket, rows: rows, filter: to_form(changeset, action: :validate))
   {:error, reason} -> assign(socket, :filter, to_form(EhOsContract.Form.refused(changeset, reason)))
 end
 ```
@@ -358,13 +369,13 @@ Then build the changeset by the name:
 `Form.changeset({:command, "forms_example.issue_invoice"}, params)`. `Form` looks for the name in
 the registered contracts, or in the contracts that `contracts:` names.
 
-`call/3` takes data with the types that JSON gives it. Send the text of a form through `Form`.
+Send the params with the same name to `call/3`, with `form: true`.
 
 ## What can go wrong
 
 **The changeset does not check who can act.** `Form` does not ask the `EhOsContract.Authorizer`. It
 checks only the shape that the contract declares. Examples: the fields, their types, the members of
-an enum, and the names of the invariants of its values. Dispatch asks if the person can issue the
+an enum, and the names of the invariants of its values. `call/3` asks if the person can issue the
 command, when the page sends it. Show a form only to the people that the page is for.
 
 Holding the changeset to its unit does not give access. The host decides who can act on which unit.
@@ -400,8 +411,10 @@ The `EhOsContract.Authorizer` checks the capability and its scope.
 - A field in the params, also a blank one, comes from the params. A `<select multiple>`, or a
   checkbox, sends nothing when the person chooses nothing. So it needs a hidden blank input to clear
   the value in `data:`. `<.input type="checkbox">` shows one.
+- `call/3` does the same with the same `data:`. Without `data:`, `call/3` reads only the params,
+  so a field that the page does not show is absent.
 - A field that the page does not show is not protected: params that carry it set it. Put a value
-  that the page decides into the struct, after `to_struct/1`.
+  that the page decides into the params, with `Map.put/3`, before `call/3`.
 
 **Each change sends each row.** A LiveView reads the whole form on each `phx-change`. Limit the size
 of what a form can send, where the host gets it: the `max_frame_size` of the socket, and the
@@ -413,8 +426,9 @@ so its text is not a timestamp. Add them in the page, or make the field a `:date
 
 **Some fields do not come from the person.**
 
-- A field that the host supplies (`supplied_by: :host`): the page fills it in `data:`, or gives
-  `supply: true` to `dispatch/3`. Then dispatch asks the `EhOsContract.Supplier`.
+- A field that the host supplies (`supplied_by: :host`): `call/3` asks the
+  `EhOsContract.Supplier` for it. If the params carry a value for the field, `call/3` refuses it.
+  A blank value is absent, as for each other field.
 - An identity that dispatch generates, for a unit that the command creates.
 - The identity in `data:`. `Form` ignores the identity in the params, and does not show it back
   from them. Only the identity is kept this way. Another field in `data:` is a first value that the
@@ -430,7 +444,7 @@ with the errors of the whole form.
 rejection belongs to no field. Examples: a missing capability, a conflict with another command, a
 field that the host did not supply, an erased subject.
 
-The page tells the person about them from the reason that `dispatch/3` returned, as `notice/2`
+The page tells the person about them from the reason that `call/3` returned, as `notice/2`
 above does. `t:EhOsContract.refusal/0` lists these reasons. A rejection is an
 `EhOsContract.Rejection`.
 

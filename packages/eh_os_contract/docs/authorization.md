@@ -140,9 +140,10 @@ credential encrypted in its own table, on the server. The browser holds only a r
 ## Which calls does the Authorizer check?
 
 The Authorizer checks each call that comes into the application from outside, with a credential.
-This page calls the place where such a call enters the door. The door is `EhOsContract.Plug`,
-`EhOsContract.call/3`, or a page that dispatches for a person who signed in. The kind
-of actor decides. The engine asks the Authorizer about an actor of a credential. It never asks about
+This page calls the place where such a call enters the door. The door is `EhOsContract.call/3`,
+or `dispatch/3`, `record/3` and `query/3` with the actor of a credential. `EhOsContract.Plug` calls
+`call/3` for a request to `/api`. A page calls it with `form: true` for a person who signed in:
+[Issue a command from a form](forms.md). The kind of actor decides. The engine asks the Authorizer about an actor of a credential. It never asks about
 a `:system` actor or a reaction.
 
 ![A call from a person or an external system passes the credential check and the Authorizer before dispatch, while a reaction and the code of the application issue to dispatch directly, held to what the contract names.](img/authorization-door.svg)
