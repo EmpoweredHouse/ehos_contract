@@ -506,6 +506,17 @@ defmodule EhOsContract.Auth.MailTest do
                      Workload.child_spec(plug: plug)
                    end
     end
+
+    test "pin_keys: true stops Workload where Mix's environment is not :test", %{ehos: ehos} do
+      on_exit(fn -> Mix.env(:test) end)
+      Mix.env(:dev)
+
+      assert_raise ArgumentError,
+                   ~r/pin_keys: true is set where no test runs: Mix's environment is :dev/,
+                   fn ->
+                     Workload.child_spec(plug: &serve(ehos, &1))
+                   end
+    end
   end
 
   defp restore(previous) do
