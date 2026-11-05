@@ -2,17 +2,16 @@ defmodule EhOsContract.Auth.Pools do
   @moduledoc false
 
   # The Finch pools that the package's calls to EHOS go through: one for each set of
-  # pool options and origin, started once and named. Given `connect_options:`, Req asks its
+  # pool options, started once and named. Given `connect_options:`, Req asks its
   # supervisor for a pool on each call, and Finch opens the file that `SSLKEYLOGFILE`
   # names before it finds the name taken: each call left the file open (#595). A pool
   # is started through this process, one at a time, so that two first calls do not
-  # both open it. The origin's pool is configured, so that Finch starts it with the
-  # instance: started on the first calls, it would be started by each of them that
-  # finds it missing, and each would open the file.
+  # both open it: Finch opens the file when an instance starts, not for each host.
   #
   # A pool is temporary: one that stops is started again by the next call, not
-  # restarted in a loop, which would open the file again each time and count against
-  # the package's supervisor.
+  # restarted in a loop, which would count against the package's supervisor. Each new
+  # start opens the file again, and the file of the pool that stopped stays open: Finch
+  # opens it in the supervisor's process, which outlives the pool.
 
   use GenServer
 
@@ -33,10 +32,15 @@ defmodule EhOsContract.Auth.Pools do
   def request(options) do
     request = Req.new(options)
 
-    request
-    |> Req.Request.delete_option(:connect_options)
-    |> Req.Request.put_option(:finch, name: pool!(request))
-    |> Req.request()
+    # A test's plug answers in place of Finch, so it needs no pool.
+    if Map.has_key?(request.options, :plug) do
+      Req.request(request)
+    else
+      request
+      |> Req.Request.delete_option(:connect_options)
+      |> Req.Request.put_option(:finch, name: pool!(request))
+      |> Req.request()
+    end
   end
 
   defp pool!(request) do
@@ -46,13 +50,10 @@ defmodule EhOsContract.Auth.Pools do
         else: request.options
 
     pool = Req.Finch.pool_options(options)
-    url = request.url
-    origin = URI.to_string(%URI{scheme: url.scheme, host: url.host, port: url.port})
-    name = name({pool, origin})
-    pools = %{:default => pool, origin => pool}
+    name = name(pool)
 
     with nil <- Process.whereis(name),
-         {:error, reason} <- GenServer.call(__MODULE__, {:start, name, pools}) do
+         {:error, reason} <- GenServer.call(__MODULE__, {:start, name, pool}) do
       raise "the Finch pool of the calls to EHOS did not start: #{describe(reason)}"
     end
 
@@ -63,15 +64,15 @@ defmodule EhOsContract.Auth.Pools do
   def init(nil), do: {:ok, nil}
 
   @impl GenServer
-  def handle_call({:start, name, pools}, _from, state) do
+  def handle_call({:start, name, pool}, _from, state) do
     # A call that waited behind the one that started it: a second start would open the
     # file before it finds the name taken.
-    {:reply, if(Process.whereis(name), do: :ok, else: start(name, pools)), state}
+    {:reply, if(Process.whereis(name), do: :ok, else: start(name, pool)), state}
   end
 
-  defp start(name, pools) do
+  defp start(name, pool) do
     child =
-      Supervisor.child_spec({Finch, name: name, pools: pools},
+      Supervisor.child_spec({Finch, name: name, pools: %{default: pool}},
         id: name,
         restart: :temporary
       )
@@ -89,8 +90,7 @@ defmodule EhOsContract.Auth.Pools do
 
   defp describe(_reason), do: "Finch refused its options"
 
-  # One atom for each set of options and origin, as Req names its own pools; a host
-  # gives few.
+  # One atom for each set of options, as Req names its own pools; a host gives few.
   defp name(key) do
     hash = key |> :erlang.term_to_binary() |> :erlang.md5() |> Base.encode32(padding: false)
     Module.concat(__MODULE__, "Pool_" <> hash)

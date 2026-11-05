@@ -103,10 +103,9 @@ The child takes no other option. The package then cannot weaken the fetch of the
 
 > **Keep `SSLKEYLOGFILE` out of the environment of the application in production.** Finch, the
 > client under Req, opens the file that the variable names when it starts a pool. The package starts
-> one pool for each set of connection options and each address of EHOS, when it first calls that
-> address. Finch writes the TLS
-> secrets of a connection to the file when its pool sets `keep_secrets: true` in `transport_opts`.
-> The package does not set it, but a pool of the application can. With the file, a person who
+> one pool for each set of connection options, when it first calls EHOS with them. Finch writes
+> the TLS secrets of a connection to the file when its pool sets `keep_secrets: true` in
+> `transport_opts`. The package does not set it, but a pool of the application can. With the file, a person who
 > records the traffic can read it. If Finch cannot open the file, the application does not start.
 > The package does not check the variable.
 

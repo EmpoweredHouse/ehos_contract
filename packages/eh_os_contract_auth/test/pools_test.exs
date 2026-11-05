@@ -58,7 +58,7 @@ defmodule EhOsContract.Auth.PoolsTest do
     assert open_files() - files == opened
   end
 
-  test "other connection options, or another origin, get a pool of their own" do
+  test "other connection options get a pool of their own, and another address does not" do
     {port, other_port} = {closed_port(), closed_port()}
     {options, other_options} = {connect_options(), connect_options()}
     pools = pools()
@@ -66,9 +66,21 @@ defmodule EhOsContract.Auth.PoolsTest do
     refused(options, port)
     refused(other_options, port)
     refused(options, other_port)
-    refused(options, port)
 
-    assert pools() - pools == 3
+    assert pools() - pools == 2
+  end
+
+  test "a call answered by a plug starts no pool" do
+    pools = pools()
+
+    assert {:ok, %Req.Response{status: 204}} =
+             Pools.request(
+               url: "http://127.0.0.1/",
+               connect_options: connect_options(),
+               plug: &Plug.Conn.send_resp(&1, 204, "")
+             )
+
+    assert pools() == pools
   end
 
   @tag :tmp_dir
