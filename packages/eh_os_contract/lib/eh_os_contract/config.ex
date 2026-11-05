@@ -66,10 +66,19 @@ defmodule EhOsContract.Config do
       type: :keyword_list,
       default: [],
       doc: """
-      The settings of `EhOsContract.Vault.Local`, the default vault, written
-      `config :eh_os_contract, EhOsContract.Vault, keys: [...]`.
+      The settings of the master keys, written
+      `config :eh_os_contract, EhOsContract.Vault, keys: [...]`: `keys:` for
+      `EhOsContract.Vault.Local`, the default vault, and `destroyed:` for any vault.
       """,
       keys: [
+        destroyed: [
+          type: {:list, :string},
+          default: [],
+          doc: """
+          The ids of the master keys that you destroyed. The engine does not try to
+          unwrap their data keys, and reads their subjects as erased.
+          """
+        ],
         keys: [
           type: {:custom, __MODULE__, :shape, [:master_keys]},
           type_doc: "list of `{id, base64}`",

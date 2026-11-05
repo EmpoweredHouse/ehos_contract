@@ -600,7 +600,8 @@ cannot read what the nodes with the new list write, until the rollout ends.
    of step 2. If the first key of its list is another key, the task stops before it
    changes a data key.
 4. Do this step only when step 3 ended without an error. Just before the deploy,
-   count the data keys of each master key. Each row must name the new key:
+   count the data keys of each master key. Each row must name the new key, or a key
+   that `destroyed:` names:
 
        SELECT kek_id, count(*) FROM eh_os_contract_subject_keys GROUP BY kek_id;
 
@@ -637,13 +638,35 @@ both, because one id names one set of bytes. The engine tries only one data key
 of each master key, so the check can pass. Then a read of a data key of the other
 set raises an `ArgumentError`.
 
-A master key that you destroyed cannot come back. While a data key names it, the
-engine does not start. This occurs when you restore a backup that is older than the
-rewrap. The engine gives no way to start past this check.
-
 The engine does not try a wrap at boot. So a vault whose `c:EhOsContract.Vault.check/0` returns `:ok`
 starts, even if its wrap fails. The engine unwraps one data key of each master
 key, not each data key.
+
+### A master key that you destroyed
+
+A master key that you destroyed cannot come back. A backup that is older than the
+rewrap can still hold data keys that it wrapped. While a data key names it, the
+engine does not start. To start, name the key in the configuration:
+
+    config :eh_os_contract, EhOsContract.Vault,
+      keys: [{"2026-09", System.fetch_env!("EH_OS_CONTRACT_KEK")}],
+      destroyed: ["2026-03"]
+
+- The engine does not unwrap the data keys of a destroyed key when it reads. At
+  boot, it tries one of them: if the vault unwraps it, the key is not destroyed,
+  and the engine does not start.
+- The engine reads each subject with such a data key as erased: each personal field
+  of the subject reads as `EhOsContract.Erased`, and a command that carries new
+  personal data of the subject returns `{:error, :subject_erased}`.
+- The rewrap leaves those data keys as they are.
+- At boot, the engine logs a warning with the count of those data keys.
+- `EhOsContract.erase/3` deletes those data keys and records the erasure. Then the
+  warning stops.
+
+The engine does not start if `destroyed:` names the key that the vault wraps with,
+or a key whose data key the vault unwraps at boot.
+[Start on a backup whose master key you destroyed](master-keys.md#start-on-a-backup-whose-master-key-you-destroyed)
+gives the steps.
 
 ### Callbacks
 
@@ -668,7 +691,11 @@ if the context or the wrapped key is not the same.
 
 If a contract declares a personal field, the engine also calls it at boot, one time
 for each master key that a stored data key names. At boot, `:error` stops the
-engine, with an error that tells the operator to check the master key.
+engine, with an error that tells the operator to check the master key. For a master
+key that `destroyed:` names, `:error` is the answer that lets the engine start.
+
+For a master key that the key management service deleted, or holds for deletion,
+return `:error`. Do not raise.
 
 If the vault cannot answer now, for example because a key management service is
 down, raise. Do not return `:error`. The engine does not start while the service

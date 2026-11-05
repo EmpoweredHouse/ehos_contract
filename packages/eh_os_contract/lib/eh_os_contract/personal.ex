@@ -150,9 +150,17 @@ defmodule EhOsContract.Personal do
   @doc false
   @spec for_writing(module(), prepared()) :: {:ok, current_keys()} | {:error, :subject_erased}
   def for_writing(repo, prepared) do
-    if MapSet.size(erased_among(repo, prepared.subjects)) == 0,
-      do: {:ok, store(repo, prepared)},
-      else: {:error, :subject_erased}
+    # A subject with a key that `prepare/2` read has no key under a destroyed master key,
+    # while each subject has one key version: only the others are asked, under the lock.
+    unkeyed =
+      Enum.reject(prepared.subjects, fn {type, id} ->
+        Map.has_key?(prepared.existing, {Atom.to_string(type), id})
+      end)
+
+    if MapSet.size(lost_among(repo, unkeyed)) == 0 and
+         MapSet.size(recorded_among(repo, prepared.subjects)) == 0,
+       do: {:ok, store(repo, prepared)},
+       else: {:error, :subject_erased}
   end
 
   defp store(repo, %{existing: existing, created: created} = prepared) do
@@ -212,7 +220,9 @@ defmodule EhOsContract.Personal do
       Runner.transaction(repo, fn ->
         :ok = Store.lock(repo)
 
-        if MapSet.size(erased_among(repo, [{subject, id}])) == 0 do
+        # A subject whose data keys a destroyed master key wraps reads as erased, but
+        # its erasure is not recorded yet: this records it and deletes those keys.
+        if MapSet.size(recorded_among(repo, [{subject, id}])) == 0 do
           now = Clock.now()
 
           {deleted, _} =
@@ -395,19 +405,17 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  # Every data key of `subjects`, every version, in one query. A subject without keys
-  # is absent: its sealed fields read back as `EhOsContract.Erased`.
+  # Every data key of `subjects`, every version, in one query, except the ones a
+  # destroyed master key wraps. A subject without keys is absent: its sealed fields
+  # read back as `EhOsContract.Erased`.
   # Called by consumer.ex.
   @doc false
   @spec for_reading(module(), [subject()]) :: keys()
   def for_reading(_repo, []), do: %{}
 
   def for_reading(repo, subjects) do
-    {types, ids} =
-      subjects
-      |> Enum.uniq()
-      |> Enum.map(fn {t, id} -> {Atom.to_string(t), id} end)
-      |> Enum.unzip()
+    {types, ids} = unzip(subjects)
+    destroyed = Vault.destroyed()
 
     repo.all(
       from(k in @keys,
@@ -418,7 +426,7 @@ defmodule EhOsContract.Personal do
             k.subject_id,
             type(^types, {:array, :string}),
             type(^ids, {:array, :string})
-          ),
+          ) and k.kek_id not in ^destroyed,
         select: {k.subject_type, k.subject_id, k.key_version, k.kek_id, k.wrapped_key}
       )
     )
@@ -428,18 +436,25 @@ defmodule EhOsContract.Personal do
   end
 
   # The subjects among `subjects` that are erased, as `{type, id}` strings: the ones
-  # whose missing key means `EhOsContract.Erased`. One query, none for no subjects.
+  # whose missing key means `EhOsContract.Erased`. A subject is erased when its erasure
+  # is recorded, or when a destroyed master key wraps one of its data keys: that key
+  # cannot be read again, and a new key would make new data readable beside data that
+  # is lost. No query for no subjects, a second only when a master key is destroyed.
   # Called by consumer.ex.
   @doc false
   @spec erased_among(module(), [subject()]) :: MapSet.t({String.t(), String.t()})
   def erased_among(_repo, []), do: MapSet.new()
 
+  # The data keys are asked before the erasures: an `erase/3` that commits between the
+  # two queries deleted the keys and recorded the erasure in one transaction, so the
+  # second query sees the erasure. The other order would see neither.
   def erased_among(repo, subjects) do
-    {types, ids} =
-      subjects
-      |> Enum.uniq()
-      |> Enum.map(fn {t, id} -> {Atom.to_string(t), id} end)
-      |> Enum.unzip()
+    lost = lost_among(repo, subjects)
+    MapSet.union(lost, recorded_among(repo, subjects))
+  end
+
+  defp recorded_among(repo, subjects) do
+    {types, ids} = unzip(subjects)
 
     repo.all(
       from(e in @erasures,
@@ -455,6 +470,40 @@ defmodule EhOsContract.Personal do
       )
     )
     |> MapSet.new()
+  end
+
+  # The subjects among `subjects` with a data key under a destroyed master key. No
+  # query while no master key is destroyed.
+  defp lost_among(_repo, []), do: MapSet.new()
+  defp lost_among(repo, subjects), do: lost_among(repo, subjects, Vault.destroyed())
+
+  defp lost_among(_repo, _subjects, []), do: MapSet.new()
+
+  defp lost_among(repo, subjects, destroyed) do
+    {types, ids} = unzip(subjects)
+
+    repo.all(
+      from(k in @keys,
+        where:
+          fragment(
+            "(?, ?) IN (SELECT * FROM unnest(?::text[], ?::text[]))",
+            k.subject_type,
+            k.subject_id,
+            type(^types, {:array, :string}),
+            type(^ids, {:array, :string})
+          ) and k.kek_id in ^destroyed,
+        distinct: true,
+        select: {k.subject_type, k.subject_id}
+      )
+    )
+    |> MapSet.new()
+  end
+
+  defp unzip(subjects) do
+    subjects
+    |> Enum.uniq()
+    |> Enum.map(fn {t, id} -> {Atom.to_string(t), id} end)
+    |> Enum.unzip()
   end
 
   defp unwrap!(type, version, kek_id, wrapped, id) do
@@ -571,6 +620,8 @@ defmodule EhOsContract.Personal do
   @spec rewrap!(module(), Vault.kek_id(), pos_integer()) :: non_neg_integer()
   def rewrap!(repo, expect, batch \\ 500) when is_binary(expect) do
     current = Vault.current()
+    # Their data keys cannot be unwrapped, and are left until `erase/3` deletes them.
+    skipped = [current | Vault.destroyed()]
 
     unless current == expect do
       raise ArgumentError,
@@ -580,11 +631,11 @@ defmodule EhOsContract.Personal do
               "id of the new key"
     end
 
-    count = rewrap!(repo, batch, current, 0)
+    count = rewrap!(repo, batch, current, skipped, 0)
 
     # A batch skips the keys another run holds, so an empty batch does not mean that
     # none is left; the old master key may only go when none is.
-    case repo.one(from(k in @keys, where: k.kek_id != ^current, select: count())) do
+    case repo.one(from(k in @keys, where: k.kek_id not in ^skipped, select: count())) do
       0 ->
         count
 
@@ -596,13 +647,13 @@ defmodule EhOsContract.Personal do
     end
   end
 
-  defp rewrap!(repo, batch, current, done) do
+  defp rewrap!(repo, batch, current, skipped, done) do
     {:ok, count} =
       repo.transaction(fn ->
         rows =
           repo.all(
             from(k in @keys,
-              where: k.kek_id != ^current,
+              where: k.kek_id not in ^skipped,
               limit: ^batch,
               lock: "FOR UPDATE SKIP LOCKED",
               select: {k.subject_type, k.subject_id, k.key_version, k.kek_id, k.wrapped_key}
@@ -633,13 +684,14 @@ defmodule EhOsContract.Personal do
         length(rows)
       end)
 
-    if count == 0, do: done, else: rewrap!(repo, batch, current, done + count)
+    if count == 0, do: done, else: rewrap!(repo, batch, current, skipped, done + count)
   end
 
   # Raises when `models` declare a personal field and a stored data key is wrapped by
   # a master key the vault cannot unwrap with: one removed while it still wraps data
   # keys, or one whose id stayed and whose bytes changed. It unwraps one data key of
-  # each master key, so it reads a row for each, not the table. Called by the
+  # each master key, so it reads a row for each, not the table. A data key of a master
+  # key that `destroyed:` names must not unwrap, and a warning counts them. Called by the
   # engine's supervisor at boot, after `EhOsContract.Vault.check!/1`.
   @doc false
   @spec check_master_keys!(module(), [map()]) :: :ok
@@ -652,8 +704,49 @@ defmodule EhOsContract.Personal do
   # can move the last of them in between. They moved to a master key the samples may
   # not hold, so the samples are taken again, a bounded number of times.
   defp check_samples!(repo, rounds) do
-    checked = repo |> samples() |> Enum.map(&check_master_key!(repo, &1))
-    if :moved in checked, do: check_again!(repo, rounds - 1)
+    destroyed = Vault.destroyed()
+
+    checked =
+      for [kek_id | _] = sample <- samples(repo) do
+        if kek_id in destroyed,
+          do: check_destroyed!(sample),
+          else: check_master_key!(repo, sample)
+      end
+
+    if :moved in checked,
+      do: check_again!(repo, rounds - 1),
+      else: for({:destroyed, kek_id} <- checked, do: warn_destroyed(repo, kek_id))
+  end
+
+  # A key named destroyed that still unwraps is one that is not: its subjects would
+  # read as erased, the rewrap would leave them, and an operator who then removes the
+  # key from the vault would lose data that was readable.
+  defp check_destroyed!([kek_id, type, id, version, wrapped]) do
+    case Vault.unwrap(kek_id, wrapped, context(type, id, version)) do
+      :error ->
+        {:destroyed, kek_id}
+
+      {:ok, _key} ->
+        raise ArgumentError,
+              "config :eh_os_contract, EhOsContract.Vault, destroyed: names " <>
+                "#{inspect(kek_id)}, and the vault unwraps a data key of it. Name only the " <>
+                "master keys that you destroyed"
+    end
+  end
+
+  defp warn_destroyed(repo, kek_id) do
+    count = repo.one(from(k in @keys, where: k.kek_id == ^kek_id, select: count()))
+
+    if count > 0 do
+      Logger.warning(
+        "#{data_keys(count)} wrapped by master key #{inspect(kek_id)}, which " <>
+          "`config :eh_os_contract, EhOsContract.Vault, destroyed:` names. The engine reads " <>
+          "their subjects as erased. Call `EhOsContract.erase/3` for each of them to delete " <>
+          "those data keys and record the erasure"
+      )
+    end
+
+    :ok
   end
 
   defp check_again!(_repo, 0) do
@@ -696,7 +789,10 @@ defmodule EhOsContract.Personal do
 
   defp remedy(kek_id, current) do
     "Put #{inspect(kek_id)} back in the vault, with the bytes that wrapped its data keys. " <>
-      "Then run `mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it"
+      "Then run `mix eh_os_contract.rewrap --expect #{inspect(current)}` before you remove it. " <>
+      "If you destroyed #{inspect(kek_id)}, it cannot come back: name it in " <>
+      "`config :eh_os_contract, EhOsContract.Vault, destroyed: [...]`, and the engine reads " <>
+      "its subjects as erased"
   end
 
   defp data_keys(1), do: "1 data key is"

@@ -32,8 +32,12 @@ message naming the key.
 * `:vault` (a module) - The `EhOsContract.Vault` holding the master keys that wrap each subject's data
   key, for example a KMS. The default value is `EhOsContract.Vault.Local`.
 
-* `EhOsContract.Vault` (`t:keyword/0`) - The settings of `EhOsContract.Vault.Local`, the default vault, written
-  `config :eh_os_contract, EhOsContract.Vault, keys: [...]`. The default value is `[]`.
+* `EhOsContract.Vault` (`t:keyword/0`) - The settings of the master keys, written
+  `config :eh_os_contract, EhOsContract.Vault, keys: [...]`: `keys:` for
+  `EhOsContract.Vault.Local`, the default vault, and `destroyed:` for any vault. The default value is `[]`.
+
+  * `:destroyed` (list of `t:String.t/0`) - The ids of the master keys that you destroyed. The engine does not try to
+    unwrap their data keys, and reads their subjects as erased. The default value is `[]`.
 
   * `:keys` (list of `{id, base64}`) - The master keys as `{id, base64}`, each 32 bytes. The first wraps every new
     data key; the others only unwrap, until `mix eh_os_contract.rewrap` has moved

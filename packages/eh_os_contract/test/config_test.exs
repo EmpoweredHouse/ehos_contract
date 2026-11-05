@@ -48,6 +48,7 @@ defmodule EhOsContract.ConfigTest do
   test "an error under EhOsContract.Vault says it is the vault's" do
     assert refused(@valid ++ [{EhOsContract.Vault, key: []}]) =~ "EhOsContract.Vault"
     assert refused(@valid ++ [{EhOsContract.Vault, keys: :none}]) =~ "EhOsContract.Vault"
+    assert refused(@valid ++ [{EhOsContract.Vault, destroyed: "kek-old"}]) =~ "destroyed"
   end
 
   test "a value of the wrong shape is named by its key" do
@@ -68,6 +69,7 @@ defmodule EhOsContract.ConfigTest do
 
   test "the vault's keys and the bus are checked in their shape" do
     assert Config.validate!(@valid ++ [{EhOsContract.Vault, keys: [{"2026-09", "a2V5"}]}]) == :ok
+    assert Config.validate!(@valid ++ [{EhOsContract.Vault, destroyed: ["2026-03"]}]) == :ok
     assert Config.validate!(@valid ++ [bus: {EhOsContract.Bus.Local, []}]) == :ok
     assert Config.validate!(@valid ++ [bus: EhOsContract.Bus.Local]) == :ok
   end

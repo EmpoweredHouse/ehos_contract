@@ -12,7 +12,7 @@ defmodule EhOsContract.VaultTest do
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
 
-  alias EhOsContract.{Actor, Consumer, Event, Model, Personal, Vault}
+  alias EhOsContract.{Actor, Consumer, Erased, Event, Model, Personal, Vault}
   alias EhOsContract.Vault.Local
   alias ShreddingRig.Members
   alias ShreddingRig.Members.Commands.Join
@@ -125,7 +125,10 @@ defmodule EhOsContract.VaultTest do
                      ~s(personal data of its subject. ) <>
                      ~s(Put "kek-old" back in the vault, with the bytes that wrapped its data ) <>
                      ~s(keys. Then run ) <>
-                     ~s(`mix eh_os_contract.rewrap --expect "kek-new"` before you remove it),
+                     ~s(`mix eh_os_contract.rewrap --expect "kek-new"` before you remove it. ) <>
+                     ~s(If you destroyed "kek-old", it cannot come back: name it in ) <>
+                     ~s(`config :eh_os_contract, EhOsContract.Vault, destroyed: [...]`, and the ) <>
+                     ~s(engine reads its subjects as erased),
                    fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
 
       assert {:error, {{%ArgumentError{message: message}, _}, _}} =
@@ -452,6 +455,108 @@ defmodule EhOsContract.VaultTest do
       end
 
       assert kek_ids() == ["kek-old"]
+    end
+  end
+
+  describe "a destroyed master key" do
+    @officer Actor.credential("u-officer", [])
+
+    # Anna's data key wrapped by "kek-old", which was destroyed; Bartek's by "kek-new".
+    defp restored! do
+      keys([{"kek-old", @kek}])
+      join!("membership-anna", "member-anna")
+      keys([{"kek-new", @new_kek}, {"kek-old", @kek}])
+      join!("membership-bartek", "member-bartek")
+
+      Application.put_env(:eh_os_contract, Vault,
+        keys: [{"kek-new", @new_kek}],
+        destroyed: ["kek-old"]
+      )
+    end
+
+    test "starts, and the boot warns how many data keys it wraps" do
+      restored!()
+
+      log =
+        capture_log(fn ->
+          assert Personal.check_master_keys!(Repo, [Model.fetch(Members)]) == :ok
+          assert {:ok, _pid} = start_supervised(EhOsContract)
+        end)
+
+      assert log =~
+               ~s(1 data key is wrapped by master key "kek-old", which ) <>
+                 ~s(`config :eh_os_contract, EhOsContract.Vault, destroyed:` names. The engine ) <>
+                 ~s(reads their subjects as erased. Call `EhOsContract.erase/3` for each of ) <>
+                 ~s(them to delete those data keys and record the erasure)
+    end
+
+    test "reads its subjects as erased, and the others as before" do
+      restored!()
+      anna = %Erased{subject: :member, id: "member-anna"}
+
+      assert [%Joined{name: ^anna}, %Joined{name: "Anna Nowak"}] = names()
+    end
+
+    test "refuses new personal data of its subjects, as of an erased subject" do
+      restored!()
+
+      assert EhOsContract.dispatch(
+               Members,
+               %ShreddingRig.Members.Commands.Rename{
+                 membership_id: "membership-anna",
+                 member_id: "member-anna",
+                 name: "Anna Kowalska"
+               },
+               actor: Actor.credential("u-clerk", ["shredding_rig.rename"])
+             ) == {:error, :subject_erased}
+
+      assert kek_ids() == ["kek-old", "kek-new"]
+    end
+
+    test "erase/3 deletes its data keys and records the erasure, and the warning stops" do
+      restored!()
+
+      assert EhOsContract.erase(:member, "member-anna", actor: @officer) == {:ok, :erased}
+      assert kek_ids() == ["kek-new"]
+      assert EhOsContract.erase(:member, "member-anna", actor: @officer) == {:ok, :already_erased}
+
+      assert capture_log(fn ->
+               assert Personal.check_master_keys!(Repo, [Model.fetch(Members)]) == :ok
+             end) == ""
+    end
+
+    test "the rewrap leaves its data keys, and rewraps the others" do
+      restored!()
+      keys = [{"kek-newer", @kek}, {"kek-new", @new_kek}]
+      Application.put_env(:eh_os_contract, Vault, keys: keys, destroyed: ["kek-old"])
+
+      assert Personal.rewrap!(Repo, "kek-newer") == 1
+      assert kek_ids() == ["kek-old", "kek-newer"]
+    end
+
+    test "is refused when the vault still unwraps its data keys" do
+      restored!()
+      keys = [{"kek-new", @new_kek}, {"kek-old", @kek}]
+      Application.put_env(:eh_os_contract, Vault, keys: keys, destroyed: ["kek-old"])
+
+      assert_raise ArgumentError,
+                   ~s(config :eh_os_contract, EhOsContract.Vault, destroyed: names "kek-old", ) <>
+                     ~s(and the vault unwraps a data key of it. Name only the master keys that ) <>
+                     ~s(you destroyed),
+                   fn -> Personal.check_master_keys!(Repo, [Model.fetch(Members)]) end
+    end
+
+    test "is refused when it is the key that the vault wraps with" do
+      Application.put_env(:eh_os_contract, Vault,
+        keys: [{"kek-new", @new_kek}],
+        destroyed: ["kek-new"]
+      )
+
+      assert_raise ArgumentError,
+                   ~s(config :eh_os_contract, EhOsContract.Vault, destroyed: names "kek-new", ) <>
+                     ~s(the master key that the vault wraps with. Name only the master keys ) <>
+                     ~s(that you destroyed),
+                   fn -> Vault.check!([Model.fetch(Members)]) end
     end
   end
 end

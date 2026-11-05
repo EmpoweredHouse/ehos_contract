@@ -146,7 +146,9 @@ An erasure deletes the data key from the database. It does not delete it from yo
 - So destroy each master key within the time that you keep backups.
   [Manage the keys and the backups of personal data](master-keys.md) tells how to rotate a key.
 - After that, a backup cannot unwrap a data key that the destroyed master key wraps. Accept this
-  cost, or keep those backups shorter.
+  cost, or keep those backups shorter. [Start on a backup whose master key you
+  destroyed](master-keys.md#start-on-a-backup-whose-master-key-you-destroyed) tells how the engine
+  reads such a backup.
 - The data keys are in the table `eh_os_contract_subject_keys`, and the erasures in
   `eh_os_contract_erasures`. Restore both with the log, from the same moment. If they do not agree,
   the engine raises on a personal field of a subject that has no key and no erasure. It does not
