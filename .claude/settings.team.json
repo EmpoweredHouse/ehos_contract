@@ -19,7 +19,7 @@
       "source": {
         "source": "github",
         "repo": "EmpoweredHouse/ehos-tools",
-        "ref": "ehos-dev-v0.11.0"
+        "ref": "ehos-dev-v0.13.0"
       }
     }
   },

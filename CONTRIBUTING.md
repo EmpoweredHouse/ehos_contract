@@ -373,9 +373,19 @@ Git does not carry an ignored file into a new worktree, so a worktree needs its 
 
 ehos-tools is private, so the plugin needs a GitHub credential that can read it. On a machine without an SSH key,
 set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugin is
-taken by moving the `ref` in that file, and a session picks it up after `/reload-plugins` or a restart. A
-maintainer who copied the file before merges a new key in by hand, as above. One who also has `diagram-design`
-from its own marketplace disables that copy, or a session may use another version.
+taken by moving the `ref` in that file. A maintainer who copied the file before merges the new `ref` in by hand,
+as above. Claude Code applies a `ref` only when it adds the marketplace: a machine that has the marketplace keeps the
+tag it added it at, and its sessions keep loading that tag. To move a machine to the new tag:
+
+1. In a directory outside every checkout, run `claude plugin marketplace remove ehos-tools`. In a checkout, this
+   command also deletes the marketplace from the checkout's settings.
+2. Run `claude plugin marketplace add <repo>#<ref>`, with the `repo` and `ref` that `settings.team.json` gives.
+3. In each worktree, run `claude plugin install ehos-dev@ehos-tools --scope local` and
+   `claude plugin install diagram-design@ehos-tools --scope local`.
+4. Restart Claude Code. `claude plugin list` then shows the new version of `ehos-dev`.
+
+A maintainer who also has `diagram-design` from its own marketplace disables that copy, or a session may use another
+version.
 
 ## Following a line back to its reason
 
