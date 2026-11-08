@@ -379,7 +379,7 @@ tag it added it at, and its sessions keep loading that tag. To move a machine to
 
 1. In a directory outside every checkout, run `claude plugin marketplace remove ehos-tools`. In a checkout, this
    command also deletes the marketplace from the checkout's settings.
-2. Run `claude plugin marketplace add EmpoweredHouse/ehos-tools#<the tag>`.
+2. Run `claude plugin marketplace add <repo>#<ref>`, with the `repo` and `ref` that `settings.team.json` gives.
 3. In each worktree, run `claude plugin install ehos-dev@ehos-tools --scope local` and
    `claude plugin install diagram-design@ehos-tools --scope local`.
 4. Restart Claude Code. `claude plugin list` then shows the new version of `ehos-dev`.
