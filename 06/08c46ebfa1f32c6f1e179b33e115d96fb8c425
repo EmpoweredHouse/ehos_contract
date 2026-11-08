@@ -1,0 +1,1 @@
+Reviewed by the ehos-dev 0.13.0 method (correctness and security in one subagent, small change). Security list: secrets and trust in fetched data checked and clean; other items not touched. Findings fixed in this commit: the diagram-design note was glued onto step 4; /reload-plugins was said to load the held tag again. No other findings.
