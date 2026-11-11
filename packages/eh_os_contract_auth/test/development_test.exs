@@ -145,7 +145,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
   test "after a restart, which makes a new key, a development session is signed out and sent to /dev/sign-in" do
     assert {{false, nil}, {302, ["/dev/sign-in?return_to=%2Fvisits"]}, false,
-            {:error, :not_renewable}, {:error, :unknown_key},
+            {:error, :not_renewable}, {:error, :unknown_key}, 1,
             1} =
              run("""
              {:ok, browser} = Development.sign_in("u-dev", ["clinic.manager"])
@@ -159,7 +159,9 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
              {{before.halted, before.status}, {conn.status, Plug.Conn.get_resp_header(conn, "location")},
               Development.token?(token), Development.renew(SignIn, "u-dev", bearer),
-              EhOsContract.Auth.verify(bearer), length(EhOsContract.Auth.Keys.kids())}
+              EhOsContract.Auth.verify(bearer), length(EhOsContract.Auth.Keys.kids()),
+              # Kept through every refresh: the old key must not come back at the next one.
+              map_size(:sys.get_state(EhOsContract.Auth.Keys).pinned)}
              """)
   end
 
