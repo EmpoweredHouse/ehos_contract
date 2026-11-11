@@ -125,6 +125,7 @@ defmodule EhOsContract.Auth.MixProject do
         "docs/grants.md",
         "docs/egress.md",
         "docs/without-ehos.md",
+        "docs/development.md",
         "docs/testing.md",
         "docs/configuration.md",
         "docs/keys.md",

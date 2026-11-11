@@ -146,6 +146,10 @@ defmodule EhOsContract.Auth.TestingSignInTest do
              EhOsContract.Clock.at(later, fn ->
                Session.actor(%{Session.session_key() => token}, opts(context))
              end)
+
+    # Where the development mode has not started, its signer renews nothing and no key is made.
+    refute EhOsContract.Auth.Development.started?(context.sign_in)
+    assert :ets.whereis(EhOsContract.Auth.Development) == :undefined
   end
 
   defp opts(context), do: [sign_in: context.sign_in, keys: context.keys]

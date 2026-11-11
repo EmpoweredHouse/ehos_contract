@@ -220,12 +220,18 @@ defmodule EhOsContract.Auth.Keys do
   `mix test`. The environment is read when `pin/2` is called, and a release built
   without the `:mix` application has none, so `pin/2` trusts no key there.
 
+  Outside a test it admits one key: the development mode's own, pinned by the mode once
+  it has started (`EhOsContract.Auth.Development`). `pin_keys` does not start that mode,
+  and the mode does not admit any other key.
+
   The process answers after a fetch that is in progress, such as the first one after
   it starts. `pin/2` waits 10 seconds for it, and exits after that.
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
-    :ok = test_only!("pinning a key")
+    unless test_trust?() or EhOsContract.Auth.Development.key?(jwk) do
+      :ok = test_only!("pinning a key")
+    end
 
     # Checked here, in the caller: raising in the process would take its table, and
     # every key in force, with it.
