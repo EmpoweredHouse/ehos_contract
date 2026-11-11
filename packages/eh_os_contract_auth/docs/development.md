@@ -69,7 +69,7 @@ def create(conn, %{"subject" => subject, "actors" => actors} = params) do
     {:ok, token} ->
       conn
       |> put_session(EhOsContract.Auth.Session.session_key(), token)
-      |> redirect(to: params["return_to"] || "/")
+      |> redirect(to: ~p"/")
 
     {:error, reason} ->
       conn |> put_flash(:error, inspect(reason)) |> redirect(to: ~p"/dev/sign-in")
@@ -83,9 +83,15 @@ with the actor of the credential.
 ## 3. Get a credential for `curl`
 
 ```bash
-mix eh_os_contract.dev.credential --token <token> --actor clinic.receptionist \
-  --scope clinic_id=clinic-1
+export EH_OS_CONTRACT_DEV_TOKEN=<token>
 ```
+
+```bash
+mix eh_os_contract.dev.credential --actor clinic.receptionist --scope clinic_id=clinic-1
+```
+
+Give the token in the environment, not as `--token`. Other users of the computer can see a
+command line, and the shell keeps it in its history.
 
 The command asks the running application for the credential, and prints it. The key stays in the
 memory of the application.
@@ -99,7 +105,7 @@ memory of the application.
 | The key | An Ed25519 key, made when the mode starts, and kept only in memory. A restart makes a new key. |
 | The credential | It grants the capabilities that the domain grants to the chosen actors. It lives 10 minutes. |
 | Renewal | When the credential of a session expires, the mode signs a new one with the same claims. |
-| A restart | Each session from before the restart is signed out, and the browser goes to `/dev/sign-in`. |
+| A restart | Each session from before the restart is signed out, and the browser goes to `/dev/sign-in`. The application stops trusting the old key. |
 | The token | A random value, made at start and printed. The page and the endpoint need it. |
 
 ## Who can reach the page?
@@ -107,14 +113,18 @@ memory of the application.
 `EhOsContract.Auth.Development.Guard` lets a request through only when all of these are true. It
 answers 403 for each other request.
 
-- The request comes from a loopback address, `127.0.0.0/8` or `::1`. The address on which the
-  endpoint listens does not change this.
-- The `Host` of the request is `localhost`, `127.0.0.1` or `[::1]`. This also refuses a page that
-  DNS rebinding sends to `localhost`.
+- The request comes from a loopback address, `127.0.0.0/8` or `::1`. The guard reads the address
+  of the socket, and also `conn.remote_ip`, which a plug that reads `X-Forwarded-For` sets. The
+  address on which the endpoint listens does not change this.
+- The `Host` of the request is `localhost`, `127.0.0.1` or `[::1]`. The guard reads the header
+  that the browser sent, and also `conn.host`. This also refuses a page that DNS rebinding sends
+  to `localhost`.
 - The request has the token, as the `token` parameter or in the `x-dev-sign-in-token` header. After
   the first request, the session of the browser keeps a hash of the token.
 
-The answers of the page and of the endpoint have no `Access-Control-Allow-` header.
+The guard removes each `Access-Control-Allow-` header from the answers of the page and of the
+endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
+`OPTIONS` itself. Keep such a plug off the `/dev` paths.
 
 ## What can go wrong
 

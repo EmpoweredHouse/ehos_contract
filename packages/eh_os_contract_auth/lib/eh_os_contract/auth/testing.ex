@@ -86,9 +86,8 @@ defmodule EhOsContract.Auth.Testing do
 
   import ExUnit.Assertions
 
-  alias EhOsContract.Auth.{Keys, SignIn}
+  alias EhOsContract.Auth.{Keys, SignIn, Signing}
   alias EhOsContract.Auth.Testing.SignIn, as: StandIn
-  alias EhOsContract.Auth.SignIn.Sessions
 
   @key {__MODULE__, :key}
 
@@ -150,22 +149,8 @@ defmodule EhOsContract.Auth.Testing do
     opts = Keyword.validate!(opts, scopes: %{}, sign_in: SignIn, keys: Keys)
     {token, expires_at} = signed(subject, capabilities, opts[:scopes], keys: opts[:keys])
     :ok = StandIn.ensure_started(opts[:sign_in])
-    unique = fn -> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false) end
 
-    {:ok, browser_token} =
-      Sessions.create(opts[:sign_in], %{
-        subject: subject,
-        sid: "test-sid-" <> unique.(),
-        auth_time: EhOsContract.Clock.now(),
-        refresh_token: "test-refresh-" <> unique.(),
-        id_token: "test-id-" <> unique.(),
-        credential: %{
-          resource: SignIn.config(opts[:sign_in]).address,
-          token: token,
-          expires_at: expires_at
-        }
-      })
-
+    {:ok, browser_token} = Signing.session(opts[:sign_in], subject, token, expires_at, "test")
     browser_token
   end
 
@@ -185,7 +170,7 @@ defmodule EhOsContract.Auth.Testing do
       assert redirected_to(conn) =~ "/auth/ehos/sign-in"
   """
   @spec sign_out(String.t()) :: :ok
-  def sign_out(browser_token), do: Sessions.delete(browser_token)
+  def sign_out(browser_token), do: EhOsContract.Auth.SignIn.Sessions.delete(browser_token)
 
   @doc """
   Calls each entry point in `entries` — `%{capability => fn token -> … end}` — with a
@@ -263,24 +248,7 @@ defmodule EhOsContract.Auth.Testing do
     end
 
     kid = Keys.pin(public, name)
-    config = Application.get_all_env(:eh_os_contract_auth)
-    now = DateTime.to_unix(EhOsContract.Clock.now())
-
-    claims =
-      %{
-        "iss" => Keyword.fetch!(config, :issuer),
-        "aud" => Keyword.fetch!(config, :audience),
-        "sub" => subject,
-        "iat" => now,
-        "exp" => now + 600,
-        "jti" => Ecto.UUID.generate(),
-        "cap" => Enum.sort(capabilities)
-      }
-      |> then(&if scopes == %{}, do: &1, else: Map.put(&1, "scp", scopes))
-
-    signer = Joken.Signer.create("Ed25519", private, %{"kid" => kid})
-    {:ok, token, _claims} = Joken.encode_and_sign(claims, signer)
-    {token, DateTime.from_unix!(claims["exp"])}
+    Signing.credential(private, kid, subject, capabilities, scopes, EhOsContract.Clock.now())
   end
 
   defp engine_rows(repo) do

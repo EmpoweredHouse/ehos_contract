@@ -14,15 +14,18 @@ defmodule EhOsContract.Auth.Development.Guard do
   listens on, and answers 403 otherwise:
 
     * the mode has started;
-    * the request comes from a loopback address, `127.0.0.0/8` or `::1`;
-    * its `Host` is `localhost`, `127.0.0.1` or `[::1]`, which also refuses a page that DNS
-      rebinding points at the computer;
+    * the request comes from a loopback address, `127.0.0.0/8` or `::1`: both the socket's
+      peer and `conn.remote_ip`, which a plug that reads `X-Forwarded-For` sets;
+    * its `Host` is `localhost`, `127.0.0.1` or `[::1]`: both the header the browser sent and
+      `conn.host`. This also refuses a page that DNS rebinding points at the computer;
     * it carries the token the mode printed at start, as the `token` parameter or in the
       `x-dev-sign-in-token` header; or its Plug session, when fetched, holds the token's hash,
       which the guard leaves there for the requests after the first.
 
-  Its answers, and every answer of a request it lets through, carry no
-  `Access-Control-Allow-*` header, whatever plug added one.
+  It removes each `Access-Control-Allow-*` header from its answers and from the answer of a
+  request it lets through, as they are sent. A CORS plug in the endpoint that answers a
+  preflight `OPTIONS` itself, or adds its headers as the answer is sent, is not covered:
+  keep such a plug off the `/dev` paths.
   """
 
   @behaviour Plug
@@ -69,17 +72,32 @@ defmodule EhOsContract.Auth.Development.Guard do
   def check(conn) do
     cond do
       not Development.started?(SignIn) -> {:error, :not_started}
-      not loopback?(conn.remote_ip) -> {:error, :not_loopback}
-      conn.host not in @hosts -> {:error, :wrong_host}
+      not loopback?(conn) -> {:error, :not_loopback}
+      not local_host?(conn) -> {:error, :wrong_host}
       true -> token(conn)
     end
   end
 
-  defp loopback?({127, _, _, _}), do: true
-  defp loopback?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
+  # The socket's peer, which no plug rewrites, and `remote_ip`, which a forwarding plug sets
+  # from `X-Forwarded-For`: both must be loopback.
+  defp loopback?(conn),
+    do: loopback_address?(get_peer_data(conn).address) and loopback_address?(conn.remote_ip)
+
+  # The `Host` header as the browser sent it, and `conn.host`, which a forwarding plug sets from
+  # `X-Forwarded-Host`: both must name this computer.
+  defp local_host?(conn) do
+    header = conn |> get_req_header("host") |> List.first()
+    conn.host in @hosts and (header == nil or host_of(header) in @hosts)
+  end
+
+  defp host_of("[" <> _ = header), do: header |> String.split("]") |> hd() |> Kernel.<>("]")
+  defp host_of(header), do: header |> String.split(":") |> hd()
+
+  defp loopback_address?({127, _, _, _}), do: true
+  defp loopback_address?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
   # An IPv4 loopback address mapped to IPv6, `::ffff:127.x.y.z`.
-  defp loopback?({0, 0, 0, 0, 0, 0xFFFF, high, _low}), do: Bitwise.bsr(high, 8) == 127
-  defp loopback?(_address), do: false
+  defp loopback_address?({0, 0, 0, 0, 0, 0xFFFF, high, _low}), do: Bitwise.bsr(high, 8) == 127
+  defp loopback_address?(_address), do: false
 
   # The session keeps the token's hash, not the token: a session cookie that is signed and not
   # encrypted is readable by whatever else the browser sends `localhost`'s cookies to.

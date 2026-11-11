@@ -5,8 +5,8 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
   Asks the application running on this computer in the development mode
   (`EhOsContract.Auth.Development`) for a credential, and prints it, for `curl`:
 
-      mix eh_os_contract.dev.credential --token <token> --actor clinic.receptionist \\
-        --scope clinic_id=clinic-1
+      export EH_OS_CONTRACT_DEV_TOKEN=<token>
+      mix eh_os_contract.dev.credential --actor clinic.receptionist --scope clinic_id=clinic-1
 
       curl -H "authorization: Bearer $(mix eh_os_contract.dev.credential ...)" \\
         http://localhost:4000/api/commands/clinic.record_payment
@@ -17,8 +17,9 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
 
   Options:
 
-    * `--token`: the token the application printed when it started; or
-      `EH_OS_CONTRACT_DEV_TOKEN`;
+    * `EH_OS_CONTRACT_DEV_TOKEN`: the token the application printed when it started. `--token`
+      takes it too, but a command line is seen by other users of the computer and kept in the
+      shell's history;
     * `--actor`: a role of the domain, `<domain>.<actor>`; once per actor, at least once;
     * `--scope`: `<scope>=<value>`, once per scope of the actors' capabilities;
     * `--subject`: the person, `dev` by default;
@@ -47,7 +48,10 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
 
     token =
       opts[:token] || System.get_env("EH_OS_CONTRACT_DEV_TOKEN") ||
-        Mix.raise("give the token the application printed when it started: --token <token>")
+        Mix.raise(
+          "give the token the application printed when it started: " <>
+            "export EH_OS_CONTRACT_DEV_TOKEN=<token>"
+        )
 
     actors = Keyword.get_values(opts, :actor)
     if actors == [], do: Mix.raise("name at least one actor: --actor <domain>.<actor>")
@@ -84,7 +88,7 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
   defp url!(url) do
     case URI.parse(url) do
       %URI{scheme: "http", host: host, userinfo: nil, query: nil, fragment: nil, path: path}
-      when path in [nil, ""] ->
+      when path in [nil, "", "/"] ->
         if host in @hosts or "[#{host}]" in @hosts,
           do: String.trim_trailing(url, "/"),
           else: refused_url!(url)

@@ -209,9 +209,10 @@ defmodule EhOsContract.Auth.Keys do
   Trusts the public key `jwk` in memory until the process stops, through every
   refresh, without writing it to the table; answers its thumbprint.
 
-  This is how `EhOsContract.Auth.Testing` gets its test key trusted, and nothing
-  else calls it: a key pinned here verifies credentials exactly as EHOS's do. So it
-  works only where the configuration allows it:
+  This is how `EhOsContract.Auth.Testing` gets its test key trusted, and how the
+  development mode (`EhOsContract.Auth.Development`) gets its own: a key pinned here
+  verifies credentials exactly as EHOS's do. So it works only where the configuration
+  allows it:
 
       # config/test.exs
       config :eh_os_contract_auth, pin_keys: true
@@ -221,17 +222,24 @@ defmodule EhOsContract.Auth.Keys do
   without the `:mix` application has none, so `pin/2` trusts no key there.
 
   Outside a test it admits one key: the development mode's own, pinned by the mode once
-  it has started (`EhOsContract.Auth.Development`). `pin_keys` does not start that mode,
-  and the mode does not admit any other key.
+  it has started. The process trusts one development key at a time: the key of a mode
+  that starts again replaces the one before it, and every credential that key signed is
+  refused from then on. `pin_keys` does not start that mode, and the mode does not admit
+  any other key.
 
   The process answers after a fetch that is in progress, such as the first one after
   it starts. `pin/2` waits 10 seconds for it, and exits after that.
   """
   @spec pin(map(), atom()) :: String.t()
   def pin(jwk, name \\ __MODULE__) when is_map(jwk) do
-    unless test_trust?() or EhOsContract.Auth.Development.key?(jwk) do
-      :ok = test_only!("pinning a key")
-    end
+    # The development key has a slot of its own, so a mode that starts again leaves no
+    # earlier key of its trusted.
+    slot =
+      cond do
+        test_trust?() -> :test
+        EhOsContract.Auth.Development.key?(jwk) -> :development
+        true -> test_only!("pinning a key")
+      end
 
     # Checked here, in the caller: raising in the process would take its table, and
     # every key in force, with it.
@@ -240,7 +248,7 @@ defmodule EhOsContract.Auth.Keys do
 
     # The process answers after a fetch in progress, which may take `@fetch_deadline`,
     # and the write of the table after it.
-    GenServer.call(name, {:pin, kid, public}, @call_timeout)
+    GenServer.call(name, {:pin, kid, public, slot}, @call_timeout)
   end
 
   @doc "The thumbprints of the keys in force, sorted."
@@ -392,7 +400,8 @@ defmodule EhOsContract.Auth.Keys do
       refetch_at_most_every: Keyword.get(opts, :refetch_at_most_every, @refetch_at_most_every),
       clock: Keyword.get(opts, :clock, fn -> System.monotonic_time(:millisecond) end),
       fetched_at: nil,
-      pinned: %{}
+      pinned: %{},
+      development: nil
     }
 
     :ets.insert(name, {@next, state.clock, nil})
@@ -424,9 +433,21 @@ defmodule EhOsContract.Auth.Keys do
     end
   end
 
-  def handle_call({:pin, kid, public}, _from, state) do
+  def handle_call({:pin, kid, public, :test}, _from, state) do
     :ets.insert(state.name, {kid, signer(public)})
     {:reply, kid, %{state | pinned: Map.put(state.pinned, kid, public)}}
+  end
+
+  def handle_call({:pin, kid, public, :development}, _from, state) do
+    previous = state.development
+
+    if previous && previous != kid do
+      :ets.delete(state.name, previous)
+    end
+
+    :ets.insert(state.name, {kid, signer(public)})
+    pinned = state.pinned |> Map.delete(previous) |> Map.put(kid, public)
+    {:reply, kid, %{state | pinned: pinned, development: kid}}
   end
 
   def handle_call(:refresh, _from, state) do

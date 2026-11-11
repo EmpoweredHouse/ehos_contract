@@ -65,7 +65,9 @@ defmodule EhOsContract.Auth.Development.Credential do
     end
   end
 
-  defp describe({reason, values}), do: "#{reason}: #{Enum.join(values, ", ")}"
+  defp describe({reason, values}) when is_list(values),
+    do: "#{reason}: #{Enum.join(values, ", ")}"
+
   defp describe(reason), do: Atom.to_string(reason)
 
   defp json(conn, status, body) do

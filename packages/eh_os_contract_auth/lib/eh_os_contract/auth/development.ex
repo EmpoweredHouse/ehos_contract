@@ -76,13 +76,12 @@ defmodule EhOsContract.Auth.Development do
 
   use GenServer
 
-  alias EhOsContract.Auth.{Keys, SignIn}
-  alias EhOsContract.Auth.SignIn.{Cipher, Http, Sessions}
+  alias EhOsContract.Auth.{Keys, SignIn, Signing}
+  alias EhOsContract.Auth.SignIn.{Cipher, Http}
 
   # The table that marks the mode as started: written only by this process, after the refusal.
   @marker __MODULE__
   @path "/dev/sign-in"
-  @lifetime 600
   @placeholder_address "https://application.localhost"
 
   @typedoc "What `start_link/1` takes."
@@ -99,6 +98,7 @@ defmodule EhOsContract.Auth.Development do
   @type refusal ::
           :not_started
           | :no_subject
+          | :malformed
           | {:unknown_actors, [String.t()]}
           | {:missing_scopes, [String.t()]}
 
@@ -124,15 +124,25 @@ defmodule EhOsContract.Auth.Development do
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts \\ []) do
-    opts = Keyword.validate!(opts, [:url])
+    opts = opts |> Keyword.validate!([:url]) |> Keyword.update(:url, nil, &url/1)
 
     if switch?() do
       :ok = refuse!()
+
+      unless Process.whereis(Keys) do
+        raise ArgumentError,
+              "EhOsContract.Auth is not running, so the development key has nowhere to be " <>
+                "trusted: list EhOsContract.Auth.Development after it"
+      end
+
       GenServer.start_link(__MODULE__, opts, name: SignIn)
     else
       :ignore
     end
   end
+
+  defp url(nil), do: nil
+  defp url(url) when is_binary(url), do: String.trim_trailing(url, "/")
 
   @doc false
   # Why the mode may not start here: `:ok`, or each condition that fails, in words. Reads
@@ -323,28 +333,15 @@ defmodule EhOsContract.Auth.Development do
 
   `scopes` maps each scope of the actors' capabilities to its value, or a list of values.
   Refuses, with `{:error, reason}`: `:not_started` where the mode has not started;
-  `:no_subject` for an empty `subject`; `{:unknown_actors, roles}` for a role `actors/0` does
+  `:no_subject` for an empty `subject`; `:malformed` when `actors` is not a list of strings
+  or `scopes` not a map of strings to a string or a list of strings; `{:unknown_actors, roles}` for a role `actors/0` does
   not list; and `{:missing_scopes, scopes}` for a scope with no value.
   """
   @spec sign_in(String.t(), [String.t()], %{String.t() => String.t() | [String.t()]}) ::
           {:ok, String.t()} | {:error, refusal()}
   def sign_in(subject, actors, scopes \\ %{}) do
-    with {:ok, token, expires_at} <- signed(subject, actors, scopes) do
-      unique = fn -> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false) end
-
-      Sessions.create(SignIn, %{
-        subject: subject,
-        sid: "dev-sid-" <> unique.(),
-        auth_time: EhOsContract.Clock.now(),
-        refresh_token: "dev-refresh-" <> unique.(),
-        id_token: "dev-id-" <> unique.(),
-        credential: %{
-          resource: SignIn.config(SignIn).address,
-          token: token,
-          expires_at: expires_at
-        }
-      })
-    end
+    with {:ok, token, expires_at} <- signed(subject, actors, scopes),
+         do: Signing.session(SignIn, subject, token, expires_at, "dev")
   end
 
   @doc """
@@ -371,33 +368,51 @@ defmodule EhOsContract.Auth.Development do
   defp subject(subject) when is_binary(subject) and subject != "", do: :ok
   defp subject(_subject), do: {:error, :no_subject}
 
-  defp claims(actors, scopes) when is_list(actors) and is_map(scopes) do
-    granted = granted()
-
-    case Enum.reject(actors, &Map.has_key?(granted, &1)) do
-      [] ->
-        held = actors |> Enum.map(&Map.fetch!(granted, &1)) |> Enum.reduce(%{}, &Map.merge/2)
-        dimensions = held |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.uniq()
-
-        case Enum.reject(dimensions, &value?(Map.get(scopes, &1))) do
-          [] ->
-            scp =
-              for {capability, dimension} <- held, dimension != nil, into: %{} do
-                {capability, %{dimension => List.wrap(Map.fetch!(scopes, dimension))}}
-              end
-
-            {:ok, held |> Map.keys() |> Enum.sort(), scp}
-
-          missing ->
-            {:error, {:missing_scopes, Enum.sort(missing)}}
-        end
-
-      unknown ->
-        {:error, {:unknown_actors, Enum.sort(unknown)}}
+  defp claims(actors, scopes) do
+    with :ok <- well_formed(actors, scopes),
+         {:ok, held} <- held(actors),
+         {:ok, scp} <- scoped(held, scopes) do
+      {:ok, held |> Map.keys() |> Enum.sort(), scp}
     end
   end
 
-  defp claims(actors, _scopes), do: {:error, {:unknown_actors, List.wrap(actors)}}
+  # A list of roles and a map of scopes to a value or a list of values, from a page's form or
+  # the terminal's JSON.
+  defp well_formed(actors, scopes) do
+    if is_list(actors) and Enum.all?(actors, &is_binary/1) and is_map(scopes) and
+         Enum.all?(scopes, fn {scope, value} -> is_binary(scope) and value_shape?(value) end),
+       do: :ok,
+       else: {:error, :malformed}
+  end
+
+  defp value_shape?(value) when is_binary(value), do: true
+  defp value_shape?(values) when is_list(values), do: Enum.all?(values, &is_binary/1)
+  defp value_shape?(_value), do: false
+
+  # capability => scope, for the union of the actors' capabilities.
+  defp held(actors) do
+    granted = granted()
+
+    case Enum.reject(actors, &Map.has_key?(granted, &1)) do
+      [] -> {:ok, actors |> Enum.map(&Map.fetch!(granted, &1)) |> Enum.reduce(%{}, &Map.merge/2)}
+      unknown -> {:error, {:unknown_actors, Enum.sort(unknown)}}
+    end
+  end
+
+  defp scoped(held, scopes) do
+    dimensions = held |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    case Enum.reject(dimensions, &value?(Map.get(scopes, &1))) do
+      [] ->
+        {:ok,
+         for {capability, dimension} <- held, dimension != nil, into: %{} do
+           {capability, %{dimension => List.wrap(Map.fetch!(scopes, dimension))}}
+         end}
+
+      missing ->
+        {:error, {:missing_scopes, Enum.sort(missing)}}
+    end
+  end
 
   defp value?(value) when is_binary(value), do: value != ""
   defp value?([_ | _] = values), do: Enum.all?(values, &(is_binary(&1) and &1 != ""))
@@ -411,9 +426,11 @@ defmodule EhOsContract.Auth.Development do
   @spec renew(atom(), String.t(), String.t() | nil) ::
           {:ok, String.t(), DateTime.t()} | {:error, :not_renewable | :not_started}
   def renew(name, subject, token) do
-    if started?(name) and is_binary(token),
-      do: call({:renew, subject, token, EhOsContract.Clock.now()}, name),
-      else: {:error, if(started?(name), do: :not_renewable, else: :not_started)}
+    cond do
+      not started?(name) -> {:error, :not_started}
+      not is_binary(token) -> {:error, :not_renewable}
+      true -> call({:renew, subject, token, EhOsContract.Clock.now()}, name)
+    end
   end
 
   defp call(request, name \\ SignIn) do
@@ -422,18 +439,13 @@ defmodule EhOsContract.Auth.Development do
     :exit, _not_running -> {:error, :not_started}
   end
 
-  # --- the process ---------------------------------------------------------------------
-
   @impl GenServer
   def init(opts) do
     # Again in the process that will hold the key: nothing below runs where it is refused.
     :ok = refuse!()
-
-    unless Process.whereis(Keys) do
-      raise ArgumentError,
-            "EhOsContract.Auth is not running, so the development key has nowhere to be " <>
-              "trusted: list EhOsContract.Auth.Development after it"
-    end
+    # The key is pinned in this `Keys` process only: one that restarts has lost it, so the mode
+    # stops with it, and its supervisor starts it again with a new key.
+    Process.monitor(Keys)
 
     jwk = JOSE.JWK.generate_key({:okp, :Ed25519})
     {_, private} = JOSE.JWK.to_map(jwk)
@@ -450,11 +462,21 @@ defmodule EhOsContract.Auth.Development do
     {:ok, %{private: private, public: public, kid: kid}}
   end
 
+  # A crash report prints a process's state: the private key is never in it.
+  @impl GenServer
+  def format_status(status), do: Map.update(status, :state, nil, &Map.delete(&1, :private))
+
+  @impl GenServer
+  def handle_info({:DOWN, _ref, :process, _keys, reason}, state),
+    do: {:stop, {:keys_stopped, reason}, state}
+
   # What `SignIn.config/1` answers for the sign-in this process stands in for. The secret its
   # sessions are encrypted with is made at each start, so a restart ends them.
   defp sign_in_config(opts) do
     secret_key_base = 64 |> :crypto.strong_rand_bytes() |> Base.encode64()
     address = opts[:url] || @placeholder_address
+    # Where `SignIn.Router`'s sign-out sends the browser: there is no EHOS to sign out at.
+    signed_out = (opts[:url] || "") <> "/"
 
     %SignIn{
       name: SignIn,
@@ -463,7 +485,7 @@ defmodule EhOsContract.Auth.Development do
       client_key: JOSE.JWK.generate_key({:okp, :Ed25519}),
       address: address,
       redirect_uri: address <> @path,
-      post_logout_redirect_uri: address <> "/",
+      post_logout_redirect_uri: signed_out,
       applications: %{},
       secret_key_base: secret_key_base,
       cipher_key: Cipher.key(secret_key_base),
@@ -480,19 +502,15 @@ defmodule EhOsContract.Auth.Development do
 
     [eh_os_contract_auth] Development sign-in, with a key made at this start:
         #{if url, do: page, else: page <> " on this application's address"}
-      A credential for curl:
-        mix eh_os_contract.dev.credential --token #{token} --actor <role>
+      A credential for curl, with the token in the environment rather than the command:
+        export EH_OS_CONTRACT_DEV_TOKEN=#{token}
+        mix eh_os_contract.dev.credential --actor <role>
     """)
   end
 
   @impl GenServer
-  def handle_call({:sign, subject, capabilities, scp, now}, _from, state) do
-    claims =
-      %{"sub" => subject, "cap" => capabilities}
-      |> then(&if scp == %{}, do: &1, else: Map.put(&1, "scp", scp))
-
-    {:reply, sign(claims, now, state), state}
-  end
+  def handle_call({:sign, subject, capabilities, scp, now}, _from, state),
+    do: {:reply, sign(subject, capabilities, scp, now, state), state}
 
   def handle_call({:renew, subject, token, now}, _from, state) do
     reply =
@@ -500,7 +518,7 @@ defmodule EhOsContract.Auth.Development do
         {true, %JOSE.JWT{fields: %{"sub" => ^subject} = fields},
          %JOSE.JWS{fields: %{"kid" => kid}}}
         when kid == state.kid ->
-          sign(Map.take(fields, ["sub", "cap", "scp"]), now, state)
+          sign(subject, Map.get(fields, "cap", []), Map.get(fields, "scp", %{}), now, state)
 
         _other ->
           {:error, :not_renewable}
@@ -514,22 +532,11 @@ defmodule EhOsContract.Auth.Development do
   # `SignIn.refresh/2`, which only a renewal through EHOS asks for: there is no EHOS here.
   def handle_call(:refresh, _from, state), do: {:reply, {:error, :ehos_unavailable}, state}
 
-  defp sign(claims, now, state) do
-    config = Application.get_all_env(:eh_os_contract_auth)
-    now = DateTime.to_unix(now)
+  defp sign(subject, capabilities, scopes, now, state) do
+    {token, expires_at} =
+      Signing.credential(state.private, state.kid, subject, capabilities, scopes, now)
 
-    claims =
-      Map.merge(claims, %{
-        "iss" => Keyword.fetch!(config, :issuer),
-        "aud" => Keyword.fetch!(config, :audience),
-        "iat" => now,
-        "exp" => now + @lifetime,
-        "jti" => Ecto.UUID.generate()
-      })
-
-    signer = Joken.Signer.create("Ed25519", state.private, %{"kid" => state.kid})
-    {:ok, token, _claims} = Joken.encode_and_sign(claims, signer)
-    {:ok, token, DateTime.from_unix!(claims["exp"])}
+    {:ok, token, expires_at}
   end
 
   defp hash(token), do: :crypto.hash(:sha256, token)

@@ -1,6 +1,6 @@
 defmodule EhOsContract.Auth.DevelopmentNotStartedTest do
   # The development mode in `mix test`, where it never starts: what each part of it answers
-  # there, and what the terminal's command refuses before it asks anything.
+  # there.
   use ExUnit.Case, async: true
 
   alias EhOsContract.Auth.{Development, SignIn}
@@ -27,49 +27,5 @@ defmodule EhOsContract.Auth.DevelopmentNotStartedTest do
     assert Guard.check(conn) == {:error, :not_started}
     assert Guard.call(conn, []).status == 403
     assert Credential.call(%{Plug.Test.conn(:post, "/") | host: "localhost"}, []).status == 403
-  end
-
-  describe "mix eh_os_contract.dev.credential" do
-    test "sends the token only to this computer" do
-      for url <- [
-            "https://localhost:4000",
-            "http://clinic.example:4000",
-            "http://user@localhost:4000",
-            "http://localhost:4000/elsewhere",
-            "http://localhost.example.com"
-          ] do
-        assert_raise Mix.Error, ~r/the token goes only to this computer/, fn ->
-          Mix.Tasks.EhOsContract.Dev.Credential.run(
-            ~w(--token t --actor clinic.manager --url #{url})
-          )
-        end
-      end
-    end
-
-    test "needs the token and an actor, and a scope as <scope>=<value>" do
-      System.delete_env("EH_OS_CONTRACT_DEV_TOKEN")
-
-      assert_raise Mix.Error, ~r/--token <token>/, fn ->
-        Mix.Tasks.EhOsContract.Dev.Credential.run(~w(--actor clinic.manager))
-      end
-
-      assert_raise Mix.Error, ~r/--actor <domain>.<actor>/, fn ->
-        Mix.Tasks.EhOsContract.Dev.Credential.run(~w(--token t))
-      end
-
-      assert_raise Mix.Error, ~r/--scope takes <scope>=<value>/, fn ->
-        Mix.Tasks.EhOsContract.Dev.Credential.run(
-          ~w(--token t --actor clinic.manager --scope clinic_id)
-        )
-      end
-    end
-
-    test "says when no application answers" do
-      assert_raise Mix.Error, ~r/no application answered at http:\/\/127.0.0.1:9/, fn ->
-        Mix.Tasks.EhOsContract.Dev.Credential.run(
-          ~w(--token t --actor clinic.manager --url http://127.0.0.1:9)
-        )
-      end
-    end
   end
 end

@@ -180,23 +180,19 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
   defp development(session, holder, at) do
     held = session.credentials |> Map.get(at.resource, %{}) |> Map.get(:token)
 
-    case Development.renew(at.name, session.subject, held) do
-      {:ok, token, expires_at} ->
-        written = %{
-          refresh_token: session.refresh_token,
-          id_token: session.id_token,
-          resource: at.resource,
-          token: token,
-          expires_at: expires_at
-        }
-
-        case Sessions.renewed(at.name, session, holder, written) do
-          :ok -> {:ok, token}
-          :lost -> ended(session, :lease_lost)
-        end
-
-      {:error, reason} ->
-        ended(session, reason)
+    with {:ok, token, expires_at} <- Development.renew(at.name, session.subject, held),
+         written = %{
+           refresh_token: session.refresh_token,
+           id_token: session.id_token,
+           resource: at.resource,
+           token: token,
+           expires_at: expires_at
+         },
+         :ok <- Sessions.renewed(at.name, session, holder, written) do
+      {:ok, token}
+    else
+      :lost -> ended(session, :lease_lost)
+      {:error, reason} -> ended(session, reason)
     end
   end
 

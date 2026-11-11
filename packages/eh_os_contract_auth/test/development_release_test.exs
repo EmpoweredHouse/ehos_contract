@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.DevelopmentReleaseTest do
   # A real release that carries Mix, with the development mode's switch set: `bin/<release>
   # start` refuses to start the mode. There Mix is started and its environment is `:dev` when
-  # `MIX_ENV` is not set, so only the release's conditions refuse it.
+  # `MIX_ENV` is not set; no Mix project is loaded, and the release's variables are set.
   #
   # The fixture in `test/fixtures/development_release` is built in a temporary directory beside a
   # copy of this build's compiled applications, so only the fixture and the packages compile.
@@ -41,7 +41,8 @@ defmodule EhOsContract.Auth.DevelopmentReleaseTest do
     assert output =~ "the development mode refuses to start here"
     assert output =~ "RELEASE_NAME is set"
     assert output =~ "RELEASE_ROOT is set"
-    # Mix is started in this release: its refusal is not what stops the mode.
+    assert output =~ "no Mix project is loaded"
+    # Mix is started in this release, as the case needs.
     refute output =~ "the :mix application is not started"
   end
 

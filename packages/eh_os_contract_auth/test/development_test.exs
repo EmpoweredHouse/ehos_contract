@@ -43,7 +43,16 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              """)
 
     assert printed =~ "Development sign-in, with a key made at this start"
-    assert printed =~ "mix eh_os_contract.dev.credential --token "
+    assert printed =~ "export EH_OS_CONTRACT_DEV_TOKEN="
+    refute printed =~ "--token"
+  end
+
+  test "the process's status, which a crash report prints, never holds the private key" do
+    assert {false, true} =
+             run("""
+             status = inspect(:sys.get_status(Process.whereis(SignIn)), limit: :infinity)
+             {status =~ ~s("d" =>), status =~ ~s("x" =>)}
+             """)
   end
 
   test "the actors of the domain, with their capabilities and scopes" do
@@ -75,14 +84,20 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              Development.sign_in("u-dev", ["clinic.receptionist"]),
              Development.sign_in("u-dev", ["clinic.receptionist"], %{"clinic_id" => ""}),
              Development.sign_in("", ["clinic.manager"]),
-             Development.credential("u-dev", ["clinic.nobody"])
+             Development.credential("u-dev", ["clinic.nobody"]),
+             Development.credential("u-dev", [%{}]),
+             Development.credential("u-dev", ["clinic.manager"], "clinic-1"),
+             Development.credential("u-dev", ["clinic.receptionist"], %{"clinic_id" => 1})
            ]
            """) == [
              {:error, {:unknown_actors, ["clinic.nobody"]}},
              {:error, {:missing_scopes, ["clinic_id"]}},
              {:error, {:missing_scopes, ["clinic_id"]}},
              {:error, :no_subject},
-             {:error, {:unknown_actors, ["clinic.nobody"]}}
+             {:error, {:unknown_actors, ["clinic.nobody"]}},
+             {:error, :malformed},
+             {:error, :malformed},
+             {:error, :malformed}
            ]
   end
 
@@ -130,7 +145,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
   test "after a restart, which makes a new key, a development session is signed out and sent to /dev/sign-in" do
     assert {{false, nil}, {302, ["/dev/sign-in?return_to=%2Fvisits"]}, false,
-            {:error, :not_renewable}} =
+            {:error, :not_renewable}, {:error, :unknown_key},
+            1} =
              run("""
              {:ok, browser} = Development.sign_in("u-dev", ["clinic.manager"])
              {:ok, bearer} = Development.credential("u-dev", ["clinic.manager"])
@@ -142,17 +158,35 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              conn = page.(browser)
 
              {{before.halted, before.status}, {conn.status, Plug.Conn.get_resp_header(conn, "location")},
-              Development.token?(token), Development.renew(SignIn, "u-dev", bearer)}
+              Development.token?(token), Development.renew(SignIn, "u-dev", bearer),
+              EhOsContract.Auth.verify(bearer), length(EhOsContract.Auth.Keys.kids())}
              """)
+  end
+
+  test "when the key process restarts, the mode starts again and pins a new key" do
+    assert run("""
+           {:ok, before} = Development.credential("u-dev", ["clinic.manager"])
+           mode = Process.whereis(SignIn)
+           ref = Process.monitor(mode)
+           :ok = Supervisor.terminate_child(sup, EhOsContract.Auth)
+           {:ok, _} = Supervisor.restart_child(sup, EhOsContract.Auth)
+           receive do {:DOWN, ^ref, _, _, _} -> :ok after 5_000 -> raise "the mode did not stop" end
+           :ok = Enum.find_value(1..50, fn _ -> if Development.started?(SignIn), do: :ok, else: Process.sleep(100) end)
+           {:ok, bearer} = Development.credential("u-dev", ["clinic.manager"])
+           {Process.whereis(SignIn) != mode, elem(EhOsContract.Auth.verify(bearer), 0), EhOsContract.Auth.verify(before)}
+           """) == {true, :ok, {:error, :unknown_key}}
   end
 
   test "a credential signed with the development key is refused by a verifier that did not pin it" do
     assert run("""
            {:ok, bearer} = Development.credential("u-dev", ["clinic.manager"])
+           # A verifier that holds a key, just not the mode's.
+           {_, other} = JOSE.JWK.generate_key({:okp, :Ed25519}) |> JOSE.JWK.to_public() |> JOSE.JWK.to_map()
+           EhOsContract.Auth.TestRepo.insert_all("eh_os_contract_auth_keys", [%{kid: JOSE.JWK.thumbprint(JOSE.JWK.from_map(other)), jwk: other, fetched_at: DateTime.utc_now()}])
            {:ok, _} = EhOsContract.Auth.Keys.start_link(name: :elsewhere, url: "http://127.0.0.1:9/jwks")
            {:ok, actor} = EhOsContract.Auth.verify(bearer)
            {actor.subject, EhOsContract.Auth.verify(bearer, keys: :elsewhere)}
-           """) == {"u-dev", {:error, :no_keys}}
+           """) == {"u-dev", {:error, :unknown_key}}
   end
 
   test "the guard refuses each check alone, and answers no CORS header" do
@@ -161,7 +195,9 @@ defmodule EhOsContract.Auth.DevelopmentTest do
       request = fn opts ->
         conn = Plug.Test.conn(:get, "/dev/sign-in" <> Keyword.get(opts, :query, ""))
         conn = %{conn | remote_ip: Keyword.get(opts, :remote_ip, {127, 0, 0, 1}), host: Keyword.get(opts, :host, "localhost")}
-        conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
+        conn = Plug.Test.put_peer_data(conn, %{address: Keyword.get(opts, :peer, {127, 0, 0, 1}), port: 50_000, ssl_cert: nil})
+        # As the adapter sets them, `host` included, which `put_req_header/3` refuses.
+        conn = %{conn | req_headers: Keyword.get(opts, :headers, []) ++ conn.req_headers}
         conn = if opts[:session], do: Plug.Test.init_test_session(conn, opts[:session]) |> Plug.Conn.fetch_session(), else: conn
 
         conn =
@@ -185,21 +221,35 @@ defmodule EhOsContract.Auth.DevelopmentTest do
         session: request.(session: remembered),
         no_token: request.([]),
         wrong_token: request.(query: "?token=" <> token <> "x"),
-        not_loopback: request.(query: "?token=" <> token, remote_ip: {192, 168, 1, 7}),
+        host_header: request.(query: "?token=" <> token, headers: [{"host", "localhost:4000"}]),
+        not_loopback: request.(query: "?token=" <> token, remote_ip: {192, 168, 1, 7}, peer: {192, 168, 1, 7}),
+        forwarded_for: request.(query: "?token=" <> token, peer: {192, 168, 1, 7}),
         wrong_host: request.(query: "?token=" <> token, host: "rebound.example"),
+        forwarded_host: request.(query: "?token=" <> token, headers: [{"host", "rebound.example:4000"}]),
         wrong_session: request.(session: %{"eh_os_contract_auth_development_token" => "AAAA"})
       }
       """)
 
-    for name <- [:passes, :header, :ipv6, :mapped, :session],
+    for name <- [:passes, :header, :ipv6, :mapped, :session, :host_header],
         do: assert({200, [], _} = results[name], "#{name}: #{inspect(results[name])}")
 
-    for name <- [:no_token, :wrong_token, :not_loopback, :wrong_host, :wrong_session],
+    for name <-
+          [
+            :no_token,
+            :wrong_token,
+            :not_loopback,
+            :forwarded_for,
+            :wrong_host,
+            :forwarded_host,
+            :wrong_session
+          ],
         do: assert({403, [], _} = results[name], "#{name}: #{inspect(results[name])}")
   end
 
   test "the terminal's endpoint answers a credential, behind the guard" do
-    assert {{200, actor}, {422, %{"error" => "unknown_actors: clinic.nobody"}}, 403, 404} =
+    assert {{200, actor}, {422, %{"error" => "unknown_actors: clinic.nobody"}},
+            {422, %{"error" => "malformed"}}, 403,
+            404} =
              run("""
              post = fn body, headers ->
                conn =
@@ -219,6 +269,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
              {{200, {actor.subject, Enum.sort(actor.capabilities)}},
               answer.(post.(%{actors: ["clinic.nobody"]}, headers)),
+              answer.(post.(%{actors: [%{}], scopes: "clinic-1"}, headers)),
               post.(%{actors: ["clinic.manager"]}, []).status,
               Credential.call(%{Plug.Test.conn(:get, "/") | host: "localhost"} |> Plug.Conn.put_req_header("x-dev-sign-in-token", token), []).status}
              """)
