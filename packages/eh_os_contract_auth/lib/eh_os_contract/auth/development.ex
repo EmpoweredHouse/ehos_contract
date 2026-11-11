@@ -334,8 +334,9 @@ defmodule EhOsContract.Auth.Development do
   `scopes` maps each scope of the actors' capabilities to its value, or a list of values.
   Refuses, with `{:error, reason}`: `:not_started` where the mode has not started;
   `:no_subject` for an empty `subject`; `:malformed` when `actors` is not a list of strings
-  or `scopes` not a map of strings to a string or a list of strings; `{:unknown_actors, roles}` for a role `actors/0` does
-  not list; and `{:missing_scopes, scopes}` for a scope with no value.
+  or `scopes` not a map of strings to a string or a list of strings; `{:unknown_actors,
+  roles}` for a role `actors/0` does not list; and `{:missing_scopes, scopes}` for a scope
+  with no value.
   """
   @spec sign_in(String.t(), [String.t()], %{String.t() => String.t() | [String.t()]}) ::
           {:ok, String.t()} | {:error, refusal()}
@@ -443,10 +444,6 @@ defmodule EhOsContract.Auth.Development do
   def init(opts) do
     # Again in the process that will hold the key: nothing below runs where it is refused.
     :ok = refuse!()
-    # The key is pinned in this `Keys` process only: one that restarts has lost it, so the mode
-    # stops with it, and its supervisor starts it again with a new key.
-    Process.monitor(Keys)
-
     jwk = JOSE.JWK.generate_key({:okp, :Ed25519})
     {_, private} = JOSE.JWK.to_map(jwk)
     {_, public} = jwk |> JOSE.JWK.to_public() |> JOSE.JWK.to_map()
@@ -459,16 +456,45 @@ defmodule EhOsContract.Auth.Development do
 
     kid = Keys.pin(public)
     announce(opts[:url], token)
-    {:ok, %{private: private, public: public, kid: kid}}
+    {:ok, %{private: private, public: public, kid: kid, keys: Process.monitor(Keys)}}
   end
 
   # A crash report prints a process's state: the private key is never in it.
   @impl GenServer
   def format_status(status), do: Map.update(status, :state, nil, &Map.delete(&1, :private))
 
+  # The key is pinned in the `Keys` process only, and one that restarts has lost it: the mode
+  # pins it again there, so its sessions go on and the host's supervisor counts one restart.
   @impl GenServer
-  def handle_info({:DOWN, _ref, :process, _keys, reason}, state),
-    do: {:stop, {:keys_stopped, reason}, state}
+  def handle_info({:DOWN, ref, :process, _keys, _reason}, %{keys: ref} = state),
+    do: {:noreply, state, {:continue, :pin_again}}
+
+  def handle_info(_message, state), do: {:noreply, state}
+
+  @impl GenServer
+  def handle_continue(:pin_again, state) do
+    case wait_for_keys(50) do
+      :ok ->
+        ref = Process.monitor(Keys)
+        Keys.pin(state.public)
+        {:noreply, %{state | keys: ref}}
+
+      :gone ->
+        {:stop, :keys_not_restarted, state}
+    end
+  end
+
+  # At most 5 seconds, by 100 ms: its supervisor starts the `Keys` process again.
+  defp wait_for_keys(0), do: :gone
+
+  defp wait_for_keys(tries) do
+    if Process.whereis(Keys) do
+      :ok
+    else
+      Process.sleep(100)
+      wait_for_keys(tries - 1)
+    end
+  end
 
   # What `SignIn.config/1` answers for the sign-in this process stands in for. The secret its
   # sessions are encrypted with is made at each start, so a restart ends them.

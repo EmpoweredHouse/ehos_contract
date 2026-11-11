@@ -69,12 +69,23 @@ def create(conn, %{"subject" => subject, "actors" => actors} = params) do
     {:ok, token} ->
       conn
       |> put_session(EhOsContract.Auth.Session.session_key(), token)
-      |> redirect(to: ~p"/")
+      |> redirect(to: local_path(params["return_to"]))
 
     {:error, reason} ->
       conn |> put_flash(:error, inspect(reason)) |> redirect(to: ~p"/dev/sign-in")
   end
 end
+```
+
+The session plug sends the browser to `/dev/sign-in?return_to=<path>`. Follow `return_to` only
+as a path of this application, so the page is not an open redirect:
+
+```elixir
+defp local_path("/" <> rest = path) do
+  if String.starts_with?(rest, ["/", "\\"]), do: "/", else: path
+end
+
+defp local_path(_other), do: "/"
 ```
 
 **Result:** the page signs the person in, and the pages behind `EhOsContract.Auth.Session` open

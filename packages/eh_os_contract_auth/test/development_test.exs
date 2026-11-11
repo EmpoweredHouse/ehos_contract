@@ -165,18 +165,19 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              """)
   end
 
-  test "when the key process restarts, the mode starts again and pins a new key" do
+  test "when the key process restarts, the mode pins its key there again, and its sessions go on" do
     assert run("""
-           {:ok, before} = Development.credential("u-dev", ["clinic.manager"])
+           {:ok, browser} = Development.sign_in("u-dev", ["clinic.manager"])
+           {:ok, bearer} = Development.credential("u-dev", ["clinic.manager"])
            mode = Process.whereis(SignIn)
-           ref = Process.monitor(mode)
            :ok = Supervisor.terminate_child(sup, EhOsContract.Auth)
            {:ok, _} = Supervisor.restart_child(sup, EhOsContract.Auth)
-           receive do {:DOWN, ^ref, _, _, _} -> :ok after 5_000 -> raise "the mode did not stop" end
-           :ok = Enum.find_value(1..50, fn _ -> if Development.started?(SignIn), do: :ok, else: Process.sleep(100) end)
-           {:ok, bearer} = Development.credential("u-dev", ["clinic.manager"])
-           {Process.whereis(SignIn) != mode, elem(EhOsContract.Auth.verify(bearer), 0), EhOsContract.Auth.verify(before)}
-           """) == {true, :ok, {:error, :unknown_key}}
+           :ok = Enum.find_value(1..50, fn _ -> if EhOsContract.Auth.Keys.kids() != [], do: :ok, else: Process.sleep(100) end)
+           # A message the mode does not expect is ignored; the call after it is answered in order.
+           send(mode, :anything)
+           _ = :sys.get_status(mode)
+           {Process.whereis(SignIn) == mode, elem(EhOsContract.Auth.verify(bearer), 0), page.(browser).halted}
+           """) == {true, :ok, false}
   end
 
   test "a credential signed with the development key is refused by a verifier that did not pin it" do
