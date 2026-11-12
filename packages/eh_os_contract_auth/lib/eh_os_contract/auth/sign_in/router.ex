@@ -45,7 +45,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
   require Logger
 
-  alias EhOsContract.Auth.Session
+  alias EhOsContract.Auth.{ReturnTo, Session}
   alias EhOsContract.Auth.SignIn
   alias EhOsContract.Auth.SignIn.{ClientStore, Renewal, Sessions}
   alias Oidcc.Plug.{AuthorizationCallback, Authorize}
@@ -81,7 +81,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
         # `oidcc_plug` relays the request's `state` parameter to the callback.
         conn = %{
           conn
-          | params: Map.put(conn.params, "state", local_path(conn.params["return_to"]))
+          | params: Map.put(conn.params, "state", ReturnTo.local_path(conn.params["return_to"]))
         }
 
         # EHOS's limit may be longer than this application's. `max_age` makes EHOS
@@ -155,7 +155,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
       |> clear_session()
       |> configure_session(renew: true)
       |> put_session(Session.session_key(), browser_token)
-      |> redirect(local_path(conn.private[Authorize.State]))
+      |> redirect(ReturnTo.local_path(conn.private[Authorize.State]))
     else
       {:error, reason} ->
         Logger.warning("eh_os_contract_auth refused a sign-in through EHOS: #{describe(reason)}")
@@ -245,22 +245,6 @@ defmodule EhOsContract.Auth.SignIn.Router do
     |> configure_session(drop: true)
     |> redirect(location)
   end
-
-  # A path of this application, never a URL or a path a browser reads as another host's
-  # (`//host`, `/\host`): the callback is not an open redirect.
-  defp local_path(path) when is_binary(path) do
-    with true <- String.valid?(path),
-         "/" <> rest <- path,
-         false <- String.starts_with?(rest, "/"),
-         false <- String.match?(path, ~r/[\x00-\x1f\x7f\\]/u),
-         %URI{scheme: nil, host: nil} <- URI.parse(path) do
-      path
-    else
-      _other -> "/"
-    end
-  end
-
-  defp local_path(_path), do: "/"
 
   defp redirect(conn, location) do
     conn

@@ -38,7 +38,7 @@ defmodule EhOsContract.Auth.Development.Router do
 
   import Plug.Conn
 
-  alias EhOsContract.Auth.{Development, Session}
+  alias EhOsContract.Auth.{Development, ReturnTo, Session}
   alias EhOsContract.Auth.Development.{Credential, Guard, Page}
 
   @form Plug.Parsers.init(parsers: [:urlencoded], pass: ["*/*"])
@@ -86,7 +86,7 @@ defmodule EhOsContract.Auth.Development.Router do
       Page.render(
         actors: Development.actors(),
         csrf_token: Plug.CSRFProtection.get_csrf_token(),
-        return_to: local_path(params["return_to"]),
+        return_to: ReturnTo.local_path(params["return_to"]),
         subject: params["subject"],
         chosen: list(params["actors"]),
         scopes: map(params["scopes"]),
@@ -111,7 +111,7 @@ defmodule EhOsContract.Auth.Development.Router do
         conn
         |> configure_session(renew: true)
         |> put_session(Session.session_key(), token)
-        |> put_resp_header("location", local_path(params["return_to"]))
+        |> put_resp_header("location", ReturnTo.local_path(params["return_to"]))
         |> send_resp(303, "")
         |> halt()
 
@@ -139,14 +139,4 @@ defmodule EhOsContract.Auth.Development.Router do
   end
 
   defp blank_to(_value, default), do: default
-
-  # A path of this application only, so the page is not an open redirect: `//host` and `/\host`
-  # name another host in a browser, which also drops a tab or a newline from `/<tab>/host`.
-  defp local_path("/" <> rest = path) do
-    if String.starts_with?(rest, ["/", "\\"]) or String.match?(path, ~r/[\x00-\x20\\]/u),
-      do: "/",
-      else: path
-  end
-
-  defp local_path(_other), do: "/"
 end
