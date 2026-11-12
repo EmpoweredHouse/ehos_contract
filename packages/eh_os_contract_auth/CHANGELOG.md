@@ -33,12 +33,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **A start in the development mode without a local EHOS logs a warning, not an error, about the
   key set** (#628). The error said that every credential is refused, which is not true for the
   credentials of the mode. Without the mode, the error stays.
-- **A form of `/dev/sign-in` without a valid CSRF token gets 403 from the router, without an
-  `Access-Control-Allow-*` header** (#623). Before, `Plug.CSRFProtection` raised, and the
-  endpoint's error answer kept a header that a CORS plug in the endpoint had put on the request.
 
 ### Security
 
+- **A form of `/dev/sign-in` without a valid CSRF token gets 403 from the router, without an
+  `Access-Control-Allow-*` header** (#623). Before, `Plug.CSRFProtection` raised, and the
+  endpoint's error answer kept a header that a CORS plug in the endpoint had put on the request.
 - **`pin_keys: true` is refused in a release and in a container EHOS started, whatever Mix's
   environment is** (#620). Before, the package checked only the line and Mix's environment `:test`:
   a release that carries Mix, with `MIX_ENV=test` and the line in its configuration, trusted keys
