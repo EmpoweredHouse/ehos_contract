@@ -18,6 +18,7 @@ defmodule EhOsContract.Auth.DevelopmentReleaseTest do
     # In this checkout, as `@tag :tmp_dir` would put it: worktrees share the system's directory.
     dir = Path.expand("../tmp/#{inspect(__MODULE__)}", __DIR__)
     File.rm_rf!(dir)
+    File.mkdir_p!(Path.dirname(dir))
 
     # The copied build and the release are a few hundred megabytes; nothing reads them after.
     on_exit(fn -> File.rm_rf!(dir) end)
