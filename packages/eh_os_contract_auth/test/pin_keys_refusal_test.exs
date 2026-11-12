@@ -62,7 +62,8 @@ defmodule EhOsContract.Auth.PinKeysRefusalTest do
       assert [_, only] = Regex.run(~r/where no test runs: (.*?)\. The line/, boot)
       assert only =~ unquote(reason)
       refute only =~ "; "
-      assert boot =~ "Build no release with MIX_ENV=test"
+      assert boot =~ "Run the tests where none of RELEASE_NAME, RELEASE_ROOT, EHOS_ISSUER"
+      assert boot =~ "build no release with MIX_ENV=test"
       assert pin =~ "pinning a key: for tests only"
       assert pin =~ "Here " <> unquote(reason)
       assert plug =~ "pin_keys: true is set where no test runs"

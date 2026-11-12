@@ -61,7 +61,7 @@ defmodule EhOsContract.Auth.DevelopmentReleaseTest do
 
     assert status != 0
     assert output =~ "pin_keys: true is set where no test runs"
-    assert output =~ "Build no release with MIX_ENV=test"
+    assert output =~ "build no release with MIX_ENV=test"
     assert output =~ "RELEASE_NAME is set"
     assert output =~ "RELEASE_ROOT is set"
     # Mix is started, with the environment a test has: the release's variables refuse it alone.

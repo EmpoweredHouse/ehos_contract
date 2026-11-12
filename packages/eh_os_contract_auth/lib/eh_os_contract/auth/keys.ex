@@ -334,7 +334,7 @@ defmodule EhOsContract.Auth.Keys do
   # without the `:mix` application has none; one that carries Mix, with `MIX_ENV=test`, is
   # refused by its own variables.
   @spec test_trust?() :: boolean()
-  def test_trust?, do: pin_keys?() and pin_keys_refusal() == []
+  def test_trust?, do: pin_keys?() and pin_keys_refusal() == {[], []}
 
   @doc false
   # Called by the check of each child that takes `plug:`: `EhOsContract.Auth`'s,
@@ -345,23 +345,16 @@ defmodule EhOsContract.Auth.Keys do
   def check_trust!(opts, child, trusted_as) do
     # `pin_keys` read once, so the two checks below agree on it.
     pin_keys? = pin_keys?()
-    deployment = if pin_keys?, do: EhOsContract.Auth.Development.deployment_refusal(), else: []
-    reasons = if pin_keys?, do: mix_refusal() ++ deployment, else: []
-    trusted? = pin_keys? and reasons == []
+    {mix, deployment} = if pin_keys?, do: pin_keys_refusal(), else: {[], []}
+    trusted? = pin_keys? and mix == [] and deployment == []
 
     if pin_keys? and not trusted? do
-      # A release built with `MIX_ENV=test` reads config/test.exs, so moving the line there
-      # does not take it out of a release.
-      fix =
-        if deployment == [],
-          do: "Put it in config/test.exs alone, and remove it from config/config.exs, ",
-          else: "Build no release with MIX_ENV=test, and remove the line from config/config.exs, "
-
       raise ArgumentError,
             "config :eh_os_contract_auth, pin_keys: true is set where no test runs: " <>
-              Enum.join(reasons, "; ") <>
-              ". The line lets code trust keys and answers EHOS did not give. " <>
-              fix <> "config/<environment>.exs and config/runtime.exs"
+              Enum.join(mix ++ deployment, "; ") <>
+              ". The line lets code trust keys and answers EHOS did not give. Put it in " <>
+              "config/test.exs alone, and remove it from config/config.exs, " <>
+              "config/<environment>.exs and config/runtime.exs" <> deployment_fix(deployment)
     end
 
     if Keyword.has_key?(opts, :plug) and not trusted? do
@@ -379,7 +372,12 @@ defmodule EhOsContract.Auth.Keys do
   @spec test_only!(String.t()) :: :ok
   def test_only!(what) do
     pin_keys? = pin_keys?()
-    reasons = if pin_keys?, do: pin_keys_refusal(), else: ["pin_keys: true is not set"]
+
+    reasons =
+      case pin_keys? and pin_keys_refusal() do
+        false -> ["pin_keys: true is not set"]
+        {mix, deployment} -> mix ++ deployment
+      end
 
     unless pin_keys? and reasons == [] do
       raise ArgumentError,
@@ -393,9 +391,20 @@ defmodule EhOsContract.Auth.Keys do
 
   defp pin_keys?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
 
-  # Why `pin_keys: true` gives no trust here, in words: empty where a test runs. Mix's
+  # Why `pin_keys: true` gives no trust here, in words, Mix's part and the deployment's
+  # apart, so a refusal can say how to fix each: `{[], []}` where a test runs. Mix's
   # environment alone is not the guard: a release can carry Mix, with `MIX_ENV=test`.
-  defp pin_keys_refusal, do: mix_refusal() ++ EhOsContract.Auth.Development.deployment_refusal()
+  defp pin_keys_refusal,
+    do: {mix_refusal(), EhOsContract.Auth.Development.deployment_refusal()}
+
+  # A release built with `MIX_ENV=test` reads config/test.exs, so the line there is in it too.
+  defp deployment_fix([]), do: ""
+
+  defp deployment_fix(_reasons),
+    do:
+      ". Run the tests where none of RELEASE_NAME, RELEASE_ROOT, EHOS_ISSUER and " <>
+        "EHOS_AUDIENCE is set, and build no release with MIX_ENV=test, which reads " <>
+        "config/test.exs"
 
   defp mix_refusal do
     case mix_env() do
