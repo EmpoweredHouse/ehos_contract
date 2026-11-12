@@ -327,6 +327,13 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              tab: {303, "/\t/evil.example", "/"},
              delete: {303, "/\x7f/evil.example", "/"},
              no_csrf: {403, []},
+             bad_body: {400, [], ["no-store"]},
+             bad_body_without_token: {403, [], ["no-store"]},
+             nested_body: {400, [], ["no-store"]},
+             too_large: {413, [], ["no-store"]},
+             bad_query: {400, [], ["no-store"]},
+             bad_query_without_token: {403, [], ["no-store"]},
+             bad_json: {400, [], ["no-store"]},
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
@@ -375,6 +382,26 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
              no_csrf = {no_csrf.status, Enum.filter(no_csrf.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end)}
 
+             # A query string or a body Plug cannot read, with that header too.
+             unreadable = fn method, path, body, content_type, session, headers ->
+               conn =
+                 Plug.Test.conn(method, path, body)
+                 |> Map.put(:host, "localhost")
+                 |> Plug.Conn.put_req_header("content-type", content_type)
+                 |> then(&Enum.reduce(headers, &1, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end))
+                 |> Plug.Test.init_test_session(session)
+                 |> Plug.Conn.put_resp_header("access-control-allow-origin", "*")
+                 |> Router.call(Router.init([]))
+
+               {conn.status, Enum.filter(conn.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end),
+                Plug.Conn.get_resp_header(conn, "cache-control")}
+             end
+
+             with_token = [{"x-dev-sign-in-token", token}]
+
+             urlencoded = "application/x-www-form-urlencoded"
+             nested = String.duplicate("[a]", 33)
+
              %{
                page: {first.status, first.resp_body},
                signed_in: {signed.status, signed |> Plug.Conn.get_resp_header("location") |> hd(), {visit.halted, actor.subject, Enum.sort(actor.capabilities)}},
@@ -383,6 +410,13 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                tab: redirect.("/\t/evil.example"),
                delete: redirect.("/\x7f/evil.example"),
                no_csrf: no_csrf,
+               bad_body: unreadable.(:post, "/sign-in", "actors[]=%FF", urlencoded, session, []),
+               bad_body_without_token: unreadable.(:post, "/sign-in", "actors[]=%FF", urlencoded, %{}, []),
+               nested_body: unreadable.(:post, "/sign-in", "x" <> nested <> "=1", urlencoded, %{}, with_token),
+               too_large: unreadable.(:post, "/sign-in", "subject=" <> String.duplicate("a", 1_000_001), urlencoded, %{}, with_token),
+               bad_query: unreadable.(:get, "/elsewhere?a=%FF", nil, urlencoded, %{}, with_token),
+               bad_query_without_token: unreadable.(:get, "/elsewhere?a=%FF", nil, urlencoded, %{}, []),
+               bad_json: unreadable.(:post, "/credential", "{", "application/json", %{}, with_token),
                no_token: request.(:get, "/sign-in", []).status,
                unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
                unknown_without_token: request.(:get, "/elsewhere", []).status,

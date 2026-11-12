@@ -103,7 +103,11 @@ defmodule EhOsContract.Auth.Development.Guard do
 
   defp session?(conn), do: Map.get(conn.private, :plug_session_fetch) == :done
 
-  defp without_cors(conn) do
+  @doc false
+  # Registered before an answer is sent: removes each `Access-Control-Allow-*` header. Also for
+  # the router's answer to a request it cannot read.
+  @spec without_cors(Plug.Conn.t()) :: Plug.Conn.t()
+  def without_cors(conn) do
     headers = Enum.reject(conn.resp_headers, fn {name, _} -> cors?(name) end)
     %{conn | resp_headers: headers}
   end

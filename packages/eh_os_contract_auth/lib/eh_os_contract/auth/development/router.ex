@@ -42,7 +42,10 @@ defmodule EhOsContract.Auth.Development.Router do
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
   has, and check a CSRF token on the form (`Plug.CSRFProtection`): a form sent without a
-  valid one gets 403. Mount the router at `/dev`: `EhOsContract.Auth.Session` and
+  valid one gets 403. A request that passes the checks above, but whose query string or body
+  Plug cannot read, gets the status of Plug's error, such as 400, or 413 for a body that is
+  too large.
+  Mount the router at `/dev`: `EhOsContract.Auth.Session` and
   `EhOsContract.Auth.SignIn.Router`'s `GET /sign-in` send a browser to `/dev/sign-in`.
   """
 
@@ -71,6 +74,53 @@ defmodule EhOsContract.Auth.Development.Router do
       {"POST", ["sign-in"]} -> conn |> browser() |> then(&create/1)
       _other -> conn |> fetch_session() |> Guard.call([]) |> not_found()
     end
+  rescue
+    # A query string or a body that Plug cannot read raises, and the error page an endpoint
+    # renders starts from its own conn, which keeps a CORS header the guard strips. Plug's own
+    # refusals are answered here instead; any other error is raised as it was.
+    error ->
+      if plug_refusal?(error),
+        do: unreadable(conn, error),
+        else: reraise(error, __STACKTRACE__)
+  end
+
+  defp plug_refusal?(%module{} = error),
+    do:
+      String.starts_with?(inspect(module), "Plug.") and
+        Plug.Exception.status(error) in 400..499
+
+  # After the guard, as each other answer: a request the guard refuses gets its 403. The guard
+  # reads the token from the query string, the header and the session, not from a body Plug
+  # could not read.
+  defp unreadable(conn, error) do
+    conn =
+      conn
+      |> fetch_session()
+      |> readable_query()
+      |> secure()
+      |> Guard.call([])
+
+    if conn.halted do
+      conn
+    else
+      conn
+      |> put_resp_content_type("text/plain")
+      |> send_resp(Plug.Exception.status(error), "The request could not be read.")
+      |> halt()
+    end
+  end
+
+  defp readable_query(conn) do
+    fetch_query_params(conn)
+  rescue
+    Plug.Conn.InvalidQueryError -> %{conn | query_params: %{}}
+  end
+
+  defp secure(conn) do
+    conn
+    |> put_resp_header("cache-control", "no-store")
+    |> put_resp_header("referrer-policy", "no-referrer")
+    |> put_resp_header("x-frame-options", "DENY")
   end
 
   defp not_found(%Plug.Conn{halted: true} = conn), do: conn
@@ -84,9 +134,7 @@ defmodule EhOsContract.Auth.Development.Router do
       |> fetch_session()
       |> fetch_query_params()
       |> Plug.Parsers.call(@form)
-      |> put_resp_header("cache-control", "no-store")
-      |> put_resp_header("referrer-policy", "no-referrer")
-      |> put_resp_header("x-frame-options", "DENY")
+      |> secure()
       |> Guard.call([])
 
     if conn.halted, do: conn, else: csrf(conn)
