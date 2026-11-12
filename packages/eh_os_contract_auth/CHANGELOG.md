@@ -39,11 +39,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - **A form of `/dev/sign-in` without a valid CSRF token gets 403 from the router, without an
   `Access-Control-Allow-*` header** (#623). Before, `Plug.CSRFProtection` raised, and the
   endpoint's error answer kept a header that a CORS plug in the endpoint had put on the request.
-- **A request to the development router whose query string or body Plug cannot read gets
-  Plug's status from the router, without an `Access-Control-Allow-*` header** (#629): for example
-  400 for a malformed form or JSON body, or 413 for a body that is too large. Before, Plug's error
-  was raised, and the endpoint's error answer kept a header that a CORS plug in the endpoint had
-  put on the request.
+- **A request to the development router whose query string or body Plug cannot read gets the
+  guard's 403, or Plug's status after the guard, without an `Access-Control-Allow-*` header**
+  (#629): for example 400 for a malformed form or JSON body, or 413 for a body that is too large.
+  Before, Plug's error was raised before the token was checked, and the endpoint's error answer
+  kept a header that a CORS plug in the endpoint had put on the request.
 - **`pin_keys: true` is refused in a release and in a container EHOS started, whatever Mix's
   environment is** (#620). Before, the package checked only the line and Mix's environment `:test`:
   a release that carries Mix, with `MIX_ENV=test` and the line in its configuration, trusted keys

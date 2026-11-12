@@ -122,8 +122,8 @@ answers 403 for each other request.
   the first request, the session of the browser keeps a hash of the token.
 
 The form of the page also needs its CSRF token. A form without a valid CSRF token gets 403. If
-the router cannot read the query string or the body of a request, it answers with the status that
-Plug gives: for example 400, or 413 when the body is too large.
+the router cannot read the query string or the body of a request that passes the checks above, it
+answers with the status that Plug gives: for example 400, or 413 when the body is too large.
 
 The router removes each `Access-Control-Allow-` header from the answers of the page and of the
 endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
