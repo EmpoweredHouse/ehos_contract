@@ -301,7 +301,7 @@ defmodule EhOsContract.Auth.KeysTest do
   defp await_pin_queued(keys) do
     {:messages, messages} = Process.info(Process.whereis(keys), :messages)
 
-    unless Enum.any?(messages, &match?({:"$gen_call", _from, {:pin, _kid, _public}}, &1)) do
+    unless Enum.any?(messages, &match?({:"$gen_call", _from, {:pin, _kid, _public, _slot}}, &1)) do
       Process.sleep(10)
       await_pin_queued(keys)
     end

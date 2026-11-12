@@ -192,4 +192,11 @@ Kinds of problems a review here found that neither file names yet:
   `config :eh_os_contract_auth` block, and each refuses a key it does not take, so a host that
   follows the page does not boot. Found in #517.
 
+- A plug a host mounts with `forward` answers every path under its prefix, and Phoenix matches
+  routes in order: mounted before the host's other routes under that prefix, it answers them
+  instead. The page that mounts it says where the line goes. Found in #621.
+- A test conn from `Plug.Test.init_test_session/2` has its session fetched already, while an
+  endpoint's `Plug.Session` fetches it on demand: a branch that reads the session without
+  `fetch_session/1` passes the test and fails in the application. Found in #621.
+
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.

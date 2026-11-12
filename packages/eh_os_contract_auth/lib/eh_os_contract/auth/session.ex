@@ -27,7 +27,8 @@ defmodule EhOsContract.Auth.Session do
   **When it stops a request.** A browser's navigation (`GET` or `HEAD` with
   `sec-fetch-mode: navigate`, or one that accepts `text/html`) without a session, or
   whose sign-in has ended (at EHOS, or at renewal), is redirected to sign in and come back
-  (`sign_in_path:`, `/auth/ehos/sign-in` by default). Any other such request, a
+  (`sign_in_path:`, `/auth/ehos/sign-in` by default; `/dev/sign-in` where the development mode
+  runs, `EhOsContract.Auth.Development`). Any other such request, a
   `fetch()` from a page for one, answers 401: a redirect would take it to EHOS, across
   origins. A credential `verify/2` refuses for any other reason answers 401 and is
   logged: signing in again would get the same credential, and the browser would go
@@ -58,7 +59,7 @@ defmodule EhOsContract.Auth.Session do
   require Logger
 
   alias EhOsContract.Actor
-  alias EhOsContract.Auth.SignIn
+  alias EhOsContract.Auth.{Development, SignIn}
   alias EhOsContract.Auth.SignIn.{Renewal, Sessions}
 
   @session_key "eh_os_contract_auth_session"
@@ -221,7 +222,9 @@ defmodule EhOsContract.Auth.Session do
         do: conn.request_path,
         else: conn.request_path <> "?" <> conn.query_string
 
-    location = opts[:sign_in_path] <> "?" <> URI.encode_query(%{"return_to" => return_to})
+    # Where the development mode runs, its page signs people in: there is no EHOS to go to.
+    path = Development.sign_in_path(opts[:sign_in]) || opts[:sign_in_path]
+    location = path <> "?" <> URI.encode_query(%{"return_to" => return_to})
 
     conn
     |> put_resp_header("location", location)

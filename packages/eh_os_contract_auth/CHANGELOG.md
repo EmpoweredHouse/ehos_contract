@@ -24,6 +24,28 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **A development mode signs a person in on a developer's computer, where no EHOS runs** (#619).
+  With `config :eh_os_contract_auth, development: true` in `config/dev.exs` and the new child
+  `EhOsContract.Auth.Development` after `EhOsContract.Auth`, the application makes an Ed25519 key at
+  start, keeps it in memory, and signs a credential for a person with the actors of the domain that
+  the developer chooses: `sign_in/3` writes a browser session, and `credential/3` answers a bearer
+  credential. The mode renews a session's credential when it expires, and a restart signs every
+  session out and sends the browser to `/dev/sign-in`. The mode refuses to start unless Mix is
+  started with a project loaded and the environment `:dev`, neither `RELEASE_NAME` nor
+  `RELEASE_ROOT` is set, neither `EHOS_ISSUER` nor `EHOS_AUDIENCE` is set, and none of `sign_in:`,
+  `workload:` and `people:` is configured. `forward "/dev", EhOsContract.Auth.Development.Router` in
+  the router's `dev_routes` block mounts the page `/dev/sign-in`, where the developer chooses the
+  actors and scope values, and the endpoint `/dev/credential`, from which `mix
+  eh_os_contract.dev.credential` gets a credential, with the token in `EH_OS_CONTRACT_DEV_TOKEN`.
+  The router answers only a request from a loopback address, with a `Host` of `localhost`,
+  `127.0.0.1` or `[::1]`, and the token the mode prints at start; mount it after the block's other
+  `/dev` routes. `EhOsContract.Auth.Keys.pin/2` admits the mode's own key outside a test, and no
+  other, and trusts one such key at a time, so a restart of the mode leaves the old key untrusted;
+  `pin_keys` does not start the mode. Without the switch, the child starts
+  nothing. `docs/development.md` says how to set it up.
+
 ## [0.12.0] - 2026-11-05
 
 ### Changed

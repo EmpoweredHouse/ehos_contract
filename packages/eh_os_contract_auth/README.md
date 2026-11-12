@@ -54,6 +54,8 @@ defines each word of the contract language that these pages use. The words of th
 - [Call a host outside the installation](docs/egress.md): the proxy that EHOS gives.
 - [Use people, grants and mail where EHOS does not answer](docs/without-ehos.md): the stand-ins for
   development and tests.
+- [Sign a person in on a developer's computer](docs/development.md): the development mode, which
+  signs a person in with a key the application makes, where no EHOS runs.
 - [Test the application without EHOS](docs/testing.md): credentials, a signed-in browser, and the
   check that each entry point refuses.
 - [Configure the package](docs/configuration.md): each key, each option of the child, and the

@@ -30,7 +30,7 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
 
   require Logger
 
-  alias EhOsContract.Auth.SignIn
+  alias EhOsContract.Auth.{Development, SignIn}
   alias EhOsContract.Auth.SignIn.{Http, Sessions}
 
   @margin_seconds 30
@@ -168,9 +168,37 @@ defmodule EhOsContract.Auth.SignIn.Renewal do
     end
   end
 
+  # Step 4, where the sign-in child is the development mode's process, which signs the new
+  # credential itself (`EhOsContract.Auth.Development`): only one its own key signed, and of the
+  # session's person. One it cannot renew, from before a restart for one, ends the session.
+  defp renew(session, holder, %{name: name} = at) do
+    if Development.started?(name),
+      do: development(session, holder, at),
+      else: ehos(session, holder, at)
+  end
+
+  defp development(session, holder, at) do
+    held = session.credentials |> Map.get(at.resource, %{}) |> Map.get(:token)
+
+    with {:ok, token, expires_at} <- Development.renew(at.name, session.subject, held),
+         written = %{
+           refresh_token: session.refresh_token,
+           id_token: session.id_token,
+           resource: at.resource,
+           token: token,
+           expires_at: expires_at
+         },
+         :ok <- Sessions.renewed(at.name, session, holder, written) do
+      {:ok, token}
+    else
+      :lost -> ended(session, :lease_lost)
+      {:error, reason} -> ended(session, reason)
+    end
+  end
+
   # Step 4. For the client's own application the request names no `resource`; for another, its
   # address, as EHOS takes it.
-  defp renew(session, holder, at) do
+  defp ehos(session, holder, at) do
     config = SignIn.config(at.name)
 
     case SignIn.client_context(at.name) do

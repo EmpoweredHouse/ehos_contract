@@ -16,6 +16,7 @@ step.
 | `sign_in` | no | the sign-in of people through EHOS: [Sign people in through EHOS](sign-in.md) |
 | `workload` | no | the client of the application, for the people and for mail: [Read the people of the company](people.md) |
 | `people_directory`, `granter`, `mail_sender` | no | a stand-in for EHOS: [Use people, grants and mail where EHOS does not answer](without-ehos.md) |
+| `development` | no | `true` turns on the development mode, which signs people in without EHOS. Set it only in `config/dev.exs`: [Sign a person in on a developer's computer](development.md) |
 | `pin_keys` | no | `true` lets the tests trust keys and answers that EHOS did not give. Set it only in `config/test.exs`: [Test the application without EHOS](testing.md) |
 
 ```elixir

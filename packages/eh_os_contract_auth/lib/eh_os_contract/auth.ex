@@ -89,6 +89,8 @@ defmodule EhOsContract.Auth do
   use Boundary,
     deps: [EhOsContract],
     exports: [
+      Development,
+      Development.Router,
       Egress,
       EhosYaml,
       Keys,
