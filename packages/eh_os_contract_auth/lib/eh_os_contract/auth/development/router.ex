@@ -68,7 +68,7 @@ defmodule EhOsContract.Auth.Development.Router do
       {_method, ["credential" | rest]} -> Plug.forward(conn, rest, Credential, [])
       {"GET", ["sign-in"]} -> conn |> browser() |> then(&page(&1, 200, nil))
       {"POST", ["sign-in"]} -> conn |> browser() |> then(&create/1)
-      _other -> conn |> Guard.call([]) |> not_found()
+      _other -> conn |> fetch_session() |> Guard.call([]) |> not_found()
     end
   end
 

@@ -292,6 +292,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
+             unknown_with_session: 404,
              after_sign_in: 200,
              credential: 200
            } =
@@ -302,6 +303,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                conn = if opts[:body], do: Plug.Conn.put_req_header(conn, "content-type", "application/x-www-form-urlencoded"), else: conn
                conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
                conn = Plug.Test.init_test_session(conn, Keyword.get(opts, :session, %{}))
+               # As Plug.Session leaves it in an endpoint: the session is fetched on demand.
+               conn = Plug.Conn.put_private(conn, :plug_session_fetch, &Plug.Conn.put_private(&1, :plug_session_fetch, :done))
                Router.call(conn, Router.init([]))
              end
 
@@ -342,6 +345,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                no_token: request.(:get, "/sign-in", []).status,
                unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
                unknown_without_token: request.(:get, "/elsewhere", []).status,
+               unknown_with_session: request.(:get, "/elsewhere", session: session).status,
                after_sign_in: request.(:get, "/sign-in", session: Plug.Conn.get_session(signed)).status,
                credential: request.(:post, "/credential", headers: [{"x-dev-sign-in-token", token}, {"content-type", "application/json"}], body: nil).status
              }
