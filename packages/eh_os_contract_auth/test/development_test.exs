@@ -101,6 +101,23 @@ defmodule EhOsContract.Auth.DevelopmentTest do
            ]
   end
 
+  test "the sign-in through EHOS sends the browser to /dev/sign-in, with a path of this application" do
+    assert run("""
+           sign_in = fn query ->
+             conn =
+               Plug.Test.conn(:get, "/sign-in" <> query)
+               |> Plug.Test.init_test_session(%{})
+               |> EhOsContract.Auth.SignIn.Router.call(EhOsContract.Auth.SignIn.Router.init([]))
+
+             {conn.status, Plug.Conn.get_resp_header(conn, "location")}
+           end
+
+           {sign_in.("?return_to=/visits/7"), sign_in.("?return_to=//evil.example"), sign_in.("")}
+           """) ==
+             {{302, ["/dev/sign-in?return_to=%2Fvisits%2F7"]}, {302, ["/dev/sign-in?return_to=%2F"]},
+              {302, ["/dev/sign-in?return_to=%2F"]}}
+  end
+
   test "a development session is renewed after its credential expires, through the mode" do
     assert {{false, ["clinic.close_visit"]}, {false, ["clinic.close_visit"]}, renewed?} =
              run("""

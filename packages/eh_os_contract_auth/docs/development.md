@@ -16,7 +16,8 @@ production.
 
 - You did the steps of [Get started](getting-started.md). In development, `issuer` and `audience`
   are set, and `EhOsContract.Auth` is in the supervision tree after the repo.
-- In development, `issuer` is an address that does not answer, such as `https://ehos.test`.
+- In development, `issuer` is the address of a local EHOS, such as `https://ehos.localhost`. The
+  mode works when no EHOS answers at that address.
 - The pages use `EhOsContract.Auth.Session`: [Sign people in through EHOS](sign-in.md).
 
 ## 1. Turn the mode on in development
@@ -72,6 +73,9 @@ that asked for a sign-in.
 
 **Result:** open the address that the terminal shows. After you sign in, the pages behind
 `EhOsContract.Auth.Session` open with the actor of the credential.
+
+A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also opens this page.
+`EhOsContract.Auth.SignIn.Router` sends the browser to `/dev/sign-in`, with the same `return_to`.
 
 ## 3. Get a credential for `curl`
 
@@ -133,6 +137,17 @@ the child raises, and the application does not start, in each of these cases:
 
 The message names each case that applies. Remove the line from each file but `config/dev.exs`, and
 start the application with `mix phx.server` or `iex -S mix`.
+
+**The application logs a warning about the key set at start.** Without a local EHOS, the
+application cannot get the key set from the `issuer`, and logs this:
+
+```text
+[warning] eh_os_contract_auth could not fetch the key set from https://ehos.localhost/.well-known/jwks.json (…); 0 keys stay in force
+[warning] eh_os_contract_auth has never seen a key set from https://ehos.localhost/.well-known/jwks.json; until a fetch succeeds, it lets in only the credentials of the development mode
+```
+
+This is correct. The mode signs its credentials with its own key, and the application trusts that
+key. Each five minutes, the application tries again, and logs the first line again.
 
 **The mode does not trust another key.** `EhOsContract.Auth.Keys.pin/2` admits only the key of the
 mode, after the mode starts. `pin_keys: true` does not start the mode. The mode does not let the

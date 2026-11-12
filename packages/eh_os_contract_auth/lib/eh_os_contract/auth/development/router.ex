@@ -41,8 +41,9 @@ defmodule EhOsContract.Auth.Development.Router do
   plug off the `/dev` paths.
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
-  has, and check a CSRF token on the form (`Plug.CSRFProtection`). Mount the router at
-  `/dev`: `EhOsContract.Auth.Session` sends a browser to `/dev/sign-in`.
+  has, and check a CSRF token on the form (`Plug.CSRFProtection`): a form sent without a
+  valid one gets 403. Mount the router at `/dev`: `EhOsContract.Auth.Session` and
+  `EhOsContract.Auth.SignIn.Router`'s `GET /sign-in` send a browser to `/dev/sign-in`.
   """
 
   @behaviour Plug

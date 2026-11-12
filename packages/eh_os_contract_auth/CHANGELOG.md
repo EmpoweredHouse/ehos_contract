@@ -24,6 +24,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Fixed
+
+- **In the development mode, `GET /auth/ehos/sign-in` sends the browser to `/dev/sign-in`** (#628).
+  Before, `EhOsContract.Auth.SignIn.Router` answered 503, because no EHOS answers in development,
+  so a layout's "Sign in" link led to an error. `return_to` goes with the browser, as a path of the
+  application.
+- **A start in the development mode without a local EHOS logs a warning, not an error, about the
+  key set** (#628). The error said that every credential is refused, which is not true for the
+  credentials of the mode. Without the mode, the error stays.
+
 ### Security
 
 - **`pin_keys: true` is refused in a release and in a container EHOS started, whatever Mix's

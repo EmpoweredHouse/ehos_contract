@@ -449,14 +449,26 @@ defmodule EhOsContract.Auth.Keys do
     load(state)
     {_result, state} = fetch_now(state)
 
-    if held(state.name) == 0 do
+    if held(state.name) == 0, do: log_no_keys(state)
+
+    {:noreply, schedule(state)}
+  end
+
+  # The development mode starts after this process and pins its key once this check has run,
+  # so its switch, not the table, says whether a credential will be let in: a mode that is
+  # switched on and refused fails the boot after this line.
+  defp log_no_keys(state) do
+    if Application.get_env(:eh_os_contract_auth, :development) == true do
+      Logger.warning(
+        "eh_os_contract_auth has never seen a key set from #{state.url}; until a fetch " <>
+          "succeeds, it lets in only the credentials of the development mode"
+      )
+    else
       Logger.error(
         "eh_os_contract_auth has never seen a key set from #{state.url}, and refuses every " <>
           "credential with :no_keys until a fetch succeeds"
       )
     end
-
-    {:noreply, schedule(state)}
   end
 
   @impl GenServer
