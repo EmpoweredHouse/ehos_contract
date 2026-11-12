@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-12
+
+### Changed
+
+- Released with eh_os_contract_auth 0.13.0, which adds a development sign-in mode (#619); nothing in
+  the engine changed.
+
 ## [0.14.0] - 2026-11-05
 
 ### Added

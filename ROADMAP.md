@@ -6,19 +6,14 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (5 November 2026)
+## Where things stand (12 November 2026)
 
-- **Released:** v0.14.0, with the engine 0.14.0 (a form's command sent through `call/3` with `form: true`
-  and `data:`, a destroyed master key named in the configuration so that the engine starts on a backup, and a
-  warning for a scoped actor with an unscoped query; breaking: the storage at version 5 needs a migration,
-  `EhOsContract.Plug` answers 415 to a `POST` that is not JSON, the rewrap takes `--expect`, and the boot
-  refuses a stored data key that does not unwrap; two changes move a verdict), `eh_os_contract_auth` 0.12.0
-  (test keys and plugs trusted only where Mix's environment is `:test`, one Finch pool for each set of
-  connection options, so `SSLKEYLOGFILE` no longer opens a file on each call, and the engine required at
-  `~> 0.14.0`), `eh_os_contract_web` 0.9.0 (its README split into pages, and the engine required at
-  `~> 0.14.0`) and `eh_os_contract_graph` 0.9.1 (its README split into pages); the plugin's skills at
-  0.14.3. Applications install them from git. The pull request after the tag moves each released package
-  to its next patch's `-dev`.
+- **Released:** v0.14.1, with `eh_os_contract_auth` 0.13.0 (a development mode that signs a person in on a
+  developer's computer, where no EHOS runs, with a key it makes at start and the page `/dev/sign-in` that
+  `EhOsContract.Auth.Development.Router` serves) and the engine 0.14.1, which changes nothing; the dashboard
+  stays at 0.9.0 and the graph renderer at 0.9.1, from v0.14.0. The plugin's skills are at 0.14.3.
+  Applications install them from git. The pull request after the tag moves each released package to its next
+  patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
