@@ -4,7 +4,7 @@ defmodule EhOsContract.MixProject do
   # One source for `project/0` and, through `EhOsContract.version/0`, for the line every
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
-  @version "0.14.1"
+  @version "0.14.2-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
 
   # The concept pages, in `docs/` beside the others, in the order a reader takes them. ExDoc
