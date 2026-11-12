@@ -15,7 +15,7 @@ credential without the capability, and signs a browser in.
   the fetch ends at once.
 - For tests with no network at all, give the child a plug in place of EHOS:
   `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
-  with `pin_keys: true` where the environment of Mix is `:test`, step 1.
+  with `pin_keys: true` where the package trusts the line, step 1.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These
@@ -25,10 +25,10 @@ credential without the capability, and signs a browser in.
 
 > **Put `pin_keys: true` only in `config/test.exs`.** The package trusts the line only where the
 > environment of Mix is `:test`, as in `mix test`. If another environment sets the line, the
-> children of the package do not start. A release without the `:mix` application has no
-> environment of Mix. A release that starts `:mix` takes the environment of Mix from `MIX_ENV`, so
-> keep the line out of the configuration of each release. With the line, code in the tests can make the application trust keys and
-> answers that EHOS did not give:
+> children of the package do not start. The package also refuses the line in a release
+> (`RELEASE_NAME` or `RELEASE_ROOT` is set) and in a container that EHOS started (`EHOS_ISSUER` or
+> `EHOS_AUDIENCE` is set), whatever the environment of Mix is. With the line, code in the tests can
+> make the application trust keys and answers that EHOS did not give:
 >
 > - `EhOsContract.Auth.Keys.pin/2` adds a key;
 > - the `plug:` option of the `EhOsContract.Auth` child answers in place of the keys of EHOS;
@@ -194,7 +194,7 @@ that it ships to those types.
 | What you see | Cause and fix |
 | --- | --- |
 | `ArgumentError` that tells you to set `pin_keys: true` | `config/test.exs` does not have the line of step 1. Add it. |
-| `ArgumentError`: `pin_keys: true is set where no test runs` | The line of step 1 is in a file that another environment reads. Move it to `config/test.exs`. |
+| `ArgumentError`: `pin_keys: true is set where no test runs` | The line of step 1 is in a file that another environment or a release reads. Move it to `config/test.exs`. If the message names `RELEASE_NAME`, `RELEASE_ROOT`, `EHOS_ISSUER` or `EHOS_AUDIENCE`, remove that variable from the environment of `mix test`. |
 | `ArgumentError`: the key process is not running | `EhOsContract.Auth` is not in the supervision tree of the test environment. Add it after the repo. |
 | `assert_every_entry_refuses/3` finds no `refused` row | The entry point does not call `EhOsContract.dispatch/3` or `EhOsContract.query/3`, or the authorizer is not `EhOsContract.Auth`. |
 | A stub has no effect | The stub was made in `setup_all`, which runs in another process. Make it in the test or in `setup`. |
@@ -210,5 +210,5 @@ that it ships to those types.
 
 <!-- Decisions behind this page:
 #560, #591: pin_keys is trusted only where Mix's environment is :test, and stops the boot anywhere
-else.
+else. #620: and never in a release or a container EHOS started, whatever Mix's environment is.
 -->

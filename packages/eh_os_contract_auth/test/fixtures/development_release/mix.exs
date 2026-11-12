@@ -1,6 +1,6 @@
 # Invented test material: an application built as a release that carries Mix, with the
-# development mode's switch set, which `EhOsContract.Auth.DevelopmentReleaseTest` builds and
-# starts. Its dependencies are this build's own, copied beside it by the test.
+# development mode's switch set, or `pin_keys: true`, which `EhOsContract.Auth.DevelopmentReleaseTest`
+# builds and starts. Its dependencies are this build's own, copied beside it by the test.
 defmodule DevelopmentRelease.MixProject do
   use Mix.Project
 
