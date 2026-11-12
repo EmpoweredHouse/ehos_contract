@@ -15,7 +15,7 @@ credential without the capability, and signs a browser in.
   the fetch ends at once.
 - For tests with no network at all, give the child a plug in place of EHOS:
   `{EhOsContract.Auth, plug: {Req.Test, MyApp.Keys}}`. The child takes `plug:` only
-  with `pin_keys: true` where the environment of Mix is `:test`, step 1.
+  with `pin_keys: true` where the package trusts the line, step 1.
 - `config :eh_os_contract, authorizer: EhOsContract.Auth` is set, so the engine asks the package
   about each call.
 - A test that makes a credential or signs a browser in owns a connection of the Ecto sandbox. These

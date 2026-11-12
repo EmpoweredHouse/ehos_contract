@@ -15,8 +15,9 @@ defmodule EhOsContract.Auth.DevelopmentReleaseTest do
   @package Path.expand("..", __DIR__)
 
   setup_all do
-    dir =
-      Path.join(System.tmp_dir!(), "development_release_#{System.unique_integer([:positive])}")
+    # In this checkout, as `@tag :tmp_dir` would put it: worktrees share the system's directory.
+    dir = Path.expand("../tmp/#{inspect(__MODULE__)}", __DIR__)
+    File.rm_rf!(dir)
 
     # The copied build and the release are a few hundred megabytes; nothing reads them after.
     on_exit(fn -> File.rm_rf!(dir) end)
@@ -59,6 +60,7 @@ defmodule EhOsContract.Auth.DevelopmentReleaseTest do
 
     assert status != 0
     assert output =~ "pin_keys: true is set where no test runs"
+    assert output =~ "Build no release with MIX_ENV=test"
     assert output =~ "RELEASE_NAME is set"
     assert output =~ "RELEASE_ROOT is set"
     # Mix is started, with the environment a test has: the release's variables refuse it alone.

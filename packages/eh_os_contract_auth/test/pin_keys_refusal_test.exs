@@ -44,7 +44,7 @@ defmodule EhOsContract.Auth.PinKeysRefusalTest do
   # refuse a test.
   test "sign_in: configured in a test does not refuse pin_keys: true" do
     config = [eh_os_contract_auth: [sign_in: [client_id: "clinic"]]]
-    assert %{trust: true, boot: :admitted, pin: :admitted} = run(config: config)
+    assert run(config: config) == %{trust: true, boot: :admitted, pin: :admitted, plug: :admitted}
   end
 
   @cases [
@@ -62,7 +62,9 @@ defmodule EhOsContract.Auth.PinKeysRefusalTest do
       assert [_, only] = Regex.run(~r/where no test runs: (.*?)\. The line/, boot)
       assert only =~ unquote(reason)
       refute only =~ "; "
+      assert boot =~ "Build no release with MIX_ENV=test"
       assert pin =~ "pinning a key: for tests only"
+      assert pin =~ "Here " <> unquote(reason)
       assert plug =~ "pin_keys: true is set where no test runs"
     end
   end
