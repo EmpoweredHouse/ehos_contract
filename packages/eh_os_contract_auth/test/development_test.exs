@@ -10,7 +10,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
   # `sup`, the supervisor of the two children.
   @started """
   alias EhOsContract.Auth.{Development, Session, SignIn}
-  alias EhOsContract.Auth.Development.{Credential, Guard}
+  alias EhOsContract.Auth.Development.{Credential, Guard, Router}
 
   {:ok, _} = EhOsContract.Auth.TestRepo.start_link()
   :ok = Ecto.Adapters.SQL.Sandbox.checkout(EhOsContract.Auth.TestRepo)
@@ -250,8 +250,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
   end
 
   test "the terminal's endpoint answers a credential, behind the guard" do
-    assert {{200, actor}, {422, %{"error" => "unknown_actors: clinic.nobody"}},
-            {422, %{"error" => "malformed"}}, 403,
+    assert {{200, actor}, {422, %{"error" => "the domain has no actor clinic.nobody"}},
+            {422, %{"error" => "the actors or the scopes are malformed"}}, 403,
             404} =
              run("""
              post = fn body, headers ->
@@ -278,5 +278,72 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              """)
 
     assert actor == {"dev", ["clinic.record_payment"]}
+  end
+
+  test "the router's page signs a browser in, and sends it back to a path of this application" do
+    assert %{
+             page: {200, page},
+             signed_in: {303, "/visits", {false, "u-dev", ["clinic.record_payment"]}},
+             missing_scope: {422, missing},
+             elsewhere: {303, "//evil.example", "/"},
+             tab: {303, "/\t/evil.example", "/"},
+             no_csrf: :refused,
+             no_token: 403,
+             unknown: 404,
+             credential: 200
+           } =
+             run("""
+             request = fn method, path, opts ->
+               conn = Plug.Test.conn(method, path, Keyword.get(opts, :body))
+               conn = %{conn | host: "localhost"}
+               conn = if opts[:body], do: Plug.Conn.put_req_header(conn, "content-type", "application/x-www-form-urlencoded"), else: conn
+               conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
+               conn = Plug.Test.init_test_session(conn, Keyword.get(opts, :session, %{}))
+               Router.call(conn, Router.init([]))
+             end
+
+             first = request.(:get, "/sign-in?token=" <> token <> "&return_to=/visits", [])
+             session = Plug.Conn.get_session(first)
+             [_, csrf] = Regex.run(~r/name="_csrf_token" value="([^"]+)"/, first.resp_body)
+
+             form = fn fields -> fields |> Enum.map_join("&", fn {k, v} -> URI.encode_www_form(k) <> "=" <> URI.encode_www_form(v) end) end
+             post = fn fields, session -> request.(:post, "/sign-in", body: form.(fields), session: session) end
+
+             signed = post.([{"_csrf_token", csrf}, {"subject", "u-dev"}, {"actors[]", "clinic.receptionist"}, {"scopes[clinic_id]", "clinic-1"}, {"return_to", "/visits"}], session)
+             visit = page.(Plug.Conn.get_session(signed, Session.session_key()))
+             actor = visit.assigns.eh_os_contract_actor
+
+             missing = post.([{"_csrf_token", csrf}, {"actors[]", "clinic.receptionist"}], session)
+
+             redirect = fn return_to ->
+               conn = post.([{"_csrf_token", csrf}, {"actors[]", "clinic.manager"}, {"return_to", return_to}], session)
+               {conn.status, return_to, conn |> Plug.Conn.get_resp_header("location") |> hd()}
+             end
+
+             no_csrf =
+               try do
+                 post.([{"actors[]", "clinic.manager"}], session)
+                 :passed
+               rescue
+                 Plug.CSRFProtection.InvalidCSRFTokenError -> :refused
+               end
+
+             %{
+               page: {first.status, first.resp_body},
+               signed_in: {signed.status, signed |> Plug.Conn.get_resp_header("location") |> hd(), {visit.halted, actor.subject, Enum.sort(actor.capabilities)}},
+               missing_scope: {missing.status, missing.resp_body},
+               elsewhere: redirect.("//evil.example"),
+               tab: redirect.("/\t/evil.example"),
+               no_csrf: no_csrf,
+               no_token: request.(:get, "/sign-in", []).status,
+               unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
+               credential: request.(:post, "/credential", headers: [{"x-dev-sign-in-token", token}, {"content-type", "application/json"}], body: nil).status
+             }
+             """)
+
+    assert page =~ ~s(value="clinic.receptionist")
+    assert page =~ ~s(name="scopes[clinic_id]")
+    assert page =~ ~s(name="return_to" value="/visits")
+    assert missing =~ "the chosen actors need a value for clinic_id"
   end
 end

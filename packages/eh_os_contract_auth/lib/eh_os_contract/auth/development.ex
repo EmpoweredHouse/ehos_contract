@@ -18,14 +18,8 @@ defmodule EhOsContract.Auth.Development do
       # the supervision tree, after EhOsContract.Auth, in every environment
       children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Development]
 
-      # the router, in the `dev_routes` block
-      scope "/dev" do
-        pipe_through [:browser, EhOsContract.Auth.Development.Guard]
-        get "/sign-in", MyAppWeb.DevSignInController, :new
-        post "/sign-in", MyAppWeb.DevSignInController, :create
-      end
-
-      forward "/dev/credential", EhOsContract.Auth.Development.Credential
+      # the router, in the `dev_routes` block, outside any pipeline
+      forward "/dev", EhOsContract.Auth.Development.Router
 
   Without the switch, the child starts nothing (`start_link/1` answers `:ignore`), so the
   same list of children serves every environment.
@@ -52,7 +46,7 @@ defmodule EhOsContract.Auth.Development do
   another application's for one, refuses each credential signed with it.
 
   **The token.** A random token, made when the mode starts and printed in the terminal,
-  as Livebook prints its own. `EhOsContract.Auth.Development.Guard` lets a request through
+  as Livebook prints its own. `EhOsContract.Auth.Development.Router` answers a request
   only with it, from a loopback address, with a `Host` of `localhost`, `127.0.0.1` or
   `[::1]`. A computer on the network, a proxy or a tunnel does not have it.
 
@@ -355,6 +349,19 @@ defmodule EhOsContract.Auth.Development do
   def credential(subject, actors, scopes \\ %{}) do
     with {:ok, token, _expires_at} <- signed(subject, actors, scopes), do: {:ok, token}
   end
+
+  @doc false
+  # A refusal of `sign_in/3` or `credential/3` in words, for the page and the terminal.
+  @spec describe(refusal()) :: String.t()
+  def describe(:not_started), do: "the development mode has not started"
+  def describe(:no_subject), do: "the subject is empty"
+  def describe(:malformed), do: "the actors or the scopes are malformed"
+
+  def describe({:unknown_actors, roles}),
+    do: "the domain has no actor " <> Enum.join(roles, ", ")
+
+  def describe({:missing_scopes, scopes}),
+    do: "the chosen actors need a value for " <> Enum.join(scopes, ", ")
 
   defp signed(subject, actors, scopes) do
     with :ok <- running(),

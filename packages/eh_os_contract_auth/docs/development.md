@@ -44,52 +44,26 @@ children is correct in each environment.
 To print the full address, give the child the address of the application:
 `{EhOsContract.Auth.Development, url: "http://localhost:4000"}`.
 
-## 2. Add the page and the endpoint to the router
+## 2. Mount the page and the endpoint in the router
 
 ```elixir
-# in the router: Phoenix compiles the `dev_routes` block only in development
+# the router: Phoenix compiles the `dev_routes` block only in development
 if Application.compile_env(:my_app, :dev_routes) do
-  scope "/dev" do
-    pipe_through [:browser, EhOsContract.Auth.Development.Guard]
-    get "/sign-in", MyAppWeb.DevSignInController, :new
-    post "/sign-in", MyAppWeb.DevSignInController, :create
-  end
-
-  # outside the browser pipeline: the command sends no CSRF token
-  forward "/dev/credential", EhOsContract.Auth.Development.Credential
+  forward "/dev", EhOsContract.Auth.Development.Router
 end
 ```
 
-The page lists the actors that `EhOsContract.Auth.Development.actors/0` gives, and a field for each
-scope of their capabilities. When the developer sends the form, the controller signs the person in:
+Put the line outside each pipeline: the router fetches the session, checks the token and the
+CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
+`EhOsContract.Auth.Session` sends the browser to `/dev/sign-in`.
 
-```elixir
-def create(conn, %{"subject" => subject, "actors" => actors} = params) do
-  case EhOsContract.Auth.Development.sign_in(subject, actors, params["scopes"] || %{}) do
-    {:ok, token} ->
-      conn
-      |> put_session(EhOsContract.Auth.Session.session_key(), token)
-      |> redirect(to: local_path(params["return_to"]))
+The page `/dev/sign-in` lists the actors that the contracts grant capabilities to, and a field for
+each scope of those capabilities. Choose one or more actors, give a value for each scope that they
+need, and send the form. The router signs the person in, and sends the browser back to the page
+that asked for a sign-in.
 
-    {:error, reason} ->
-      conn |> put_flash(:error, inspect(reason)) |> redirect(to: ~p"/dev/sign-in")
-  end
-end
-```
-
-The session plug sends the browser to `/dev/sign-in?return_to=<path>`. Follow `return_to` only
-as a path of this application, so the page is not an open redirect:
-
-```elixir
-defp local_path("/" <> rest = path) do
-  if String.starts_with?(rest, ["/", "\\"]), do: "/", else: path
-end
-
-defp local_path(_other), do: "/"
-```
-
-**Result:** the page signs the person in, and the pages behind `EhOsContract.Auth.Session` open
-with the actor of the credential.
+**Result:** open the address that the terminal shows. After you sign in, the pages behind
+`EhOsContract.Auth.Session` open with the actor of the credential.
 
 ## 3. Get a credential for `curl`
 
@@ -121,19 +95,19 @@ memory of the application.
 
 ## Who can reach the page?
 
-`EhOsContract.Auth.Development.Guard` lets a request through only when all of these are true. It
+`EhOsContract.Auth.Development.Router` answers a request only when all of these are true. It
 answers 403 for each other request.
 
-- The request comes from a loopback address, `127.0.0.0/8` or `::1`. The guard reads the address
+- The request comes from a loopback address, `127.0.0.0/8` or `::1`. The router reads the address
   of the socket, and also `conn.remote_ip`, which a plug that reads `X-Forwarded-For` sets. The
   address on which the endpoint listens does not change this.
-- The `Host` of the request is `localhost`, `127.0.0.1` or `[::1]`. The guard reads the header
+- The `Host` of the request is `localhost`, `127.0.0.1` or `[::1]`. The router reads the header
   that the browser sent, and also `conn.host`. This also refuses a page that DNS rebinding sends
   to `localhost`.
 - The request has the token, as the `token` parameter or in the `x-dev-sign-in-token` header. After
   the first request, the session of the browser keeps a hash of the token.
 
-The guard removes each `Access-Control-Allow-` header from the answers of the page and of the
+The router removes each `Access-Control-Allow-` header from the answers of the page and of the
 endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
 `OPTIONS` itself. Keep such a plug off the `/dev` paths.
 

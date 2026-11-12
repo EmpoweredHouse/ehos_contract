@@ -90,8 +90,7 @@ defmodule EhOsContract.Auth do
     deps: [EhOsContract],
     exports: [
       Development,
-      Development.Credential,
-      Development.Guard,
+      Development.Router,
       Egress,
       EhosYaml,
       Keys,

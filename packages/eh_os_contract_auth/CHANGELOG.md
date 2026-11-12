@@ -35,11 +35,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   session out and sends the browser to `/dev/sign-in`. The mode refuses to start unless Mix is
   started with a project loaded and the environment `:dev`, neither `RELEASE_NAME` nor
   `RELEASE_ROOT` is set, neither `EHOS_ISSUER` nor `EHOS_AUDIENCE` is set, and none of `sign_in:`,
-  `workload:` and `people:` is configured. `EhOsContract.Auth.Development.Guard` admits a request
-  only from a loopback address, with a `Host` of `localhost`, `127.0.0.1` or `[::1]`, and the token
-  the mode prints at start; `EhOsContract.Auth.Development.Credential` and `mix
-  eh_os_contract.dev.credential` give the terminal a credential from the running application, with
-  the token in `EH_OS_CONTRACT_DEV_TOKEN`. `EhOsContract.Auth.Keys.pin/2` admits the mode's own key
+  `workload:` and `people:` is configured. `forward "/dev", EhOsContract.Auth.Development.Router` in
+  the router's `dev_routes` block mounts the page `/dev/sign-in`, where the developer chooses the
+  actors and scope values, and the endpoint `/dev/credential`, from which `mix
+  eh_os_contract.dev.credential` gets a credential, with the token in `EH_OS_CONTRACT_DEV_TOKEN`.
+  The router answers only a request from a loopback address, with a `Host` of `localhost`,
+  `127.0.0.1` or `[::1]`, and the token the mode prints at start. `EhOsContract.Auth.Keys.pin/2` admits the mode's own key
   outside a test, and no other, and trusts one such key at a time, so a restart of the mode leaves
   the old key untrusted; `pin_keys` does not start the mode. Without the switch, the child starts
   nothing. `docs/development.md` says how to set it up.

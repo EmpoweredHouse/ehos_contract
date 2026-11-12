@@ -1,21 +1,8 @@
 defmodule EhOsContract.Auth.Development.Credential do
-  @moduledoc """
-  The endpoint `mix eh_os_contract.dev.credential` asks the running application for a
-  credential through, in the development mode (`EhOsContract.Auth.Development`). The key
-  stays in the application's memory; only the signed credential leaves it.
-
-      # the router, in the `dev_routes` block
-      forward "/dev/credential", EhOsContract.Auth.Development.Credential
-
-  It runs `EhOsContract.Auth.Development.Guard` itself, so it needs no pipeline.
-  `POST /` takes a JSON object,
-
-      {"subject": "u-dev", "actors": ["clinic.receptionist"], "scopes": {"clinic_id": "clinic-1"}}
-
-  and answers `{"credential": "<token>"}`, or 422 with `{"error": "<reason>"}` for what
-  `EhOsContract.Auth.Development.credential/3` refuses. `subject` defaults to `"dev"`, and
-  `scopes` to none.
-  """
+  @moduledoc false
+  # `POST /dev/credential` of `EhOsContract.Auth.Development.Router`, for
+  # `mix eh_os_contract.dev.credential`: JSON in, `{"credential": …}` or 422 out, behind the
+  # guard, which it runs itself.
 
   @behaviour Plug
 
@@ -61,14 +48,9 @@ defmodule EhOsContract.Auth.Development.Credential do
 
     case result do
       {:ok, token} -> json(conn, 200, %{credential: token})
-      {:error, reason} -> json(conn, 422, %{error: describe(reason)})
+      {:error, reason} -> json(conn, 422, %{error: Development.describe(reason)})
     end
   end
-
-  defp describe({reason, values}) when is_list(values),
-    do: "#{reason}: #{Enum.join(values, ", ")}"
-
-  defp describe(reason), do: Atom.to_string(reason)
 
   defp json(conn, status, body) do
     conn

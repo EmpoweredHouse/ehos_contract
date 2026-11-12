@@ -1,32 +1,9 @@
 defmodule EhOsContract.Auth.Development.Guard do
-  @moduledoc """
-  The plug in front of the development mode's pages and endpoint
-  (`EhOsContract.Auth.Development`): `/dev/sign-in` and the terminal's
-  `EhOsContract.Auth.Development.Credential`.
-
-      # the router, in the `dev_routes` block
-      scope "/dev" do
-        pipe_through [:browser, EhOsContract.Auth.Development.Guard]
-        get "/sign-in", MyAppWeb.DevSignInController, :new
-      end
-
-  It lets a request through only when all of these hold, whatever address the endpoint
-  listens on, and answers 403 otherwise:
-
-    * the mode has started;
-    * the request comes from a loopback address, `127.0.0.0/8` or `::1`: both the socket's
-      peer and `conn.remote_ip`, which a plug that reads `X-Forwarded-For` sets;
-    * its `Host` is `localhost`, `127.0.0.1` or `[::1]`: both the header the browser sent and
-      `conn.host`. This also refuses a page that DNS rebinding points at the computer;
-    * it carries the token the mode printed at start, as the `token` parameter or in the
-      `x-dev-sign-in-token` header; or its Plug session, when fetched, holds the token's hash,
-      which the guard leaves there for the requests after the first.
-
-  It removes each `Access-Control-Allow-*` header from its answers and from the answer of a
-  request it lets through, as they are sent. A CORS plug in the endpoint that answers a
-  preflight `OPTIONS` itself, or adds its headers as the answer is sent, is not covered:
-  keep such a plug off the `/dev` paths.
-  """
+  @moduledoc false
+  # The checks in front of `EhOsContract.Auth.Development.Router` and its endpoint, which its
+  # moduledoc lists for a host: the mode started, a loopback peer and `remote_ip`, a local
+  # `Host` in the header and in `conn.host`, and the printed token or its hash in the session.
+  # Answers 403 otherwise, and strips `Access-Control-Allow-*` from every answer.
 
   @behaviour Plug
 

@@ -11,9 +11,8 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
       curl -H "authorization: Bearer $(mix eh_os_contract.dev.credential ...)" \\
         http://localhost:4000/api/commands/clinic.record_payment
 
-  The application signs it with the key it holds in memory, through
-  `EhOsContract.Auth.Development.Credential`, which the router forwards `/dev/credential`
-  to. The key never leaves the application.
+  The application signs it with the key it holds in memory, at `/dev/credential` of
+  `EhOsContract.Auth.Development.Router`. The key never leaves the application.
 
   Options:
 
