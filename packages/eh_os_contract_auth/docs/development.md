@@ -74,8 +74,10 @@ that asked for a sign-in.
 **Result:** open the address that the terminal shows. After you sign in, the pages behind
 `EhOsContract.Auth.Session` open with the actor of the credential.
 
-A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also opens this page.
+A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also goes to this page:
 `EhOsContract.Auth.SignIn.Router` sends the browser to `/dev/sign-in`, with the same `return_to`.
+The page opens when the browser opened the address with the token after the last start. After a
+restart or a sign-out, the page answers 403: open the address that the terminal shows again.
 
 ## 3. Get a credential for `curl`
 
