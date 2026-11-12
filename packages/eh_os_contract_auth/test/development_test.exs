@@ -328,7 +328,10 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              delete: {303, "/\x7f/evil.example", "/"},
              no_csrf: {403, []},
              bad_body: {400, []},
-             bad_body_without_token: {403, []},
+             nested_body: {400, []},
+             too_large: {413, []},
+             bad_query: {400, []},
+             bad_json: {400, []},
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
@@ -377,18 +380,22 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
              no_csrf = {no_csrf.status, Enum.filter(no_csrf.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end)}
 
-             # A body the parser refuses, which it reads before the guard, with that header too.
-             bad_body = fn session ->
+             # A query string or a body Plug cannot read, with that header too.
+             unreadable = fn method, path, body, content_type, session ->
                conn =
-                 Plug.Test.conn(:post, "/sign-in", "actors[]=%FF")
+                 Plug.Test.conn(method, path, body)
                  |> Map.put(:host, "localhost")
-                 |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+                 |> Plug.Conn.put_req_header("content-type", content_type)
+                 |> Plug.Conn.put_req_header("x-dev-sign-in-token", token)
                  |> Plug.Test.init_test_session(session)
                  |> Plug.Conn.put_resp_header("access-control-allow-origin", "*")
                  |> Router.call(Router.init([]))
 
                {conn.status, Enum.filter(conn.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end)}
              end
+
+             urlencoded = "application/x-www-form-urlencoded"
+             nested = String.duplicate("[a]", 33)
 
              %{
                page: {first.status, first.resp_body},
@@ -398,8 +405,11 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                tab: redirect.("/\t/evil.example"),
                delete: redirect.("/\x7f/evil.example"),
                no_csrf: no_csrf,
-               bad_body: bad_body.(session),
-               bad_body_without_token: bad_body.(%{}),
+               bad_body: unreadable.(:post, "/sign-in", "actors[]=%FF", urlencoded, session),
+               nested_body: unreadable.(:post, "/sign-in", "x" <> nested <> "=1", urlencoded, session),
+               too_large: unreadable.(:post, "/sign-in", "subject=" <> String.duplicate("a", 1_000_001), urlencoded, session),
+               bad_query: unreadable.(:get, "/elsewhere?a=%FF", nil, urlencoded, %{}),
+               bad_json: unreadable.(:post, "/credential", "{", "application/json", %{}),
                no_token: request.(:get, "/sign-in", []).status,
                unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
                unknown_without_token: request.(:get, "/elsewhere", []).status,

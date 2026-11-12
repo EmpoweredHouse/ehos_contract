@@ -42,8 +42,9 @@ defmodule EhOsContract.Auth.Development.Router do
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
   has, and check a CSRF token on the form (`Plug.CSRFProtection`): a form sent without a
-  valid one gets 403. A form body the router cannot read gets 400, or 413 when it is too
-  large, after the token is checked. Mount the router at `/dev`: `EhOsContract.Auth.Session` and
+  valid one gets 403. A request whose query string or body Plug cannot read gets the status
+  of Plug's error, such as 400, or 413 for a body that is too large, without the header.
+  Mount the router at `/dev`: `EhOsContract.Auth.Session` and
   `EhOsContract.Auth.SignIn.Router`'s `GET /sign-in` send a browser to `/dev/sign-in`.
   """
 
@@ -72,6 +73,22 @@ defmodule EhOsContract.Auth.Development.Router do
       {"POST", ["sign-in"]} -> conn |> browser() |> then(&create/1)
       _other -> conn |> fetch_session() |> Guard.call([]) |> not_found()
     end
+  rescue
+    # A query string or a body that Plug cannot read raises before or after the guard, and the
+    # error page an endpoint renders starts from its own conn, which keeps a CORS header the
+    # guard strips. Answered here instead, without the header; any other error is raised.
+    error ->
+      status = Plug.Exception.status(error)
+
+      if status in 400..499 do
+        conn
+        |> register_before_send(&Guard.without_cors/1)
+        |> put_resp_content_type("text/plain")
+        |> send_resp(status, "The request could not be read.")
+        |> halt()
+      else
+        reraise error, __STACKTRACE__
+      end
   end
 
   defp not_found(%Plug.Conn{halted: true} = conn), do: conn
@@ -84,34 +101,13 @@ defmodule EhOsContract.Auth.Development.Router do
       conn
       |> fetch_session()
       |> fetch_query_params()
+      |> Plug.Parsers.call(@form)
       |> put_resp_header("cache-control", "no-store")
       |> put_resp_header("referrer-policy", "no-referrer")
       |> put_resp_header("x-frame-options", "DENY")
-      |> parsed_and_guarded()
+      |> Guard.call([])
 
     if conn.halted, do: conn, else: csrf(conn)
-  end
-
-  # The body is parsed before the guard, which reads the token from the form too. A body the
-  # parser refuses is answered after the guard, not raised, for the same reason as `csrf/1`.
-  defp parsed_and_guarded(conn) do
-    conn |> Plug.Parsers.call(@form) |> Guard.call([])
-  rescue
-    error in [
-      Plug.Parsers.ParseError,
-      Plug.Parsers.BadEncodingError,
-      Plug.Parsers.RequestTooLargeError
-    ] ->
-      case Guard.call(conn, []) do
-        %Plug.Conn{halted: true} = refused ->
-          refused
-
-        guarded ->
-          guarded
-          |> put_resp_content_type("text/plain")
-          |> send_resp(Plug.Exception.status(error), "The form could not be read.")
-          |> halt()
-      end
   end
 
   # Answered from this conn, not raised: the error page an endpoint renders for the exception
