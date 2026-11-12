@@ -291,6 +291,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              no_csrf: :refused,
              no_token: 403,
              unknown: 404,
+             unknown_without_token: 403,
              credential: 200
            } =
              run("""
@@ -339,6 +340,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                no_csrf: no_csrf,
                no_token: request.(:get, "/sign-in", []).status,
                unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
+               unknown_without_token: request.(:get, "/elsewhere", []).status,
                credential: request.(:post, "/credential", headers: [{"x-dev-sign-in-token", token}, {"content-type", "application/json"}], body: nil).status
              }
              """)

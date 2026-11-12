@@ -25,7 +25,8 @@ defmodule EhOsContract.Auth.Development.Router do
   with a `Host` of `localhost`, `127.0.0.1` or `[::1]`, and with the token the mode printed
   at start, as the `token` parameter or the `x-dev-sign-in-token` header. After the first
   request, the browser's session keeps a hash of the token, so the page's links and form
-  need no token. Each other request gets 403, and an unknown path 404. No answer carries
+  need no token. Each other request gets 403. A request that passes gets 404 for a path
+  the router does not know. No answer carries
   an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
   `OPTIONS` itself is not covered: keep such a plug off the `/dev` paths.
 
@@ -57,9 +58,12 @@ defmodule EhOsContract.Auth.Development.Router do
       {_method, ["credential" | rest]} -> Plug.forward(conn, rest, Credential, [])
       {"GET", ["sign-in"]} -> conn |> browser() |> then(&page(&1, 200, nil))
       {"POST", ["sign-in"]} -> conn |> browser() |> then(&create/1)
-      _other -> conn |> send_resp(404, "") |> halt()
+      _other -> conn |> Guard.call([]) |> not_found()
     end
   end
+
+  defp not_found(%Plug.Conn{halted: true} = conn), do: conn
+  defp not_found(conn), do: conn |> send_resp(404, "") |> halt()
 
   # The guard, then the CSRF check: a request without the token gets the guard's 403, not
   # Plug's CSRF error.
