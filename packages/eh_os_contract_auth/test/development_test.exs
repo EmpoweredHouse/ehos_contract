@@ -101,6 +101,44 @@ defmodule EhOsContract.Auth.DevelopmentTest do
            ]
   end
 
+  test "a start without EHOS, where the mode can start, logs a warning about the key set, not an error" do
+    assert Child.run(
+             """
+             {:ok, _} = EhOsContract.Auth.TestRepo.start_link()
+             :ok = Ecto.Adapters.SQL.Sandbox.checkout(EhOsContract.Auth.TestRepo)
+             Ecto.Adapters.SQL.Sandbox.mode(EhOsContract.Auth.TestRepo, {:shared, self()})
+             {:ok, _} = Application.ensure_all_started(:ex_unit)
+             Logger.configure(level: :warning)
+
+             {_, log} =
+               ExUnit.CaptureLog.with_log(fn ->
+                 {:ok, _} = EhOsContract.Auth.Keys.start_link(name: :keys_at_start, url: "http://127.0.0.1:9/jwks")
+                 :sys.get_state(:keys_at_start, 10_000)
+               end)
+
+             {log =~ "[error]", log =~ "refuses every credential but those of the development mode"}
+             """,
+             contracts: true
+           ) == {false, true}
+  end
+
+  test "the sign-in through EHOS sends the browser to /dev/sign-in, with a path of this application" do
+    assert run("""
+           sign_in = fn query ->
+             conn =
+               Plug.Test.conn(:get, "/sign-in" <> query)
+               |> Plug.Test.init_test_session(%{})
+               |> EhOsContract.Auth.SignIn.Router.call(EhOsContract.Auth.SignIn.Router.init([]))
+
+             {conn.status, Plug.Conn.get_resp_header(conn, "location")}
+           end
+
+           {sign_in.("?return_to=/visits/7"), sign_in.("?return_to=//evil.example"), sign_in.("")}
+           """) ==
+             {{302, ["/dev/sign-in?return_to=%2Fvisits%2F7"]},
+              {302, ["/dev/sign-in?return_to=%2F"]}, {302, ["/dev/sign-in?return_to=%2F"]}}
+  end
+
   test "a development session is renewed after its credential expires, through the mode" do
     assert {{false, ["clinic.close_visit"]}, {false, ["clinic.close_visit"]}, renewed?} =
              run("""
@@ -288,7 +326,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              elsewhere: {303, "//evil.example", "/"},
              tab: {303, "/\t/evil.example", "/"},
              delete: {303, "/\x7f/evil.example", "/"},
-             no_csrf: :refused,
+             no_csrf: {403, []},
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
@@ -326,13 +364,16 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                {conn.status, return_to, conn |> Plug.Conn.get_resp_header("location") |> hd()}
              end
 
+             # A CORS header an endpoint's plug put on the conn before the router.
              no_csrf =
-               try do
-                 post.([{"actors[]", "clinic.manager"}], session)
-                 :passed
-               rescue
-                 Plug.CSRFProtection.InvalidCSRFTokenError -> :refused
-               end
+               Plug.Test.conn(:post, "/sign-in", form.([{"actors[]", "clinic.manager"}]))
+               |> Map.put(:host, "localhost")
+               |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+               |> Plug.Test.init_test_session(session)
+               |> Plug.Conn.put_resp_header("access-control-allow-origin", "*")
+               |> Router.call(Router.init([]))
+
+             no_csrf = {no_csrf.status, Enum.filter(no_csrf.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end)}
 
              %{
                page: {first.status, first.resp_body},

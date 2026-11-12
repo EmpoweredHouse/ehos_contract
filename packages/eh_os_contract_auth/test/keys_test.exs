@@ -465,6 +465,21 @@ defmodule EhOsContract.Auth.KeysTest do
     assert {:ok, _} = Auth.verify(credential(pair), keys: keys)
   end
 
+  # The warning where the mode can start: `EhOsContract.Auth.DevelopmentTest`.
+  test "a first start without EHOS logs an error, the development switch on where the mode cannot start" do
+    {_keys, without} = with_log(fn -> start_keys(ehos(:down)) end)
+    assert without =~ "[error]"
+    assert without =~ "refuses every credential with :no_keys"
+
+    Application.put_env(:eh_os_contract_auth, :development, true)
+    on_exit(fn -> Application.delete_env(:eh_os_contract_auth, :development) end)
+
+    # `mix test` runs in `:test`, which the mode refuses.
+    {_keys, switched_on} = with_log(fn -> start_keys(ehos(:down)) end)
+    assert switched_on =~ "[error]"
+    assert switched_on =~ "refuses every credential with :no_keys"
+  end
+
   test "ready? says whether any key is held, for the host's health check" do
     refute Auth.ready?(keys: :not_started)
 

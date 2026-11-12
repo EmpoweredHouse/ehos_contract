@@ -24,6 +24,10 @@ defmodule EhOsContract.Auth.SignIn.Router do
   token planted before sign-in names nothing after it. `return_to` is followed only
   as a path of this application: anything else returns to `/`.
 
+  **In the development mode.** Where `EhOsContract.Auth.Development` runs under `sign_in:`,
+  `GET /sign-in` sends the browser to `/dev/sign-in`, with the same `return_to`: there is
+  no EHOS to sign in at.
+
   **When it cannot.** `GET /sign-in` answers 503 while EHOS's document and keys are
   not held, or do not say what signing in needs (`EhOsContract.Auth.SignIn.provider/1`).
   A callback that does not sign anyone in answers 401, and is logged with its
@@ -45,7 +49,7 @@ defmodule EhOsContract.Auth.SignIn.Router do
 
   require Logger
 
-  alias EhOsContract.Auth.{ReturnTo, Session}
+  alias EhOsContract.Auth.{Development, ReturnTo, Session}
   alias EhOsContract.Auth.SignIn
   alias EhOsContract.Auth.SignIn.{ClientStore, Renewal, Sessions}
   alias Oidcc.Plug.{AuthorizationCallback, Authorize}
@@ -75,13 +79,23 @@ defmodule EhOsContract.Auth.SignIn.Router do
   defp sign_in(conn, name) do
     conn = conn |> fetch_session() |> fetch_query_params()
 
+    # Where the development mode runs, there is no EHOS to go to: its page signs people in.
+    case Development.sign_in_path(name) do
+      nil -> sign_in_through_ehos(conn, name)
+      path -> redirect(conn, path <> "?" <> URI.encode_query(%{"return_to" => return_to(conn)}))
+    end
+  end
+
+  defp return_to(conn), do: ReturnTo.local_path(conn.params["return_to"])
+
+  defp sign_in_through_ehos(conn, name) do
     case SignIn.provider(name) do
       {:ok, _configuration} ->
         config = SignIn.config(name)
         # `oidcc_plug` relays the request's `state` parameter to the callback.
         conn = %{
           conn
-          | params: Map.put(conn.params, "state", ReturnTo.local_path(conn.params["return_to"]))
+          | params: Map.put(conn.params, "state", return_to(conn))
         }
 
         # EHOS's limit may be longer than this application's. `max_age` makes EHOS

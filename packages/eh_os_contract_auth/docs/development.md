@@ -16,7 +16,8 @@ production.
 
 - You did the steps of [Get started](getting-started.md). In development, `issuer` and `audience`
   are set, and `EhOsContract.Auth` is in the supervision tree after the repo.
-- In development, `issuer` is an address that does not answer, such as `https://ehos.test`.
+- In development, `issuer` is the address of a local EHOS, such as `https://ehos.localhost`. The
+  mode works when no EHOS answers at that address.
 - The pages use `EhOsContract.Auth.Session`: [Sign people in through EHOS](sign-in.md).
 
 ## 1. Turn the mode on in development
@@ -59,9 +60,10 @@ end
 ```
 
 Put the line after the other `/dev` routes of the block. The router answers each path under
-`/dev` that reaches it, so a route after the line, such as the dashboard, answers 404. Put the
-line outside each pipeline: the router fetches the session, checks the token and the
-CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
+`/dev` that reaches it, so a route after the line, such as the dashboard, does not open. Without
+the token, that route answers 403, as each request that the router refuses. With the token, it
+answers 404. Put the line outside each pipeline: the router fetches the session, checks the token
+and the CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
 `EhOsContract.Auth.Session` sends the browser to `/dev/sign-in`.
 
 The page `/dev/sign-in` lists the actors that the contracts grant capabilities to, and a field for
@@ -71,6 +73,11 @@ that asked for a sign-in.
 
 **Result:** open the address that the terminal shows. After you sign in, the pages behind
 `EhOsContract.Auth.Session` open with the actor of the credential.
+
+A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also goes to this page:
+`EhOsContract.Auth.SignIn.Router` sends the browser to `/dev/sign-in`, with the same `return_to`.
+The page opens when the browser opened the address with the token after the last start. After a
+restart or a sign-out, the page answers 403: open the address that the terminal shows again.
 
 ## 3. Get a credential for `curl`
 
@@ -114,6 +121,8 @@ answers 403 for each other request.
 - The request has the token, as the `token` parameter or in the `x-dev-sign-in-token` header. After
   the first request, the session of the browser keeps a hash of the token.
 
+The form of the page also needs its CSRF token. A form without a valid CSRF token gets 403.
+
 The router removes each `Access-Control-Allow-` header from the answers of the page and of the
 endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
 `OPTIONS` itself, or that adds its headers when the answer is sent. Keep such a plug off the
@@ -132,6 +141,17 @@ the child raises, and the application does not start, in each of these cases:
 
 The message names each case that applies. Remove the line from each file but `config/dev.exs`, and
 start the application with `mix phx.server` or `iex -S mix`.
+
+**The application logs a warning about the key set at start.** Without a local EHOS, the
+application cannot get the key set from the `issuer`, and logs this:
+
+```text
+[warning] eh_os_contract_auth could not fetch the key set from https://ehos.localhost/.well-known/jwks.json (…); 0 keys stay in force
+[warning] eh_os_contract_auth has never seen a key set from https://ehos.localhost/.well-known/jwks.json; until a fetch succeeds, it refuses every credential but those of the development mode, once EhOsContract.Auth.Development has started
+```
+
+This is correct. The mode signs its credentials with its own key, and the application trusts that
+key. Each five minutes, the application tries again, and logs the first line again.
 
 **The mode does not trust another key.** `EhOsContract.Auth.Keys.pin/2` admits only the key of the
 mode, after the mode starts. `pin_keys: true` does not start the mode. The mode does not let the

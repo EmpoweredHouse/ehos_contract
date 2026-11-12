@@ -41,8 +41,9 @@ defmodule EhOsContract.Auth.Development.Router do
   plug off the `/dev` paths.
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
-  has, and check a CSRF token on the form (`Plug.CSRFProtection`). Mount the router at
-  `/dev`: `EhOsContract.Auth.Session` sends a browser to `/dev/sign-in`.
+  has, and check a CSRF token on the form (`Plug.CSRFProtection`): a form sent without a
+  valid one gets 403. Mount the router at `/dev`: `EhOsContract.Auth.Session` and
+  `EhOsContract.Auth.SignIn.Router`'s `GET /sign-in` send a browser to `/dev/sign-in`.
   """
 
   @behaviour Plug
@@ -88,7 +89,19 @@ defmodule EhOsContract.Auth.Development.Router do
       |> put_resp_header("x-frame-options", "DENY")
       |> Guard.call([])
 
-    if conn.halted, do: conn, else: Plug.CSRFProtection.call(conn, @csrf)
+    if conn.halted, do: conn, else: csrf(conn)
+  end
+
+  # Answered from this conn, not raised: the error page an endpoint renders for the exception
+  # starts from the conn before the guard, so it would keep a CORS header the guard strips.
+  defp csrf(conn) do
+    Plug.CSRFProtection.call(conn, @csrf)
+  rescue
+    Plug.CSRFProtection.InvalidCSRFTokenError ->
+      conn
+      |> put_resp_content_type("text/plain")
+      |> send_resp(403, "The form has no valid CSRF token. Open /dev/sign-in again.")
+      |> halt()
   end
 
   defp page(%Plug.Conn{halted: true} = conn, _status, _error), do: conn
