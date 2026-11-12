@@ -89,7 +89,19 @@ defmodule EhOsContract.Auth.Development.Router do
       |> put_resp_header("x-frame-options", "DENY")
       |> Guard.call([])
 
-    if conn.halted, do: conn, else: Plug.CSRFProtection.call(conn, @csrf)
+    if conn.halted, do: conn, else: csrf(conn)
+  end
+
+  # Answered from this conn, not raised: the error page an endpoint renders for the exception
+  # starts from the conn before the guard, so it would keep a CORS header the guard strips.
+  defp csrf(conn) do
+    Plug.CSRFProtection.call(conn, @csrf)
+  rescue
+    Plug.CSRFProtection.InvalidCSRFTokenError ->
+      conn
+      |> put_resp_content_type("text/plain")
+      |> send_resp(403, "The form has no valid CSRF token. Open /dev/sign-in again.")
+      |> halt()
   end
 
   defp page(%Plug.Conn{halted: true} = conn, _status, _error), do: conn

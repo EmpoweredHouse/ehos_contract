@@ -305,7 +305,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              elsewhere: {303, "//evil.example", "/"},
              tab: {303, "/\t/evil.example", "/"},
              delete: {303, "/\x7f/evil.example", "/"},
-             no_csrf: :refused,
+             no_csrf: {403, []},
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
@@ -343,13 +343,16 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                {conn.status, return_to, conn |> Plug.Conn.get_resp_header("location") |> hd()}
              end
 
+             # A CORS header an endpoint's plug put on the conn before the router.
              no_csrf =
-               try do
-                 post.([{"actors[]", "clinic.manager"}], session)
-                 :passed
-               rescue
-                 Plug.CSRFProtection.InvalidCSRFTokenError -> :refused
-               end
+               Plug.Test.conn(:post, "/sign-in", form.([{"actors[]", "clinic.manager"}]))
+               |> Map.put(:host, "localhost")
+               |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+               |> Plug.Test.init_test_session(session)
+               |> Plug.Conn.put_resp_header("access-control-allow-origin", "*")
+               |> Router.call(Router.init([]))
+
+             no_csrf = {no_csrf.status, Enum.filter(no_csrf.resp_headers, fn {name, _} -> String.starts_with?(name, "access-control-") end)}
 
              %{
                page: {first.status, first.resp_body},

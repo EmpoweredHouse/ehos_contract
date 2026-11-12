@@ -119,6 +119,8 @@ answers 403 for each other request.
 - The request has the token, as the `token` parameter or in the `x-dev-sign-in-token` header. After
   the first request, the session of the browser keeps a hash of the token.
 
+The form of the page also needs its CSRF token. A form without a valid CSRF token gets 403.
+
 The router removes each `Access-Control-Allow-` header from the answers of the page and of the
 endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
 `OPTIONS` itself, or that adds its headers when the answer is sent. Keep such a plug off the
