@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-12
+
 ### Fixed
 
 - **In the development mode, `GET /auth/ehos/sign-in` sends the browser to `/dev/sign-in`** (#628).
