@@ -119,7 +119,8 @@ defmodule EhOsContract.Auth.Keys do
 
   `:plug` answers in place of the network, as `Req.Test` does, and is taken only
   with `config :eh_os_contract_auth, pin_keys: true` where Mix's environment is `:test`,
-  as in `mix test`: whatever it answers is trusted as EHOS's keys.
+  as in `mix test`, and outside a release and a container EHOS started: whatever it
+  answers is trusted as EHOS's keys.
 
   However long each part takes, a fetch not finished in five seconds is abandoned as a
   failed one.
@@ -128,7 +129,8 @@ defmodule EhOsContract.Auth.Keys do
   allowed for `localhost`, `127.0.0.1` and `::1` only) or not an address every parser
   reads as written (a lowercase host, no user, query or fragment), on an interval
   shorter than five seconds, on `:plug` without that trust, and on `pin_keys: true`
-  where Mix's environment is not `:test`.
+  where Mix's environment is not `:test`, in a release (`RELEASE_NAME` or `RELEASE_ROOT`
+  set) and in a container EHOS started (`EHOS_ISSUER` or `EHOS_AUDIENCE` set).
   """
   @spec start_link([option()]) :: GenServer.on_start()
   def start_link(opts) do
@@ -217,9 +219,10 @@ defmodule EhOsContract.Auth.Keys do
       # config/test.exs
       config :eh_os_contract_auth, pin_keys: true
 
-  It raises without the line, and when Mix's environment is not `:test`, as in
-  `mix test`. The environment is read when `pin/2` is called, and a release built
-  without the `:mix` application has none, so `pin/2` trusts no key there.
+  It raises without the line, when Mix's environment is not `:test`, as in `mix test`,
+  and in a release or a container EHOS started (`RELEASE_NAME`, `RELEASE_ROOT`,
+  `EHOS_ISSUER` or `EHOS_AUDIENCE` set), whatever Mix's environment is there. These are
+  read when `pin/2` is called.
 
   Outside a test it admits one key: the development mode's own, pinned by the mode once
   it has started. The process trusts one development key at a time: the key of a mode
@@ -325,12 +328,13 @@ defmodule EhOsContract.Auth.Keys do
   @doc false
   # Whether keys and answers EHOS did not give may be trusted here: a pinned key, a plug
   # in place of the network, a stand-in of `EhOsContract.Auth.Testing`. It takes
-  # `pin_keys: true` and Mix's environment `:test` (#591). The environment is read when
-  # asked, not at compile time: a dependency compiles in `:prod` whatever the host's
-  # environment is. A release built without the `:mix` application has none, so it never
-  # trusts them.
+  # `pin_keys: true` and Mix's environment `:test` (#591), outside a release and a container
+  # EHOS started (#620). The environment is read when asked, not at compile time: a
+  # dependency compiles in `:prod` whatever the host's environment is. A release built
+  # without the `:mix` application has none; one that carries Mix, with `MIX_ENV=test`, is
+  # refused by its own variables.
   @spec test_trust?() :: boolean()
-  def test_trust?, do: pin_keys?() and mix_env() == :test
+  def test_trust?, do: pin_keys?() and pin_keys_refusal() == []
 
   @doc false
   # Called by the check of each child that takes `plug:`: `EhOsContract.Auth`'s,
@@ -341,15 +345,16 @@ defmodule EhOsContract.Auth.Keys do
   def check_trust!(opts, child, trusted_as) do
     # `pin_keys` read once, so the two checks below agree on it.
     pin_keys? = pin_keys?()
-    env = if pin_keys?, do: mix_env()
-    trusted? = pin_keys? and env == :test
+    reasons = if pin_keys?, do: pin_keys_refusal(), else: []
+    trusted? = pin_keys? and reasons == []
 
     if pin_keys? and not trusted? do
       raise ArgumentError,
-            "config :eh_os_contract_auth, pin_keys: true is set where no test runs: Mix's " <>
-              "environment is #{env_shown(env)}, not :test. The line lets code trust keys and " <>
-              "answers EHOS did not give. Put it in config/test.exs alone, and remove it from " <>
-              "config/config.exs, config/<environment>.exs and config/runtime.exs"
+            "config :eh_os_contract_auth, pin_keys: true is set where no test runs: " <>
+              Enum.join(reasons, "; ") <>
+              ". The line lets code trust keys and answers EHOS did not give. Put it in " <>
+              "config/test.exs alone, and remove it from config/config.exs, " <>
+              "config/<environment>.exs and config/runtime.exs"
     end
 
     if Keyword.has_key?(opts, :plug) and not trusted? do
@@ -369,13 +374,26 @@ defmodule EhOsContract.Auth.Keys do
     unless test_trust?() do
       raise ArgumentError,
             "#{what}: for tests only. It needs config :eh_os_contract_auth, pin_keys: true " <>
-              "in config/test.exs, and Mix's environment :test, as in mix test"
+              "in config/test.exs, and Mix's environment :test, as in mix test, outside a " <>
+              "release and a container EHOS started"
     end
 
     :ok
   end
 
   defp pin_keys?, do: Application.get_env(:eh_os_contract_auth, :pin_keys, false) == true
+
+  # Why `pin_keys: true` gives no trust here, in words: empty where a test runs. Mix's
+  # environment alone is not the guard: a release can carry Mix, with `MIX_ENV=test`.
+  defp pin_keys_refusal do
+    mix =
+      case mix_env() do
+        :test -> []
+        env -> ["Mix's environment is #{env_shown(env)}, not :test"]
+      end
+
+    mix ++ EhOsContract.Auth.Development.deployment_refusal()
+  end
 
   # Mix's code can be on the path without the application started, as in `elixir` or
   # `iex` without `-S mix`, or a release that loads `:mix` alone: `Mix.env/0` raises there.

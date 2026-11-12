@@ -41,7 +41,8 @@ defmodule EhOsContract.Auth.Testing do
   and pinned in the running `EhOsContract.Auth.Keys` (`EhOsContract.Auth.Keys.pin/2`):
   trusted like EHOS's, kept through refreshes, never written to the table. Pinning
   needs `config :eh_os_contract_auth, pin_keys: true` in `config/test.exs` and Mix's
-  environment `:test`, as in `mix test`, and raises without them. No running EHOS is needed. The key process still makes its first fetch of the
+  environment `:test`, as in `mix test`, outside a release and a container EHOS started,
+  and raises without them. No running EHOS is needed. The key process still makes its first fetch of the
   keys, and the first credential waits for it; a `plug:` on the `EhOsContract.Auth` child
   answers it without the network. The claims are EHOS's — the configured `iss` and `aud`,
   ten minutes of life from `EhOsContract.Clock.now/0`.

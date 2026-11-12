@@ -144,7 +144,7 @@ defmodule EhOsContract.Auth.Development do
   # configuration that EHOS's credentials are configured under.
   @spec refusal() :: :ok | {:error, [String.t()]}
   def refusal do
-    case mix_refusal() ++ release_refusal() ++ ehos_refusal() do
+    case mix_refusal() ++ deployment_refusal() ++ ehos_config_refusal() do
       [] -> :ok
       reasons -> {:error, reasons}
     end
@@ -166,26 +166,33 @@ defmodule EhOsContract.Auth.Development do
     end
   end
 
-  defp release_refusal do
-    for variable <- ~w(RELEASE_NAME RELEASE_ROOT), System.get_env(variable) != nil do
-      "#{variable} is set, as it is in a release"
-    end
-  end
+  @doc false
+  # Each sign that EHOS could run the application here, in words: a release, or a container
+  # EHOS started. Read from the process's environment directly; nothing a host configures
+  # reaches it. The development mode is refused on it, and so is the trust `pin_keys: true`
+  # gives a test (`EhOsContract.Auth.Keys.test_trust?/0`, #620), whatever Mix's environment is.
+  @spec deployment_refusal() :: [String.t()]
+  def deployment_refusal do
+    release =
+      for variable <- ~w(RELEASE_NAME RELEASE_ROOT), System.get_env(variable) != nil do
+        "#{variable} is set, as it is in a release"
+      end
 
-  defp ehos_refusal do
-    variables =
+    ehos =
       for variable <- ~w(EHOS_ISSUER EHOS_AUDIENCE), System.get_env(variable) != nil do
         "#{variable} is set, as EHOS sets it in every container it starts"
       end
 
-    keys =
-      for key <- [:sign_in, :workload, :people],
-          Application.get_env(:eh_os_contract_auth, key) != nil do
-        "config :eh_os_contract_auth, #{key}: is configured, as it is where EHOS runs the " <>
-          "application"
-      end
+    release ++ ehos
+  end
 
-    variables ++ keys
+  # Not part of `deployment_refusal/0`: a test configures these keys to test what reads them.
+  defp ehos_config_refusal do
+    for key <- [:sign_in, :workload, :people],
+        Application.get_env(:eh_os_contract_auth, key) != nil do
+      "config :eh_os_contract_auth, #{key}: is configured, as it is where EHOS runs the " <>
+        "application"
+    end
   end
 
   defp refuse! do

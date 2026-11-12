@@ -48,6 +48,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `pin_keys` does not start the mode. Without the switch, the child starts
   nothing. `docs/development.md` says how to set it up.
 
+### Security
+
+- **`pin_keys: true` is refused in a release and in a container EHOS started, whatever Mix's
+  environment is** (#620). Before, the package checked only the line and Mix's environment `:test`:
+  a release that carries Mix, with `MIX_ENV=test` and the line in its configuration, trusted keys
+  and answers that EHOS did not give. Now `EhOsContract.Auth`, `EhOsContract.Auth.SignIn` and
+  `EhOsContract.Auth.Workload` refuse to start with the line, and `EhOsContract.Auth.Keys.pin/2` and
+  the `EhOsContract.Auth.Testing` stand-ins raise, where `RELEASE_NAME`, `RELEASE_ROOT`,
+  `EHOS_ISSUER` or `EHOS_AUDIENCE` is set. `mix test` sets none of them, so a test suite with the
+  line in `config/test.exs` works as before. A `sign_in:`, `workload:` or `people:` configured in a
+  test does not refuse the line.
+
 ## [0.12.0] - 2026-11-05
 
 ### Changed

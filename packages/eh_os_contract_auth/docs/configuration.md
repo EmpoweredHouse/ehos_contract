@@ -77,7 +77,7 @@ children = [MyApp.Repo, EhOsContract, {EhOsContract.Auth, cacertfile: "/etc/ehos
 | `repo:` | `config :eh_os_contract, :repo` | the repo of the key table |
 | `refresh_every:` | 5 minutes | the time between two fetches, in milliseconds, 5000 or more |
 | `refetch_at_most_every:` | 30 seconds | the shortest time between two early fetches, in milliseconds, 5000 or more |
-| `plug:` | — | a plug that answers in place of EHOS, for a test. The child takes it only with `pin_keys: true`, where the environment of Mix is `:test`. |
+| `plug:` | — | a plug that answers in place of EHOS, for a test. The child takes it only with `pin_keys: true`, where the environment of Mix is `:test`, outside a release and a container that EHOS started. |
 | `clock:` | the monotonic clock | a function that gives the time, in milliseconds, for the limit of the early fetch, for a test |
 
 The child takes no other option. The package then cannot weaken the fetch of the keys:
@@ -122,7 +122,9 @@ not start, and the message tells what to fix, in these cases:
 - the child gets `url:`. The address of the keys comes only from the configuration;
 - `refresh_every:` or `refetch_at_most_every:` is less than 5000;
 - `pin_keys: true` is set, and the environment of Mix is not `:test`;
-- the child gets `plug:` without `pin_keys: true`, or where the environment of Mix is not `:test`;
+- `pin_keys: true` is set in a release or in a container that EHOS started: `RELEASE_NAME`,
+  `RELEASE_ROOT`, `EHOS_ISSUER` or `EHOS_AUDIENCE` is set;
+- the child gets `plug:` without `pin_keys: true`, or where the line is refused;
 - the domain of a contract is not loaded, so the package cannot compare its name.
 
 If EHOS does not answer, the application starts with the keys in its table. [Where do the keys come
