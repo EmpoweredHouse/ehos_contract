@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-12
+
 ### Added
 
 - **A development mode signs a person in on a developer's computer, where no EHOS runs** (#619).
