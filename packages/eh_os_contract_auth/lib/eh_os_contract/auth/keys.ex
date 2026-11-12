@@ -455,13 +455,16 @@ defmodule EhOsContract.Auth.Keys do
   end
 
   # The development mode starts after this process and pins its key once this check has run,
-  # so its switch, not the table, says whether a credential will be let in: a mode that is
-  # switched on and refused fails the boot after this line.
+  # so the table cannot say whether it will. Its switch and its refusal can: where both let it
+  # start, the warning says what the mode's child, if listed, brings. A release or a container
+  # EHOS started always gets the error.
   defp log_no_keys(state) do
-    if Application.get_env(:eh_os_contract_auth, :development) == true do
+    if Application.get_env(:eh_os_contract_auth, :development) == true and
+         EhOsContract.Auth.Development.refusal() == :ok do
       Logger.warning(
         "eh_os_contract_auth has never seen a key set from #{state.url}; until a fetch " <>
-          "succeeds, it lets in only the credentials of the development mode"
+          "succeeds, it refuses every credential but those of the development mode, once " <>
+          "EhOsContract.Auth.Development has started"
       )
     else
       Logger.error(

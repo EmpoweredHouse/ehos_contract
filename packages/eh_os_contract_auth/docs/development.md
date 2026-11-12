@@ -145,7 +145,7 @@ application cannot get the key set from the `issuer`, and logs this:
 
 ```text
 [warning] eh_os_contract_auth could not fetch the key set from https://ehos.localhost/.well-known/jwks.json (…); 0 keys stay in force
-[warning] eh_os_contract_auth has never seen a key set from https://ehos.localhost/.well-known/jwks.json; until a fetch succeeds, it lets in only the credentials of the development mode
+[warning] eh_os_contract_auth has never seen a key set from https://ehos.localhost/.well-known/jwks.json; until a fetch succeeds, it refuses every credential but those of the development mode, once EhOsContract.Auth.Development has started
 ```
 
 This is correct. The mode signs its credentials with its own key, and the application trusts that
