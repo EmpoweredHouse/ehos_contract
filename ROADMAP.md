@@ -8,12 +8,12 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## Where things stand (12 November 2026)
 
-- **Released:** v0.14.1, with `eh_os_contract_auth` 0.13.0 (a development mode that signs a person in on a
-  developer's computer, where no EHOS runs, with a key it makes at start and the page `/dev/sign-in` that
-  `EhOsContract.Auth.Development.Router` serves) and the engine 0.14.1, which changes nothing; the dashboard
-  stays at 0.9.0 and the graph renderer at 0.9.1, from v0.14.0. The plugin's skills are at 0.14.3.
-  Applications install them from git. The pull request after the tag moves each released package to its next
-  patch's `-dev`.
+- **Released:** v0.14.2, with `eh_os_contract_auth` 0.13.1 (in the development mode, "Sign in" opens
+  `/dev/sign-in` and a start without a local EHOS logs no false key error; a form of `/dev/sign-in` without
+  its CSRF token gets 403; `pin_keys: true` is refused in a release and in a container EHOS started) and the
+  engine 0.14.2, which changes nothing; the dashboard stays at 0.9.0 and the graph renderer at 0.9.1, from
+  v0.14.0. The plugin's skills are at 0.14.3. Applications install them from git. The pull request after the
+  tag moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**

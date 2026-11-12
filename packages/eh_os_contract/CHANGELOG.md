@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-12
+
+### Changed
+
+- Released with eh_os_contract_auth 0.13.1, which fixes the development mode's sign-in link and
+  refuses `pin_keys: true` in a release (#620, #623, #628); nothing in the engine changed.
+
 ## [0.14.1] - 2026-11-12
 
 ### Changed
