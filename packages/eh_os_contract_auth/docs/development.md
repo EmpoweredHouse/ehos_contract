@@ -49,11 +49,18 @@ To print the full address, give the child the address of the application:
 ```elixir
 # the router: Phoenix compiles the `dev_routes` block only in development
 if Application.compile_env(:my_app, :dev_routes) do
+  scope "/dev" do
+    pipe_through :browser
+    live_dashboard "/dashboard", metrics: MyAppWeb.Telemetry
+  end
+
   forward "/dev", EhOsContract.Auth.Development.Router
 end
 ```
 
-Put the line outside each pipeline: the router fetches the session, checks the token and the
+Put the line after the other `/dev` routes of the block. The router answers each path under
+`/dev` that reaches it, so a route after the line, such as the dashboard, answers 404. Put the
+line outside each pipeline: the router fetches the session, checks the token and the
 CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
 `EhOsContract.Auth.Session` sends the browser to `/dev/sign-in`.
 
@@ -109,7 +116,8 @@ answers 403 for each other request.
 
 The router removes each `Access-Control-Allow-` header from the answers of the page and of the
 endpoint. It cannot remove the headers of a CORS plug in the endpoint that answers a preflight
-`OPTIONS` itself. Keep such a plug off the `/dev` paths.
+`OPTIONS` itself, or that adds its headers when the answer is sent. Keep such a plug off the
+`/dev` paths.
 
 ## What can go wrong
 

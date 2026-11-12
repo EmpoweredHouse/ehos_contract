@@ -292,6 +292,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              no_token: 403,
              unknown: 404,
              unknown_without_token: 403,
+             after_sign_in: 200,
              credential: 200
            } =
              run("""
@@ -315,7 +316,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              visit = page.(Plug.Conn.get_session(signed, Session.session_key()))
              actor = visit.assigns.eh_os_contract_actor
 
-             missing = post.([{"_csrf_token", csrf}, {"actors[]", "clinic.receptionist"}], session)
+             missing = post.([{"_csrf_token", csrf}, {"subject", "u-dev"}, {"actors[]", "clinic.receptionist"}, {"scopes[other]", "kept"}], session)
 
              redirect = fn return_to ->
                conn = post.([{"_csrf_token", csrf}, {"actors[]", "clinic.manager"}, {"return_to", return_to}], session)
@@ -341,6 +342,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                no_token: request.(:get, "/sign-in", []).status,
                unknown: request.(:get, "/elsewhere?token=" <> token, []).status,
                unknown_without_token: request.(:get, "/elsewhere", []).status,
+               after_sign_in: request.(:get, "/sign-in", session: Plug.Conn.get_session(signed)).status,
                credential: request.(:post, "/credential", headers: [{"x-dev-sign-in-token", token}, {"content-type", "application/json"}], body: nil).status
              }
              """)
@@ -349,5 +351,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
     assert page =~ ~s(name="scopes[clinic_id]")
     assert page =~ ~s(name="return_to" value="/visits")
     assert missing =~ "the chosen actors need a value for clinic_id"
+    # The form comes back as the developer filled it in.
+    assert missing =~ ~s(value="clinic.receptionist" checked)
+    assert missing =~ ~s(name="subject" placeholder="dev" value="u-dev")
   end
 end

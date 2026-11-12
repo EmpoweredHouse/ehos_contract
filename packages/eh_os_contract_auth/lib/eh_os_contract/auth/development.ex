@@ -18,7 +18,7 @@ defmodule EhOsContract.Auth.Development do
       # the supervision tree, after EhOsContract.Auth, in every environment
       children = [MyApp.Repo, EhOsContract, EhOsContract.Auth, EhOsContract.Auth.Development]
 
-      # the router, in the `dev_routes` block, outside any pipeline
+      # the router, in the `dev_routes` block, outside any pipeline, after its other /dev routes
       forward "/dev", EhOsContract.Auth.Development.Router
 
   Without the switch, the child starts nothing (`start_link/1` answers `:ignore`), so the

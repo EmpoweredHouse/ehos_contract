@@ -3,10 +3,19 @@ defmodule EhOsContract.Auth.Development.Router do
   The pages and the endpoint of the development mode (`EhOsContract.Auth.Development`),
   for the application's router, at `/dev`:
 
-      # the router, in the `dev_routes` block, outside any pipeline
+      # the router, in the `dev_routes` block, outside any pipeline, after the block's
+      # other `/dev` routes
       if Application.compile_env(:my_app, :dev_routes) do
+        scope "/dev" do
+          pipe_through :browser
+          live_dashboard "/dashboard", metrics: MyAppWeb.Telemetry
+        end
+
         forward "/dev", EhOsContract.Auth.Development.Router
       end
+
+  The router answers each path under `/dev` that reaches it, so Phoenix must match the
+  block's other `/dev` routes, the dashboard and the mailbox preview among them, first.
 
   It answers:
 
@@ -28,7 +37,8 @@ defmodule EhOsContract.Auth.Development.Router do
   need no token. Each other request gets 403. A request that passes gets 404 for a path
   the router does not know. No answer carries
   an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
-  `OPTIONS` itself is not covered: keep such a plug off the `/dev` paths.
+  `OPTIONS` itself, or adds its headers as the answer is sent, is not covered: keep such a
+  plug off the `/dev` paths.
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
   has, and check a CSRF token on the form (`Plug.CSRFProtection`). Mount the router at

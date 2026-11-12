@@ -40,9 +40,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   actors and scope values, and the endpoint `/dev/credential`, from which `mix
   eh_os_contract.dev.credential` gets a credential, with the token in `EH_OS_CONTRACT_DEV_TOKEN`.
   The router answers only a request from a loopback address, with a `Host` of `localhost`,
-  `127.0.0.1` or `[::1]`, and the token the mode prints at start. `EhOsContract.Auth.Keys.pin/2` admits the mode's own key
-  outside a test, and no other, and trusts one such key at a time, so a restart of the mode leaves
-  the old key untrusted; `pin_keys` does not start the mode. Without the switch, the child starts
+  `127.0.0.1` or `[::1]`, and the token the mode prints at start; mount it after the block's other
+  `/dev` routes. `EhOsContract.Auth.Keys.pin/2` admits the mode's own key outside a test, and no
+  other, and trusts one such key at a time, so a restart of the mode leaves the old key untrusted;
+  `pin_keys` does not start the mode. Without the switch, the child starts
   nothing. `docs/development.md` says how to set it up.
 
 ## [0.12.0] - 2026-11-05
