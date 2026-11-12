@@ -59,9 +59,10 @@ end
 ```
 
 Put the line after the other `/dev` routes of the block. The router answers each path under
-`/dev` that reaches it, so a route after the line, such as the dashboard, answers 404. Put the
-line outside each pipeline: the router fetches the session, checks the token and the
-CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
+`/dev` that reaches it, so a route after the line, such as the dashboard, does not open. Without
+the token, that route answers 403, as each request that the router refuses. With the token, it
+answers 404. Put the line outside each pipeline: the router fetches the session, checks the token
+and the CSRF token of its form, and parses the body itself. Mount it at `/dev`, because
 `EhOsContract.Auth.Session` sends the browser to `/dev/sign-in`.
 
 The page `/dev/sign-in` lists the actors that the contracts grant capabilities to, and a field for
