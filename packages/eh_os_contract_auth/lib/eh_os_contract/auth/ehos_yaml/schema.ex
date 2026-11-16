@@ -7,8 +7,9 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # company's people) on 8 October, `ehos.yaml/v4` (a seed and secrets) on 17 October,
   # `ehos.yaml/v5` (the hosts outside the installation it reaches) on 22 October, before EHOS
   # released it, `ehos.yaml/v6` (mail sent through EHOS) on 24 October, as EHOS 0.20.0
-  # releases it, and `ehos.yaml/v7` (the CPU and memory a workload asks for) on 27 October 2026,
-  # as EHOS 0.21.0 released it. A test pins each SHA-256;
+  # releases it, `ehos.yaml/v7` (the CPU and memory a workload asks for) on 27 October, as EHOS
+  # 0.21.0 released it, and `ehos.yaml/v8` (an application or a utility service, and the services
+  # an application calls) on 16 November 2026, before EHOS released it. A test pins each SHA-256;
   # EHOS freezes a version once released, and until then the copy is refreshed on purpose, never
   # edited.
   #
@@ -24,7 +25,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     "ehos.yaml/v4" => "v4.json",
     "ehos.yaml/v5" => "v5.json",
     "ehos.yaml/v6" => "v6.json",
-    "ehos.yaml/v7" => "v7.json"
+    "ehos.yaml/v7" => "v7.json",
+    "ehos.yaml/v8" => "v8.json"
   }
   @dir Path.expand("../../../../priv/schemas/ehos.yaml", __DIR__)
 
@@ -42,6 +44,27 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
 
   # What failed inside a value is reported there; these report it again at every value around it.
   @enclosing [:properties, :items, :additionalProperties, :"$ref", :allOf]
+
+  # From v8, what a utility service may not give, said as EHOS says it, keyed by where the schema's
+  # `then` refuses it.
+  @not_for_a_service %{
+    "#/then" =>
+      "is required for a utility service, which has no contract to take its name from: " <>
+        "name the service here",
+    "#/then/properties/needs/properties/database" =>
+      "is not for a utility service, which keeps no data of its own: remove it",
+    "#/then/properties/needs/properties/people" =>
+      "is not for a utility service, which does not read the people directory: remove it",
+    "#/then/properties/needs/properties/mail" =>
+      "is not for a utility service, which sends no mail through EHOS: remove it",
+    "#/then/properties/needs/properties/services" =>
+      "is not for a utility service, which calls no other utility service: remove it",
+    "#/then/properties/sign_in" =>
+      "is not for a utility service, which signs nobody in: remove it",
+    "#/then/properties/serves/items/properties/public/not" =>
+      "must not be true for a utility service: only the applications of its environment " <>
+        "reach it, each with a service agreement"
+  }
 
   @type error :: %{path: [String.t() | non_neg_integer()], line: nil, message: String.t()}
 
@@ -97,22 +120,33 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     path = from_pointer(unit.instanceLocation, data)
     here = resolve(schema, unit.schemaLocation)
 
-    Enum.flat_map(unit.errors, fn %{kind: kind, message: message} ->
-      cond do
-        kind in @enclosing -> []
-        kind == :required -> missing(here, value_at(data, path), path)
-        kind == :boolean_schema -> [error(path, unknown(unit.evaluationPath, schema, message))]
-        true -> [error(path, reason(kind, here, message))]
-      end
+    own = Map.get(@not_for_a_service, unit.schemaLocation)
+
+    Enum.flat_map(unit.errors, fn
+      # What a schema's `then` refuses is said by what failed inside it; the `if` that held is
+      # listed with it, and failed nothing.
+      %{kind: :"if/then", details: details} ->
+        details
+        |> Enum.reject(& &1.valid)
+        |> Enum.flat_map(&reasons(&1, data, schema))
+
+      %{kind: kind, message: message} ->
+        cond do
+          kind in @enclosing -> []
+          kind == :required -> missing(here, value_at(data, path), path, own || "is required")
+          own != nil -> [error(path, own)]
+          kind == :boolean_schema -> [error(path, unknown(unit.evaluationPath, schema, message))]
+          true -> [error(path, reason(kind, here, message))]
+        end
     end)
   end
 
   # Each missing key is reported where it should be.
-  defp missing(%{"required" => required}, %{} = present, path) do
-    for key <- required, not Map.has_key?(present, key), do: error(path ++ [key], "is required")
+  defp missing(%{"required" => required}, %{} = present, path, message) do
+    for key <- required, not Map.has_key?(present, key), do: error(path ++ [key], message)
   end
 
-  defp missing(_here, _present, _path), do: []
+  defp missing(_here, _present, _path, _message), do: []
 
   # `additionalProperties: false` is the one schema of `false` a version has: a key it does not know.
   defp unknown(evaluation_path, schema, message) do

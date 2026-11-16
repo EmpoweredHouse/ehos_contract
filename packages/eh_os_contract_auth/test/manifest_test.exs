@@ -31,6 +31,10 @@ defmodule EhOsContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_compute.v8.json` is that ledger written by hand from
   `ehos_yaml/accepted/compute.yaml`, an `ehos.yaml/v7` that asks for half a core and 1 GiB
   (issue #453).
+
+  `test/fixtures/manifests/ledger_services.v9.json` is that ledger written by hand from
+  `ehos_yaml/accepted/services.yaml`, an `ehos.yaml/v8` of an application that calls two utility
+  services (issue #634).
   """
 
   use ExUnit.Case, async: true
@@ -427,6 +431,62 @@ defmodule EhOsContract.Auth.ManifestTest do
     end
   end
 
+  describe "kind and needs.services, from ehos.yaml/v8" do
+    test "makes an ehos.manifest/v9, carried as written, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_services.v9.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/services.yaml"), [Ledger], [Entries])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # EHOS's manifest digest keeps keys as written: a kind added here would be another version.
+    test "adds no kind to a file that leaves it out" do
+      file = %{"schema" => "ehos.yaml/v8", "health" => @health}
+      refute Map.has_key?(Manifest.build(file, [Ledger], [Entries]), "kind")
+    end
+
+    # EHOS refuses a v2 to v8 that names an ehos.yaml/v8, or that carries kind.
+    test "is the only thing that makes a v9, and makes one whether or not a role may grant" do
+      file = %{"schema" => "ehos.yaml/v8", "health" => @health}
+      assert Manifest.build(file, [Ledger], [Entries])["schema"] == "ehos.manifest/v9"
+      assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v9"
+    end
+
+    test "refuses a utility service's file: a project with contracts is an application" do
+      file =
+        %{"schema" => "ehos.yaml/v8", "kind" => "service", "application" => "ledger"}
+        |> Map.put("health", @health)
+
+      error = assert_raise ArgumentError, fn -> Manifest.build(file, [Ledger], [Entries]) end
+
+      assert error.message ==
+               "ehos.yaml says kind: service, a utility service, which has no contract; this " <>
+                 "project has contracts, so it is an application. Remove kind: service, or " <>
+                 "write kind: application. A utility service's manifest is written from its " <>
+                 "ehos.yaml alone, not by this task"
+    end
+
+    test "refuses needs.services that names the application itself, found from its domain" do
+      file = %{
+        "schema" => "ehos.yaml/v8",
+        "health" => @health,
+        "needs" => %{"services" => [%{"name" => "invoice-pdf"}, %{"name" => "ledger"}]}
+      }
+
+      error = assert_raise ArgumentError, fn -> Manifest.build(file, [Ledger], [Entries]) end
+
+      assert error.message ==
+               "ehos.yaml's needs.services names ledger, the application this manifest is of; " <>
+                 "an application is not a utility service, so it names only the services it calls"
+    end
+  end
+
   describe "needs.compute, from ehos.yaml/v7" do
     test "makes an ehos.manifest/v8, carried as written, as the one written by hand" do
       expected =
@@ -519,7 +579,9 @@ defmodule EhOsContract.Auth.ManifestTest do
 
     # EHOS's v5 takes every ehos.yaml v4 does; an ehos.yaml/v5 makes a v6, which takes a rule too.
     test "is v5 whatever the version of ehos.yaml before v5" do
-      for version <- EhosYaml.versions() -- ["ehos.yaml/v5", "ehos.yaml/v6", "ehos.yaml/v7"] do
+      for version <-
+            EhosYaml.versions() --
+              ["ehos.yaml/v5", "ehos.yaml/v6", "ehos.yaml/v7", "ehos.yaml/v8"] do
         file = %{"schema" => version, "health" => @health}
 
         assert Manifest.build(file, [GrantDomain], [GrantWork])["schema"] == "ehos.manifest/v5",

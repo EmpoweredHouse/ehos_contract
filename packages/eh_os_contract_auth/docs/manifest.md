@@ -63,6 +63,7 @@ The `schema` of `ehos.yaml` gives the version of the manifest:
 | `ehos.yaml/v5` | `needs.egress` | `ehos.manifest/v6` |
 | `ehos.yaml/v6` | `needs.mail` | `ehos.manifest/v7` |
 | `ehos.yaml/v7` | `needs.compute` | `ehos.manifest/v8` |
+| `ehos.yaml/v8` | `kind`, `needs.services` | `ehos.manifest/v9` |
 
 If a role may grant another role, an `ehos.yaml` before v5 makes an `ehos.manifest/v5`. From
 `ehos.yaml/v5`, the version is the one in the table, with a grant rule or without one. A domain
@@ -90,7 +91,8 @@ value, such as `serves[0].port`, and the line when it knows it.
 
 The task does not check the other rules that EHOS keeps beside its schema. Examples: the names and
 the ports in `serves` are unique, the health port is not among them, and each name is in
-`needs.secrets` one time. EHOS refuses a break of these rules when it deploys the manifest.
+`needs.secrets` one time. From `ehos.yaml/v8`, each utility service is in `needs.services` one
+time. EHOS refuses a break of these rules when it deploys the manifest.
 
 The task checks the rules of `sign_in` after the schema, because `sign_in` alone breaks them:
 
@@ -178,7 +180,10 @@ The task raises, and tells what to change, in these cases:
 - two contracts declare the same capability;
 - the name of a command, a query, a recorded event or a role has more than 63 characters;
 - the label of one of them is empty;
-- no human actor holds a capability.
+- no human actor holds a capability;
+- `ehos.yaml` says `kind: service`. A utility service has no contract, so a project with contracts
+  is an application. Remove `kind: service`, or write `kind: application`;
+- `needs.services` names the application of the manifest. An application is not a utility service.
 
 A grant rule, `may_grant:` on an actor of the domain, has its own refusals:
 
@@ -326,6 +331,34 @@ default of the environment.
 deploy. At deployment, EHOS refuses a memory below `16Mi`, and a deployment that is larger than the
 quota of its environment.
 
+### `kind` and `needs.services`, from `ehos.yaml/v8`
+
+A *utility service* is a workload with no contract, such as a converter that makes a PDF from the
+XML of an invoice. EHOS deploys one copy of it in each environment, and the applications of that
+environment call it. `kind` tells EHOS if the workload is an application or a utility service.
+`needs.services` names the utility services that an application calls:
+
+```yaml
+schema: ehos.yaml/v8
+kind: application                       # or leave it out: a file without kind is an application's
+needs:
+  services:
+    - name: invoice-pdf
+    - name: address-check
+```
+
+The manifest carries `kind` only when you write it, and `needs.services` as you wrote it, in the
+same order. EHOS reads a manifest without `kind` and a manifest with `kind: application` as two
+versions of one authority.
+
+`needs.services` grants nothing. The application calls a utility service in an environment only
+after a person agrees there. A change needs only the right to deploy.
+
+The task writes no manifest for a utility service. The file of a utility service says
+`kind: service` and names the service in `application`. The schema refuses keys that a utility
+service cannot have: `needs.database`, `needs.people`, `needs.mail`, `needs.services`, `sign_in`,
+and `public: true` in `serves`. The task refuses `kind: service` in a project with contracts.
+
 ## The readers of the file are not in a release
 
 The task reads `ehos.yaml` with `yamerl` and validates it with `JSV`. Both are `runtime: false`, so
@@ -345,6 +378,7 @@ EHOS's decisions this package follows:
 - sign_in in ehos.yaml/v2, and applications naming only the others;
 - a capability names its declaration's kind, command, query or record;
 - contracts left out of the manifest, so an edit does not ask for registration;
+- a utility service, an application with no contract, and the services an application calls;
 - scope values on a role binding, which EHOS decided but does not issue yet: lib/ehos/grants.ex
   of eh-os says so, and no credential it issues carries scp (#561).
 -->

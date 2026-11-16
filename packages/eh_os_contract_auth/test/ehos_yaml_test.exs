@@ -10,7 +10,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
   `sign_in`, a made-up `ehos.yaml/v3` that reads the company's people, a made-up
   `ehos.yaml/v4` that seeds its database and is given secrets, a made-up `ehos.yaml/v5` that
   reaches two hosts outside the installation, a made-up `ehos.yaml/v6` that sends mail to any
-  address, and a made-up `ehos.yaml/v7` that asks for half a core and 1 GiB.
+  address, a made-up `ehos.yaml/v7` that asks for half a core and 1 GiB, and two made-up
+  `ehos.yaml/v8`: an application that calls two utility services, and a utility service.
   """
 
   use ExUnit.Case, async: true
@@ -44,7 +45,7 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       {"schema", nil, "is required: it names the version of ehos.yaml the file is in"},
     "unknown_version.yaml" =>
       {"schema", 1,
-       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3, ehos.yaml/v4, ehos.yaml/v5, ehos.yaml/v6, ehos.yaml/v7; "ehos.yaml/v9" is not one)},
+       ~s(must be a version of ehos.yaml this generator knows: ehos.yaml/v1, ehos.yaml/v2, ehos.yaml/v3, ehos.yaml/v4, ehos.yaml/v5, ehos.yaml/v6, ehos.yaml/v7, ehos.yaml/v8; "ehos.yaml/v9" is not one)},
     "no_health.yaml" => {"health", nil, "is required"},
     "database_without_engine.yaml" => {"needs.database.engine", 3, "is required"},
     "unknown_key.yaml" => {"replicas", 6, "is not a field of ehos.yaml/v1"},
@@ -302,6 +303,168 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
   end
 
+  describe "ehos.yaml/v8" do
+    test "reads kind and needs.services as written, the services in the file's order" do
+      text = File.read!(Path.join([@fixtures, "accepted", "services.yaml"]))
+
+      assert {:ok, %{"schema" => "ehos.yaml/v8", "kind" => "application", "needs" => needs}} =
+               EhosYaml.read(text)
+
+      assert needs["services"] == [%{"name" => "invoice-pdf"}, %{"name" => "address-check"}]
+    end
+
+    test "reads a utility service's file, which names itself and has no public entry" do
+      text = File.read!(Path.join([@fixtures, "accepted", "utility_service.yaml"]))
+
+      assert EhosYaml.read(text) ==
+               {:ok,
+                %{
+                  "schema" => "ehos.yaml/v8",
+                  "kind" => "service",
+                  "application" => "invoice-pdf",
+                  "needs" => %{"compute" => %{"memory" => "512Mi"}},
+                  "serves" => [%{"name" => "http", "port" => 8080}],
+                  "health" => %{"port" => 8081, "ready" => "/ready", "live" => "/live"}
+                }}
+    end
+
+    test "fills in no kind: a file without it is read without it" do
+      text = "schema: ehos.yaml/v8\n" <> @health
+
+      assert {:ok, file} = EhosYaml.read(text)
+      refute Map.has_key?(file, "kind")
+    end
+
+    test "takes kind and needs.services only from v8 on" do
+      for version <- ["ehos.yaml/v7", "ehos.yaml/v1"] do
+        text = "schema: #{version}\nkind: application\n" <> @health
+        assert {:error, [%{path: "kind", message: message}]} = EhosYaml.read(text)
+        assert message == "is not a field of #{version}"
+
+        text = "schema: #{version}\nneeds:\n  services:\n    - name: invoice-pdf\n" <> @health
+        assert {:error, [%{path: "needs.services"}]} = EhosYaml.read(text)
+      end
+    end
+
+    test "refuses a kind it does not name, and a service that is not a name EHOS takes" do
+      text = "schema: ehos.yaml/v8\nkind: worker\n" <> @health
+
+      assert EhosYaml.read(text) ==
+               {:error, [%{path: "kind", line: 2, message: "must be application or service"}]}
+
+      for {entry, path} <- [
+            {"name: Invoice-PDF", "needs.services[0].name"},
+            {"name: invoice-pdf-", "needs.services[0].name"},
+            {"{name: invoice-pdf, port: 8080}", "needs.services[0].port"},
+            {"{}", "needs.services[0].name"}
+          ] do
+        text = "schema: ehos.yaml/v8\nneeds:\n  services:\n    - #{entry}\n" <> @health
+        assert {:error, [%{path: ^path}]} = EhosYaml.read(text), entry
+      end
+    end
+
+    # The schema's first `if`/`then`: JSV applies `then` only when `kind` is `service`, as draft
+    # 2020-12 does, and each refusal inside it is said at the value it is about.
+    test "refuses, in a utility service's file, each key a utility service may not give" do
+      text = """
+      schema: ehos.yaml/v8
+      kind: service
+      application: invoice-pdf
+      needs:
+        database:
+          engine: postgres
+          migrate: ["/app/bin/migrate"]
+        people: read
+        mail:
+          level: internal
+        services:
+          - name: address-check
+      serves:
+        - name: http
+          port: 8080
+          public: true
+      sign_in: {}
+      """
+
+      assert EhosYaml.read(text <> @health) ==
+               {:error,
+                [
+                  %{
+                    path: "needs.database",
+                    line: 5,
+                    message:
+                      "is not for a utility service, which keeps no data of its own: remove it"
+                  },
+                  %{
+                    path: "needs.people",
+                    line: 8,
+                    message:
+                      "is not for a utility service, which does not read the people directory: " <>
+                        "remove it"
+                  },
+                  %{
+                    path: "needs.mail",
+                    line: 9,
+                    message:
+                      "is not for a utility service, which sends no mail through EHOS: remove it"
+                  },
+                  %{
+                    path: "needs.services",
+                    line: 11,
+                    message:
+                      "is not for a utility service, which calls no other utility service: " <>
+                        "remove it"
+                  },
+                  %{
+                    path: "serves[0].public",
+                    line: 16,
+                    message:
+                      "must not be true for a utility service: only the applications of its " <>
+                        "environment reach it, each with a service agreement"
+                  },
+                  %{
+                    path: "sign_in",
+                    line: 17,
+                    message: "is not for a utility service, which signs nobody in: remove it"
+                  }
+                ]}
+    end
+
+    test "refuses a utility service's file that does not name the service" do
+      text = "schema: ehos.yaml/v8\nkind: service\n" <> @health
+
+      assert EhosYaml.read(text) ==
+               {:error,
+                [
+                  %{
+                    path: "application",
+                    line: nil,
+                    message:
+                      "is required for a utility service, which has no contract to take its " <>
+                        "name from: name the service here"
+                  }
+                ]}
+    end
+
+    test "takes from an application each key it refuses from a utility service" do
+      text = """
+      schema: ehos.yaml/v8
+      needs:
+        people: read
+        services:
+          - name: invoice-pdf
+      serves:
+        - name: web
+          port: 4000
+          public: true
+      sign_in: {}
+      """
+
+      assert {:ok, _file} = EhosYaml.read(text <> @health)
+      assert {:ok, _file} = EhosYaml.read("kind: application\n" <> text <> @health)
+    end
+  end
+
   describe "the schema" do
     test "is EHOS's ehos.yaml/v1, byte for byte" do
       # EHOS's `priv/schemas/ehos.yaml/v1.json`, as read on 1 October 2026; the same bytes an
@@ -382,7 +545,19 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       assert Jason.decode!(document)["title"] == "ehos.yaml/v7"
     end
 
-    test "are v1 to v7" do
+    test "is EHOS's ehos.yaml/v8, byte for byte" do
+      # EHOS's `priv/schemas/ehos.yaml/v8.json`, the version that says whether a workload is an
+      # application or a utility service, as it stands on EHOS's main on 16 November 2026, before
+      # EHOS released it.
+      document = File.read!(EhOsContract.Auth.EhosYaml.Schema.file("ehos.yaml/v8"))
+
+      assert :crypto.hash(:sha256, document) |> Base.encode16(case: :lower) ==
+               "b9d8a7ffcc287656ce9c5e14b1aa0abf826d4b432b35ab05a07e22ca151e66f8"
+
+      assert Jason.decode!(document)["title"] == "ehos.yaml/v8"
+    end
+
+    test "are v1 to v8" do
       assert EhosYaml.versions() == [
                "ehos.yaml/v1",
                "ehos.yaml/v2",
@@ -390,7 +565,8 @@ defmodule EhOsContract.Auth.EhosYamlTest do
                "ehos.yaml/v4",
                "ehos.yaml/v5",
                "ehos.yaml/v6",
-               "ehos.yaml/v7"
+               "ehos.yaml/v7",
+               "ehos.yaml/v8"
              ]
     end
 
