@@ -1,0 +1,15 @@
+# A utility service, a converter that makes a PDF from an invoice's XML: it has no contract, names
+# itself, and serves only the applications of its environment (ehos.yaml/v8).
+schema: ehos.yaml/v8
+kind: service
+application: invoice-pdf
+needs:
+  compute:
+    memory: 512Mi
+serves:
+  - name: http
+    port: 8080
+health:
+  port: 8081
+  ready: /ready
+  live: /live

@@ -1,0 +1,19 @@
+# An application that calls two utility services of its environment: a converter that makes a PDF
+# from an invoice's XML, and one that checks a postal address (ehos.yaml/v8).
+schema: ehos.yaml/v8
+kind: application
+needs:
+  database:
+    engine: postgres
+    migrate: ["/app/bin/migrate"]
+  services:
+    - name: invoice-pdf
+    - name: address-check
+serves:
+  - name: web
+    port: 4000
+    public: true
+health:
+  port: 4001
+  ready: /health/ready
+  live: /health/live

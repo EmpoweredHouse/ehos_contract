@@ -3,21 +3,25 @@ defmodule EhOsContract.Auth.Manifest do
   # `needs.people` with `ehos.manifest/v3`; `needs.database.seed` and `needs.secrets` with
   # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; `needs.egress` with
   # `ehos.manifest/v6`; `needs.mail` with `ehos.manifest/v7`; `needs.compute` with
-  # `ehos.manifest/v8`; a capability naming its declaration's kind; and `contracts` left out, so
+  # `ehos.manifest/v8`; `kind` and `needs.services` with `ehos.manifest/v9`, whose `kind: service`
+  # is a utility service's, which this generator never writes; a capability naming its
+  # declaration's kind; and `contracts` left out, so
   # that an edit to a contract does not change EHOS's authority digest. Scope values on a role
   # binding are a decision of EHOS it has not built: its grants carry none, and no credential it
   # issues has `scp` (#561).
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v8` for an `ehos.yaml/v7`, `ehos.manifest/v7` for an `ehos.yaml/v6`,
+  `ehos.manifest/v9` for an `ehos.yaml/v8`, `ehos.manifest/v8` for an `ehos.yaml/v7`,
+  `ehos.manifest/v7` for an `ehos.yaml/v6`,
   `ehos.manifest/v6` for an `ehos.yaml/v5`, `ehos.manifest/v5` for an older file when a role may
   grant another, and otherwise
   `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3`, and
   `ehos.manifest/v2` for an older one. v3 is v2 whose `ehos_yaml` may be `ehos.yaml/v3`, v4 is v3
   whose `ehos_yaml` may be `ehos.yaml/v4`, v5 is v4 whose roles may carry `may_grant`, v6 is v5
   whose `ehos_yaml` may be `ehos.yaml/v5`, v7 is v6 whose `ehos_yaml` may be `ehos.yaml/v6`, v8
-  is v7 whose `ehos_yaml` may be `ehos.yaml/v7`, and EHOS refuses a manifest that names a file
-  newer than its own version.
+  is v7 whose `ehos_yaml` may be `ehos.yaml/v7`, v9 is v8 whose `ehos_yaml` may be `ehos.yaml/v8`
+  and which may carry `kind`, and EHOS refuses a manifest that names a file newer than its own
+  version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
@@ -32,7 +36,11 @@ defmodule EhOsContract.Auth.Manifest do
   workload asks to send mail through EHOS and the domains it reads the answers at. From
   `ehos.yaml/v7`, `needs.compute`, the CPU and memory the workload's containers ask for, `1Gi`
   kept as `1Gi`; EHOS holds it to the environment's quota at deploy, and it is no part of the
-  manifest's authority. The generator adds:
+  manifest's authority. From `ehos.yaml/v8`, `kind`, only when the file gives it, and
+  `needs.services`, the utility services the application calls, in the file's order, never the
+  application itself; neither is part of the manifest's authority. A file with `kind: service`
+  is a utility service's, which has no contract: its manifest is not this generator's to write,
+  and it is refused. The generator adds:
 
     * `application`, the contracts' domain's `name:`. A project with one domain
       takes it from there; a domain without contracts is not counted. A project with
@@ -67,15 +75,15 @@ defmodule EhOsContract.Auth.Manifest do
   @max_application 63
 
   @doc """
-  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5`, `v6`, `v7` or `v8` document from an `ehos.yaml` already read by
-  `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the registered
-  contracts.
+  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5`, `v6`, `v7`, `v8` or `v9` document from an
+  `ehos.yaml` already read by `EhOsContract.Auth.EhosYaml.read/1`, the registered domains and the
+  registered contracts.
 
   The map is taken as `read/1` returns it, already refused when EHOS would refuse
   it; a key `read/1` would refuse goes into the manifest. Only the contracts of the
-  selected domain are read. Raises `ArgumentError`, with
-  what to change, when the map is not a read `ehos.yaml`, when no domain or more than
-  one fits, when the domain's name is not one EHOS takes for an application, when a
+  selected domain are read. Raises `ArgumentError`, with what to change, when the map is not a
+  read `ehos.yaml`, when it says `kind: service`, a utility service's file, when
+  `needs.services` names the application itself, when no domain or more than one fits, when the domain's name is not one EHOS takes for an application, when a
   command, query, recording or role's actor is past 63 characters or has an empty label,
   when no human holds any capability, or when an actor's `may_grant:` names an actor that holds
   none and so is no role.
@@ -83,12 +91,14 @@ defmodule EhOsContract.Auth.Manifest do
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
     ensure_disjoint!(file)
+    ensure_application!(file)
 
     domains = Enum.map(domains, &Model.fetch/1)
     contracts = Enum.map(contracts, &Model.fetch/1)
     domain = select_domain!(domains, contracts, file["application"])
     application = application!(domain)
     not_its_own!(file, application)
+    not_a_service_of_its_own!(file, application)
     models = Enum.filter(contracts, &(&1.domain == domain.module))
     if models == [], do: raise(ArgumentError, "#{inspect(domain.module)} has no contracts")
 
@@ -114,9 +124,10 @@ defmodule EhOsContract.Auth.Manifest do
   produces, and what an EHOS has to accept for every manifest it writes to be deployed.
 
       iex> EhOsContract.Auth.Manifest.schemas()
-      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6", "ehos.manifest/v7", "ehos.manifest/v8"]
+      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6", "ehos.manifest/v7", "ehos.manifest/v8", "ehos.manifest/v9"]
 
-  `build/3` writes `ehos.manifest/v8` for an `ehos.yaml/v7`, `ehos.manifest/v7` for an
+  `build/3` writes `ehos.manifest/v9` for an `ehos.yaml/v8`, `ehos.manifest/v8` for an
+  `ehos.yaml/v7`, `ehos.manifest/v7` for an
   `ehos.yaml/v6` and `ehos.manifest/v6` for an `ehos.yaml/v5`, whether or not a role may grant
   another; for an older file `ehos.manifest/v5` when a role may grant another, and otherwise
   `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3` and
@@ -131,7 +142,8 @@ defmodule EhOsContract.Auth.Manifest do
       "ehos.manifest/v5",
       "ehos.manifest/v6",
       "ehos.manifest/v7",
-      "ehos.manifest/v8"
+      "ehos.manifest/v8",
+      "ehos.manifest/v9"
     ]
 
   # EHOS's rule: a manifest keeps the meaning it had when EHOS accepted it, so the version that
@@ -139,7 +151,9 @@ defmodule EhOsContract.Auth.Manifest do
   # and the one whose roles may grant others, which takes every
   # `ehos.yaml` v4 does, and the one that can carry the hosts outside the installation, which
   # takes a role that may grant too, and the one that can carry mail, and the one that can carry
-  # compute; an older file, and a domain without a rule, keep their older manifest.
+  # compute, and the one that can carry a kind and utility services; an older file, and a domain
+  # without a rule, keep their older manifest.
+  defp manifest_schema("ehos.yaml/v8", _offers), do: "ehos.manifest/v9"
   defp manifest_schema("ehos.yaml/v7", _offers), do: "ehos.manifest/v8"
   defp manifest_schema("ehos.yaml/v6", _offers), do: "ehos.manifest/v7"
   defp manifest_schema("ehos.yaml/v5", _offers), do: "ehos.manifest/v6"
@@ -165,6 +179,19 @@ defmodule EhOsContract.Auth.Manifest do
                 "overwrite a key of ehos.yaml"
     end
   end
+
+  # A utility service has no contract, and EHOS refuses its manifest when it offers a capability or a
+  # role or names a contract, so a project with contracts never writes one: the file is the wrong
+  # one, or the project is not a utility service.
+  defp ensure_application!(%{"kind" => "service"}) do
+    raise ArgumentError,
+          "ehos.yaml says kind: service, a utility service, which has no contract; this project " <>
+            "has contracts, so it is an application. Remove kind: service, or write kind: " <>
+            "application. A utility service's manifest is written from its ehos.yaml alone, " <>
+            "not by this task"
+  end
+
+  defp ensure_application!(_file), do: :ok
 
   defp select_domain!([], _contracts, _wanted),
     do: raise(ArgumentError, "no EhOsContract.Domain is registered")
@@ -249,6 +276,19 @@ defmodule EhOsContract.Auth.Manifest do
   end
 
   defp not_its_own!(_file, _application), do: :ok
+
+  # EHOS's rule for `needs.services`: an application is not a utility service, so it never calls
+  # itself as one. The schema cannot say it, since the application may be the domain's name.
+  defp not_a_service_of_its_own!(%{"needs" => %{"services" => services}}, application) do
+    if Enum.any?(services, &(&1["name"] == application)) do
+      raise ArgumentError,
+            "ehos.yaml's needs.services names #{application}, the application this manifest " <>
+              "is of; an application is not a utility service, so it names only the services " <>
+              "it calls"
+    end
+  end
+
+  defp not_a_service_of_its_own!(_file, _application), do: :ok
 
   @doc false
   # Whether EHOS takes `name` for an application. `EhOsContract.Auth.child_spec/1` holds the
