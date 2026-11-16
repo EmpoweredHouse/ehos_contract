@@ -45,9 +45,12 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
   # What failed inside a value is reported there; these report it again at every value around it.
   @enclosing [:properties, :items, :additionalProperties, :"$ref", :allOf]
 
-  # From v8, what a utility service may not give, said as EHOS says it, keyed by where the schema's
-  # `then` refuses it.
-  @not_for_a_service %{
+  # From v8, what a utility service may not give, and the two keys v8 adds, said as EHOS says them,
+  # keyed by where the schema refuses them. No earlier version has a schema at these locations.
+  @words %{
+    "#/properties/kind" =>
+      "must be application, a workload with a contract, or service, a utility service",
+    "#/properties/needs/properties/services" => "must list at most 16 utility services",
     "#/then" =>
       "is required for a utility service, which has no contract to take its name from: " <>
         "name the service here",
@@ -120,7 +123,7 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
     path = from_pointer(unit.instanceLocation, data)
     here = resolve(schema, unit.schemaLocation)
 
-    own = Map.get(@not_for_a_service, unit.schemaLocation)
+    own = Map.get(@words, unit.schemaLocation)
 
     Enum.flat_map(unit.errors, fn
       # What a schema's `then` refuses is said by what failed inside it; the `if` that held is
@@ -134,7 +137,8 @@ defmodule EhOsContract.Auth.EhosYaml.Schema do
         cond do
           kind in @enclosing -> []
           kind == :required -> missing(here, value_at(data, path), path, own || "is required")
-          own != nil -> [error(path, own)]
+          # A value of the wrong type is told its type, as EHOS tells it.
+          own != nil and kind != :type -> [error(path, own)]
           kind == :boolean_schema -> [error(path, unknown(unit.evaluationPath, schema, message))]
           true -> [error(path, reason(kind, here, message))]
         end

@@ -346,12 +346,43 @@ defmodule EhOsContract.Auth.EhosYamlTest do
       end
     end
 
-    test "refuses a kind it does not name, and a service that is not a name EHOS takes" do
+    test "refuses a kind it does not name" do
       text = "schema: ehos.yaml/v8\nkind: worker\n" <> @health
 
       assert EhosYaml.read(text) ==
-               {:error, [%{path: "kind", line: 2, message: "must be application or service"}]}
+               {:error,
+                [
+                  %{
+                    path: "kind",
+                    line: 2,
+                    message:
+                      "must be application, a workload with a contract, or service, a utility " <>
+                        "service"
+                  }
+                ]}
+    end
 
+    test "refuses more than 16 utility services, and a needs.services that is not a list" do
+      services = Enum.map_join(1..17, "", &"    - name: service-#{&1}\n")
+      text = "schema: ehos.yaml/v8\nneeds:\n  services:\n" <> services <> @health
+
+      assert EhosYaml.read(text) ==
+               {:error,
+                [
+                  %{
+                    path: "needs.services",
+                    line: 3,
+                    message: "must list at most 16 utility services"
+                  }
+                ]}
+
+      text = "schema: ehos.yaml/v8\nneeds:\n  services: invoice-pdf\n" <> @health
+
+      assert EhosYaml.read(text) ==
+               {:error, [%{path: "needs.services", line: 3, message: "must be a list"}]}
+    end
+
+    test "refuses a service that is not a name EHOS takes" do
       for {entry, path} <- [
             {"name: Invoice-PDF", "needs.services[0].name"},
             {"name: invoice-pdf-", "needs.services[0].name"},
