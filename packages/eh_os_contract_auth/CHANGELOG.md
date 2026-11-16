@@ -24,19 +24,21 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-16
+
 ### Added
 
-- **`ehos.yaml/v8` and `ehos.manifest/v9`** (#634), as EHOS's main has them; no release of EHOS
-  carries them yet. `mix eh_os_contract.manifest` reads an `ehos.yaml/v8`, EHOS's file copied byte
-  for byte. Its `kind` says if the workload is an application or a utility service, a workload
-  with no contract that the applications of an environment call. Its `needs.services` names the
-  utility services an application calls. The task writes an `ehos.manifest/v9` for it, with `kind`
-  only when the file gives it and `needs.services` as written, in its order. It refuses a file with
-  `kind: service`, since a project with contracts is an application, and a `needs.services` that
-  names the application itself. The reader says each key that a utility service's file may not
-  give at its own path. An older file makes the manifest it made before.
-  `EhOsContract.Auth.Manifest.schemas/0`, and so what a release produces, now ends with
-  `ehos.manifest/v9`, which only an EHOS that accepts it deploys.
+- **`ehos.yaml/v8` and `ehos.manifest/v9`** (#634), as EHOS 0.29.0 has them.
+  `mix eh_os_contract.manifest` reads an `ehos.yaml/v8`, EHOS's file copied byte for byte. Its
+  `kind` says if the workload is an application or a utility service, a workload with no contract
+  that the applications of an environment call. Its `needs.services` names the utility services an
+  application calls. The task writes an `ehos.manifest/v9` for it, with `kind` only when the file
+  gives it and `needs.services` as written, in its order. It refuses a file with `kind: service`,
+  since a project with contracts is an application, and a `needs.services` that names the
+  application itself. The reader says each key that a utility service's file may not give at its own
+  path. An older file makes the manifest it made before. `EhOsContract.Auth.Manifest.schemas/0`, and
+  so what a release produces, now ends with `ehos.manifest/v9`, which only an EHOS that accepts it
+  deploys.
 
 ## [0.13.1] - 2026-11-12
 

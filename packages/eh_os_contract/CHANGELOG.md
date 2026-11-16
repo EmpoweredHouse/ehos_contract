@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-11-16
+
+### Changed
+
+- Released with eh_os_contract_auth 0.14.0, which reads `ehos.yaml/v8` and writes
+  `ehos.manifest/v9` (#634); nothing in the engine changed.
+
 ## [0.14.2] - 2026-11-12
 
 ### Changed
