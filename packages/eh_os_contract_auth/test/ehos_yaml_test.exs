@@ -307,10 +307,22 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     test "reads kind and needs.services as written, the services in the file's order" do
       text = File.read!(Path.join([@fixtures, "accepted", "services.yaml"]))
 
-      assert {:ok, %{"schema" => "ehos.yaml/v8", "kind" => "application", "needs" => needs}} =
-               EhosYaml.read(text)
-
-      assert needs["services"] == [%{"name" => "invoice-pdf"}, %{"name" => "address-check"}]
+      assert EhosYaml.read(text) ==
+               {:ok,
+                %{
+                  "schema" => "ehos.yaml/v8",
+                  "kind" => "application",
+                  "needs" => %{
+                    "database" => %{"engine" => "postgres", "migrate" => ["/app/bin/migrate"]},
+                    "services" => [%{"name" => "invoice-pdf"}, %{"name" => "address-check"}]
+                  },
+                  "serves" => [%{"name" => "web", "port" => 4000, "public" => true}],
+                  "health" => %{
+                    "port" => 4001,
+                    "ready" => "/health/ready",
+                    "live" => "/health/live"
+                  }
+                }}
     end
 
     test "reads a utility service's file, which names itself and has no public entry" do
@@ -331,18 +343,30 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     test "fills in no kind: a file without it is read without it" do
       text = "schema: ehos.yaml/v8\n" <> @health
 
-      assert {:ok, file} = EhosYaml.read(text)
-      refute Map.has_key?(file, "kind")
+      assert EhosYaml.read(text) ==
+               {:ok,
+                %{
+                  "schema" => "ehos.yaml/v8",
+                  "health" => %{
+                    "port" => 4001,
+                    "ready" => "/health/ready",
+                    "live" => "/health/live"
+                  }
+                }}
     end
 
     test "takes kind and needs.services only from v8 on" do
       for version <- ["ehos.yaml/v7", "ehos.yaml/v1"] do
         text = "schema: #{version}\nkind: application\n" <> @health
-        assert {:error, [%{path: "kind", message: message}]} = EhosYaml.read(text)
-        assert message == "is not a field of #{version}"
+
+        assert EhosYaml.read(text) ==
+                 {:error, [%{path: "kind", line: 2, message: "is not a field of #{version}"}]}
 
         text = "schema: #{version}\nneeds:\n  services:\n    - name: invoice-pdf\n" <> @health
-        assert {:error, [%{path: "needs.services"}]} = EhosYaml.read(text)
+
+        assert EhosYaml.read(text) ==
+                 {:error,
+                  [%{path: "needs.services", line: 3, message: "is not a field of #{version}"}]}
       end
     end
 
@@ -383,14 +407,19 @@ defmodule EhOsContract.Auth.EhosYamlTest do
     end
 
     test "refuses a service that is not a name EHOS takes" do
-      for {entry, path} <- [
-            {"name: Invoice-PDF", "needs.services[0].name"},
-            {"name: invoice-pdf-", "needs.services[0].name"},
-            {"{name: invoice-pdf, port: 8080}", "needs.services[0].port"},
-            {"{}", "needs.services[0].name"}
+      name = "must match ^[a-z]([-a-z0-9]*[a-z0-9])?$"
+
+      for {entry, path, line, message} <- [
+            {"name: Invoice-PDF", "needs.services[0].name", 4, name},
+            {"name: invoice-pdf-", "needs.services[0].name", 4, name},
+            {"{name: invoice-pdf, port: 8080}", "needs.services[0].port", 4,
+             "is not a field of ehos.yaml/v8"},
+            {"{}", "needs.services[0].name", 4, "is required"}
           ] do
         text = "schema: ehos.yaml/v8\nneeds:\n  services:\n    - #{entry}\n" <> @health
-        assert {:error, [%{path: ^path}]} = EhosYaml.read(text), entry
+
+        assert EhosYaml.read(text) == {:error, [%{path: path, line: line, message: message}]},
+               entry
       end
     end
 
