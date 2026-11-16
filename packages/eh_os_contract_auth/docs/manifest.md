@@ -335,8 +335,8 @@ quota of its environment.
 
 A *utility service* is a workload with no contract, such as a converter that makes a PDF from the
 XML of an invoice. EHOS deploys it to an environment as it deploys an application. The
-applications of that environment call it. `kind` tells EHOS if the workload is an application or a utility service.
-`needs.services` names the utility services that an application calls:
+applications of that environment call it. `kind` tells EHOS if the workload is an application or a
+utility service. `needs.services` names the utility services that an application calls:
 
 ```yaml
 schema: ehos.yaml/v8
