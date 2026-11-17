@@ -17,10 +17,12 @@ defmodule EhOsContract.Auth.Development.Page do
   # Two kinds of rule, by the cascade layer they sit in. The look of the body and of the
   # controls is in the layer `dev-sign-in`, which this `<style>` declares before the host's
   # stylesheet, so it is the lowest layer: the host's base styles and daisyUI's components win
-  # over it. A stylesheet with Tailwind's preflight but without these daisyUI classes leaves the
-  # controls bare. The page's layout is in no layer, so it wins over the preflight, which resets
-  # headings, fieldsets and spacing. Of what daisyUI draws, it sets only the display, width and
-  # margin of a text field, on purpose: one field to a line, as wide as its fieldset.
+  # over it. A stylesheet with Tailwind's preflight but without these daisyUI classes takes the
+  # border and background of the button and the text fields. The page's layout is in no layer,
+  # so it wins over the preflight of Tailwind 4, which sits in a layer, and resets headings,
+  # fieldsets and spacing. Of what daisyUI draws, it sets only the box of a text field
+  # (display, width, box-sizing, top margin) and the margin and alignment of a checkbox, on
+  # purpose: one field to a line, as wide as its fieldset.
 
   import Plug.HTML, only: [html_escape: 1]
 

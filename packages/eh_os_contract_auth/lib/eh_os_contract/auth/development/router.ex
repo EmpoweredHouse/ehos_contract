@@ -61,8 +61,8 @@ defmodule EhOsContract.Auth.Development.Router do
 
   The stylesheet is the page's only link. The browser asks for it, and for what it loads, such
   as fonts, only after the router let the page through. The page has no script. A stylesheet
-  with Tailwind but without daisyUI's `btn`, `input` and `checkbox` classes leaves the button and
-  the fields bare: give `stylesheet: nil` there.
+  with Tailwind but without daisyUI's `btn`, `input` and `checkbox` classes takes the border and
+  the background of the button and the text fields: give `stylesheet: nil` there.
   """
 
   @behaviour Plug

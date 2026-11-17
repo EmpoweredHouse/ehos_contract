@@ -91,9 +91,9 @@ forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: nil
 ```
 
 The option takes a path of the application only. If the stylesheet has Tailwind but not the
-`btn`, `input` and `checkbox` classes of daisyUI, the button and the fields have no border: give
-`stylesheet: nil`. The page has no script. It ignores the theme
-that the theme toggle of the application keeps, and uses the colour scheme of the system.
+`btn`, `input` and `checkbox` classes of daisyUI, the button and the text fields have no border
+and no background: give `stylesheet: nil`. The page has no script. It ignores the theme that the
+theme toggle of the application keeps, and uses the colour scheme of the system.
 
 ## 3. Get a credential for `curl`
 
