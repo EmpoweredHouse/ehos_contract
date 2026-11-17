@@ -24,6 +24,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **The development sign-in page looks like the application** (#640). `/dev/sign-in` links the
+  application's stylesheet, `/assets/css/app.css` by default, and draws its form with the
+  EmpoweredHouse design system's tokens and daisyUI's classes, so an application that imports
+  `ehos_design` shows the page in its own fonts, colours, buttons and fields. Without that
+  stylesheet, the page keeps a plain look. `EhOsContract.Auth.Development.Router` takes a
+  `stylesheet:` option for another path, or `nil` for none, and refuses a path of another origin.
+
 ## [0.14.0] - 2026-11-16
 
 ### Added

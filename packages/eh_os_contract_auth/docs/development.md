@@ -79,6 +79,20 @@ A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also goe
 The page opens when the browser opened the address with the token after the last start. After a
 restart or a sign-out, the page answers 403: open the address that the terminal shows again.
 
+The page links the stylesheet of the application, at `/assets/css/app.css`. A Phoenix 1.8
+application serves its CSS at this path in development. If the stylesheet imports the
+EmpoweredHouse design system (`ehos_design`), the page uses the fonts, colours, buttons and fields
+of the application. If the stylesheet does not exist, the page uses a plain look of its own. To
+link another stylesheet, or none, give the router the `stylesheet` option:
+
+```elixir
+forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: "/assets/app.css"
+forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: nil
+```
+
+The option takes a path of the application only. The page has no script. It ignores the theme
+that the theme toggle of the application keeps, and uses the colour scheme of the system.
+
 ## 3. Get a credential for `curl`
 
 ```bash
