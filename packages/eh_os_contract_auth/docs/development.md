@@ -137,6 +137,11 @@ answers 403 for each other request.
 - The request has the token, as the `token` parameter or in the `x-dev-sign-in-token` header. After
   the first request, the session of the browser keeps a hash of the token.
 
+If the browser opens `/dev/sign-in` with the `token` parameter, the router keeps the hash of the
+token in the session. Then it sends the browser to the same address without `token`, with each
+other parameter. The address bar does not show the token after that. The browser must keep the
+cookies of `localhost`: if it does not, the address without the token answers 403.
+
 The form of the page also needs its CSRF token. A form without a valid CSRF token gets 403. If
 the router cannot read the query string or the body of a request that passes the checks above, it
 answers with the status that Plug gives: for example 400, or 413 when the body is too large.

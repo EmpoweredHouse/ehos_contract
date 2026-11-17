@@ -320,7 +320,12 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
   test "the router's page signs a browser in, and sends it back to a path of this application" do
     assert %{
+             first: {303, ["/sign-in?return_to=/visits"], []},
              page: {200, page},
+             token_alone: {303, ["/sign-in"]},
+             token_as_list: {303, ["/sign-in?return_to=/a"]},
+             mounted_with_slashes: {303, ["/dev/sign-in?return_to=/b"]},
+             header: 200,
              signed_in: {303, "/visits", {false, "u-dev", ["clinic.record_payment"]}},
              missing_scope: {422, missing},
              elsewhere: {303, "//evil.example", "/"},
@@ -348,14 +353,23 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                conn = if opts[:body], do: Plug.Conn.put_req_header(conn, "content-type", "application/x-www-form-urlencoded"), else: conn
                conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
                conn = Plug.Test.init_test_session(conn, Keyword.get(opts, :session, %{}))
+               # Where the endpoint forwards to the router: the prefix and the path as sent.
+               conn = Map.merge(conn, Map.new(Keyword.take(opts, [:script_name, :request_path])))
                # As Plug.Session leaves it in an endpoint: the session is fetched on demand.
                conn = Plug.Conn.put_private(conn, :plug_session_fetch, &Plug.Conn.put_private(&1, :plug_session_fetch, :done))
                Router.call(conn, Router.init([]))
              end
 
+             # The token leaves the address: the session keeps its hash, and the page comes
+             # from the address the router sends the browser to.
              first = request.(:get, "/sign-in?token=" <> token <> "&return_to=/visits", [])
              session = Plug.Conn.get_session(first)
-             [_, csrf] = Regex.run(~r/name="_csrf_token" value="([^"]+)"/, first.resp_body)
+             shown = request.(:get, first |> Plug.Conn.get_resp_header("location") |> hd(), session: session)
+             [_, csrf] = Regex.run(~r/name="_csrf_token" value="([^"]+)"/, shown.resp_body)
+             # The session the page left, with the form's CSRF token.
+             session = Plug.Conn.get_session(shown)
+
+             location = fn conn -> {conn.status, Plug.Conn.get_resp_header(conn, "location")} end
 
              form = fn fields -> fields |> Enum.map_join("&", fn {k, v} -> URI.encode_www_form(k) <> "=" <> URI.encode_www_form(v) end) end
              post = fn fields, session -> request.(:post, "/sign-in", body: form.(fields), session: session) end
@@ -403,7 +417,15 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              nested = String.duplicate("[a]", 33)
 
              %{
-               page: {first.status, first.resp_body},
+               first: {first.status, Plug.Conn.get_resp_header(first, "location"), Regex.scan(~r/token/, first.resp_body)},
+               page: {shown.status, shown.resp_body},
+               token_alone: location.(request.(:get, "/sign-in?token=" <> token, [])),
+               # Plug reads `token[]` into the parameter too; a pair left behind would send the
+               # browser back here for good.
+               token_as_list: location.(request.(:get, "/sign-in?token[]=x&return_to=/a", session: session)),
+               mounted_with_slashes:
+                 location.(request.(:get, "/sign-in?token=" <> token <> "&return_to=/b", script_name: ["dev"], request_path: "//dev/sign-in")),
+               header: request.(:get, "/sign-in", headers: [{"x-dev-sign-in-token", token}]).status,
                signed_in: {signed.status, signed |> Plug.Conn.get_resp_header("location") |> hd(), {visit.halted, actor.subject, Enum.sort(actor.capabilities)}},
                missing_scope: {missing.status, missing.resp_body},
                elsewhere: redirect.("//evil.example"),

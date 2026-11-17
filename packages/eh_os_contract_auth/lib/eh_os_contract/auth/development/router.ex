@@ -34,7 +34,8 @@ defmodule EhOsContract.Auth.Development.Router do
   with a `Host` of `localhost`, `127.0.0.1` or `[::1]`, and with the token the mode printed
   at start, as the `token` parameter or the `x-dev-sign-in-token` header. After the first
   request, the browser's session keeps a hash of the token, so the page's links and form
-  need no token. Each other request gets 403. A request that passes gets 404 for a path
+  need no token. `GET /dev/sign-in` with the `token` parameter answers 303 to the same address
+  without it, so the address bar shows no token. Each other request gets 403. A request that passes gets 404 for a path
   the router does not know. No answer carries
   an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
   `OPTIONS` itself, or adds its headers as the answer is sent, is not covered: keep such a
@@ -109,7 +110,7 @@ defmodule EhOsContract.Auth.Development.Router do
   def call(conn, opts) do
     case {conn.method, conn.path_info} do
       {_method, ["credential" | rest]} -> Plug.forward(conn, rest, Credential, [])
-      {"GET", ["sign-in"]} -> conn |> browser() |> then(&page(&1, opts, 200, nil))
+      {"GET", ["sign-in"]} -> conn |> browser() |> without_token() |> page(opts, 200, nil)
       {"POST", ["sign-in"]} -> conn |> browser() |> then(&create(&1, opts))
       _other -> conn |> fetch_session() |> Guard.call([]) |> not_found()
     end
@@ -189,6 +190,37 @@ defmodule EhOsContract.Auth.Development.Router do
       |> put_resp_content_type("text/plain")
       |> send_resp(403, "The form has no valid CSRF token. Open /dev/sign-in again.")
       |> halt()
+  end
+
+  # Once the guard keeps the token's hash in the session, the browser loads the page again
+  # without `token` in its address, so the address bar and a screenshot do not show it. Each
+  # other parameter stays as it was. The path is the router's own, from `script_name` and
+  # `path_info`: `request_path` keeps the slashes the request sent, and `//dev/sign-in` would
+  # send the browser to the host `dev`.
+  defp without_token(%Plug.Conn{halted: true} = conn), do: conn
+
+  defp without_token(conn) do
+    if Map.has_key?(conn.query_params, "token") do
+      path = "/" <> Enum.join(conn.script_name ++ conn.path_info, "/")
+
+      query =
+        conn.query_string |> String.split("&") |> Enum.reject(&token_pair?/1) |> Enum.join("&")
+
+      conn
+      |> put_resp_header("location", if(query == "", do: path, else: path <> "?" <> query))
+      |> send_resp(303, "")
+      |> halt()
+    else
+      conn
+    end
+  end
+
+  # Each pair that Plug reads into the `token` parameter: `token=…`, and `token[]=…` or
+  # `token[a]=…`, which the guard does not take but which would keep the parameter, and so
+  # send the browser back here again and again.
+  defp token_pair?(pair) do
+    key = pair |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
+    key == "token" or String.starts_with?(key, "token[")
   end
 
   defp page(%Plug.Conn{halted: true} = conn, _opts, _status, _error), do: conn
