@@ -320,12 +320,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
   test "the router's page signs a browser in, and sends it back to a path of this application" do
     assert %{
-             first: {303, ["/sign-in?return_to=/visits"], []},
+             first: {303, ["/sign-in?return_to=/visits"]},
              page: {200, page},
-             token_alone: {303, ["/sign-in"]},
-             token_as_list: {303, ["/sign-in?return_to=/a"]},
-             mounted_with_slashes: {303, ["/dev/sign-in?return_to=/b"]},
-             header: 200,
              signed_in: {303, "/visits", {false, "u-dev", ["clinic.record_payment"]}},
              missing_scope: {422, missing},
              elsewhere: {303, "//evil.example", "/"},
@@ -353,8 +349,6 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                conn = if opts[:body], do: Plug.Conn.put_req_header(conn, "content-type", "application/x-www-form-urlencoded"), else: conn
                conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
                conn = Plug.Test.init_test_session(conn, Keyword.get(opts, :session, %{}))
-               # Where the endpoint forwards to the router: the prefix and the path as sent.
-               conn = Map.merge(conn, Map.new(Keyword.take(opts, [:script_name, :request_path])))
                # As Plug.Session leaves it in an endpoint: the session is fetched on demand.
                conn = Plug.Conn.put_private(conn, :plug_session_fetch, &Plug.Conn.put_private(&1, :plug_session_fetch, :done))
                Router.call(conn, Router.init([]))
@@ -368,8 +362,6 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              [_, csrf] = Regex.run(~r/name="_csrf_token" value="([^"]+)"/, shown.resp_body)
              # The session the page left, with the form's CSRF token.
              session = Plug.Conn.get_session(shown)
-
-             location = fn conn -> {conn.status, Plug.Conn.get_resp_header(conn, "location")} end
 
              form = fn fields -> fields |> Enum.map_join("&", fn {k, v} -> URI.encode_www_form(k) <> "=" <> URI.encode_www_form(v) end) end
              post = fn fields, session -> request.(:post, "/sign-in", body: form.(fields), session: session) end
@@ -417,15 +409,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              nested = String.duplicate("[a]", 33)
 
              %{
-               first: {first.status, Plug.Conn.get_resp_header(first, "location"), Regex.scan(~r/token/, first.resp_body)},
+               first: {first.status, Plug.Conn.get_resp_header(first, "location")},
                page: {shown.status, shown.resp_body},
-               token_alone: location.(request.(:get, "/sign-in?token=" <> token, [])),
-               # Plug reads `token[]` into the parameter too; a pair left behind would send the
-               # browser back here for good.
-               token_as_list: location.(request.(:get, "/sign-in?token[]=x&return_to=/a", session: session)),
-               mounted_with_slashes:
-                 location.(request.(:get, "/sign-in?token=" <> token <> "&return_to=/b", script_name: ["dev"], request_path: "//dev/sign-in")),
-               header: request.(:get, "/sign-in", headers: [{"x-dev-sign-in-token", token}]).status,
                signed_in: {signed.status, signed |> Plug.Conn.get_resp_header("location") |> hd(), {visit.halted, actor.subject, Enum.sort(actor.capabilities)}},
                missing_scope: {missing.status, missing.resp_body},
                elsewhere: redirect.("//evil.example"),
@@ -459,5 +444,52 @@ defmodule EhOsContract.Auth.DevelopmentTest do
     assert missing =~ ~s(value="clinic.receptionist" checked)
     assert missing =~ ~s(name="subject" placeholder="dev" value="u-dev")
     assert missing =~ ~s(<link rel="stylesheet" href="/assets/css/app.css">)
+  end
+
+  test "the page's address drops the token once the session keeps its hash, and keeps every other parameter" do
+    assert %{
+             token_alone: {303, ["/sign-in"]},
+             with_return_to: {303, ["/sign-in?return_to=/visits"]},
+             encoded_key: {303, ["/sign-in?return_to=/c"]},
+             token_as_list: {303, ["/sign-in?return_to=/a"]},
+             token_as_map: {303, ["/sign-in"]},
+             mounted_with_slashes: {303, ["/dev/sign-in?return_to=/b"]},
+             header: {200, []},
+             target: 200
+           } =
+             run("""
+             request = fn path, opts ->
+               conn = Plug.Test.conn(:get, path)
+               conn = %{conn | host: "localhost"}
+               conn = Enum.reduce(Keyword.get(opts, :headers, []), conn, fn {k, v}, c -> Plug.Conn.put_req_header(c, k, v) end)
+               conn = Plug.Test.init_test_session(conn, Keyword.get(opts, :session, %{}))
+               # Where the endpoint forwards to the router: the prefix, and the path as the request sent it.
+               conn = Map.merge(conn, Map.new(Keyword.take(opts, [:script_name, :request_path])))
+               conn = Plug.Conn.put_private(conn, :plug_session_fetch, &Plug.Conn.put_private(&1, :plug_session_fetch, :done))
+               Router.call(conn, Router.init([]))
+             end
+
+             location = fn conn -> {conn.status, Plug.Conn.get_resp_header(conn, "location")} end
+
+             first = request.("/sign-in?token=" <> token, [])
+             session = Plug.Conn.get_session(first)
+
+             %{
+               token_alone: location.(first),
+               with_return_to: location.(request.("/sign-in?token=" <> token <> "&return_to=/visits", [])),
+               # Plug decodes the key before it reads it, and so does the router.
+               encoded_key: location.(request.("/sign-in?%74oken=" <> token <> "&return_to=/c", [])),
+               # Plug reads `token[]` and `token[a]` into the parameter too: a pair left behind
+               # would send the browser back here for good.
+               token_as_list: location.(request.("/sign-in?token[]=x&return_to=/a", session: session)),
+               token_as_map: location.(request.("/sign-in?token[a]=x", session: session)),
+               # The path is the router's own, not the one the request sent: `//dev/sign-in` would
+               # name the host `dev`.
+               mounted_with_slashes:
+                 location.(request.("/sign-in?token=" <> token <> "&return_to=/b", script_name: ["dev"], request_path: "//dev/sign-in")),
+               header: location.(request.("/sign-in", headers: [{"x-dev-sign-in-token", token}])),
+               target: request.("/sign-in", session: session).status
+             }
+             """)
   end
 end
