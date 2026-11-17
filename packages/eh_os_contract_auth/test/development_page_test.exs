@@ -18,7 +18,7 @@ defmodule EhOsContract.Auth.DevelopmentPageTest do
     |> IO.iodata_to_binary()
   end
 
-  test "the router links the application's stylesheet, at Phoenix's path unless told another, or none" do
+  test "the router takes the stylesheet's path, Phoenix's by default, or nil" do
     assert Router.init([]) == [stylesheet: "/assets/css/app.css"]
     assert Router.init(stylesheet: "/assets/app.css?v=1") == [stylesheet: "/assets/app.css?v=1"]
     assert Router.init(stylesheet: nil) == [stylesheet: nil]

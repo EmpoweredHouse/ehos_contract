@@ -1,8 +1,9 @@
 defmodule EhOsContract.Auth.Development.Page do
   @moduledoc false
   # The HTML of `/dev/sign-in`, for `EhOsContract.Auth.Development.Router`: one form, no
-  # script, every value escaped, and at most one asset, the host's stylesheet, which the
-  # browser asks for only after the guard let the page through (#640).
+  # script, every value escaped, and at most one link, the host's stylesheet. The browser asks
+  # for it, and for what it loads, such as fonts, only after the guard let the page through
+  # (#640).
   #
   # The page is drawn by its own rules, written on the design system's tokens (`--surface-1`,
   # `--text-secondary`, …) with a fallback value each. The host's stylesheet, when it imports
@@ -16,8 +17,10 @@ defmodule EhOsContract.Auth.Development.Page do
   # Two kinds of rule, by the cascade layer they sit in. The look of the body and of the
   # controls is in the layer `dev-sign-in`, which this `<style>` declares before the host's
   # stylesheet, so it is the lowest layer: the host's base styles and daisyUI's components win
-  # over it. The page's layout is in no layer, so it wins over Tailwind's preflight, which
-  # resets headings, fieldsets and spacing; it sets nothing a daisyUI component draws.
+  # over it. A stylesheet with Tailwind's preflight but without these daisyUI classes leaves the
+  # controls bare. The page's layout is in no layer, so it wins over the preflight, which resets
+  # headings, fieldsets and spacing. Of what daisyUI draws, it sets only the display, width and
+  # margin of a text field, on purpose: one field to a line, as wide as its fieldset.
 
   import Plug.HTML, only: [html_escape: 1]
 

@@ -59,8 +59,10 @@ defmodule EhOsContract.Auth.Development.Router do
       forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: "/assets/app.css"
       forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: nil
 
-  The stylesheet is the page's only asset. The browser asks for it only after the router let
-  the page through, and the page has no script.
+  The stylesheet is the page's only link. The browser asks for it, and for what it loads, such
+  as fonts, only after the router let the page through. The page has no script. A stylesheet
+  with Tailwind but without daisyUI's `btn`, `input` and `checkbox` classes leaves the button and
+  the fields bare: give `stylesheet: nil` there.
   """
 
   @behaviour Plug
