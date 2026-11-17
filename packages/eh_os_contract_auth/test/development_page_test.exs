@@ -52,6 +52,10 @@ defmodule EhOsContract.Auth.DevelopmentPageTest do
     {link, _} = :binary.match(page, "<link rel=\"stylesheet\"")
     assert style < link
 
+    # The token in the page's address never leaves as the stylesheet's referrer.
+    {referrer, _} = :binary.match(page, ~s(<meta name="referrer" content="no-referrer">))
+    assert referrer < link
+
     refute page =~ "<script"
     refute render(stylesheet: nil) =~ "<link"
   end

@@ -50,6 +50,9 @@ defmodule EhOsContract.Auth.Development.Page do
     [
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
       "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+      # The address may carry the token: no request of the page sends it as the referrer, even
+      # where a plug of the endpoint replaces the router's `referrer-policy` header.
+      "<meta name=\"referrer\" content=\"no-referrer\">",
       "<title>Development sign-in</title><style>",
       @style,
       "</style>",
