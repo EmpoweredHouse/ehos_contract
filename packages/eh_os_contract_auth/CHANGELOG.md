@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-17
+
 ### Changed
 
 - **The development sign-in page removes the token from its address** (#642). `GET /dev/sign-in`
