@@ -34,10 +34,10 @@ defmodule EhOsContract.Auth.Development.Router do
   with a `Host` of `localhost`, `127.0.0.1` or `[::1]`, and with the token the mode printed
   at start, as the `token` parameter or the `x-dev-sign-in-token` header. After the first
   request, the browser's session keeps a hash of the token, so the page's links and form
-  need no token. `GET /dev/sign-in` with the `token` parameter answers 303 to the same address
-  without it, so the address bar shows no token. Each other request gets 403. A request that passes gets 404 for a path
-  the router does not know. No answer carries
-  an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
+  need no token. Each other request gets 403. A request that passes gets 404 for a path the
+  router does not know. `GET /dev/sign-in` with the `token` parameter, once it passes, answers
+  303 to the same address without `token`, with every other parameter, so the address bar
+  shows no token. No answer carries an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
   `OPTIONS` itself, or adds its headers as the answer is sent, is not covered: keep such a
   plug off the `/dev` paths.
 
