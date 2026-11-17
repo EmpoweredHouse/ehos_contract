@@ -436,5 +436,6 @@ defmodule EhOsContract.Auth.DevelopmentTest do
     # The form comes back as the developer filled it in.
     assert missing =~ ~s(value="clinic.receptionist" checked)
     assert missing =~ ~s(name="subject" placeholder="dev" value="u-dev")
+    assert missing =~ ~s(<link rel="stylesheet" href="/assets/css/app.css">)
   end
 end
