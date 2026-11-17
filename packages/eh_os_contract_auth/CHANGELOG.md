@@ -24,20 +24,28 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-17
+
+### Added
+
+- **`EhOsContract.Auth.Development.Router` takes a `stylesheet:` option** (#640): the path of the
+  stylesheet that the development sign-in page links, `/assets/css/app.css` by default, or `nil`
+  for none. It refuses anything but a path of the application that starts with `/`.
+
 ### Changed
 
 - **The development sign-in page removes the token from its address** (#642). `GET /dev/sign-in`
   with the `token` parameter keeps the token's hash in the session, as before, and answers 303 to
   the same address without `token`, with every other parameter. The address bar no longer shows
-  the token. A request with the token only in the `x-dev-sign-in-token` header gets no redirect.
+  the token. The browser's history can still keep the first address, with the token. A request
+  with the token only in the `x-dev-sign-in-token` header gets no redirect.
 
 - **The development sign-in page looks like the application** (#640). `/dev/sign-in` links the
-  application's stylesheet, `/assets/css/app.css` by default, and draws its form with the
-  EmpoweredHouse design system's tokens and daisyUI's classes, so an application that imports
-  `ehos_design` shows the page in its own fonts, colours, buttons and fields. Without that
-  stylesheet, the page keeps a plain look. `EhOsContract.Auth.Development.Router` takes a
-  `stylesheet:` option for another path, or `nil` for none, and refuses anything but a path of
-  the application that starts with `/`.
+  application's stylesheet and draws its form with the EmpoweredHouse design system's tokens and
+  daisyUI's classes, so an application that imports `ehos_design` shows the page in its own
+  fonts, colours, buttons and fields. Without that stylesheet, the page keeps a plain look. A
+  stylesheet with Tailwind but without daisyUI's `btn`, `input` and `checkbox` classes leaves the
+  button and the text fields without a border and a background: give `stylesheet: nil` there.
 
 ## [0.14.0] - 2026-11-16
 

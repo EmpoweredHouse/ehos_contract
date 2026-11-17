@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-11-17
+
+### Changed
+
+- Released with eh_os_contract_auth 0.15.0, whose development sign-in page takes the application's
+  look (#640) and removes the token from its address (#642); nothing in the engine changed.
+
 ## [0.14.3] - 2026-11-16
 
 ### Changed

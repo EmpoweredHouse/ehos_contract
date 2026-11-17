@@ -6,14 +6,13 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (16 November 2026)
+## Where things stand (17 November 2026)
 
-- **Released:** v0.14.3, with `eh_os_contract_auth` 0.14.0 (it reads `ehos.yaml/v8`, whose `kind` says
-  if a workload is an application or a utility service and whose `needs.services` names the utility services
-  an application calls, and writes `ehos.manifest/v9`, which EHOS 0.29.0 accepts) and the engine 0.14.3,
-  which changes nothing; the dashboard stays at 0.9.0 and the graph renderer at 0.9.1, from v0.14.0. The
-  plugin's skills are at 0.14.3. Applications install them from git. The pull request after the tag moves
-  each released package to its next patch's `-dev`.
+- **Released:** v0.14.4, with `eh_os_contract_auth` 0.15.0 (the development sign-in page links the
+  application's stylesheet and takes its look, and removes the token from its address with a redirect)
+  and the engine 0.14.4, which changes nothing; the dashboard stays at 0.9.0 and the graph renderer
+  at 0.9.1, from v0.14.0. The plugin's skills are at 0.14.3. Applications install them from git. The pull
+  request after the tag moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
