@@ -429,9 +429,13 @@ defmodule EhOsContract.Auth.DevelopmentTest do
     assert page =~ ~s(value="clinic.receptionist")
     assert page =~ ~s(name="scopes[clinic_id]")
     assert page =~ ~s(name="return_to" value="/visits")
+
+    # The application's stylesheet, at the path a Phoenix 1.8 application serves it in development.
+    assert page =~ ~s(<link rel="stylesheet" href="/assets/css/app.css">)
     assert missing =~ "the chosen actors need a value for clinic_id"
     # The form comes back as the developer filled it in.
     assert missing =~ ~s(value="clinic.receptionist" checked)
     assert missing =~ ~s(name="subject" placeholder="dev" value="u-dev")
+    assert missing =~ ~s(<link rel="stylesheet" href="/assets/css/app.css">)
   end
 end

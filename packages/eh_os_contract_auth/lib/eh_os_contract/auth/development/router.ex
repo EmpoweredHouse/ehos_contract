@@ -47,6 +47,22 @@ defmodule EhOsContract.Auth.Development.Router do
   too large.
   Mount the router at `/dev`: `EhOsContract.Auth.Session` and
   `EhOsContract.Auth.SignIn.Router`'s `GET /sign-in` send a browser to `/dev/sign-in`.
+
+  ## The look of the page
+
+  The page links the application's stylesheet, `/assets/css/app.css` by default, the path a
+  Phoenix 1.8 application serves its CSS at in development. With the EmpoweredHouse design
+  system (`ehos_design`) imported there, the page takes the application's fonts, colours,
+  buttons and fields. Without it, or when the path does not exist, the page keeps a plain look
+  of its own. Name another path, or none:
+
+      forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: "/assets/app.css"
+      forward "/dev", EhOsContract.Auth.Development.Router, stylesheet: nil
+
+  The stylesheet is the page's only link. The browser asks for it, and for what it loads, such
+  as fonts, only after the router let the page through. The page has no script. A stylesheet
+  with Tailwind but without daisyUI's `btn`, `input` and `checkbox` classes takes the border and
+  the background of the button and the text fields: give `stylesheet: nil` there.
   """
 
   @behaviour Plug
@@ -59,19 +75,42 @@ defmodule EhOsContract.Auth.Development.Router do
   @form Plug.Parsers.init(parsers: [:urlencoded], pass: ["*/*"])
   @csrf Plug.CSRFProtection.init([])
 
-  @doc "Takes no options, and raises on any."
+  @doc """
+  Takes `stylesheet:`, the path of the application's stylesheet that the page links, or `nil`
+  for none (the module's doc has an example). It raises on any other option, and on a
+  stylesheet that is not a path of this application, such as `"https://cdn.example/app.css"` or
+  `"//cdn.example/app.css"`.
+  """
   @impl Plug
   @spec init(keyword()) :: keyword()
-  def init(opts), do: Keyword.validate!(opts, [])
+  def init(opts) do
+    opts = Keyword.validate!(opts, stylesheet: "/assets/css/app.css")
+    stylesheet = opts[:stylesheet]
+
+    if is_nil(stylesheet) or local_path?(stylesheet) do
+      opts
+    else
+      raise ArgumentError,
+            "the stylesheet must be a path of this application, such as " <>
+              "\"/assets/css/app.css\", or nil, got: #{inspect(stylesheet)}"
+    end
+  end
+
+  # A path on this origin: one leading slash, and no backslash or control character, which a
+  # browser may read as another slash or drop.
+  defp local_path?(path) when is_binary(path),
+    do: String.match?(path, ~r{\A/(?![/\\])[^\\\x00-\x20\x7f]*\z})
+
+  defp local_path?(_path), do: false
 
   @doc "Answers the request, as the module's doc lists."
   @impl Plug
   @spec call(Plug.Conn.t(), keyword()) :: Plug.Conn.t()
-  def call(conn, _opts) do
+  def call(conn, opts) do
     case {conn.method, conn.path_info} do
       {_method, ["credential" | rest]} -> Plug.forward(conn, rest, Credential, [])
-      {"GET", ["sign-in"]} -> conn |> browser() |> then(&page(&1, 200, nil))
-      {"POST", ["sign-in"]} -> conn |> browser() |> then(&create/1)
+      {"GET", ["sign-in"]} -> conn |> browser() |> then(&page(&1, opts, 200, nil))
+      {"POST", ["sign-in"]} -> conn |> browser() |> then(&create(&1, opts))
       _other -> conn |> fetch_session() |> Guard.call([]) |> not_found()
     end
   rescue
@@ -152,9 +191,9 @@ defmodule EhOsContract.Auth.Development.Router do
       |> halt()
   end
 
-  defp page(%Plug.Conn{halted: true} = conn, _status, _error), do: conn
+  defp page(%Plug.Conn{halted: true} = conn, _opts, _status, _error), do: conn
 
-  defp page(conn, status, error) do
+  defp page(conn, opts, status, error) do
     params = Map.merge(conn.query_params, body(conn))
 
     html =
@@ -165,7 +204,8 @@ defmodule EhOsContract.Auth.Development.Router do
         subject: params["subject"],
         chosen: list(params["actors"]),
         scopes: map(params["scopes"]),
-        error: error
+        error: error,
+        stylesheet: opts[:stylesheet]
       )
 
     conn
@@ -174,9 +214,9 @@ defmodule EhOsContract.Auth.Development.Router do
     |> halt()
   end
 
-  defp create(%Plug.Conn{halted: true} = conn), do: conn
+  defp create(%Plug.Conn{halted: true} = conn, _opts), do: conn
 
-  defp create(conn) do
+  defp create(conn, opts) do
     params = body(conn)
     subject = blank_to(params["subject"], "dev")
     scopes = params["scopes"] |> map() |> Map.reject(fn {_scope, value} -> value == "" end)
@@ -191,7 +231,7 @@ defmodule EhOsContract.Auth.Development.Router do
         |> halt()
 
       {:error, reason} ->
-        page(conn, 422, Development.describe(reason))
+        page(conn, opts, 422, Development.describe(reason))
     end
   end
 
