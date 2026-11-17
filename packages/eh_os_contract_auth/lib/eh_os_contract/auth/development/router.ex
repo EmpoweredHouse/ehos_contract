@@ -37,9 +37,9 @@ defmodule EhOsContract.Auth.Development.Router do
   need no token. Each other request gets 403. A request that passes gets 404 for a path the
   router does not know. `GET /dev/sign-in` with the `token` parameter, once it passes, answers
   303 to the same address without `token`, with every other parameter, so the address bar
-  shows no token. No answer carries an `Access-Control-Allow-*` header. A CORS plug in the endpoint that answers a preflight
-  `OPTIONS` itself, or adds its headers as the answer is sent, is not covered: keep such a
-  plug off the `/dev` paths.
+  shows no token. No answer carries an `Access-Control-Allow-*` header. A CORS plug in the
+  endpoint that answers a preflight `OPTIONS` itself, or adds its headers as the answer is
+  sent, is not covered: keep such a plug off the `/dev` paths.
 
   The pages use the session of the endpoint's `Plug.Session`, which a Phoenix endpoint
   has, and check a CSRF token on the form (`Plug.CSRFProtection`): a form sent without a
