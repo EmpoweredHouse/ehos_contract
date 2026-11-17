@@ -26,6 +26,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The development sign-in page removes the token from its address** (#642). `GET /dev/sign-in`
+  with the `token` parameter keeps the token's hash in the session, as before, and answers 303 to
+  the same address without `token`, with every other parameter. The address bar no longer shows
+  the token. A request with the token only in the `x-dev-sign-in-token` header gets no redirect.
+
 - **The development sign-in page looks like the application** (#640). `/dev/sign-in` links the
   application's stylesheet, `/assets/css/app.css` by default, and draws its form with the
   EmpoweredHouse design system's tokens and daisyUI's classes, so an application that imports
