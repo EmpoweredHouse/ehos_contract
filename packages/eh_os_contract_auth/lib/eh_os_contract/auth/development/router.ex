@@ -215,12 +215,13 @@ defmodule EhOsContract.Auth.Development.Router do
     end
   end
 
-  # Each pair that Plug reads into the `token` parameter: `token=…`, and `token[]=…` or
-  # `token[a]=…`, which the guard does not take but which would keep the parameter, and so
-  # send the browser back here again and again.
+  # Each pair that Plug reads into the `token` parameter, and no other: `token=…`, and
+  # `token[]=…` or `token[a]=…`, which the guard does not take but which would keep the
+  # parameter, and so send the browser back here again and again. Plug decodes the key, and
+  # reads brackets only in a key that ends with `]`: `token[x` is a parameter of its own.
   defp token_pair?(pair) do
     key = pair |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
-    key == "token" or String.starts_with?(key, "token[")
+    key == "token" or (String.starts_with?(key, "token[") and String.ends_with?(key, "]"))
   end
 
   defp page(%Plug.Conn{halted: true} = conn, _opts, _status, _error), do: conn

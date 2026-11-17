@@ -453,6 +453,7 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              encoded_key: {303, ["/sign-in?return_to=/c"]},
              token_as_list: {303, ["/sign-in?return_to=/a"]},
              token_as_map: {303, ["/sign-in"]},
+             like_token: {303, ["/sign-in?token[x=1"]},
              mounted_with_slashes: {303, ["/dev/sign-in?return_to=/b"]},
              header: {200, []},
              target: 200
@@ -483,6 +484,8 @@ defmodule EhOsContract.Auth.DevelopmentTest do
                # would send the browser back here for good.
                token_as_list: location.(request.("/sign-in?token[]=x&return_to=/a", session: session)),
                token_as_map: location.(request.("/sign-in?token[a]=x", session: session)),
+               # Plug reads `token[x` as a parameter of its own, so it stays.
+               like_token: location.(request.("/sign-in?token=" <> token <> "&token[x=1", [])),
                # The path is the router's own, not the one the request sent: `//dev/sign-in` would
                # name the host `dev`.
                mounted_with_slashes:
