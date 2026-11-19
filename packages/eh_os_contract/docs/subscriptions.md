@@ -97,6 +97,37 @@ subscriptions_example.loans:read_model:copies_out  failing at 41, fails at 42 (K
 | `rebuilding` | A process manager or a read model delivered `:in_transaction` reads the log again from the start. |
 | `failing` | It failed 3 times on one event, and stopped there. The task adds "while it replays the log" if it is a read model delivered `:in_transaction` or a process manager, and it failed in its replay. |
 
+## Watch the subscriptions while the host runs
+
+The engine sends two `:telemetry` events about subscriptions. Attach a handler to them to send the
+values to your metrics.
+
+| Event | When | Measurements | Metadata |
+| --- | --- | --- | --- |
+| `[:eh_os_contract, :subscription, :lag]` | Each node sends it for each subscription at each poll, 1 time a second. | `lag`, `position`, `head` | `subscription`, `status` |
+| `[:eh_os_contract, :subscription, :step]` | A node sends it after each step of a subscription. | `duration` (native time units), `count` | `subscription`, `kind`, `result`, `position` |
+
+- `lag` is the head of the log minus the position of the subscription. The head is the position
+  of the last event in the log, of any type. A consumer of few types can show a lag between its
+  events. The lag goes down at its next event, and to 0 if that event is the last in the log.
+- A read model delivered `:in_transaction` sends no `lag` while dispatch writes it. It sends one
+  while it is `rebuilding` or `failing`.
+- `result` is `:applied`, `:idle`, `:held`, `:failed`, `:unavailable` or `:waiting`. `:held`
+  means that another runner, on this node or another, holds the subscription; the runner tries
+  again after 1 second.
+- `count` is the number of events that the step applied. A relay that fails in a batch counts the
+  events that it published before the failure.
+- `position` is the new position after `:applied`, and the position of the event after
+  `:failed`, `:unavailable` and `:waiting`. It is `nil` after `:idle` and `:held`.
+
+A step that finds no event writes nothing to the log of the host. A step that applies events
+writes one line at the `:debug` level: the key, the number of events and the new position. These
+failures write a line at a higher level:
+
+- The third failure on one event writes an error, and the subscription is `failing`.
+- A bus that does not take a batch of a relay writes a warning.
+- An event that newer code wrote writes a warning, 1 time for each position.
+
 <a id="move-a-subscription-past-an-event-that-fails"></a>
 
 ## Move a subscription past an event that fails

@@ -42,6 +42,9 @@ children is correct in each environment.
     http://localhost:4000/dev/sign-in?token=…
 ```
 
+The application prints the address 1 time, at start. To get a new address, restart the
+application: the restart makes a new token.
+
 To print the full address, give the child the address of the application:
 `{EhOsContract.Auth.Development, url: "http://localhost:4000"}`.
 

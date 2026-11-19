@@ -14,9 +14,12 @@ defmodule EhOsContract.BootTest do
 
   @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
 
+  # The runners have a supervisor of their own, beside the inbox keepers.
   defp runners(supervisor) do
-    for {{EhOsContract.Subscription.Runner, key}, _pid, :worker, _} <-
+    for {EhOsContract.Subscription.Runners, runners, :supervisor, _} <-
           Supervisor.which_children(supervisor),
+        {{EhOsContract.Subscription.Runner, key}, _pid, :worker, _} <-
+          Supervisor.which_children(runners),
         do: key
   end
 
@@ -164,6 +167,19 @@ defmodule EhOsContract.BootTest do
       assert eventually(fn ->
                Repo.all(from(l in "dispatch_rig_lines", select: l.amount)) == [10]
              end)
+    end
+
+    test "a host with no subscription starts no runner and no poll" do
+      apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
+      key = {Implementations, apps}
+      index = Implementations.index(nil)
+      on_exit(fn -> :persistent_term.put(key, index) end)
+      :persistent_term.put(key, %{index | subscribed: []})
+
+      supervisor = start_supervised!(EhOsContract)
+
+      assert for({id, _, _, _} <- Supervisor.which_children(supervisor), do: id) == []
+      assert Process.whereis(EhOsContract.Subscription.Runners) == nil
     end
   end
 

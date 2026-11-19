@@ -48,6 +48,25 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- **Subscriptions send `:telemetry` events** (#635): `[:eh_os_contract, :subscription, :lag]`
+  for each subscription at each poll, and `[:eh_os_contract, :subscription, :step]` after each
+  step, with its result and the number of events it applied. `docs/subscriptions.md` lists their
+  measurements and metadata.
+
+### Changed
+
+- **While nothing is appended, a subscription starts no transaction and writes no log line** (#635). One process on
+  each node reads the head of the log and the subscription rows each second, without a lock, and
+  wakes only a runner that is behind. Before, each runner took its row `FOR UPDATE SKIP LOCKED`
+  each second, and a host's `:debug` log showed 4 queries for each runner each second. A step
+  that applies events now writes one `:debug` line with the key, the number of events and the
+  new position, and the queries of a step that finds nothing pass `log: false`. A runner that
+  finds its subscription held by another runner tries again after 1 second; its step event's
+  `result` is then `:held`. A relay's `:failed` step counts the events it published before the
+  failure.
+
 ## [0.14.4] - 2026-11-17
 
 ### Changed

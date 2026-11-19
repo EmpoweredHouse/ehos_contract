@@ -76,6 +76,25 @@ defmodule EhOsContract.Supervisor do
     # so in one node nothing a relay publishes is published before the inbox that
     # takes it listens.
     keepers = if bus?, do: Enum.map(inboxes, &{EhOsContract.Inbox.Keeper, &1}), else: []
-    keepers ++ Enum.map(consumers, &{Subscription.Runner, &1.key})
+
+    keepers ++ runners(repo, consumers)
+  end
+
+  # The runners under a supervisor of their own, which the node's poll reads to find the
+  # runner of each row; neither is started for a host with no subscription.
+  defp runners(_repo, []), do: []
+
+  defp runners(repo, consumers) do
+    children = Enum.map(consumers, &{Subscription.Runner, &1.key})
+    name = Subscription.Head.runners()
+
+    [
+      %{
+        id: name,
+        start: {Supervisor, :start_link, [children, [strategy: :one_for_one, name: name]]},
+        type: :supervisor
+      },
+      {Subscription.Head, repo: repo, runners: name}
+    ]
   end
 end

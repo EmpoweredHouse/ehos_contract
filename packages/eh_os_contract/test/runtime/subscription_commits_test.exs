@@ -73,7 +73,8 @@ defmodule EhOsContract.SubscriptionCommitsTest do
     Process.sleep(50)
     second = Task.async(fn -> Subscription.step(Repo, c) end)
 
-    assert Task.await(second) == :idle
+    # Held, not idle: the runner tries again rather than waiting for a wake (#635).
+    assert Task.await(second) == :held
     assert Task.await(first) == {:applied, 21}
 
     assert lines() == Enum.map(events, & &1.position)

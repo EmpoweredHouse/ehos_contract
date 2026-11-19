@@ -134,7 +134,9 @@ defmodule EhOsContract.Store.Postgres do
       from(e in Event, where: e.position > ^after_position, order_by: e.position, limit: ^limit)
 
     query = if types == :all, do: query, else: where(query, [e], e.type in ^types)
-    repo.all(query)
+    # Only the subscription runners read the log this way, on every wake; a step that
+    # applies events says so in one line of its own.
+    repo.all(query, log: false)
   end
 
   @spec apply_condition(module(), [map()], EhOsContract.Store.condition()) ::

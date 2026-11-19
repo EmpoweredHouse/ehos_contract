@@ -68,7 +68,8 @@ defmodule EhOsContract.Subscription do
   @fed ~w(running stale rebuilding)
 
   @typedoc """
-  What one step did. `{:unavailable, position}` is a relay's: the transport did not
+  What one step did. `:held`: another runner, on this node or another, holds the
+  row, and nothing was read. `{:unavailable, position}` is a relay's: the transport did not
   take the batch from `position` on, and nothing moved (`EhOsContract.Relay`).
   `{:waiting, position}`: the event at `position` was written with a newer version of
   its fields than this node declares (`EhOsContract.NewerSchemaError`, plan W1), so
@@ -76,6 +77,7 @@ defmodule EhOsContract.Subscription do
   """
   @type step ::
           :idle
+          | :held
           | {:applied, pos_integer()}
           | {:failed, pos_integer()}
           | {:unavailable, pos_integer()}
@@ -137,28 +139,85 @@ defmodule EhOsContract.Subscription do
   defp first_status(_consumer), do: "running"
 
   @doc """
-  One step of `consumer` (see the moduledoc): `:idle` when another runner holds it,
-  it is not running, or nothing is left to read; `{:applied, n}`; or `{:failed,
-  position}` when the event at `position` raised and the step rolled back.
+  One step of `consumer` (see the moduledoc): `:held` when another runner holds its
+  row; `:idle` when it is not running or nothing is left to read; `{:applied, n}`; or
+  `{:failed, position}` when the event at `position` raised and the step rolled back.
   """
   @spec step(module(), Implementations.consumer()) :: step()
   def step(repo, consumer) do
+    started = System.monotonic_time()
+
     # A relay with no bus has nothing to do, and needs no transaction and no lock on
-    # its row to find that out, every second and on every dispatch.
-    if consumer.kind == :relay and Bus.adapter() == nil,
-      do: :idle,
-      else: stepped(repo, consumer)
+    # its row to find that out, on every dispatch.
+    step =
+      if consumer.kind == :relay and Bus.adapter() == nil,
+        do: :idle,
+        else: stepped(repo, consumer)
+
+    reported(step, consumer, System.monotonic_time() - started)
   end
+
+  # The one line a step logs, and only when it applied something: an idle step, which
+  # every dispatch causes in every runner whose types it did not append, logs nothing,
+  # and its queries pass `log: false` (#635). Failures say so in their own lines.
+  defp reported({:applied, n, position}, consumer, duration) do
+    if n > 0 do
+      Logger.debug(
+        "subscription #{consumer.key}: applied #{n} event(s), now at position #{position}"
+      )
+    end
+
+    telemetry(consumer, duration, :applied, n, position)
+    {:applied, n}
+  end
+
+  # A relay's batch published one at a time up to the event that raised: those count.
+  defp reported({:applied_then_failed, applied, position}, consumer, duration) do
+    telemetry(consumer, duration, :failed, applied, position)
+    {:failed, position}
+  end
+
+  defp reported(step, consumer, duration) when step in [:idle, :held] do
+    telemetry(consumer, duration, step, 0, nil)
+    step
+  end
+
+  defp reported({result, position} = step, consumer, duration) do
+    telemetry(consumer, duration, result, 0, position)
+    step
+  end
+
+  defp telemetry(consumer, duration, result, count, position) do
+    :telemetry.execute(
+      [:eh_os_contract, :subscription, :step],
+      %{duration: duration, count: count},
+      %{subscription: consumer.key, kind: consumer.kind, result: result, position: position}
+    )
+  end
+
+  @doc """
+  Whether a runner has anything to do for `row` with the log's head at `head`: it is
+  in a status a runner feeds, and either behind the head or rebuilding, which ends with
+  a step at the head.
+  """
+  @spec due?(SubscriptionRecord.t(), non_neg_integer()) :: boolean()
+  def due?(%{status: "rebuilding"}, _head), do: true
+  def due?(%{mode: "inline"}, _head), do: false
+  def due?(%{status: status, position: position}, head), do: status in @fed and position < head
 
   # A policy's or a process manager's commands wake the runners once the step commits.
   defp stepped(repo, consumer) do
     result =
-      Runner.transaction(repo, fn ->
-        case take(repo, consumer.key, fed(consumer)) do
-          nil -> :idle
-          row -> apply_next(repo, consumer, row)
-        end
-      end)
+      Runner.transaction(
+        repo,
+        fn ->
+          case take(repo, consumer.key, fed(consumer)) do
+            nil -> held_or_idle(repo, consumer)
+            row -> apply_next(repo, consumer, row)
+          end
+        end,
+        log: false
+      )
 
     case result do
       {:ok, :at_head} ->
@@ -166,9 +225,9 @@ defmodule EhOsContract.Subscription do
 
       # A relay's batch went one event at a time: what passed is committed, and the
       # event that raised is recorded as a failure of its own.
-      {:ok, {:applied_then_failed, _applied, position, exception}} ->
+      {:ok, {:applied_then_failed, applied, position, exception}} ->
         failed!(repo, consumer, position, exception)
-        {:failed, position}
+        {:applied_then_failed, applied, position}
 
       {:ok, step} ->
         step
@@ -182,6 +241,17 @@ defmodule EhOsContract.Subscription do
     end
   end
 
+  # A row that `take/3` skipped because another runner holds it, here or on another
+  # node, is `:held`, and the runner tries again after a pause: that runner's step may
+  # write nothing (a rollback, a transport that did not take the batch), and then
+  # neither the head nor the row moves, and nothing else would wake this one (#635).
+  defp held_or_idle(repo, consumer) do
+    query =
+      from(s in SubscriptionRecord, where: s.name == ^consumer.key and s.status in ^fed(consumer))
+
+    if repo.exists?(query, log: false), do: :held, else: :idle
+  end
+
   # A relay publishes what it read, and moves only once the transport holds it
   # (`EhOsContract.Relay`); `step/2` has already seen that a bus is configured.
   defp apply_next(repo, %{kind: :relay} = consumer, row) do
@@ -193,7 +263,7 @@ defmodule EhOsContract.Subscription do
       case relay(consumer, events) do
         :ok ->
           advance!(repo, row, List.last(events).position)
-          {:applied, length(events)}
+          {:applied, length(events), List.last(events).position}
 
         {:error, _reason} ->
           {:unavailable, first.position}
@@ -203,13 +273,13 @@ defmodule EhOsContract.Subscription do
 
         # Those before the newer event go, one at a time, and the relay waits at it.
         {:waiting, _position} ->
-          one_by_one(repo, consumer, row, events, 0)
+          one_by_one(repo, consumer, row, events, {0, row.position})
 
         {:raised, exception} when length(events) == 1 ->
           repo.rollback({:failed, first.position, exception})
 
         {:raised, _exception} ->
-          one_by_one(repo, consumer, row, events, 0)
+          one_by_one(repo, consumer, row, events, {0, row.position})
       end
     else
       _nothing -> :idle
@@ -247,7 +317,7 @@ defmodule EhOsContract.Subscription do
           {current, _rest} ->
             Enum.each(current, &apply!(repo, consumer, &1, row.status))
             advance!(repo, row, List.last(current).position)
-            {:applied, length(current)}
+            {:applied, length(current), List.last(current).position}
         end
     end
   end
@@ -292,23 +362,23 @@ defmodule EhOsContract.Subscription do
   # A batch that raised says nothing of which event is at fault, so it goes again one
   # event at a time: those before the culprit are published and passed, and the
   # culprit is the failure, counted where it is, as a policy's is.
-  defp one_by_one(repo, consumer, row, [event | rest], applied) do
+  defp one_by_one(repo, consumer, row, [event | rest], {applied, last}) do
     case relay(consumer, [event]) do
       :ok ->
         advance!(repo, row, event.position)
 
         if rest == [],
-          do: {:applied, applied + 1},
-          else: one_by_one(repo, consumer, row, rest, applied + 1)
+          do: {:applied, applied + 1, event.position},
+          else: one_by_one(repo, consumer, row, rest, {applied + 1, event.position})
 
       {:error, _reason} when applied > 0 ->
-        {:applied, applied}
+        {:applied, applied, last}
 
       {:error, _reason} ->
         {:unavailable, event.position}
 
       {:waiting, _position} when applied > 0 ->
-        {:applied, applied}
+        {:applied, applied, last}
 
       {:waiting, position} ->
         {:waiting, position}
@@ -345,7 +415,7 @@ defmodule EhOsContract.Subscription do
         do: %{position: position, failed_position: nil, failure: nil, attempts: 0},
         else: %{position: position}
 
-    repo.update!(SubscriptionRecord.changeset(row, changes))
+    repo.update!(SubscriptionRecord.changeset(row, changes), log: false)
   end
 
   # A process manager at the head of its replay: back to `running`, with every
@@ -360,7 +430,7 @@ defmodule EhOsContract.Subscription do
           row ->
             repo.update!(SubscriptionRecord.changeset(row, %{status: "running"}))
             ProcessManager.reconcile!(repo, consumer)
-            {:applied, 0}
+            {:applied, 0, row.position}
         end
       end)
 
@@ -389,7 +459,7 @@ defmodule EhOsContract.Subscription do
             position = if tail == [], do: row.position, else: List.last(tail).position
             changes = %{position: position, status: "running"}
             repo.update!(SubscriptionRecord.changeset(row, changes))
-            {:applied, length(tail)}
+            {:applied, length(tail), position}
         end
       end)
 
@@ -548,9 +618,10 @@ defmodule EhOsContract.Subscription do
   defp take(repo, key, statuses, mode \\ :skip) do
     query = from(s in SubscriptionRecord, where: s.name == ^key and s.status in ^statuses)
 
+    # Silent as the rest of a step: an idle one is this query and nothing else (#635).
     case mode do
-      :skip -> repo.one(lock(query, "FOR UPDATE SKIP LOCKED"))
-      :wait -> repo.one(lock(query, "FOR UPDATE"))
+      :skip -> repo.one(lock(query, "FOR UPDATE SKIP LOCKED"), log: false)
+      :wait -> repo.one(lock(query, "FOR UPDATE"), log: false)
     end
   end
 
