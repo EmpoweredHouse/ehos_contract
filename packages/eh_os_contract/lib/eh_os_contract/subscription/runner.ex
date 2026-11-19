@@ -2,9 +2,11 @@ defmodule EhOsContract.Subscription.Runner do
   # The process that feeds one subscription (v2 §12), on every node: it runs
   # `EhOsContract.Subscription.step/2` until there is nothing to read, then waits.
   #
-  # It wakes on a notification after a commit, on Oban's notifier, and polls every
-  # second besides, which covers a transaction the host's code owned and a notification
-  # lost on the way. Dispatch sends one after a transaction it owns; inside a
+  # It wakes on a notification after a commit, on Oban's notifier, and when
+  # `EhOsContract.Subscription.Head`, the node's poll, finds its row behind the head of
+  # the log, which covers a transaction the host's code owned and a notification lost
+  # on the way. An idle runner sets no timer of its own, so it starts no transaction
+  # until something wakes it (#635). Dispatch sends one after a transaction it owns; inside a
   # transaction the engine owns — an inbox taking a message, a runner's step, a timer
   # firing — what was appended is marked (`notify_on_commit/0`), and the engine's
   # `transaction/2` sends it once that commits. Two nodes
@@ -21,12 +23,12 @@ defmodule EhOsContract.Subscription.Runner do
   use GenServer
 
   alias EhOsContract.{Implementations, Subscription}
+  alias EhOsContract.Subscription.Head
 
   require Logger
 
   @channel :eh_os_contract
   @pending {__MODULE__, :notify_on_commit}
-  @poll 1_000
   @after_crash 5_000
   @unavailable 5_000
 
@@ -63,23 +65,23 @@ defmodule EhOsContract.Subscription.Runner do
   end
 
   @doc """
-  Runs `fun` in a transaction of `repo`, as `c:Ecto.Repo.transaction/2`, and wakes
-  every runner once it commits if anything inside marked an append
+  Runs `fun` in a transaction of `repo`, as `c:Ecto.Repo.transaction/2` with `opts`,
+  and wakes every runner once it commits if anything inside marked an append
   (`notify_on_commit/0`). Inside another transaction it only runs `fun`: the mark is
   left to whoever commits.
   """
-  @spec transaction(module(), (-> result)) :: {:ok, result} | {:error, term()}
+  @spec transaction(module(), (-> result), keyword()) :: {:ok, result} | {:error, term()}
         when result: term()
-  def transaction(repo, fun) do
+  def transaction(repo, fun, opts \\ []) do
     if repo.in_transaction?() do
-      repo.transaction(fun)
+      repo.transaction(fun, opts)
     else
       # A mark left by a transaction that never came here — the host's own, or one
       # rolled back — is not this one's.
       Process.delete(@pending)
 
       try do
-        with {:ok, _} = committed <- repo.transaction(fun) do
+        with {:ok, _} = committed <- repo.transaction(fun, opts) do
           if Process.get(@pending), do: notify()
           committed
         end
@@ -97,10 +99,15 @@ defmodule EhOsContract.Subscription.Runner do
           waiting: pos_integer() | nil
         }
 
-  @doc "Listens for dispatch's notification, and runs the subscription `key` at once."
+  @doc """
+  Listens for dispatch's notification, registers for the node's poll to wake it, and
+  runs the subscription `key` at once.
+  """
   @impl GenServer
   @spec init(String.t()) :: {:ok, state()}
   def init(key) do
+    {:ok, _owner} = Registry.register(Head.registry(), key, nil)
+
     try do
       Oban.Notifier.listen(Oban, [@channel])
     catch
@@ -110,13 +117,23 @@ defmodule EhOsContract.Subscription.Runner do
     {:ok, schedule(%{key: key, timer: nil, resting: false, waiting: nil}, 0)}
   end
 
-  @doc "Runs the subscription on a notification or its own timer; ignores anything else."
+  @doc """
+  Runs the subscription on a notification, a wake from the node's poll or its own
+  timer; ignores anything else.
+  """
   @impl GenServer
   @spec handle_info(term(), state()) :: {:noreply, state()}
   # A runner that paused after a failure or an unreachable transport waits the pause
   # out: every dispatch notifies, and would otherwise make it try again at once.
   def handle_info({:notification, @channel, _payload}, %{resting: true} = state),
     do: {:noreply, state}
+
+  def handle_info(:wake, %{resting: true} = state), do: {:noreply, state}
+
+  def handle_info(:wake, state) do
+    flush_notifications()
+    {:noreply, run(state)}
+  end
 
   # One run reads everything the notifications waiting behind this one announce: a
   # runner catching up on a backlog is sent one per commit, its own among them.
@@ -131,6 +148,7 @@ defmodule EhOsContract.Subscription.Runner do
   defp flush_notifications do
     receive do
       {:notification, @channel, _payload} -> flush_notifications()
+      :wake -> flush_notifications()
     after
       0 -> :ok
     end
@@ -149,8 +167,8 @@ defmodule EhOsContract.Subscription.Runner do
           {:rest, after_ms} ->
             %{schedule(state, after_ms) | resting: true, waiting: nil}
 
-          after_ms ->
-            %{schedule(state, after_ms) | waiting: nil}
+          :idle ->
+            %{state | waiting: nil}
         end
     end
   rescue
@@ -169,7 +187,7 @@ defmodule EhOsContract.Subscription.Runner do
     %{schedule(state, @after_crash) | resting: true}
   end
 
-  # Steps until there is nothing to read; returns how long to wait before the next.
+  # Steps until there is nothing to read; returns how long to rest, if it must.
   defp catch_up(consumer, repo) do
     case Subscription.step(repo, consumer) do
       {:applied, _n} ->
@@ -200,7 +218,7 @@ defmodule EhOsContract.Subscription.Runner do
         {:waiting, position}
 
       :idle ->
-        @poll
+        :idle
     end
   end
 

@@ -298,6 +298,9 @@ defmodule EhOsContract.MixProject do
       # boundary through a queue.
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
+      # A subscription's steps and lag go out as `:telemetry` events. Ecto and Oban
+      # bring it too; declared, as `:decimal` below, so the engine does not lean on them.
+      {:telemetry, "~> 1.0"},
       # `EhOsContract.Codec` writes a `:decimal` field as a string and reads it back as a
       # `Decimal`, so the engine calls it by name. Declared explicitly rather than
       # inherited: a package whose dependency is satisfied only because a neighbour

@@ -76,6 +76,12 @@ defmodule EhOsContract.Supervisor do
     # so in one node nothing a relay publishes is published before the inbox that
     # takes it listens.
     keepers = if bus?, do: Enum.map(inboxes, &{EhOsContract.Inbox.Keeper, &1}), else: []
-    keepers ++ Enum.map(consumers, &{Subscription.Runner, &1.key})
+
+    # The registry before the runners, which join it in their init; the node's poll
+    # after them, so its first poll finds them there.
+    keepers ++
+      [{Registry, keys: :unique, name: Subscription.Head.registry()}] ++
+      Enum.map(consumers, &{Subscription.Runner, &1.key}) ++
+      [{Subscription.Head, repo: repo}]
   end
 end
