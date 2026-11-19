@@ -358,7 +358,7 @@ defmodule EhOsContract.InboxTest do
         supervisor |> Supervisor.which_children() |> Enum.reverse() |> Enum.map(&elem(&1, 0))
 
       at = fn id -> Enum.find_index(started, &(&1 == id)) end
-      assert at.({Inbox.Keeper, @inbox}) < at.({Subscription.Runner, @relay})
+      assert at.({Inbox.Keeper, @inbox}) < at.(Subscription.Head.runners())
 
       assert eventually(fn -> length(reserved()) == 1 end)
     end
@@ -394,8 +394,16 @@ defmodule EhOsContract.InboxTest do
       {supervisor, log} = with_log(fn -> start_supervised!(EhOsContract) end)
       children = Supervisor.which_children(supervisor)
 
+      [runners] =
+        for {id, pid, :supervisor, _} <- children, id == Subscription.Head.runners(), do: pid
+
       assert log =~ "inbox #{@inbox}: its consumer did not start"
-      assert Enum.any?(children, &match?({{Subscription.Runner, @relay}, _, _, _}, &1))
+
+      assert Enum.any?(
+               Supervisor.which_children(runners),
+               &match?({{Subscription.Runner, @relay}, _, _, _}, &1)
+             )
+
       [keeper] = for {{Inbox.Keeper, @inbox}, pid, _, _} <- children, do: pid
 
       # The keeper tries again after a pause; the test does not wait it out.

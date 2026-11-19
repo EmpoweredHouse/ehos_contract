@@ -57,12 +57,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
-- **An idle subscription starts no transaction and writes no log line** (#635). One process on
+- **While nothing is appended, a subscription starts no transaction and writes no log line** (#635). One process on
   each node reads the head of the log and the subscription rows each second, without a lock, and
   wakes only a runner that is behind. Before, each runner took its row `FOR UPDATE SKIP LOCKED`
   each second, and a host's `:debug` log showed 4 queries for each runner each second. A step
   that applies events now writes one `:debug` line with the key, the number of events and the
-  new position; the queries of a step pass `log: false`.
+  new position, and the queries of a step that finds nothing pass `log: false`. A runner that
+  finds its subscription held by another runner tries again after 1 second.
 
 ## [0.14.4] - 2026-11-17
 

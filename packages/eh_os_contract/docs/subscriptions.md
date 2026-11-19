@@ -109,16 +109,24 @@ values to your metrics.
 
 - `lag` is the head of the log minus the position of the subscription. The head is the position
   of the last event in the log, of any type. A consumer of few types can show a lag between its
-  events, and the lag goes back to 0 at its next event.
+  events. The lag goes down at its next event, and to 0 if that event is the last in the log.
 - A read model delivered `:in_transaction` sends no `lag` while dispatch writes it. It sends one
   while it is `rebuilding` or `failing`.
-- `result` is `:applied`, `:idle`, `:failed`, `:unavailable` or `:waiting`. `count` is the number
-  of events that the step applied. `position` is the new position after `:applied`, the position
-  of the event for the other results, and `nil` after `:idle`.
+- `result` is `:applied`, `:idle`, `:held`, `:failed`, `:unavailable` or `:waiting`. `:held`
+  means that another runner, on this node or another, holds the subscription; the runner tries
+  again after 1 second.
+- `count` is the number of events that the step applied. A relay that fails in a batch counts the
+  events that it published before the failure.
+- `position` is the new position after `:applied`, and the position of the event after
+  `:failed`, `:unavailable` and `:waiting`. It is `nil` after `:idle` and `:held`.
 
 A step that finds no event writes nothing to the log of the host. A step that applies events
-writes one line at the `:debug` level: the key, the number of events and the new position. A
-failure writes a warning or an error.
+writes one line at the `:debug` level: the key, the number of events and the new position. These
+failures write a line at a higher level:
+
+- The third failure on one event writes an error, and the subscription is `failing`.
+- A bus that does not take a batch of a relay writes a warning.
+- An event that newer code wrote writes a warning, 1 time for each position.
 
 <a id="move-a-subscription-past-an-event-that-fails"></a>
 

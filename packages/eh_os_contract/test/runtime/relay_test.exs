@@ -207,8 +207,22 @@ defmodule EhOsContract.RelayTest do
         do: place(id, total)
 
     Process.put(:relay_test_answer, {:raise_on, 666})
+    test = self()
+    id = "relay-steps-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      id,
+      [:eh_os_contract, :subscription, :step],
+      fn _event, measurements, meta, _config -> send(test, {:step, measurements, meta}) end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
 
     assert %{failing: [@relay]} = Testing.drain(only: @relay)
+
+    # The step that pinned the raise reports the 4 events it published before it.
+    assert_received {:step, %{count: 4}, %{result: :failed}}
 
     assert %{position: position, failed_position: failed, attempts: 3} = row()
     assert position == placed("o-4").position

@@ -77,11 +77,24 @@ defmodule EhOsContract.Supervisor do
     # takes it listens.
     keepers = if bus?, do: Enum.map(inboxes, &{EhOsContract.Inbox.Keeper, &1}), else: []
 
-    # The registry before the runners, which join it in their init; the node's poll
-    # after them, so its first poll finds them there.
-    keepers ++
-      [{Registry, keys: :unique, name: Subscription.Head.registry()}] ++
-      Enum.map(consumers, &{Subscription.Runner, &1.key}) ++
-      [{Subscription.Head, repo: repo}]
+    keepers ++ runners(repo, consumers)
+  end
+
+  # The runners under a supervisor of their own, which the node's poll reads to find the
+  # runner of each row; neither is started for a host with no subscription.
+  defp runners(_repo, []), do: []
+
+  defp runners(repo, consumers) do
+    children = Enum.map(consumers, &{Subscription.Runner, &1.key})
+    name = Subscription.Head.runners()
+
+    [
+      %{
+        id: name,
+        start: {Supervisor, :start_link, [children, [strategy: :one_for_one, name: name]]},
+        type: :supervisor
+      },
+      {Subscription.Head, repo: repo, runners: name}
+    ]
   end
 end

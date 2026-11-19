@@ -19,6 +19,7 @@ defmodule EhOsContract.SubscriptionHeadTest do
 
   @lines "dispatch_rig.ledger:read_model:ledger_lines"
   @poll 50
+  @runners __MODULE__.Runners
 
   setup do
     previous = %{
@@ -42,8 +43,15 @@ defmodule EhOsContract.SubscriptionHeadTest do
     head = Repo.one(from(e in EhOsContract.Event, select: coalesce(max(e.position), 0)))
     Repo.update_all(from(s in SubscriptionRecord, where: s.name == @lines), set: [position: head])
 
-    start_supervised!({Registry, keys: :unique, name: Subscription.Head.registry()})
-    runner = start_supervised!({Subscription.Runner, @lines})
+    start_supervised!(%{
+      id: @runners,
+      start:
+        {Supervisor, :start_link,
+         [[{Subscription.Runner, @lines}], [strategy: :one_for_one, name: @runners]]},
+      type: :supervisor
+    })
+
+    [{_id, runner, :worker, _modules}] = Supervisor.which_children(@runners)
     wait_for_first_run(runner)
 
     test = self()
@@ -81,7 +89,7 @@ defmodule EhOsContract.SubscriptionHeadTest do
   test "an idle runner starts no transaction and logs nothing while the node polls" do
     log =
       capture_log([level: :debug], fn ->
-        start_supervised!({Subscription.Head, repo: Repo, poll: @poll})
+        start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
 
         # Polls for longer than a runner's own poll took before #635 (1 s), all of
         # them finding the read model at the head.
@@ -98,7 +106,7 @@ defmodule EhOsContract.SubscriptionHeadTest do
   } do
     log =
       capture_log([level: :debug], fn ->
-        start_supervised!({Subscription.Head, repo: Repo, poll: @poll})
+        start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
         assert_receive {:lag, %{lag: 0}, _meta}, 1_000
 
         # Committed outside the engine's transactions, so nothing notifies: the poll
@@ -106,11 +114,11 @@ defmodule EhOsContract.SubscriptionHeadTest do
         event = deposit!(account, 7)
 
         assert_receive {:step, %{count: 1}, %{result: :applied, position: position}}, 1_000
-        assert position == event.position
-        assert lines() == [event.position]
-        # Back at the head, it stays quiet again.
-        assert_receive {:lag, %{lag: 0}, _meta}, 1_000
-        send(self(), {:position, event.position})
+        assert position == event
+        assert lines() == [event]
+        # Back at the head of the log it just read.
+        assert_receive {:lag, %{lag: 0, head: ^position}, _meta}, 1_000
+        send(self(), {:position, event})
       end)
 
     assert_received {:position, position}
@@ -127,7 +135,7 @@ defmodule EhOsContract.SubscriptionHeadTest do
   @tag :capture_log
   test "a rebuild wakes the runner with nothing new in the log", %{account: account} do
     deposit!(account, 3)
-    start_supervised!({Subscription.Head, repo: Repo, poll: @poll})
+    start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
     assert_receive {:step, _, %{result: :applied}}, 1_000
     assert_receive {:lag, %{lag: 0}, _meta}, 1_000
 
@@ -138,6 +146,74 @@ defmodule EhOsContract.SubscriptionHeadTest do
     assert_receive {:step, _measurements, %{result: result}}
                    when result in [:applied, :failed],
                    1_000
+  end
+
+  # A consumer of few types stays behind the head of the whole log between its events.
+  # The poll wakes it once to look at what was appended, not at every poll after.
+  test "a runner behind the head on events it does not take steps once, not at every poll" do
+    start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
+    assert_receive {:lag, %{lag: 0}, _meta}, 1_000
+
+    other = append!("dispatch_rig.ledger.audited", %{})
+
+    assert_receive {:step, _measurements, %{result: :idle}}, 1_000
+    assert_receive {:lag, %{head: ^other}, _meta}, 1_000
+    refute_receive {:step, _measurements, _meta}, 20 * @poll
+  end
+
+  # Another runner holds the row, and its step writes nothing: here a transaction that
+  # takes the row and rolls back. Neither the head nor the row moves after the wake,
+  # so only the held runner's own retry applies the event.
+  @tag :capture_log
+  test "a runner that finds its row held by another tries again by itself", %{
+    account: account
+  } do
+    test = self()
+
+    holder =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          Repo.one(from(s in SubscriptionRecord, where: s.name == @lines, lock: "FOR UPDATE"))
+
+          send(test, :held)
+          receive do: (:release -> Repo.rollback(:released))
+        end)
+      end)
+
+    assert_receive :held, 1_000
+    start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
+    event = deposit!(account, 9)
+
+    assert_receive {:step, _measurements, %{result: :held}}, 1_000
+    send(holder.pid, :release)
+    assert Task.await(holder) == {:error, :released}
+
+    assert_receive {:step, %{count: 1}, %{result: :applied, position: position}}, 3_000
+    assert position == event
+  end
+
+  defmodule SlowRepo do
+    @moduledoc false
+    # A database that answers each poll after 100 ms, and says when each poll started.
+    def one(_query, _opts) do
+      send(:persistent_term.get(__MODULE__), {:polled, System.monotonic_time(:millisecond)})
+      Process.sleep(100)
+      0
+    end
+
+    def all(_query, _opts), do: []
+  end
+
+  # A timer set before the poll fires while a slow poll runs, and the polls then hold a
+  # connection back to back on a database that is already slow.
+  test "on a slow database the next poll waits its pause after the last one ends" do
+    :persistent_term.put(SlowRepo, self())
+    on_exit(fn -> :persistent_term.erase(SlowRepo) end)
+    start_supervised!({Subscription.Head, repo: SlowRepo, poll: 100})
+
+    assert_receive {:polled, first}, 1_000
+    assert_receive {:polled, second}, 1_000
+    assert second - first >= 200
   end
 
   # The first run's timer, set for 0 ms, is there until it fires; an idle runner then
@@ -151,27 +227,31 @@ defmodule EhOsContract.SubscriptionHeadTest do
     end
   end
 
-  defp deposit!(account, amount) do
+  defp deposit!(account, amount),
+    do: append!("dispatch_rig.ledger.deposited", %{"account_id" => account, "amount" => amount})
+
+  # Committed in a transaction of its own, which notifies nothing.
+  defp append!(type, payload) do
     {:ok, {:ok, [event]}} =
       Repo.transaction(fn ->
         Store.append(
           Repo,
           [
             %{
-              type: "dispatch_rig.ledger.deposited",
+              type: type,
               contract: "dispatch_rig.ledger",
               contract_version: "head",
               actor: "system:head",
               correlation_id: Ecto.UUID.generate(),
               occurred_at: DateTime.utc_now(),
-              payload: %{"account_id" => account, "amount" => amount}
+              payload: payload
             }
           ],
           :none
         )
       end)
 
-    event
+    event.position
   end
 
   defp lines,

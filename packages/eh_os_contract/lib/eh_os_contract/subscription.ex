@@ -76,6 +76,7 @@ defmodule EhOsContract.Subscription do
   """
   @type step ::
           :idle
+          | :held
           | {:applied, pos_integer()}
           | {:failed, pos_integer()}
           | {:unavailable, pos_integer()}
@@ -169,9 +170,15 @@ defmodule EhOsContract.Subscription do
     {:applied, n}
   end
 
-  defp reported(:idle, consumer, duration) do
-    telemetry(consumer, duration, :idle, 0, nil)
-    :idle
+  # A relay's batch published one at a time up to the event that raised: those count.
+  defp reported({:applied_then_failed, applied, position}, consumer, duration) do
+    telemetry(consumer, duration, :failed, applied, position)
+    {:failed, position}
+  end
+
+  defp reported(step, consumer, duration) when step in [:idle, :held] do
+    telemetry(consumer, duration, step, 0, nil)
+    step
   end
 
   defp reported({result, position} = step, consumer, duration) do
@@ -204,7 +211,7 @@ defmodule EhOsContract.Subscription do
         repo,
         fn ->
           case take(repo, consumer.key, fed(consumer)) do
-            nil -> :idle
+            nil -> held_or_idle(repo, consumer)
             row -> apply_next(repo, consumer, row)
           end
         end,
@@ -217,9 +224,9 @@ defmodule EhOsContract.Subscription do
 
       # A relay's batch went one event at a time: what passed is committed, and the
       # event that raised is recorded as a failure of its own.
-      {:ok, {:applied_then_failed, _applied, position, exception}} ->
+      {:ok, {:applied_then_failed, applied, position, exception}} ->
         failed!(repo, consumer, position, exception)
-        {:failed, position}
+        {:applied_then_failed, applied, position}
 
       {:ok, step} ->
         step
@@ -231,6 +238,17 @@ defmodule EhOsContract.Subscription do
         failed!(repo, consumer, position, exception)
         {:failed, position}
     end
+  end
+
+  # A row that `take/3` skipped because another runner holds it, here or on another
+  # node, is `:held`, and the runner tries again after a pause: that runner's step may
+  # write nothing (a rollback, a transport that did not take the batch), and then
+  # neither the head nor the row moves, and nothing else would wake this one (#635).
+  defp held_or_idle(repo, consumer) do
+    query =
+      from(s in SubscriptionRecord, where: s.name == ^consumer.key and s.status in ^fed(consumer))
+
+    if repo.exists?(query, log: false), do: :held, else: :idle
   end
 
   # A relay publishes what it read, and moves only once the transport holds it

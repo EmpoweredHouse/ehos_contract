@@ -54,7 +54,6 @@ defmodule EhOsContract.RelayCommitsTest do
 
     Repo.delete_all(from(s in SubscriptionRecord, where: s.name == @relay))
     Subscription.register!(Repo, [Implementations.consumer(@relay)])
-    start_supervised!({Registry, keys: :unique, name: Subscription.Head.registry()})
     :ok
   end
 

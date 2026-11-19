@@ -93,6 +93,7 @@ defmodule EhOsContract.Testing do
   defp catch_up(repo, consumer, applied) do
     case Subscription.step(repo, consumer) do
       :idle -> applied
+      :held -> applied
       {:applied, n} -> catch_up(repo, consumer, applied + n)
       {:failed, _position} -> catch_up(repo, consumer, applied)
       {:unavailable, _position} -> applied

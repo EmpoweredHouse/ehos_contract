@@ -11,7 +11,8 @@ defmodule EhOsContract.Subscription.Runner do
   # firing — what was appended is marked (`notify_on_commit/0`), and the engine's
   # `transaction/2` sends it once that commits. Two nodes
   # running the same subscription do not collide: a step takes the row `FOR UPDATE
-  # SKIP LOCKED`, and the node that gets nothing waits for the next wake.
+  # SKIP LOCKED`, and the node that gets nothing (`:held`) looks again after a second,
+  # since the other node's step may write nothing that would wake it.
   #
   # An event that fails is retried after a pause that doubles with each attempt, and
   # a step that raises for another reason — the database gone, say — is logged and
@@ -23,7 +24,6 @@ defmodule EhOsContract.Subscription.Runner do
   use GenServer
 
   alias EhOsContract.{Implementations, Subscription}
-  alias EhOsContract.Subscription.Head
 
   require Logger
 
@@ -31,6 +31,7 @@ defmodule EhOsContract.Subscription.Runner do
   @pending {__MODULE__, :notify_on_commit}
   @after_crash 5_000
   @unavailable 5_000
+  @held 1_000
 
   @doc false
   @spec start_link(String.t()) :: GenServer.on_start()
@@ -99,15 +100,10 @@ defmodule EhOsContract.Subscription.Runner do
           waiting: pos_integer() | nil
         }
 
-  @doc """
-  Listens for dispatch's notification, registers for the node's poll to wake it, and
-  runs the subscription `key` at once.
-  """
+  @doc "Listens for dispatch's notification, and runs the subscription `key` at once."
   @impl GenServer
   @spec init(String.t()) :: {:ok, state()}
   def init(key) do
-    {:ok, _owner} = Registry.register(Head.registry(), key, nil)
-
     try do
       Oban.Notifier.listen(Oban, [@channel])
     catch
@@ -216,6 +212,11 @@ defmodule EhOsContract.Subscription.Runner do
       # so it waits for this node to be upgraded rather than stopping.
       {:waiting, position} ->
         {:waiting, position}
+
+      # Another runner holds the row; its step may write nothing, so this one looks
+      # again rather than waiting for a wake that may not come.
+      :held ->
+        {:rest, @held}
 
       :idle ->
         :idle
