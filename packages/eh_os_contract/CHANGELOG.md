@@ -54,11 +54,23 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   for each subscription at each poll, and `[:eh_os_contract, :subscription, :step]` after each
   step, with its result and the number of events it applied. `docs/subscriptions.md` lists their
   measurements and metadata.
+- **`EhOsContract` takes `subscription_poll:` in the host's list of children** (#635): how many
+  milliseconds the runners' poll waits between two looks at the log, 30,000 by default.
 
 ### Changed
 
+- **Breaking: an append wakes the subscription runners when its transaction commits, also in a
+  transaction that the host's code owns** (#635). Before, such an append waited for the poll.
+  The storage goes to version 6, which adds a trigger on `eh_os_contract_events` that sends a
+  notification at commit: add a migration that calls `EhOsContract.Migrations.up(version: 6)`.
+  The engine refuses to start on version 5. The notification goes through Oban's Postgres
+  notifier, on the channel of Oban's prefix that is the schema of the log. If Oban has another
+  prefix or another notifier, the poll finds the append. The poll now waits 30 seconds, not 1.
+  If many transactions append at the same time, their commits wait for each other on the
+  database's notification queue.
+
 - **While nothing is appended, a subscription starts no transaction and writes no log line** (#635). One process on
-  each node reads the head of the log and the subscription rows each second, without a lock, and
+  each node reads the head of the log and the subscription rows at each poll, without a lock, and
   wakes only a runner that is behind. Before, each runner took its row `FOR UPDATE SKIP LOCKED`
   each second, and a host's `:debug` log showed 4 queries for each runner each second. A step
   that applies events now writes one `:debug` line with the key, the number of events and the

@@ -112,7 +112,7 @@ defmodule EhOsContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 5
+  @current_version 6
 
   # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
   # match on the path: with `search_path: "ledger, public"` and the tables already

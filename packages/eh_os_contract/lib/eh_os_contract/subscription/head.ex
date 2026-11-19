@@ -34,7 +34,7 @@ defmodule EhOsContract.Subscription.Head do
   require Logger
 
   @runners EhOsContract.Subscription.Runners
-  @poll 1_000
+  @poll 30_000
 
   @typedoc false
   @type state :: %{
@@ -54,7 +54,7 @@ defmodule EhOsContract.Subscription.Head do
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts)
 
   @doc """
-  Takes `repo:`, `poll:` (milliseconds, 1,000 by default) and `runners:`, the name of
+  Takes `repo:`, `poll:` (milliseconds, 30,000 by default) and `runners:`, the name of
   the runners' supervisor, and polls at once.
   """
   @impl GenServer

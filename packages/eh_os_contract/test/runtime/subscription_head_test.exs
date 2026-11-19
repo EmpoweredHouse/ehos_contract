@@ -211,6 +211,39 @@ defmodule EhOsContract.SubscriptionHeadTest do
     refute log =~ "could not read the head"
   end
 
+  # An append in a transaction the host owns wakes the runners when it commits (#635):
+  # the log's trigger notifies the channel on which Oban's Postgres notifier hands
+  # `{:notification, :eh_os_contract, %{}}` to each runner, and only at commit.
+  test "an append notifies the runners' channel once, when its transaction commits", %{
+    account: account
+  } do
+    listener = start_supervised!({Postgrex.Notifications, Repo.config()})
+    {:ok, _ref} = Postgrex.Notifications.listen(listener, "public.oban_eh_os_contract")
+    test = self()
+
+    appender =
+      Task.async(fn ->
+        Repo.transaction(fn ->
+          for amount <- [1, 2] do
+            {:ok, [_event]} = Store.append(Repo, [entry(deposited(account, amount))], :none)
+          end
+
+          send(test, :appended)
+          receive do: (:commit -> :ok)
+        end)
+      end)
+
+    assert_receive :appended, 1_000
+    refute_receive {:notification, _pid, _ref, _channel, _payload}, 200
+
+    send(appender.pid, :commit)
+    assert Task.await(appender) == {:ok, :ok}
+
+    assert_receive {:notification, ^listener, _ref, "public.oban_eh_os_contract", "{}"}, 1_000
+    # Two appends, one transaction: Postgres sends one notification.
+    refute_receive {:notification, _pid, _ref, _channel, _payload}, 200
+  end
+
   defmodule SlowRepo do
     @moduledoc false
     # A database that answers each poll after 100 ms, and says when each poll started.
@@ -247,30 +280,29 @@ defmodule EhOsContract.SubscriptionHeadTest do
   end
 
   defp deposit!(account, amount),
-    do: append!("dispatch_rig.ledger.deposited", %{"account_id" => account, "amount" => amount})
+    do: append!("dispatch_rig.ledger.deposited", deposited(account, amount))
 
-  # Committed in a transaction of its own, which notifies nothing.
+  defp deposited(account, amount), do: %{"account_id" => account, "amount" => amount}
+
+  # Committed in a transaction of its own, outside the engine's, so no runner is told
+  # by dispatch.
   defp append!(type, payload) do
     {:ok, {:ok, [event]}} =
-      Repo.transaction(fn ->
-        Store.append(
-          Repo,
-          [
-            %{
-              type: type,
-              contract: "dispatch_rig.ledger",
-              contract_version: "head",
-              actor: "system:head",
-              correlation_id: Ecto.UUID.generate(),
-              occurred_at: DateTime.utc_now(),
-              payload: payload
-            }
-          ],
-          :none
-        )
-      end)
+      Repo.transaction(fn -> Store.append(Repo, [entry(payload, type)], :none) end)
 
     event.position
+  end
+
+  defp entry(payload, type \\ "dispatch_rig.ledger.deposited") do
+    %{
+      type: type,
+      contract: "dispatch_rig.ledger",
+      contract_version: "head",
+      actor: "system:head",
+      correlation_id: Ecto.UUID.generate(),
+      occurred_at: DateTime.utc_now(),
+      payload: payload
+    }
   end
 
   defp lines,
