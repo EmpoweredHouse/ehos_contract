@@ -109,8 +109,9 @@ defmodule EhOsContract.SubscriptionHeadTest do
         start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: @runners})
         assert_receive {:lag, %{lag: 0}, _meta}, 1_000
 
-        # Committed outside the engine's transactions, so nothing notifies: the poll
-        # is what finds it, as it finds a host's own transaction.
+        # Committed outside the engine's transactions, and the log's trigger notifies
+        # this database, while the suite's Oban listens on the sandbox's: the poll is
+        # what finds it, as it finds a notification lost on the way.
         event = deposit!(account, 7)
 
         assert_receive {:step, %{count: 1}, %{result: :applied, position: position}}, 1_000
@@ -244,6 +245,24 @@ defmodule EhOsContract.SubscriptionHeadTest do
     refute_receive {:notification, _pid, _ref, _channel, _payload}, 200
   end
 
+  # A channel of 64 bytes or more is refused by `pg_notify`, and the refusal would fail
+  # the insert: the trigger leaves such a log to the poll. Here a log in a schema of 50
+  # bytes, with the engine's trigger function on it.
+  test "a log in a schema whose channel name is too long still takes appends" do
+    schema = String.duplicate("s", 50)
+    Repo.query!(~s|CREATE SCHEMA "#{schema}"|)
+    on_exit(fn -> Repo.query!(~s|DROP SCHEMA "#{schema}" CASCADE|) end)
+    Repo.query!(~s|CREATE TABLE "#{schema}".eh_os_contract_events (x integer)|)
+
+    Repo.query!(
+      ~s|CREATE TRIGGER notify AFTER INSERT ON "#{schema}".eh_os_contract_events | <>
+        "FOR EACH STATEMENT EXECUTE FUNCTION public.eh_os_contract_events_notify()"
+    )
+
+    assert %{num_rows: 1} =
+             Repo.query!(~s|INSERT INTO "#{schema}".eh_os_contract_events VALUES (1)|)
+  end
+
   defmodule SlowRepo do
     @moduledoc false
     # A database that answers each poll after 100 ms, and says when each poll started.
@@ -284,8 +303,8 @@ defmodule EhOsContract.SubscriptionHeadTest do
 
   defp deposited(account, amount), do: %{"account_id" => account, "amount" => amount}
 
-  # Committed in a transaction of its own, outside the engine's, so no runner is told
-  # by dispatch.
+  # Committed in a transaction of its own, outside the engine's: dispatch tells no
+  # runner, and the trigger's notification reaches no Oban here (see above).
   defp append!(type, payload) do
     {:ok, {:ok, [event]}} =
       Repo.transaction(fn -> Store.append(Repo, [entry(payload, type)], :none) end)

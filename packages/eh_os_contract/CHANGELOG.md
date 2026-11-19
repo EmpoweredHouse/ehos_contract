@@ -64,10 +64,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   The storage goes to version 6, which adds a trigger on `eh_os_contract_events` that sends a
   notification at commit: add a migration that calls `EhOsContract.Migrations.up(version: 6)`.
   The engine refuses to start on version 5. The notification goes through Oban's Postgres
-  notifier, on the channel of Oban's prefix that is the schema of the log. If Oban has another
-  prefix or another notifier, the poll finds the append. The poll now waits 30 seconds, not 1.
-  If many transactions append at the same time, their commits wait for each other on the
-  database's notification queue.
+  notifier, on the channel of Oban's prefix that is the schema of the log. The poll now waits
+  30 seconds, not 1. So if Oban has another prefix or another notifier, an append in a
+  transaction of the host's own code waits up to 30 seconds: set `subscription_poll:` lower. At
+  commit, `NOTIFY` takes one lock for the whole Postgres instance, so the commits that notify,
+  of every application on the instance and of Oban, wait for each other. A schema name of 44
+  bytes or more, or a notification queue half full, sends no notification, and the poll finds
+  the append.
 
 - **While nothing is appended, a subscription starts no transaction and writes no log line** (#635). One process on
   each node reads the head of the log and the subscription rows at each poll, without a lock, and

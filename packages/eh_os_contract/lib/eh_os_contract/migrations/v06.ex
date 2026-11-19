@@ -16,9 +16,20 @@ defmodule EhOsContract.Migrations.V06 do
   #
   # One notification per statement, and Postgres folds the identical notifications of
   # one transaction into one, so a transaction that appends many events wakes the
-  # runners once. `NOTIFY` takes a lock on the database's notification queue at commit,
-  # which serialises the commits of concurrent appenders; the append lock already
-  # serialises the appends to one log.
+  # runners once.
+  #
+  # The cost: at commit, `NOTIFY` takes one lock for the whole Postgres instance and
+  # holds it through the commit's flush, so every transaction that notifies — another
+  # application's log on the same instance, Oban's own notifications — commits one
+  # after another. Within one log the append lock already orders the commits; across
+  # logs this brings back at commit some of what the per-schema append lock removed
+  # (issue #51). Accepted at the scale of an EHOS application (#635).
+  #
+  # Two cases notify nothing and leave the append to the poll, since a notification
+  # that fails fails the insert with it: a channel of 64 bytes or more, which
+  # `pg_notify` refuses (a schema name of 44 bytes or more), and a notification queue
+  # half full, which a listener that stopped reading fills until every commit that
+  # notifies is refused.
 
   use Ecto.Migration
 
@@ -27,8 +38,13 @@ defmodule EhOsContract.Migrations.V06 do
   def up do
     execute """
     CREATE FUNCTION eh_os_contract_events_notify() RETURNS trigger LANGUAGE plpgsql AS
-    $$ BEGIN
-      PERFORM pg_catalog.pg_notify(TG_TABLE_SCHEMA || '.oban_eh_os_contract', '{}');
+    $$ DECLARE
+      channel text := TG_TABLE_SCHEMA || '.oban_eh_os_contract';
+    BEGIN
+      IF pg_catalog.octet_length(channel) < 64
+         AND pg_catalog.pg_notification_queue_usage() < 0.5 THEN
+        PERFORM pg_catalog.pg_notify(channel, '{}');
+      END IF;
       RETURN NULL;
     END $$
     """

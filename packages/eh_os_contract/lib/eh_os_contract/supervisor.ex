@@ -42,13 +42,14 @@ defmodule EhOsContract.Supervisor do
   # sends: 30 seconds unless the host's child spec says otherwise (#635).
   defp subscription_poll!(opts) do
     case Keyword.validate!(List.wrap(opts), subscription_poll: 30_000) do
-      [subscription_poll: ms] when is_integer(ms) and ms > 0 ->
+      # The longest timer the runtime sets, about 49 days.
+      [subscription_poll: ms] when is_integer(ms) and ms > 0 and ms <= 4_294_967_295 ->
         ms
 
       [subscription_poll: other] ->
         raise ArgumentError,
-              "EhOsContract's subscription_poll: is a number of milliseconds above 0, " <>
-                "got: #{inspect(other)}"
+              "EhOsContract's subscription_poll: is a number of milliseconds from 1 to " <>
+                "4294967295, got: #{inspect(other)}"
     end
   end
 

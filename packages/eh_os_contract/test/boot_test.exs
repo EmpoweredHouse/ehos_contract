@@ -183,7 +183,12 @@ defmodule EhOsContract.BootTest do
       assert {:error, {{%ArgumentError{message: zero}, _}, _}} =
                start_supervised({EhOsContract, subscription_poll: 0})
 
-      assert zero =~ "subscription_poll: is a number of milliseconds above 0, got: 0"
+      assert zero =~ "subscription_poll: is a number of milliseconds from 1 to 4294967295, got: 0"
+
+      assert {:error, {{%ArgumentError{message: too_long}, _}, _}} =
+               start_supervised({EhOsContract, subscription_poll: 4_294_967_296})
+
+      assert too_long =~ "got: 4294967296"
 
       assert {:error, {{%ArgumentError{message: unknown}, _}, _}} =
                start_supervised({EhOsContract, poll: 5_000})

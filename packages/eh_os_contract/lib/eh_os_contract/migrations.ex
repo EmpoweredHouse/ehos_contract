@@ -46,6 +46,8 @@ defmodule EhOsContract.Migrations do
   version on each deployment (`EhOsContract.Deployment`), so a change of the words
   alone is a deployment of its own. Version 5 keeps the status a failing subscription
   failed in, so that skipping the event goes back to it: a rebuild goes on rebuilding.
+  Version 6 adds a trigger that wakes the subscription runners when a transaction that
+  appended to the log commits, also a transaction of the host's own code.
 
   **A version that removes a column stops the release before it.** The engine refuses
   to start on storage newer than its own version, since a node of the older release
@@ -93,13 +95,18 @@ defmodule EhOsContract.Migrations do
         EhOsContract.Migrations.up()
       end
 
+  Oban's prefix is also where the log's trigger sends its wake: on the channel of the
+  log's schema, to Oban's Postgres notifier. With another prefix or another notifier,
+  an append in a transaction of the host's own code waits for the runners' poll, every
+  30 seconds unless `EhOsContract`'s `subscription_poll:` says otherwise.
+
   The schema has to exist before the migrations run, as EHOS creates it: Ecto reads
   and writes its own `schema_migrations` through the same path before any migration
   runs, so a schema created by one of them leaves that table in the next one.
 
   The role that migrates needs to create in that schema and nowhere else. The role
   the application runs as needs `SELECT`, `INSERT`, `UPDATE` and `DELETE` on the
-  tables, `USAGE` on the sequences, and `EXECUTE` on the engine's three functions,
+  tables, `USAGE` on the sequences, and `EXECUTE` on the engine's four functions,
   which PostgreSQL grants to `PUBLIC` unless the database revokes it: nothing at run
   time creates, alters or drops anything. Oban's tables go where its `prefix:` says,
   and the engine reads them there.

@@ -4,12 +4,15 @@ defmodule EhOsContract.Subscription.Runner do
   #
   # It wakes on a notification after a commit, on Oban's notifier, and when
   # `EhOsContract.Subscription.Head`, the node's poll, finds its row behind the head of
-  # the log, which covers a transaction the host's code owned and a notification lost
-  # on the way. An idle runner sets no timer of its own, so it starts no transaction
-  # until something wakes it (#635). Dispatch sends one after a transaction it owns; inside a
-  # transaction the engine owns — an inbox taking a message, a runner's step, a timer
-  # firing — what was appended is marked (`notify_on_commit/0`), and the engine's
-  # `transaction/2` sends it once that commits. Two nodes
+  # the log, which covers a notification lost on the way. An idle runner sets no timer
+  # of its own, so it starts no transaction until something wakes it (#635). The log's
+  # trigger (storage version 6) notifies at the commit of any transaction that appended,
+  # the host's own included, where Oban's Postgres notifier listens on the log's schema.
+  # The engine also sends one itself, for a notifier the trigger does not reach: after a
+  # transaction dispatch owns, and, inside a transaction the engine owns — an inbox
+  # taking a message, a runner's step, a timer firing — once `transaction/2` commits what
+  # was marked (`notify_on_commit/0`). Where both reach a runner, a commit wakes it twice,
+  # and the second wake usually finds its notification already flushed. Two nodes
   # running the same subscription do not collide: a step takes the row `FOR UPDATE
   # SKIP LOCKED`, and the node that gets nothing (`:held`) looks again after a second,
   # since the other node's step may write nothing that would wake it.
@@ -57,7 +60,8 @@ defmodule EhOsContract.Subscription.Runner do
   @doc """
   Marks that the transaction this process is in appended something a runner reads, so
   that `transaction/2` around it wakes the runners once it commits. Inside a
-  transaction the host's code owns the mark is never read: the runners poll.
+  transaction the host's code owns the mark is never read: the log's trigger wakes the
+  runners at its commit, or else their poll finds the append.
   """
   @spec notify_on_commit() :: :ok
   def notify_on_commit do

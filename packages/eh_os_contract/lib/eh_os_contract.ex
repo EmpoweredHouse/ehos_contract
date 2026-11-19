@@ -180,8 +180,8 @@ defmodule EhOsContract do
 
       children = [MyApp.Repo, {EhOsContract, subscription_poll: 10_000}]
 
-  It refuses any other option, and a value that is not a number of milliseconds
-  above 0.
+  It refuses any other option, and a value that is not a number of milliseconds from 1
+  to 4,294,967,295.
 
   **`config :eh_os_contract, subscriptions: :manual`** skips the last two steps:
   nothing is registered and no runner starts. Tests use it, and push the work through
