@@ -12,7 +12,7 @@ defmodule EhOsContract.Subscription.Runner do
   # transaction dispatch owns, and, inside a transaction the engine owns — an inbox
   # taking a message, a runner's step, a timer firing — once `transaction/2` commits what
   # was marked (`notify_on_commit/0`). Where both reach a runner, a commit wakes it twice,
-  # and the second wake usually finds its notification already flushed. Two nodes
+  # and the second wake usually finds nothing left to read. Two nodes
   # running the same subscription do not collide: a step takes the row `FOR UPDATE
   # SKIP LOCKED`, and the node that gets nothing (`:held`) looks again after a second,
   # since the other node's step may write nothing that would wake it.

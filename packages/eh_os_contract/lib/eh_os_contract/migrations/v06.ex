@@ -25,11 +25,13 @@ defmodule EhOsContract.Migrations.V06 do
   # logs this brings back at commit some of what the per-schema append lock removed
   # (issue #51). Accepted at the scale of an EHOS application (#635).
   #
-  # Two cases notify nothing and leave the append to the poll, since a notification
-  # that fails fails the insert with it: a channel of 64 bytes or more, which
-  # `pg_notify` refuses (a schema name of 44 bytes or more), and a notification queue
-  # half full, which a listener that stopped reading fills until every commit that
-  # notifies is refused.
+  # Two cases notify nothing and leave the append to the poll. A channel of 64 bytes or
+  # more (a schema name of 44 bytes or more): `pg_notify` refuses it in the statement,
+  # and the insert would fail with it. A notification queue half full: a listener that
+  # stopped reading fills it until every commit that notifies is refused, and the commit
+  # would fail; the half leaves room for the queue to grow between the insert and the
+  # commit, and is where Postgres starts to warn. Reading the queue's usage takes the
+  # queue's own locks for a moment, in the statement, to advance its tail.
 
   use Ecto.Migration
 

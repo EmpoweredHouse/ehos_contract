@@ -250,6 +250,8 @@ defmodule EhOsContract.SubscriptionHeadTest do
   # bytes, with the engine's trigger function on it.
   test "a log in a schema whose channel name is too long still takes appends" do
     schema = String.duplicate("s", 50)
+    # This database commits, and is shared: a run killed before its `on_exit` leaves it.
+    Repo.query!(~s|DROP SCHEMA IF EXISTS "#{schema}" CASCADE|)
     Repo.query!(~s|CREATE SCHEMA "#{schema}"|)
     on_exit(fn -> Repo.query!(~s|DROP SCHEMA "#{schema}" CASCADE|) end)
     Repo.query!(~s|CREATE TABLE "#{schema}".eh_os_contract_events (x integer)|)
