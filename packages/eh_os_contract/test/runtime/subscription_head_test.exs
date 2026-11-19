@@ -192,6 +192,25 @@ defmodule EhOsContract.SubscriptionHeadTest do
     assert position == event
   end
 
+  # The runners' supervisor stops between the lookup of its name and the call, as when
+  # its parent restarts it: the poll read the head, so it still reports, and says
+  # nothing of the head of the log.
+  test "a runners' supervisor that stops during the poll loses no lag and logs nothing" do
+    gone = :"#{__MODULE__}.Gone"
+    pid = spawn(fn -> receive do: (_call -> exit(:restarting)) end)
+    Process.register(pid, gone)
+
+    log =
+      capture_log(fn ->
+        start_supervised!({Subscription.Head, repo: Repo, poll: @poll, runners: gone})
+        # The second poll's lag comes after the first poll ended.
+        assert_receive {:lag, _measurements, _meta}, 1_000
+        assert_receive {:lag, _measurements, _meta}, 1_000
+      end)
+
+    refute log =~ "could not read the head"
+  end
+
   defmodule SlowRepo do
     @moduledoc false
     # A database that answers each poll after 100 ms, and says when each poll started.

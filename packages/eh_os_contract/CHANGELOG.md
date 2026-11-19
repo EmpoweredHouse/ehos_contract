@@ -63,7 +63,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   each second, and a host's `:debug` log showed 4 queries for each runner each second. A step
   that applies events now writes one `:debug` line with the key, the number of events and the
   new position, and the queries of a step that finds nothing pass `log: false`. A runner that
-  finds its subscription held by another runner tries again after 1 second.
+  finds its subscription held by another runner tries again after 1 second; its step event's
+  `result` is then `:held`. A relay's `:failed` step counts the events it published before the
+  failure.
 
 ## [0.14.4] - 2026-11-17
 

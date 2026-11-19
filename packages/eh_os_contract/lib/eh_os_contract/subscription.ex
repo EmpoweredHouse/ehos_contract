@@ -68,7 +68,8 @@ defmodule EhOsContract.Subscription do
   @fed ~w(running stale rebuilding)
 
   @typedoc """
-  What one step did. `{:unavailable, position}` is a relay's: the transport did not
+  What one step did. `:held`: another runner, on this node or another, holds the
+  row, and nothing was read. `{:unavailable, position}` is a relay's: the transport did not
   take the batch from `position` on, and nothing moved (`EhOsContract.Relay`).
   `{:waiting, position}`: the event at `position` was written with a newer version of
   its fields than this node declares (`EhOsContract.NewerSchemaError`, plan W1), so
@@ -138,9 +139,9 @@ defmodule EhOsContract.Subscription do
   defp first_status(_consumer), do: "running"
 
   @doc """
-  One step of `consumer` (see the moduledoc): `:idle` when another runner holds it,
-  it is not running, or nothing is left to read; `{:applied, n}`; or `{:failed,
-  position}` when the event at `position` raised and the step rolled back.
+  One step of `consumer` (see the moduledoc): `:held` when another runner holds its
+  row; `:idle` when it is not running or nothing is left to read; `{:applied, n}`; or
+  `{:failed, position}` when the event at `position` raised and the step rolled back.
   """
   @spec step(module(), Implementations.consumer()) :: step()
   def step(repo, consumer) do

@@ -112,17 +112,15 @@ defmodule EhOsContract.Subscription.Head do
   end
 
   # A supervisor restarting its children is not there for a moment: the next poll
-  # finds them.
+  # finds them. One that is not there, or stops during the call, exits the call, which
+  # is caught here rather than by `poll/1`: the head of the log was read.
   defp running(runners) do
-    if GenServer.whereis(runners) do
-      for {{Subscription.Runner, key}, pid, _type, _modules} <-
-            Supervisor.which_children(runners),
-          is_pid(pid),
-          into: %{},
-          do: {key, pid}
-    else
-      %{}
-    end
+    for {{Subscription.Runner, key}, pid, _type, _modules} <- Supervisor.which_children(runners),
+        is_pid(pid),
+        into: %{},
+        do: {key, pid}
+  catch
+    :exit, _reason -> %{}
   end
 
   defp wake(row, head, woken, pids) do
