@@ -223,9 +223,10 @@ defmodule EhOsContract.Auth.MixProject do
       # 1.2's core schema, then JSV against the schema EHOS publishes, copied into `priv/`. Only
       # `mix eh_os_contract.manifest` reads it, in the application's CI, so neither is started
       # with the host or carried into its release. yamerl is held to 0.10.x because the reader
-      # matches the shape of its tokens and nodes.
+      # matches the shape of its tokens and nodes, and JSV to 0.28.x because the reader matches the
+      # shape of its normalized errors, which a minor version of JSV may change (0.28 did).
       {:yamerl, "~> 0.10.0", runtime: false},
-      {:jsv, "~> 0.26.2", runtime: false},
+      {:jsv, "~> 0.28.0", runtime: false},
       # The manifest's property: every key of any valid ehos.yaml comes through unchanged.
       {:stream_data, "~> 1.1", only: :test},
       # Holds every implementation of `People.Directory` and `Grants.Granter` but EHOS's to the
