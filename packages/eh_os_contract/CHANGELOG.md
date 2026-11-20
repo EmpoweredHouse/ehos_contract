@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-11-20
+
 ### Changed
 
 - **A commit wakes the subscription runners once, not twice** (#648). Where Oban runs on the

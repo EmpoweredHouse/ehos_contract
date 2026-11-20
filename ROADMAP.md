@@ -8,12 +8,11 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## Where things stand (20 November 2026)
 
-- **Released:** v0.15.0, with the engine 0.15.0 (an idle subscription starts no transaction and writes no
-  log line, subscriptions send `:telemetry` events, and an append wakes the runners at commit through a
-  trigger of storage version 6, with the poll every 30 seconds), `eh_os_contract_auth` 0.16.0 and
-  `eh_os_contract_web` 0.10.0 (both require the engine at `~> 0.15.0`); the graph renderer stays at 0.9.1,
-  from v0.14.0. The plugin's skills are at 0.14.3. Applications install them from git. The pull request
-  after the tag moves each released package to its next patch's `-dev`.
+- **Released:** v0.15.1, with the engine 0.15.1 (a commit wakes the subscription runners once, not
+  twice, where the log's trigger reaches them) and `eh_os_contract_auth` 0.16.1 (requires jsv 0.28, so a
+  host can resolve idna 8); `eh_os_contract_web` stays at 0.10.0 and the graph renderer at 0.9.1. The
+  plugin's skills are at 0.14.3. Applications install them from git. The pull request after the tag
+  moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
