@@ -47,25 +47,17 @@ defmodule EhOsContract.Subscription.Runner do
 
   @doc """
   Wakes every runner, on every node, once a transaction the engine owns has committed
-  what it marked (`transaction/2`). Where the node runs `EhOsContract.Subscription.Wake`,
-  that process decides: it sends nothing when the log's trigger already woke the runners
-  at the commit, and notifies through Oban otherwise (#648). Without it, this notifies
-  through Oban from the caller.
+  what it marked (`transaction/2`). Where `EhOsContract.Subscription.Wake` runs, the log's
+  trigger already woke them at the commit, and this sends nothing (#648). Elsewhere it
+  notifies through Oban's notifier; a host without a running notifier loses nothing but
+  the wake: runners poll.
   """
   @spec notify() :: :ok
   def notify do
-    case GenServer.whereis(Wake.name()) do
-      nil -> notify_through_oban()
-      wake -> GenServer.cast(wake, :notify)
-    end
+    if GenServer.whereis(Wake.name()), do: :ok, else: notify_through_oban()
   end
 
-  @doc """
-  Wakes every runner, on every node, through Oban's notifier. A host without a running
-  notifier loses nothing but the wake: runners poll.
-  """
-  @spec notify_through_oban() :: :ok
-  def notify_through_oban do
+  defp notify_through_oban do
     _ = Oban.Notifier.notify(Oban, @channel, %{})
     :ok
   catch

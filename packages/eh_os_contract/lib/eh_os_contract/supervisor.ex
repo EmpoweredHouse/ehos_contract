@@ -97,12 +97,19 @@ defmodule EhOsContract.Supervisor do
   end
 
   # Whether the log's trigger wakes this node's runners at commit, so the engine need
-  # not send a wake of its own after its commits (#648): Oban's Postgres notifier
-  # listening under the log's schema. A node that cannot tell keeps its own wake.
+  # not send a wake of its own after its commits (#648). The schema is the log table's
+  # own, which the trigger names, not the first of the search path. A node that cannot
+  # tell — Oban not started yet, say — keeps its own wake.
   defp trigger_reaches?(repo) do
-    %{notifier: {notifier, _opts}, prefix: prefix} = Oban.config(Oban)
-    %{rows: [[schema]]} = repo.query!("SELECT current_schema()", [], log: false)
-    Subscription.Wake.reaches?(notifier, prefix, schema)
+    %{rows: [[schema]]} =
+      repo.query!(
+        "SELECT n.nspname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace " <>
+          "WHERE c.oid = 'eh_os_contract_events'::regclass",
+        [],
+        log: false
+      )
+
+    Subscription.Wake.reaches?(Map.from_struct(Oban.config(Oban)), repo, schema)
   rescue
     _not_known -> false
   end

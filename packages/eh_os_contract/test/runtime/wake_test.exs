@@ -42,21 +42,21 @@ defmodule EhOsContract.WakeTest do
   end
 
   test "where the trigger reaches the node, an engine commit wakes once: the trigger's" do
-    wake = start_supervised!({Wake, trigger: true})
+    start_supervised!({Wake, trigger: true})
 
     commit_in_engine_transaction!()
-    _ = :sys.get_state(wake)
 
+    # The trigger's, in the log's database; the engine's own would be the second.
     assert_receive {:notification, :eh_os_contract, %{}}, 1_000
-    refute_receive {:notification, :eh_os_contract, _payload}, 200
     refute_received :engine_woke
   end
 
   test "where it does not, the engine notifies after its commit, as before" do
-    wake = start_supervised!({Wake, trigger: false})
+    # Nothing runs: the caller notifies after its commit, in its own process.
+    assert start_supervised({Wake, trigger: false}) == {:ok, :undefined}
+    assert Process.whereis(Wake.name()) == nil
 
     commit_in_engine_transaction!()
-    _ = :sys.get_state(wake)
 
     assert_received :engine_woke
   end
@@ -75,12 +75,17 @@ defmodule EhOsContract.WakeTest do
     refute_received :engine_woke
   end
 
-  test "the trigger reaches the node only with Oban's Postgres notifier under the log's schema" do
-    assert Wake.reaches?(Oban.Notifiers.Postgres, "public", "public")
-    assert Wake.reaches?(Oban.Notifiers.Postgres, "ledger_production", "ledger_production")
-    refute Wake.reaches?(Oban.Notifiers.Postgres, "oban", "public")
-    refute Wake.reaches?(Oban.Notifiers.PG, "public", "public")
-    refute Wake.reaches?(Oban.Notifiers.Postgres, false, "public")
+  test "the trigger reaches the node only with Oban's Postgres notifier, on the repo, under the log's schema" do
+    oban = %{notifier: {Oban.Notifiers.Postgres, []}, prefix: "public", repo: Repo}
+
+    assert Wake.reaches?(oban, Repo, "public")
+
+    assert Wake.reaches?(%{oban | prefix: "ledger_production"}, Repo, "ledger_production")
+    refute Wake.reaches?(%{oban | prefix: "oban"}, Repo, "public")
+    refute Wake.reaches?(%{oban | notifier: {Oban.Notifiers.PG, []}}, Repo, "public")
+    refute Wake.reaches?(%{oban | prefix: false}, Repo, "public")
+    # Oban on another repo listens in another database, where the trigger never fires.
+    refute Wake.reaches?(%{oban | repo: EhOsContract.TestRepo}, Repo, "public")
   end
 
   # A transaction the engine owns, as dispatch's is: it marks its append, and

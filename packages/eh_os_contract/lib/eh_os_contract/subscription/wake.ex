@@ -1,23 +1,25 @@
 defmodule EhOsContract.Subscription.Wake do
-  # Sends the engine's own wake to the runners after a transaction the engine owns
-  # commits (`EhOsContract.Subscription.Runner.notify/0`), one process per node (#648).
+  # Says, by running, that the log's trigger (storage version 6, #649) wakes this node's
+  # runners at commit, so the engine sends no wake of its own after a transaction it
+  # owns (`EhOsContract.Subscription.Runner.notify/0`, #648): a second wake would only
+  # make each runner step again and find nothing.
   #
-  # Where the log's trigger (storage version 6, #649) reaches this node's runners, it
-  # has already woken them at that commit, so this process sends nothing: a second wake
-  # would only make each runner step again and find nothing. The trigger reaches them
-  # when Oban runs its Postgres notifier with the log's schema as its prefix, which the
-  # engine's supervisor checks at boot and passes as `trigger:`. Elsewhere — another
-  # prefix, `Oban.Notifiers.PG` — this process notifies through Oban, as the engine did
-  # before. A node without this process (`subscriptions: :manual`, or no subscription)
-  # notifies from the caller, as before.
+  # The engine's supervisor decides at boot and passes the answer as `trigger:`. With
+  # `trigger: false` the process does not start (`:ignore`), and the caller notifies
+  # through Oban after its commit, as the engine did before: one query in each
+  # committing process, so a slow database slows the caller and not a queue. So does a
+  # node without the child at all (`subscriptions: :manual`, no subscription), which
+  # keeps a test from seeing another's setting.
+  #
+  # The trigger reaches the runners when Oban runs on the engine's repo, with its
+  # Postgres notifier and the log's schema as its prefix: the trigger notifies
+  # `"<schema>.oban_eh_os_contract"` in the log's database, and that is where and what
+  # Oban then listens on.
   @moduledoc false
 
   use GenServer
 
   @name __MODULE__
-
-  @typedoc false
-  @type state :: %{trigger: boolean()}
 
   @doc false
   @spec name() :: atom()
@@ -30,25 +32,24 @@ defmodule EhOsContract.Subscription.Wake do
   end
 
   @doc """
-  Whether the log's trigger wakes the runners of a node whose Oban runs `notifier`
-  with `prefix`, for a log in `schema`.
+  Whether the log's trigger wakes the runners of a node whose Oban is configured as
+  `oban` (its `notifier`, `prefix` and `repo`), for a log in `schema` of `repo`.
   """
-  @spec reaches?(module(), String.t() | false | nil, String.t()) :: boolean()
-  def reaches?(Oban.Notifiers.Postgres, schema, schema) when is_binary(schema), do: true
-  def reaches?(_notifier, _prefix, _schema), do: false
+  @spec reaches?(map(), module(), String.t()) :: boolean()
+  def reaches?(
+        %{notifier: {Oban.Notifiers.Postgres, _}, prefix: schema, repo: repo},
+        repo,
+        schema
+      )
+      when is_binary(schema),
+      do: true
 
-  @doc "Takes `trigger:` (a boolean, required) and `name:`."
+  def reaches?(_oban, _repo, _schema), do: false
+
+  @doc "Starts only with `trigger: true`; `trigger: false` is `:ignore`."
   @impl GenServer
-  @spec init(keyword()) :: {:ok, state()}
-  def init(opts), do: {:ok, %{trigger: Keyword.fetch!(opts, :trigger)}}
-
-  @doc "Sends the wake through Oban unless the trigger already sent it."
-  @impl GenServer
-  @spec handle_cast(:notify, state()) :: {:noreply, state()}
-  def handle_cast(:notify, %{trigger: true} = state), do: {:noreply, state}
-
-  def handle_cast(:notify, state) do
-    EhOsContract.Subscription.Runner.notify_through_oban()
-    {:noreply, state}
+  @spec init(keyword()) :: {:ok, nil} | :ignore
+  def init(opts) do
+    if Keyword.fetch!(opts, :trigger), do: {:ok, nil}, else: :ignore
   end
 end

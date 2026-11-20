@@ -200,7 +200,7 @@ defmodule EhOsContract.BootTest do
     # the log, so the trigger wakes the runners and the engine sends no wake of its own.
     test "the boot finds that the log's trigger reaches the node" do
       start_supervised!(EhOsContract)
-      assert :sys.get_state(EhOsContract.Subscription.Wake.name()) == %{trigger: true}
+      assert is_pid(Process.whereis(EhOsContract.Subscription.Wake.name()))
     end
 
     test "a host with no subscription starts no runner and no poll" do
