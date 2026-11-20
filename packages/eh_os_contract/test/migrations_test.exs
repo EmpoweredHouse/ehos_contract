@@ -40,6 +40,7 @@ defmodule EhOsContract.MigrationsTest do
 
   @functions ~w(
     eh_os_contract_append_lock
+    eh_os_contract_events_notify
     eh_os_contract_events_refuse_change
     eh_os_contract_events_take_append_lock
   )
@@ -73,19 +74,21 @@ defmodule EhOsContract.MigrationsTest do
     column("""
     SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname LIKE 'eh\\_os\\_contract\\_%'
+    ORDER BY p.proname
     """)
   end
 
   defp triggers do
     column(
-      "SELECT tgname FROM pg_trigger WHERE tgrelid = 'eh_os_contract_events'::regclass AND NOT tgisinternal"
+      "SELECT tgname FROM pg_trigger WHERE tgrelid = 'eh_os_contract_events'::regclass " <>
+        "AND NOT tgisinternal ORDER BY tgname"
     )
   end
 
-  test "V01 creates the whole store, V02 adds what a decision read, V03 drops a contract's run, V04 adds the words' digest, V05 the status a subscription failed in" do
+  test "V01 creates the whole store, V02 adds what a decision read, V03 drops a contract's run, V04 adds the words' digest, V05 the status a subscription failed in, V06 the wake at commit" do
     assert EhOsContract.Migrations.initial_version() == 1
-    assert EhOsContract.Migrations.current_version() == 5
-    assert version() == "5"
+    assert EhOsContract.Migrations.current_version() == 6
+    assert version() == "6"
 
     # Issue #550: a failing subscription keeps the status it failed in, for a skip.
     assert resume_status?()
@@ -116,7 +119,8 @@ defmodule EhOsContract.MigrationsTest do
     assert triggers() == [
              "eh_os_contract_events_append_lock",
              "eh_os_contract_events_append_only",
-             "eh_os_contract_events_no_truncate"
+             "eh_os_contract_events_no_truncate",
+             "eh_os_contract_events_notify"
            ]
 
     assert one("""
@@ -164,7 +168,7 @@ defmodule EhOsContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "5"
+    assert version() == "6"
     assert tables() == @tables
     assert functions() == @functions
   end
@@ -175,6 +179,7 @@ defmodule EhOsContract.MigrationsTest do
   @upgrade_to_v3 20_261_013_120_000
   @upgrade_to_v4 20_261_016_120_000
   @upgrade_to_v5 20_261_102_120_000
+  @upgrade_to_v6 20_261_119_120_000
 
   defp resume_status? do
     one("""
@@ -238,6 +243,14 @@ defmodule EhOsContract.MigrationsTest do
       Repo.query!("DELETE FROM eh_os_contract_deployments WHERE contract = 'MigrationsTest'")
     end)
 
+    # Issue #635: V06 takes its trigger and its function back, and nothing else.
+    migrate(:down, to: @upgrade_to_v6)
+
+    assert version() == "5"
+    refute "eh_os_contract_events_notify" in triggers()
+    refute "eh_os_contract_events_notify" in functions()
+    assert resume_status?()
+
     migrate(:down, to: @upgrade_to_v5)
 
     assert version() == "4"
@@ -300,7 +313,7 @@ defmodule EhOsContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "5"
+    assert version() == "6"
     assert inputs?()
     assert runs_columns() == %{events: [], commands: []}
     assert words_columns() == ["text_digest", "text_digests"]
@@ -312,7 +325,7 @@ defmodule EhOsContract.MigrationsTest do
   @host_version 99_990_101_000_000
 
   test "a database recording a version this release does not know is refused, both ways" do
-    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '6'")
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '7'")
 
     Repo.query!(
       "INSERT INTO schema_migrations (version, inserted_at) VALUES ($1, now())",
@@ -325,7 +338,7 @@ defmodule EhOsContract.MigrationsTest do
       Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '#{current}'")
     end)
 
-    refused = ~r/records version 6, and this release of eh_os_contract knows versions up to/
+    refused = ~r/records version 7, and this release of eh_os_contract knows versions up to/
 
     assert_raise ArgumentError, refused, fn ->
       Ecto.Migrator.down(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
@@ -339,23 +352,23 @@ defmodule EhOsContract.MigrationsTest do
 
     # Nothing ran: the tables are there, and the database still says what it said.
     assert tables() == @tables
-    assert version() == "6"
+    assert version() == "7"
   end
 
   test "a database migrated before 0.3.0 is refused by its column, whatever it records" do
     Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
     on_exit(fn -> Repo.query!("ALTER TABLE eh_os_contract_events DROP COLUMN instance_id") end)
 
-    assert_raise ArgumentError, ~r/records version 5, and it was migrated before 0\.3\.0/, fn ->
+    assert_raise ArgumentError, ~r/records version 6, and it was migrated before 0\.3\.0/, fn ->
       Ecto.Migrator.up(Repo, @host_version, EhOsContract.MigrationsTest.Host, log: false)
     end
 
-    assert version() == "5"
+    assert version() == "6"
   end
 
   test "a version this release does not have is refused as a target" do
-    assert_raise ArgumentError, ~r/and 6 is not one of them/, fn ->
-      EhOsContract.Migrations.up(version: 6)
+    assert_raise ArgumentError, ~r/and 7 is not one of them/, fn ->
+      EhOsContract.Migrations.up(version: 7)
     end
 
     assert_raise ArgumentError, ~r/and 0 is not one of them/, fn ->

@@ -11,7 +11,8 @@ defmodule EhOsContract.Supervisor do
 
   @impl Supervisor
   @spec init(term()) :: {:ok, {Supervisor.sup_flags(), [Supervisor.child_spec()]}}
-  def init(_opts) do
+  def init(opts) do
+    poll = subscription_poll!(opts)
     EhOsContract.Config.validate!()
     EhOsContract.Registry.load!()
     models = Enum.map(EhOsContract.Registry.contracts(), &Model.fetch/1)
@@ -31,13 +32,28 @@ defmodule EhOsContract.Supervisor do
     runners =
       case EhOsContract.Config.get(:subscriptions) do
         :manual -> []
-        _run -> subscribe!(EhOsContract.Config.fetch!(:repo))
+        _run -> subscribe!(EhOsContract.Config.fetch!(:repo), poll)
       end
 
     Supervisor.init(runners, strategy: :one_for_one)
   end
 
-  defp subscribe!(repo) do
+  # The pause of the runners' poll, the safety net under the notifications a commit
+  # sends: 30 seconds unless the host's child spec says otherwise (#635).
+  defp subscription_poll!(opts) do
+    case Keyword.validate!(List.wrap(opts), subscription_poll: 30_000) do
+      # The longest timer the runtime sets, about 49 days.
+      [subscription_poll: ms] when is_integer(ms) and ms > 0 and ms <= 4_294_967_295 ->
+        ms
+
+      [subscription_poll: other] ->
+        raise ArgumentError,
+              "EhOsContract's subscription_poll: is a number of milliseconds from 1 to " <>
+                "4294967295, got: #{inspect(other)}"
+    end
+  end
+
+  defp subscribe!(repo, poll) do
     consumers = Implementations.subscribed()
     inboxes = Implementations.inboxes()
     bus? = EhOsContract.Bus.adapter() != nil
@@ -77,14 +93,14 @@ defmodule EhOsContract.Supervisor do
     # takes it listens.
     keepers = if bus?, do: Enum.map(inboxes, &{EhOsContract.Inbox.Keeper, &1}), else: []
 
-    keepers ++ runners(repo, consumers)
+    keepers ++ runners(repo, consumers, poll)
   end
 
   # The runners under a supervisor of their own, which the node's poll reads to find the
   # runner of each row; neither is started for a host with no subscription.
-  defp runners(_repo, []), do: []
+  defp runners(_repo, [], _poll), do: []
 
-  defp runners(repo, consumers) do
+  defp runners(repo, consumers, poll) do
     children = Enum.map(consumers, &{Subscription.Runner, &1.key})
     name = Subscription.Head.runners()
 
@@ -94,7 +110,7 @@ defmodule EhOsContract.Supervisor do
         start: {Supervisor, :start_link, [children, [strategy: :one_for_one, name: name]]},
         type: :supervisor
       },
-      {Subscription.Head, repo: repo, runners: name}
+      {Subscription.Head, repo: repo, runners: name, poll: poll}
     ]
   end
 end

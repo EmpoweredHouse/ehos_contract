@@ -104,7 +104,7 @@ values to your metrics.
 
 | Event | When | Measurements | Metadata |
 | --- | --- | --- | --- |
-| `[:eh_os_contract, :subscription, :lag]` | Each node sends it for each subscription at each poll, 1 time a second. | `lag`, `position`, `head` | `subscription`, `status` |
+| `[:eh_os_contract, :subscription, :lag]` | Each node sends it for each subscription at each poll: every 30 seconds, or `subscription_poll:` of the `EhOsContract` child. | `lag`, `position`, `head` | `subscription`, `status` |
 | `[:eh_os_contract, :subscription, :step]` | A node sends it after each step of a subscription. | `duration` (native time units), `count` | `subscription`, `kind`, `result`, `position` |
 
 - `lag` is the head of the log minus the position of the subscription. The head is the position

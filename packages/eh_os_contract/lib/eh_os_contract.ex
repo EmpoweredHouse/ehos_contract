@@ -171,7 +171,17 @@ defmodule EhOsContract do
      `eh_os_contract_subscriptions`, marks the read models whose declaration changed
      `stale`, and rebuilds those that define `reset/0`.
   3. It starts one runner per subscription: a process that reads the log from where
-     its consumer stopped and delivers each event to it.
+     its consumer stopped and delivers each event to it. A runner wakes when a
+     transaction that appended an event commits, the host's own included. A poll
+     checks besides, every `subscription_poll:` milliseconds (30,000 by default), for a
+     wake that did not arrive.
+
+  It takes one option, `subscription_poll:`, in the host's list of children:
+
+      children = [MyApp.Repo, {EhOsContract, subscription_poll: 10_000}]
+
+  It refuses any other option, and a value that is not a number of milliseconds from 1
+  to 4,294,967,295.
 
   **`config :eh_os_contract, subscriptions: :manual`** skips the last two steps:
   nothing is registered and no runner starts. Tests use it, and push the work through
@@ -188,7 +198,7 @@ defmodule EhOsContract do
 
   @doc "Starts the engine's supervisor (`child_spec/1`)."
   @spec start_link(term()) :: Supervisor.on_start()
-  def start_link(_opts \\ []), do: Supervisor.start_link(__MODULE__.Supervisor, [])
+  def start_link(opts \\ []), do: Supervisor.start_link(__MODULE__.Supervisor, opts)
 
   @doc """
   Dispatches `command`, a struct a v2 contract generated, to `contract`.

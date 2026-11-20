@@ -54,8 +54,8 @@ defmodule EhOsContract.BootTest do
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
 
     assert message =~
-             "storage is at version 1, and this release needs version 5: add a migration " <>
-               "calling EhOsContract.Migrations.up(version: 5)"
+             "storage is at version 1, and this release needs version 6: add a migration " <>
+               "calling EhOsContract.Migrations.up(version: 6)"
 
     assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
            "refused before anything is recorded"
@@ -71,12 +71,12 @@ defmodule EhOsContract.BootTest do
   # version may remove one it does, so a node of an older release stops rather than
   # failing on every append. A deploy stops the old nodes before it migrates.
   test "storage a newer release migrated stops the boot, saying it is newer" do
-    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '6'")
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '7'")
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
 
     assert message =~
-             "storage is at version 6, newer than version 5, which this release of " <>
+             "storage is at version 7, newer than version 6, which this release of " <>
                "eh_os_contract knows"
 
     assert EhOsContract.TestRepo.all(EhOsContract.Deployment) == [],
@@ -89,11 +89,11 @@ defmodule EhOsContract.BootTest do
     Repo.query!("ALTER TABLE eh_os_contract_events ADD COLUMN instance_id text")
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
-    assert message =~ "records version 5, and it was migrated before 0.3.0"
+    assert message =~ "records version 6, and it was migrated before 0.3.0"
   end
 
   test "control: storage at the release's version lets the boot through" do
-    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '5'")
+    Repo.query!("COMMENT ON TABLE eh_os_contract_events IS '6'")
     assert start_supervised!(EhOsContract)
   end
 
@@ -167,6 +167,33 @@ defmodule EhOsContract.BootTest do
       assert eventually(fn ->
                Repo.all(from(l in "dispatch_rig_lines", select: l.amount)) == [10]
              end)
+    end
+
+    test "subscription_poll: reaches the node's poll, and anything else is refused" do
+      supervisor = start_supervised!({EhOsContract, subscription_poll: 5_000})
+
+      [head] =
+        for {EhOsContract.Subscription.Head, pid, :worker, _} <-
+              Supervisor.which_children(supervisor),
+            do: pid
+
+      assert :sys.get_state(head).poll == 5_000
+      stop_supervised!(EhOsContract)
+
+      assert {:error, {{%ArgumentError{message: zero}, _}, _}} =
+               start_supervised({EhOsContract, subscription_poll: 0})
+
+      assert zero =~ "subscription_poll: is a number of milliseconds from 1 to 4294967295, got: 0"
+
+      assert {:error, {{%ArgumentError{message: too_long}, _}, _}} =
+               start_supervised({EhOsContract, subscription_poll: 4_294_967_296})
+
+      assert too_long =~ "got: 4294967296"
+
+      assert {:error, {{%ArgumentError{message: unknown}, _}, _}} =
+               start_supervised({EhOsContract, poll: 5_000})
+
+      assert unknown =~ ":poll"
     end
 
     test "a host with no subscription starts no runner and no poll" do
