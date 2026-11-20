@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-20
+
 ### Fixed
 
 - **A host can resolve idna 8.** This package requires `jsv ~> 0.28.0`, which accepts idna 6, 7
