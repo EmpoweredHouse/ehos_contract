@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-20
+
 ### Added
 
 - **Subscriptions send `:telemetry` events** (#635): `[:eh_os_contract, :subscription, :lag]`
