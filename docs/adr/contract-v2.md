@@ -1661,6 +1661,28 @@ the person's.
 > keep what it already issued from being issued twice. An ordered read model still starts at position 0. In a
 > host's tests the first `EhOsContract.Testing.drain/1` is the deploy.
 
+> **20 November 2026 — how a runner is woken, as built for #635 (pull requests #647 and #649) and #648.** The sketch above
+> said a runner "wakes on the `Oban.Notifier` notification and polls every second (covering transactions
+> the caller owns and lost notifications)". Each poll was the transaction shown above, with its row lock,
+> so an idle node ran one such transaction for each consumer each second, and logged it. Three things
+> changed. **The poll looks before it locks** (#635, pull request #647): one process per node reads the head of the log
+> and the subscription rows without a transaction, and wakes only a runner whose row is behind and changed
+> since its last wake; an idle runner sets no timer, and a step whose row another runner holds tries again
+> after a second. **The log wakes the runners at commit** (#635, pull request #649): storage version 6 adds a statement-level
+> trigger that calls `pg_notify` on the channel Oban's Postgres notifier relays to the runners, so a
+> transaction the host's code owns, which the engine cannot see commit, wakes them too. The poll is a safety
+> net, every 30 seconds, set by the `EhOsContract` child's `subscription_poll:`. The cost, accepted at an
+> EHOS application's scale: at commit `NOTIFY` takes one lock for the whole Postgres instance, held through
+> the flush, so the commits that notify, of every application on the instance and of Oban, wait for each
+> other; across logs this brings back at commit part of what the per-schema append lock of §10.2 removed
+> (#51). The trigger notifies nothing for a schema name of 44 bytes or more, or a notification queue half
+> full, since a refused notification would fail the append; while the queue stays half full, a commit is
+> left to the poll where the trigger is its only wake (#648, below). **One wake per commit** (#648): the engine checks at boot whether the trigger
+> reaches the node (Oban on the engine's repo, with its Postgres notifier and the log's schema as its
+> prefix) and, if it does, sends no notification of its own after its commits; elsewhere it notifies as
+> before, from the committing process. Keeping the engine's own commits off the `NOTIFY` lock, with a wake
+> by message, is deferred until a measurement shows commits waiting on it (#652). See #648.
+
 ## 13. Runs, promises and conformance on the new log
 
 - **Runs.** `process` and `instance_id` are computed at append for the event's home process, as v1's
