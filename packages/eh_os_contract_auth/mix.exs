@@ -1,7 +1,7 @@
 defmodule EhOsContract.Auth.MixProject do
   use Mix.Project
 
-  @version "0.16.1"
+  @version "0.16.2-dev"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   # The engine's versions this package works with, passed in every mode below, so that
