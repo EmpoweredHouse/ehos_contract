@@ -55,7 +55,9 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   wakes the runners at commit, and the engine no longer sends a notification of its own after a
   transaction it owns. The engine checks this at boot. Elsewhere, it notifies as before. Before,
   each commit of the engine that appended an event an ordered consumer reads woke every runner
-  twice, and each runner stepped again to find nothing.
+  twice, and each runner stepped again to find nothing. On such a node, while Postgres's
+  notification queue is half full, the trigger sends nothing, and those commits wait for the
+  poll.
 
 ## [0.15.0] - 2026-11-20
 

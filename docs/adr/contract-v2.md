@@ -1676,8 +1676,8 @@ the person's.
 > the flush, so the commits that notify, of every application on the instance and of Oban, wait for each
 > other; across logs this brings back at commit part of what the per-schema append lock of §10.2 removed
 > (#51). The trigger notifies nothing for a schema name of 44 bytes or more, or a notification queue half
-> full, since a refused notification would fail the append; while the queue stays half full, every commit
-> is left to the poll. **One wake per commit** (#648): the engine checks at boot whether the trigger
+> full, since a refused notification would fail the append; while the queue stays half full, a commit is
+> left to the poll where the trigger is its only wake (#648, below). **One wake per commit** (#648): the engine checks at boot whether the trigger
 > reaches the node (Oban on the engine's repo, with its Postgres notifier and the log's schema as its
 > prefix) and, if it does, sends no notification of its own after its commits; elsewhere it notifies as
 > before, from the committing process. Keeping the engine's own commits off the `NOTIFY` lock, with a wake
