@@ -392,6 +392,7 @@ defmodule EhOsContract.InboxTest do
     test "the engine boots and keeps its runners, and the inbox subscribes once the bus is up",
          %{opts: opts} do
       {supervisor, log} = with_log(fn -> start_supervised!(EhOsContract) end)
+
       children = Supervisor.which_children(supervisor)
 
       [runners] =
@@ -415,6 +416,14 @@ defmodule EhOsContract.InboxTest do
       assert is_pid(child)
 
       place("o-1")
+      # The order is placed inside the test's transaction, which never commits, so no
+      # notification wakes the relay; the test wakes it as a commit would.
+      [{_id, relay, :worker, _}] =
+        for {{Subscription.Runner, @relay}, _, _, _} = child <-
+              Supervisor.which_children(runners),
+            do: child
+
+      send(relay, :wake)
       assert eventually(fn -> length(reserved()) == 1 end)
     end
   end
