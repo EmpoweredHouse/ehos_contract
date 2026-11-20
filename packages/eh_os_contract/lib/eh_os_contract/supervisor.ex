@@ -96,6 +96,17 @@ defmodule EhOsContract.Supervisor do
     keepers ++ runners(repo, consumers, poll)
   end
 
+  # Whether the log's trigger wakes this node's runners at commit, so the engine need
+  # not send a wake of its own after its commits (#648): Oban's Postgres notifier
+  # listening under the log's schema. A node that cannot tell keeps its own wake.
+  defp trigger_reaches?(repo) do
+    %{notifier: {notifier, _opts}, prefix: prefix} = Oban.config(Oban)
+    %{rows: [[schema]]} = repo.query!("SELECT current_schema()", [], log: false)
+    Subscription.Wake.reaches?(notifier, prefix, schema)
+  rescue
+    _not_known -> false
+  end
+
   # The runners under a supervisor of their own, which the node's poll reads to find the
   # runner of each row; neither is started for a host with no subscription.
   defp runners(_repo, [], _poll), do: []
@@ -105,6 +116,7 @@ defmodule EhOsContract.Supervisor do
     name = Subscription.Head.runners()
 
     [
+      {Subscription.Wake, trigger: trigger_reaches?(repo)},
       %{
         id: name,
         start: {Supervisor, :start_link, [children, [strategy: :one_for_one, name: name]]},

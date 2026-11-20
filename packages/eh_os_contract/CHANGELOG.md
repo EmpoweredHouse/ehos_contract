@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **A commit wakes the subscription runners once, not twice** (#648). Where Oban runs its Postgres
+  notifier with the log's schema as its prefix, the log's trigger wakes the runners at commit, and
+  the engine no longer sends a notification of its own after a transaction it owns. The engine
+  checks this at boot. With another prefix or another notifier, it notifies as before. Before,
+  each dispatch woke every runner twice, and each runner stepped again to find nothing.
+
 ## [0.15.0] - 2026-11-20
 
 ### Added

@@ -11,8 +11,8 @@ defmodule EhOsContract.Subscription.Runner do
   # The engine also sends one itself, for a notifier the trigger does not reach: after a
   # transaction dispatch owns, and, inside a transaction the engine owns — an inbox
   # taking a message, a runner's step, a timer firing — once `transaction/2` commits what
-  # was marked (`notify_on_commit/0`). Where both reach a runner, a commit wakes it twice,
-  # and the second wake usually finds nothing left to read. Two nodes
+  # was marked (`notify_on_commit/0`). Where the trigger reaches the node, it sends
+  # nothing more (`EhOsContract.Subscription.Wake`, #648), so a commit wakes once. Two nodes
   # running the same subscription do not collide: a step takes the row `FOR UPDATE
   # SKIP LOCKED`, and the node that gets nothing (`:held`) looks again after a second,
   # since the other node's step may write nothing that would wake it.
@@ -27,6 +27,7 @@ defmodule EhOsContract.Subscription.Runner do
   use GenServer
 
   alias EhOsContract.{Implementations, Subscription}
+  alias EhOsContract.Subscription.Wake
 
   require Logger
 
@@ -45,12 +46,26 @@ defmodule EhOsContract.Subscription.Runner do
   def child_spec(key), do: %{id: {__MODULE__, key}, start: {__MODULE__, :start_link, [key]}}
 
   @doc """
-  Wakes every runner, on every node, through Oban's notifier. `transaction/2` calls it
-  once a transaction that marked an append commits. A host without a running notifier
-  loses nothing but the wake: runners poll.
+  Wakes every runner, on every node, once a transaction the engine owns has committed
+  what it marked (`transaction/2`). Where the node runs `EhOsContract.Subscription.Wake`,
+  that process decides: it sends nothing when the log's trigger already woke the runners
+  at the commit, and notifies through Oban otherwise (#648). Without it, this notifies
+  through Oban from the caller.
   """
   @spec notify() :: :ok
   def notify do
+    case GenServer.whereis(Wake.name()) do
+      nil -> notify_through_oban()
+      wake -> GenServer.cast(wake, :notify)
+    end
+  end
+
+  @doc """
+  Wakes every runner, on every node, through Oban's notifier. A host without a running
+  notifier loses nothing but the wake: runners poll.
+  """
+  @spec notify_through_oban() :: :ok
+  def notify_through_oban do
     _ = Oban.Notifier.notify(Oban, @channel, %{})
     :ok
   catch

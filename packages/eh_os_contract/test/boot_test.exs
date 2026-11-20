@@ -196,6 +196,13 @@ defmodule EhOsContract.BootTest do
       assert unknown =~ ":poll"
     end
 
+    # #648: the suite's Oban runs its Postgres notifier under `public`, the schema of
+    # the log, so the trigger wakes the runners and the engine sends no wake of its own.
+    test "the boot finds that the log's trigger reaches the node" do
+      start_supervised!(EhOsContract)
+      assert :sys.get_state(EhOsContract.Subscription.Wake.name()) == %{trigger: true}
+    end
+
     test "a host with no subscription starts no runner and no poll" do
       apps = Enum.uniq(List.wrap(Application.get_env(:eh_os_contract, :applications)))
       key = {Implementations, apps}
@@ -207,6 +214,7 @@ defmodule EhOsContract.BootTest do
 
       assert for({id, _, _, _} <- Supervisor.which_children(supervisor), do: id) == []
       assert Process.whereis(EhOsContract.Subscription.Runners) == nil
+      assert Process.whereis(EhOsContract.Subscription.Wake.name()) == nil
     end
   end
 
