@@ -28,8 +28,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **A host can resolve idna 8.** This package requires `jsv ~> 0.28.0`, which accepts idna 6, 7
   or 8. It required `jsv ~> 0.26.2`, which accepts idna 6 or 7 only, so a Phoenix project made by
-  `mix phx.new`, which locks idna 8.0.0, failed `mix deps.get` (EmpoweredHouse/ehos-tools#1037). A
-  host that requires jsv itself needs a version that `~> 0.28.0` accepts.
+  `mix phx.new`, which locks idna 8.0.0, failed `mix deps.get` (#655). A host that requires jsv
+  itself needs a version that `~> 0.28.0` accepts.
 
 ## [0.16.0] - 2026-11-20
 
