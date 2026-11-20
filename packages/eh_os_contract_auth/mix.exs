@@ -1,12 +1,12 @@
 defmodule EhOsContract.Auth.MixProject do
   use Mix.Project
 
-  @version "0.15.1-dev"
+  @version "0.16.0"
   @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
   @git_url "#{@source_url}.git"
   # The engine's versions this package works with, passed in every mode below, so that
   # beside it in this repository Mix holds its version to this as well.
-  @eh_os_contract_requirement "~> 0.14.0"
+  @eh_os_contract_requirement "~> 0.15.0"
   @description "Verifies EHOS credentials and authorizes EhOsContract commands, recordings and queries."
 
   @moduledoc """
