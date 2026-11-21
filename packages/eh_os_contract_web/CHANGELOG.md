@@ -33,9 +33,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   loaded the page with access can do this. The access check is the `on_mount` hook that
   `eh_os_contract_dashboard/2` installs. This hook also sets the access and the base path that both
   screens read. Without the hook, each screen fails before it sends anything to the client. This package
-  now tests against 1.2.14. Your application runs the version that its own lock holds: run
-  `mix deps.update phoenix_live_view`, then make sure that `mix.lock` holds a fixed version. If your
-  requirement in `mix.exs` excludes every fixed version, change the requirement first (#659).
+  now tests against 1.2.14. Your application runs the version that its own lock holds. If a requirement
+  in your `mix.exs` or in a dependency excludes every fixed version, change it; `mix deps.tree` shows
+  which one. Then run `mix deps.update phoenix_live_view`. Make sure that `mix.lock` holds a fixed
+  version (#659).
 
 ## [0.10.0] - 2026-11-20
 
