@@ -27,12 +27,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Security
 
-- Phoenix LiveView before 1.2.14 lets a client skip the `on_mount` hooks of a `live_session`: the client
-  joins a LiveView without its `"url"` (EEF-CVE-2026-126334, GHSA-v4p7-3pm2-wq6c). The dashboard was not
-  exposed. Its access check, `EhOsContract.Web.Authentication`, is such a hook, but it also sets the
-  access and the base path that both screens read. Without the hook, the screen fails before it sends
-  anything to the client. This package now tests against 1.2.14. Your application runs the version that
-  its own lock holds: run `mix deps.update phoenix_live_view` (#659).
+- Phoenix LiveView before 1.2.14, 1.1.34 or 1.0.20 lets a client skip the `on_mount` hooks of a
+  `live_session`: the client joins a LiveView without its `"url"` (EEF-CVE-2026-126334,
+  GHSA-v4p7-3pm2-wq6c). Only a client that loaded the page with access can do this. The dashboard was
+  not exposed. The access check is the `on_mount` hook that `eh_os_contract_dashboard/2` installs, and
+  this hook also sets the access and the base path that both screens read. Without the hook, each
+  screen fails before it sends anything to the client. This package now tests against 1.2.14. Your
+  application runs the version that its own lock holds: run `mix deps.update phoenix_live_view` (#659).
 
 ## [0.10.0] - 2026-11-20
 
