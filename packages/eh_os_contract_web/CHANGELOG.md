@@ -31,8 +31,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - **Breaking:** **the graph renderer is required at `~> 0.10.0`**, however it is fetched: by version
   from Hex, and also when this package comes from git or a path. A host with an older renderer is
-  refused at `mix deps.get`, so a host moves the two together. The engine is still required at
-  `~> 0.15.0`.
+  refused at `mix deps.get`, so a host moves this package and the renderer together. The engine is
+  still required at `~> 0.15.0`.
 
 ### Fixed
 
