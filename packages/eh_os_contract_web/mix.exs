@@ -201,7 +201,9 @@ defmodule EhOsContract.Web.MixProject do
       # into this package's own by `mix assets.build`.
       eh_os_contract_graph_dep(),
       {:phoenix, "~> 1.8"},
-      {:phoenix_live_view, "~> 1.1"},
+      # The first versions that fix EEF-CVE-2026-126334 on each line: a join without its
+      # "url" skipped a live_session's on_mount hooks (#660).
+      {:phoenix_live_view, "~> 1.1.34 or ~> 1.2.14"},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_pubsub, "~> 2.1"},
       {:boundary, "~> 0.10", runtime: false},
