@@ -25,6 +25,15 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-22
+
+### Changed
+
+- **Breaking:** **the graph renderer is required at `~> 0.10.0`**, however it is fetched: by version
+  from Hex, and also when this package comes from git or a path. A host with an older renderer is
+  refused at `mix deps.get`, so a host moves this package and the renderer together. The engine is
+  still required at `~> 0.15.0`.
+
 ### Fixed
 
 - The dashboard's script has the client of Phoenix LiveView 1.2.14 and of Phoenix 1.8.17. It had the
@@ -34,17 +43,17 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Security
 
-- **Breaking:** this package requires Phoenix LiveView `~> 1.1.34 or >= 1.2.14 and < 2.0.0`, not `~> 1.1`. Earlier
-  versions let a client skip the `on_mount` hooks of a `live_session` (EEF-CVE-2026-126334,
-  GHSA-v4p7-3pm2-wq6c). The client joins a LiveView without its `"url"`. If your lock holds an earlier
-  version, `mix compile` refuses it until you run `mix deps.get`, which moves the lock to a fixed
-  version. If another requirement holds the old version, `mix deps.get` fails, and `mix deps.tree`
-  shows which requirement (#659, #660).
-- The dashboard was not exposed to this advisory. On the dashboard, only a client that loaded the page
-  with access can skip the hooks. The access check is the `on_mount` hook that
+- **Breaking:** this package requires Phoenix LiveView `~> 1.1.34 or >= 1.2.14 and < 2.0.0`, not
+  `~> 1.1`. Earlier versions let a client skip the `on_mount` hooks of a `live_session`
+  (EEF-CVE-2026-126334, GHSA-v4p7-3pm2-wq6c). The client joins a LiveView without its `"url"`. If
+  your lock holds an earlier version, `mix compile` refuses it until you run `mix deps.get`, which
+  moves the lock to a fixed version. If another requirement holds the old version, `mix deps.get`
+  fails, and `mix deps.tree` shows which requirement (#659, #660).
+- The dashboard was not exposed to this advisory. On the dashboard, only a client that loaded the
+  page with access can skip the hooks. The access check is the `on_mount` hook that
   `eh_os_contract_dashboard/2` installs. This hook also sets the access and the base path that both
-  screens read. Without the hook, each screen fails before it sends anything to the client. A test now
-  holds this (#660).
+  screens read. Without the hook, each screen fails before it sends anything to the client. A test
+  now holds this (#660).
 
 ## [0.10.0] - 2026-11-20
 

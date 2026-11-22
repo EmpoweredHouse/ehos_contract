@@ -6,11 +6,11 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (20 November 2026)
+## Where things stand (22 November 2026)
 
-- **Released:** v0.15.1, with the engine 0.15.1 (a commit wakes the subscription runners once, not
-  twice, where the log's trigger reaches them) and `eh_os_contract_auth` 0.16.1 (requires jsv 0.28, so a
-  host can resolve idna 8); `eh_os_contract_web` stays at 0.10.0 and the graph renderer at 0.9.1. The
+- **Released:** v0.15.2, with `eh_os_contract_web` 0.11.0 and the graph renderer 0.10.0 (both require a
+  Phoenix LiveView that fixes EEF-CVE-2026-126334; the dashboard's script has the LiveView 1.2.14 client)
+  and the engine 0.15.2, with nothing changed in it; `eh_os_contract_auth` stays at 0.16.1. The
   plugin's skills are at 0.14.3. Applications install them from git. The pull request after the tag
   moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from

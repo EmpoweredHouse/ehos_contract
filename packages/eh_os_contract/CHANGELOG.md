@@ -48,6 +48,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-11-22
+
+### Changed
+
+- Released with eh_os_contract_web 0.11.0 and eh_os_contract_graph 0.10.0, which require a Phoenix
+  LiveView that fixes EEF-CVE-2026-126334 (#660); nothing in the engine changed.
+
 ## [0.15.1] - 2026-11-20
 
 ### Changed
