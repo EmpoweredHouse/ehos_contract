@@ -199,4 +199,9 @@ Kinds of problems a review here found that neither file names yet:
   endpoint's `Plug.Session` fetches it on demand: a branch that reads the session without
   `fetch_session/1` passes the test and fails in the application. Found in #621.
 
+- A file a process keeps while it runs is read with every way the process stops: Ctrl+C and `a`, the
+  usual stop of `mix phx.server`, skips `terminate/2`, so the file stays; an operating system process
+  id left in it may belong to another program later; and a file made 0600 after its create was
+  readable for that moment, so a secret goes into a directory that is 0700 first. Found in #646.
+
 A new kind of problem goes on this list; a rule about the code goes in `CLAUDE.md` instead.
