@@ -143,7 +143,7 @@ defmodule EhOsContract.GraphRenderer.MixProject do
     [
       # The component, HEEx and the hook's events, at the first versions that fix
       # EEF-CVE-2026-126334 on each line (#660).
-      {:phoenix_live_view, "~> 1.1.34 or ~> 1.2.14"},
+      {:phoenix_live_view, "~> 1.1.34 or >= 1.2.14 and < 2.0.0"},
       # The test endpoint (test/support/test_live.ex) is a Phoenix endpoint. Declared for
       # every environment because phoenix_live_view needs it in every one, and Mix
       # refuses `only: :test` for a dependency another declares without it.

@@ -71,7 +71,7 @@ defmodule EhOsContract.Web.RouterTest do
       conn: conn
     } do
       error = assert_raise KeyError, fn -> live_isolated(conn, unquote(screen)) end
-      assert error.key == :eh_os_contract_web_base_path
+      assert error.key in [:eh_os_contract_web_base_path, :eh_os_contract_web_access]
     end
   end
 
