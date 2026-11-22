@@ -29,7 +29,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 - The dashboard's script has the client of Phoenix LiveView 1.2.14 and of Phoenix 1.8.17. It had the
   clients of 1.2.10 and 1.8.12, so with a server of 1.2.14 the browser console showed a warning that
-  the versions of LiveView differ.
+  the versions of LiveView differ. If your application runs another version of LiveView, the console
+  still shows this warning: the script holds one client.
 
 ### Security
 
