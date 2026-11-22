@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-22
+
 ### Security
 
 - **Breaking:** this package requires Phoenix LiveView `~> 1.1.34 or >= 1.2.14 and < 2.0.0`, not `~> 1.1`. Earlier

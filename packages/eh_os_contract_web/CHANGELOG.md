@@ -25,6 +25,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-22
+
 ### Fixed
 
 - The dashboard's script has the client of Phoenix LiveView 1.2.14 and of Phoenix 1.8.17. It had the
