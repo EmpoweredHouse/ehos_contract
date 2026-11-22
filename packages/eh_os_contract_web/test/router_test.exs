@@ -62,6 +62,19 @@ defmodule EhOsContract.Web.RouterTest do
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, "/dashboard/contract")
   end
 
+  # A screen mounted without the access hook must fail before it renders anything:
+  # only the hook sets the assigns each render reads first. That kept the dashboard
+  # closed when Phoenix LiveView before 1.2.14 let a client skip a live_session's
+  # on_mount hooks (EEF-CVE-2026-126334, #660).
+  for screen <- [EhOsContract.Web.Live.ContractStatus, EhOsContract.Web.Live.Graph] do
+    test "#{inspect(screen)} mounted without the access hook fails before it renders", %{
+      conn: conn
+    } do
+      error = assert_raise KeyError, fn -> live_isolated(conn, unquote(screen)) end
+      assert error.key in [:eh_os_contract_web_base_path, :eh_os_contract_web_access]
+    end
+  end
+
   describe "mounted in a scope with a path of its own" do
     test "the bare mount path redirects under the scope's prefix", %{conn: conn} do
       assert conn |> get("/admin/dashboard") |> redirected_to() == "/admin/dashboard/contract"

@@ -21,6 +21,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Security
+
+- **Breaking:** this package requires Phoenix LiveView `~> 1.1.34 or >= 1.2.14 and < 2.0.0`, not `~> 1.1`. Earlier
+  versions let a client skip the `on_mount` hooks of a `live_session` (EEF-CVE-2026-126334,
+  GHSA-v4p7-3pm2-wq6c). The graph component mounts no `live_session` of its own. The requirement keeps
+  the other screens of your application off a vulnerable version. If your lock holds an earlier version,
+  `mix compile` refuses it until you run `mix deps.get`, which moves the lock to a fixed version. If
+  another requirement holds the old version, `mix deps.get` fails, and `mix deps.tree` shows which
+  requirement (#660).
+
 ## [0.9.1] - 2026-11-05
 
 ### Changed

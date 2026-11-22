@@ -67,7 +67,7 @@ defmodule EhOsContractHost.MixProject do
       # satisfied by a neighbour's dependency is satisfied only until the
       # neighbour changes what it needs.
       {:phoenix, "~> 1.8"},
-      {:phoenix_live_view, "~> 1.1"},
+      {:phoenix_live_view, "~> 1.1.34 or >= 1.2.14 and < 2.0.0"},
       {:phoenix_html, "~> 4.0"},
       {:phoenix_pubsub, "~> 2.1"},
       {:bandit, "~> 1.5"},
