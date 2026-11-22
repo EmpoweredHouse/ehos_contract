@@ -30,8 +30,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   its token, to `_build/dev/eh_os_contract_auth/dev_sign_in` while it runs, in a directory that only
   the user can open (mode 0700). After a sign-out or in a new browser, `cat` shows the address
   again, so the application does not need a restart. A normal stop removes the file; a second start
-  of the same project while the first runs leaves it alone. The start banner says so, and no longer
-  prints `export EH_OS_CONTRACT_DEV_TOKEN=…`.
+  of the same project while the first runs leaves it alone, except on Windows. The start banner
+  says so, and no longer prints `export EH_OS_CONTRACT_DEV_TOKEN=…`.
 - `mix eh_os_contract.dev.credential` reads the token, and the application's address, from that
   file when `--token` and `EH_OS_CONTRACT_DEV_TOKEN` are not given.
 

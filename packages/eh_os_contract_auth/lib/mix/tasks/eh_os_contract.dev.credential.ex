@@ -25,7 +25,8 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
     * `--scope`: `<scope>=<value>`, once per scope of the actors' capabilities;
     * `--subject`: the person, `dev` by default;
     * `--url`: the application's address. By default, the one in the application's file when
-      the token comes from it and the file has one, and `http://localhost:4000` otherwise. Only
+      the token comes from it and that address is one it takes, and `http://localhost:4000`
+      otherwise. Only
       `http://` on `localhost`, `127.0.0.1` or `[::1]`, so the token is not sent anywhere
       else.
 
@@ -56,7 +57,9 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
     actors = Keyword.get_values(opts, :actor)
     if actors == [], do: Mix.raise("name at least one actor: --actor <domain>.<actor>")
 
-    url = url!(opts[:url] || origin(address) || "http://localhost:4000")
+    url =
+      if opts[:url], do: url!(opts[:url]), else: local(origin(address)) || "http://localhost:4000"
+
     {:ok, _started} = Application.ensure_all_started(:req)
 
     body = %{
@@ -96,30 +99,34 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
     else
       _missing ->
         Mix.raise(
-          "no token: #{Path.relative_to_cwd(file)} does not hold one, so no application of " <>
-            "this project runs in the development mode in this Mix environment. Start it with " <>
-            "mix phx.server, or give the token it printed: export EH_OS_CONTRACT_DEV_TOKEN=<token>"
+          "no token: #{Path.relative_to_cwd(file)} does not hold one. Start the application " <>
+            "in the development mode, in this Mix environment, with mix phx.server, or give " <>
+            "the token it printed: export EH_OS_CONTRACT_DEV_TOKEN=<token>"
         )
     end
   end
 
   # The application's own address, without the page: nil for an address without a host, as the
-  # application writes it when it was not given its `url:`.
+  # application writes it when it was not given its `url:`. One `url!/1` would refuse, such as
+  # https, is not used: the default is.
   defp origin(%URI{host: host} = uri) when is_binary(host),
     do: URI.to_string(%URI{uri | path: nil, query: nil, fragment: nil})
 
   defp origin(_address), do: nil
 
-  defp url!(url) do
+  defp url!(url), do: local(url) || refused_url!(url)
+
+  # `url` when it is http on this computer, without a page, and nil otherwise.
+  defp local(nil), do: nil
+
+  defp local(url) do
     case URI.parse(url) do
       %URI{scheme: "http", host: host, userinfo: nil, query: nil, fragment: nil, path: path}
       when path in [nil, "", "/"] ->
-        if host in @hosts or "[#{host}]" in @hosts,
-          do: String.trim_trailing(url, "/"),
-          else: refused_url!(url)
+        if host in @hosts or "[#{host}]" in @hosts, do: String.trim_trailing(url, "/")
 
       _other ->
-        refused_url!(url)
+        nil
     end
   end
 

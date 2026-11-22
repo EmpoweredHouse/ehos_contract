@@ -104,12 +104,19 @@ defmodule EhOsContract.Auth.DevelopmentCredentialTaskTest do
       assert_receive {:token, "from-the-file"}
     end
 
-    test "refuses an address in the file that is not this computer's" do
+    test "does not send the token to an address in the file it would refuse, but to the default" do
       System.delete_env("EH_OS_CONTRACT_DEV_TOKEN")
-      address_file("from-the-file", "http://clinic.example:4000")
 
-      assert_raise Mix.Error, ~r/the token goes only to this computer/, fn ->
-        Credential.run(~w(--actor clinic.manager))
+      for origin <- ["http://clinic.example:4000", "https://localhost:4001"] do
+        address_file("from-the-file", origin)
+
+        error =
+          assert_raise Mix.Error, fn ->
+            Credential.run(~w(--actor clinic.manager --scope clinic_id))
+          end
+
+        refute error.message =~ "--url takes"
+        assert error.message =~ "--scope takes"
       end
     end
 

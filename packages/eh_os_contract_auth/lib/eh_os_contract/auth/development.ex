@@ -59,7 +59,8 @@ defmodule EhOsContract.Auth.Development do
   stop that skips that, such as Ctrl+C and `a` or a kill, leaves the file with a token that
   no longer works, and the next start replaces it. A start while another one of the same
   build directory runs, such as `mix run priv/repo/seeds.exs` beside `mix phx.server`,
-  leaves the running one's file alone and prints its own address only. Where the file
+  leaves the running one's file alone and prints its own address only (not on Windows):
+  the first start keeps the file. Where the file
   cannot be written, the mode starts and the terminal says so.
 
   **A person signed in.** `sign_in/3` writes a session for the browser as signing in
@@ -529,12 +530,21 @@ defmodule EhOsContract.Auth.Development do
 
   # The address goes into a directory only the user can open, so a file is never readable by
   # another user, even in the moment between its create and its chmod. The owner's process id
-  # is written first: a start while that process runs leaves its file alone.
+  # is written first, and removed again when the address is not written: a start while that
+  # process runs leaves its file alone.
   defp write_address(page) do
     with :ok <- private_dir(Path.dirname(address_file())),
          :ok <- not_in_use(),
-         :ok <- File.write(owner_file(), System.pid()) do
-      create(address_file(), page)
+         :ok <- File.write(owner_file(), System.pid()),
+         :ok <- create(address_file(), page) do
+      :ok
+    else
+      {:error, {:in_use, _owner}} = in_use ->
+        in_use
+
+      {:error, reason} ->
+        File.rm(owner_file())
+        {:error, reason}
     end
   end
 
@@ -559,14 +569,18 @@ defmodule EhOsContract.Auth.Development do
     end
   end
 
-  # Whether the operating system runs the process `os_pid`. Where it cannot be asked, as on
-  # Windows, it does not, and the file is replaced.
+  # Whether the operating system runs `os_pid` as an Erlang VM: a process id given since to
+  # another program, after a stop that left the file, does not keep it. Where it cannot be
+  # asked, as on Windows, it does not, and the file is replaced.
   defp running?(os_pid) do
     String.match?(os_pid, ~r/\A[0-9]+\z/) and match?({:unix, _}, :os.type()) and
-      match?({_, 0}, System.cmd("kill", ["-0", os_pid], stderr_to_stdout: true))
+      beam?(System.cmd("ps", ["-o", "comm=", "-p", os_pid], stderr_to_stdout: true))
   rescue
     ErlangError -> false
   end
+
+  defp beam?({command, 0}), do: command =~ "beam"
+  defp beam?(_not_running), do: false
 
   # An old file, from a process that was killed, is removed first, and the exclusive create
   # refuses whatever takes its place, a symlink among them.
@@ -654,7 +668,8 @@ defmodule EhOsContract.Auth.Development do
 
         {:error, {:in_use, owner}} ->
           "This address is printed only here: another start of this application, operating " <>
-            "system process #{owner}, keeps its own in #{file}."
+            "system process #{owner}, keeps its own in #{file}. If none runs, remove " <>
+            "#{Path.dirname(file)} and restart."
 
         {:error, reason} ->
           "This address is printed once, and could not be written to #{file} " <>

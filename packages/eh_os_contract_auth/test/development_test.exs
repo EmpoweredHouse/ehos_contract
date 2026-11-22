@@ -113,6 +113,43 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              )
   end
 
+  test "a process id given since to another program does not keep a file a killed start left" do
+    other = Port.open({:spawn, "sleep 30"}, [])
+    {:os_pid, os_pid} = Port.info(other, :os_pid)
+    on_exit(fn -> System.cmd("kill", [Integer.to_string(os_pid)]) end)
+
+    assert {false, true} =
+             Child.run(
+               """
+               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_auth/dev_sign_in")
+               File.mkdir_p!(Path.dirname(file))
+               File.write!(file, "http://localhost:4000/dev/sign-in?token=old\\n")
+               File.write!(file <> ".owner", System.fetch_env!("OTHER_OS_PID"))
+               """ <>
+                 @started <>
+                 """
+                 {File.read!(file) =~ "token=old", File.read!(file <> ".owner") == System.pid()}
+                 """,
+               contracts: true,
+               env: [{"OTHER_OS_PID", Integer.to_string(os_pid)}]
+             )
+  end
+
+  test "where the address cannot be written, the owner file is removed too" do
+    assert {true, true, false} =
+             Child.run(
+               """
+               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_auth/dev_sign_in")
+               File.mkdir_p!(file)
+               """ <>
+                 @started <>
+                 """
+                 {Development.token?(token), printed =~ "could not be written to", File.exists?(file <> ".owner")}
+                 """,
+               contracts: true
+             )
+  end
+
   test "a symlink where the private directory goes is not written through" do
     assert {true, true, []} =
              Child.run(

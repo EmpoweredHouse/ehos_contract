@@ -59,7 +59,8 @@ that the terminal shows.
 - When the application stops normally, it removes the file. After Ctrl+C and `a`, or a kill, the
   file stays, with a token that does not work. The next start replaces the file.
 - A second start of the application in the same project, such as `mix run priv/repo/seeds.exs`
-  while `mix phx.server` runs, does not change the file. It prints its own address only.
+  while `mix phx.server` runs, does not change the file. It prints its own address only. The
+  first start keeps the file. On Windows, the second start replaces the file.
 
 To print the full address, give the child the address of the application:
 `{EhOsContract.Auth.Development, url: "http://localhost:4000"}`.
