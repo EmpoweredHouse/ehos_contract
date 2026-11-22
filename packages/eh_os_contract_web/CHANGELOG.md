@@ -25,6 +25,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Fixed
+
+- The dashboard's script has the client of Phoenix LiveView 1.2.14 and of Phoenix 1.8.17. It had the
+  clients of 1.2.10 and 1.8.12, so with a server of 1.2.14 the browser console showed a warning that
+  the versions of LiveView differ. If your application uses another version of LiveView, the console
+  still shows this warning: the script holds one client.
+
 ### Security
 
 - **Breaking:** this package requires Phoenix LiveView `~> 1.1.34 or >= 1.2.14 and < 2.0.0`, not `~> 1.1`. Earlier
