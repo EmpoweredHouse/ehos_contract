@@ -1,7 +1,8 @@
 defmodule EhOsContract.Auth.Development do
   # The mode, its refusal and its properties are a decision of EHOS's (#619): a key made at start
   # and held in memory, a switch of its own, a refusal that reads its inputs directly, a token
-  # printed at start, renewal only through this process.
+  # printed at start, renewal only through this process. The file that keeps the address while the
+  # mode runs is #646's.
   @moduledoc """
   Signs a person in on a developer's computer, where no EHOS runs: the development mode.
 
@@ -50,6 +51,18 @@ defmodule EhOsContract.Auth.Development do
   only with it, from a loopback address, with a `Host` of `localhost`, `127.0.0.1` or
   `[::1]`. A computer on the network, a proxy or a tunnel does not have it.
 
+  **The file.** The address is printed once. While the mode runs, it is also in the file
+  `eh_os_contract_auth/dev_sign_in` of the build directory (`Mix.Project.build_path/0`, such
+  as `_build/dev`), in a directory only the user can open (mode 0700), so `cat` shows it
+  again after a sign-out or in another browser. `mix eh_os_contract.dev.credential` reads
+  the token and the address from it. The mode removes the file when it stops normally. A
+  stop that skips that, such as Ctrl+C and `a` or a kill, leaves the file with a token that
+  no longer works, and the next start replaces it. A start while another one of the same
+  build directory runs, such as `mix run priv/repo/seeds.exs` beside `mix phx.server`,
+  leaves the running one's file alone and prints its own address only (not on Windows):
+  the first start keeps the file. Where the file
+  cannot be written, the mode starts and the terminal says so.
+
   **A person signed in.** `sign_in/3` writes a session for the browser as signing in
   through EHOS does; `credential/3` answers a bearer credential, for `curl`. The
   credential grants the union of the capabilities the domain grants the chosen actors
@@ -77,6 +90,7 @@ defmodule EhOsContract.Auth.Development do
   @marker __MODULE__
   @path "/dev/sign-in"
   @placeholder_address "https://application.localhost"
+  @address_file "eh_os_contract_auth/dev_sign_in"
 
   @typedoc "What `start_link/1` takes."
   @type option :: {:url, String.t()}
@@ -278,6 +292,16 @@ defmodule EhOsContract.Auth.Development do
 
   def token_hash?(_encoded), do: false
 
+  @doc false
+  # Where the mode writes the address of its page while it runs, which
+  # `mix eh_os_contract.dev.credential` reads. In the build directory of the Mix project, which
+  # the mode needs loaded and which git ignores. Beside it, the operating system's process id
+  # of the start that wrote it.
+  @spec address_file() :: Path.t()
+  def address_file, do: Path.join(Mix.Project.build_path(), @address_file)
+
+  defp owner_file, do: address_file() <> ".owner"
+
   defp mode do
     case :ets.lookup(@marker, :mode) do
       [{:mode, mode}] -> {:ok, mode}
@@ -469,13 +493,111 @@ defmodule EhOsContract.Auth.Development do
     true = :ets.insert(@marker, {:mode, %{pid: self(), public: public, token_hash: hash(token)}})
 
     kid = Keys.pin(public)
-    announce(opts[:url], token)
-    {:ok, %{private: private, public: public, kid: kid, keys: Process.monitor(Keys)}}
+    page = (opts[:url] || "") <> @path <> "?token=" <> token
+    # So that `terminate/2` runs, and removes the file, when the supervisor stops the mode.
+    Process.flag(:trap_exit, true)
+    written = write_address(page)
+    announce(page, opts[:url], written)
+
+    {:ok,
+     %{
+       private: private,
+       public: public,
+       kid: kid,
+       keys: Process.monitor(Keys),
+       file: if(written == :ok, do: {address_file(), hash(page <> "\n")})
+     }}
   end
 
   # A crash report prints a process's state: the private key is never in it.
   @impl GenServer
   def format_status(status), do: Map.update(status, :state, nil, &Map.delete(&1, :private))
+
+  # The files are removed only while they hold this start's address: another application
+  # started since in the same build directory keeps its own.
+  @impl GenServer
+  def terminate(_reason, %{file: {path, content_hash}}) do
+    with {:ok, content} <- File.read(path),
+         true <- Plug.Crypto.secure_compare(hash(content), content_hash) do
+      File.rm(path)
+      File.rm(owner_file())
+    end
+
+    :ok
+  end
+
+  def terminate(_reason, _state), do: :ok
+
+  # The address goes into a directory only the user can open, so a file is never readable by
+  # another user, even in the moment between its create and its chmod. The owner's process id
+  # is written first, and removed again when the address is not written: a start while that
+  # process runs leaves its file alone.
+  defp write_address(page) do
+    with :ok <- private_dir(Path.dirname(address_file())),
+         :ok <- not_in_use(),
+         :ok <- File.write(owner_file(), System.pid()),
+         :ok <- create(address_file(), page) do
+      :ok
+    else
+      {:error, {:in_use, _owner}} = in_use ->
+        in_use
+
+      {:error, reason} ->
+        File.rm(owner_file())
+        {:error, reason}
+    end
+  end
+
+  # A directory, not a symlink to one, set to 0700, which only its owner can do.
+  defp private_dir(dir) do
+    with :ok <- File.mkdir_p(dir),
+         {:ok, %File.Stat{type: :directory}} <- File.lstat(dir) do
+      File.chmod(dir, 0o700)
+    else
+      {:ok, %File.Stat{}} -> {:error, :enotdir}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp not_in_use do
+    with {:ok, owner} <- File.read(owner_file()),
+         owner = String.trim(owner),
+         true <- owner != System.pid() and running?(owner) do
+      {:error, {:in_use, owner}}
+    else
+      _free -> :ok
+    end
+  end
+
+  # Whether the operating system runs `os_pid` as an Erlang VM: a process id given since to
+  # another program, after a stop that left the file, does not keep it. Where it cannot be
+  # asked, as on Windows, it does not, and the file is replaced.
+  defp running?(os_pid) do
+    String.match?(os_pid, ~r/\A[0-9]+\z/) and match?({:unix, _}, :os.type()) and
+      beam?(System.cmd("ps", ["-o", "comm=", "-p", os_pid], stderr_to_stdout: true))
+  rescue
+    ErlangError -> false
+  end
+
+  defp beam?({command, 0}), do: command =~ "beam"
+  defp beam?(_not_running), do: false
+
+  # An old file, from a process that was killed, is removed first, and the exclusive create
+  # refuses whatever takes its place, a symlink among them.
+  defp create(path, page) do
+    _ = File.rm(path)
+
+    with {:ok, device} <- File.open(path, [:write, :exclusive, :binary]),
+         do: write_and_close(path, device, page)
+  end
+
+  defp write_and_close(path, device, page) do
+    written = with :ok <- File.chmod(path, 0o600), do: IO.binwrite(device, page <> "\n")
+    closed = File.close(device)
+    result = if written == :ok, do: closed, else: written
+    if result != :ok, do: File.rm(path)
+    result
+  end
 
   # The key is pinned in the `Keys` process only, and one that restarts has lost it: the mode
   # pins it again there, so its sessions go on and the host's supervisor counts one restart.
@@ -535,15 +657,31 @@ defmodule EhOsContract.Auth.Development do
     }
   end
 
-  defp announce(url, token) do
-    page = (url || "") <> @path <> "?token=" <> token
+  defp announce(page, url, written) do
+    file = Path.relative_to_cwd(address_file())
+
+    again =
+      case written do
+        :ok ->
+          "This address is printed once. To see it again while the application runs:\n" <>
+            "    cat #{file}"
+
+        {:error, {:in_use, owner}} ->
+          "This address is printed only here: another start of this application, operating " <>
+            "system process #{owner}, keeps its own in #{file}. If none runs, remove " <>
+            "#{Path.dirname(file)} and restart."
+
+        {:error, reason} ->
+          "This address is printed once, and could not be written to #{file} " <>
+            "(#{:file.format_error(reason)}): keep it, or restart the application for a new one."
+      end
 
     IO.puts("""
 
     [eh_os_contract_auth] Development sign-in, with a key made at this start:
         #{if url, do: page, else: page <> " on this application's address"}
-      A credential for curl, with the token in the environment rather than the command:
-        export EH_OS_CONTRACT_DEV_TOKEN=#{token}
+      #{again}
+      A credential for curl, with the token from that file or from EH_OS_CONTRACT_DEV_TOKEN:
         mix eh_os_contract.dev.credential --actor <role>
     """)
   end
