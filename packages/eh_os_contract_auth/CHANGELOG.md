@@ -24,6 +24,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- The development mode (`EhOsContract.Auth.Development`) writes the address of `/dev/sign-in`, with
+  its token, to `_build/dev/eh_os_contract_dev_sign_in` while it runs. Only the user can read the
+  file (mode 0600), and the mode removes it when it stops. After a sign-out or in a new browser,
+  `cat` shows the address again, so the application does not need a restart. The start banner says
+  so, and no longer prints `export EH_OS_CONTRACT_DEV_TOKEN=…`.
+- `mix eh_os_contract.dev.credential` reads the token from that file when `--token` and
+  `EH_OS_CONTRACT_DEV_TOKEN` are not given.
+
 ## [0.16.1] - 2026-11-20
 
 ### Fixed

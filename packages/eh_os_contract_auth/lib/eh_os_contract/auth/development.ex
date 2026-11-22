@@ -1,7 +1,8 @@
 defmodule EhOsContract.Auth.Development do
   # The mode, its refusal and its properties are a decision of EHOS's (#619): a key made at start
   # and held in memory, a switch of its own, a refusal that reads its inputs directly, a token
-  # printed at start, renewal only through this process.
+  # printed at start, renewal only through this process. The file that keeps the address while the
+  # mode runs is #646's.
   @moduledoc """
   Signs a person in on a developer's computer, where no EHOS runs: the development mode.
 
@@ -50,6 +51,14 @@ defmodule EhOsContract.Auth.Development do
   only with it, from a loopback address, with a `Host` of `localhost`, `127.0.0.1` or
   `[::1]`. A computer on the network, a proxy or a tunnel does not have it.
 
+  **The file.** The address is printed once. While the mode runs, it is also in a file that
+  only the user can read (mode 0600), `eh_os_contract_dev_sign_in` in the build directory
+  (`Mix.Project.build_path/0`, such as `_build/dev`), so `cat` shows it again after a
+  sign-out or in another browser. `mix eh_os_contract.dev.credential` reads the token from it.
+  The mode removes the file when it stops; a file left by a process that was killed is
+  replaced at the next start. Where the file cannot be written, the mode starts and the
+  terminal says so.
+
   **A person signed in.** `sign_in/3` writes a session for the browser as signing in
   through EHOS does; `credential/3` answers a bearer credential, for `curl`. The
   credential grants the union of the capabilities the domain grants the chosen actors
@@ -77,6 +86,7 @@ defmodule EhOsContract.Auth.Development do
   @marker __MODULE__
   @path "/dev/sign-in"
   @placeholder_address "https://application.localhost"
+  @address_file "eh_os_contract_dev_sign_in"
 
   @typedoc "What `start_link/1` takes."
   @type option :: {:url, String.t()}
@@ -278,6 +288,13 @@ defmodule EhOsContract.Auth.Development do
 
   def token_hash?(_encoded), do: false
 
+  @doc false
+  # Where the mode writes the address of its page while it runs, which
+  # `mix eh_os_contract.dev.credential` reads. In the build directory of the Mix project, which
+  # the mode needs loaded and which git ignores.
+  @spec address_file() :: Path.t()
+  def address_file, do: Path.join(Mix.Project.build_path(), @address_file)
+
   defp mode do
     case :ets.lookup(@marker, :mode) do
       [{:mode, mode}] -> {:ok, mode}
@@ -469,13 +486,56 @@ defmodule EhOsContract.Auth.Development do
     true = :ets.insert(@marker, {:mode, %{pid: self(), public: public, token_hash: hash(token)}})
 
     kid = Keys.pin(public)
-    announce(opts[:url], token)
-    {:ok, %{private: private, public: public, kid: kid, keys: Process.monitor(Keys)}}
+    page = (opts[:url] || "") <> @path <> "?token=" <> token
+    # So that `terminate/2` runs, and removes the file, when the supervisor stops the mode.
+    Process.flag(:trap_exit, true)
+    written = write_address(address_file(), page)
+    announce(page, opts[:url], written)
+
+    {:ok,
+     %{
+       private: private,
+       public: public,
+       kid: kid,
+       keys: Process.monitor(Keys),
+       file: if(written == :ok, do: {address_file(), hash(page <> "\n")})
+     }}
   end
 
   # A crash report prints a process's state: the private key is never in it.
   @impl GenServer
   def format_status(status), do: Map.update(status, :state, nil, &Map.delete(&1, :private))
+
+  # The file is removed only while it holds this start's address: another application started
+  # since in the same build directory keeps its own.
+  @impl GenServer
+  def terminate(_reason, %{file: {path, content_hash}}) do
+    with {:ok, content} <- File.read(path),
+         true <- Plug.Crypto.secure_compare(hash(content), content_hash) do
+      File.rm(path)
+    end
+
+    :ok
+  end
+
+  def terminate(_reason, _state), do: :ok
+
+  # A new file, readable by its owner only, before the address is in it: an old file, from a
+  # process that was killed, is removed first, and the exclusive create refuses whatever
+  # takes its place, a symlink among them.
+  defp write_address(path, page) do
+    _ = File.rm(path)
+
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         {:ok, device} <- File.open(path, [:write, :exclusive, :binary]) do
+      result =
+        with :ok <- File.chmod(path, 0o600), do: IO.binwrite(device, page <> "\n")
+
+      :ok = File.close(device)
+      if result != :ok, do: File.rm(path)
+      result
+    end
+  end
 
   # The key is pinned in the `Keys` process only, and one that restarts has lost it: the mode
   # pins it again there, so its sessions go on and the host's supervisor counts one restart.
@@ -535,15 +595,26 @@ defmodule EhOsContract.Auth.Development do
     }
   end
 
-  defp announce(url, token) do
-    page = (url || "") <> @path <> "?token=" <> token
+  defp announce(page, url, written) do
+    file = Path.relative_to_cwd(address_file())
+
+    again =
+      case written do
+        :ok ->
+          "This address is printed once. To see it again while the application runs:\n" <>
+            "    cat #{file}"
+
+        {:error, reason} ->
+          "This address is printed once, and could not be written to #{file} " <>
+            "(#{:file.format_error(reason)}): keep it, or restart the application for a new one."
+      end
 
     IO.puts("""
 
     [eh_os_contract_auth] Development sign-in, with a key made at this start:
         #{if url, do: page, else: page <> " on this application's address"}
-      A credential for curl, with the token in the environment rather than the command:
-        export EH_OS_CONTRACT_DEV_TOKEN=#{token}
+      #{again}
+      A credential for curl, with the token from that file or from EH_OS_CONTRACT_DEV_TOKEN:
         mix eh_os_contract.dev.credential --actor <role>
     """)
   end

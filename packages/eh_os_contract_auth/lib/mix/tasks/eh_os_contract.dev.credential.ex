@@ -5,7 +5,6 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
   Asks the application running on this computer in the development mode
   (`EhOsContract.Auth.Development`) for a credential, and prints it, for `curl`:
 
-      export EH_OS_CONTRACT_DEV_TOKEN=<token>
       mix eh_os_contract.dev.credential --actor clinic.receptionist --scope clinic_id=clinic-1
 
       curl -H "authorization: Bearer $(mix eh_os_contract.dev.credential ...)" \\
@@ -16,9 +15,12 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
 
   Options:
 
-    * `EH_OS_CONTRACT_DEV_TOKEN`: the token the application printed when it started. `--token`
-      takes it too, but a command line is seen by other users of the computer and kept in the
-      shell's history;
+    * the token the application printed when it started. Without `--token` and
+      `EH_OS_CONTRACT_DEV_TOKEN`, it is read from the file the running application writes it
+      to, `eh_os_contract_dev_sign_in` in the build directory, such as `_build/dev`. Run the
+      command in the application's project, in the same Mix environment. `--token` takes it,
+      but a command line is seen by other users of the computer and kept in the shell's
+      history;
     * `--actor`: a role of the domain, `<domain>.<actor>`; once per actor, at least once;
     * `--scope`: `<scope>=<value>`, once per scope of the actors' capabilities;
     * `--subject`: the person, `dev` by default;
@@ -45,12 +47,7 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
       true -> :ok
     end
 
-    token =
-      opts[:token] || System.get_env("EH_OS_CONTRACT_DEV_TOKEN") ||
-        Mix.raise(
-          "give the token the application printed when it started: " <>
-            "export EH_OS_CONTRACT_DEV_TOKEN=<token>"
-        )
+    token = opts[:token] || System.get_env("EH_OS_CONTRACT_DEV_TOKEN") || token_from_file!()
 
     actors = Keyword.get_values(opts, :actor)
     if actors == [], do: Mix.raise("name at least one actor: --actor <domain>.<actor>")
@@ -80,6 +77,24 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
         Mix.raise(
           "no application answered at #{url} (#{Exception.message(exception)}): is it " <>
             "running with mix phx.server, in the development mode?"
+        )
+    end
+  end
+
+  # The token in the address the running application keeps in its file.
+  defp token_from_file! do
+    file = EhOsContract.Auth.Development.address_file()
+
+    with {:ok, address} <- File.read(file),
+         %URI{query: query} when is_binary(query) <- URI.parse(String.trim(address)),
+         {:ok, token} when token != "" <- Map.fetch(URI.decode_query(query), "token") do
+      token
+    else
+      _missing ->
+        Mix.raise(
+          "no token: #{Path.relative_to_cwd(file)} does not hold one, so no application of " <>
+            "this project runs in the development mode in this Mix environment. Start it with " <>
+            "mix phx.server, or give the token it printed: export EH_OS_CONTRACT_DEV_TOKEN=<token>"
         )
     end
   end

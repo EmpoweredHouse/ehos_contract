@@ -43,8 +43,59 @@ defmodule EhOsContract.Auth.DevelopmentTest do
              """)
 
     assert printed =~ "Development sign-in, with a key made at this start"
-    assert printed =~ "export EH_OS_CONTRACT_DEV_TOKEN="
+    assert printed =~ "This address is printed once. To see it again while the application runs:"
+    assert printed =~ ~r{cat \S+/eh_os_contract_dev_sign_in}
+    assert printed =~ "mix eh_os_contract.dev.credential --actor <role>"
     refute printed =~ "--token"
+    refute printed =~ "export EH_OS_CONTRACT_DEV_TOKEN="
+  end
+
+  test "while the mode runs, the address is in a file only the user can read, removed at stop" do
+    assert {{:ok, written}, 0o600, true, false} =
+             run("""
+             file = Development.address_file()
+             written = File.read(file)
+             mode = Bitwise.band(File.stat!(file).mode, 0o777)
+             :ok = Supervisor.stop(sup)
+             {written, mode, printed =~ "cat " <> file, File.exists?(file)}
+             """)
+
+    assert written =~ ~r{\Ahttp://localhost:4000/dev/sign-in\?token=\S+\n\z}
+  end
+
+  test "a file left by a process that was killed is replaced, and one another start wrote is kept" do
+    assert {false, 0o600, "another start's address\n"} =
+             Child.run(
+               """
+               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_dev_sign_in")
+               File.mkdir_p!(Path.dirname(file))
+               File.write!(file, "http://localhost:4000/dev/sign-in?token=old\\n")
+               File.chmod!(file, 0o644)
+               """ <>
+                 @started <>
+                 """
+                 old? = File.read!(file) =~ "token=old"
+                 mode = Bitwise.band(File.stat!(file).mode, 0o777)
+                 File.write!(file, "another start's address\\n")
+                 :ok = Supervisor.stop(sup)
+                 {old?, mode, File.read!(file)}
+                 """,
+               contracts: true
+             )
+  end
+
+  test "where the file cannot be written, the mode starts and the terminal says so" do
+    assert {true, true} =
+             Child.run(
+               """
+               File.write!(System.fetch_env!("MIX_BUILD_PATH"), "a file where the build directory goes")
+               """ <>
+                 @started <>
+                 """
+                 {Development.token?(token), printed =~ "could not be written to"}
+                 """,
+               contracts: true
+             )
   end
 
   test "the process's status, which a crash report prints, never holds the private key" do

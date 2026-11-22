@@ -40,10 +40,21 @@ children is correct in each environment.
 ```text
 [eh_os_contract_auth] Development sign-in, with a key made at this start:
     http://localhost:4000/dev/sign-in?token=…
+  This address is printed once. To see it again while the application runs:
+    cat _build/dev/eh_os_contract_dev_sign_in
 ```
 
-The application prints the address 1 time, at start. To get a new address, restart the
-application: the restart makes a new token.
+The application prints the address 1 time, at start. It also writes the address to the file
+`eh_os_contract_dev_sign_in` in the build directory of the project, `_build/dev`. To get the address
+again, for example after a sign-out or in a new browser, show the file:
+
+```bash
+cat _build/dev/eh_os_contract_dev_sign_in
+```
+
+Only your user can read the file (mode 0600), and git ignores `_build/`. The application removes
+the file when it stops. If the application cannot write the file, it starts, and the terminal
+tells you so. Then keep the address that the terminal shows.
 
 To print the full address, give the child the address of the application:
 `{EhOsContract.Auth.Development, url: "http://localhost:4000"}`.
@@ -80,7 +91,8 @@ that asked for a sign-in.
 A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also goes to this page:
 `EhOsContract.Auth.SignIn.Router` sends the browser to `/dev/sign-in`, with the same `return_to`.
 The page opens when the browser opened the address with the token after the last start. After a
-restart or a sign-out, the page answers 403: open the address that the terminal shows again.
+restart or a sign-out, the page answers 403: open the address in
+`_build/dev/eh_os_contract_dev_sign_in` again.
 
 The page links the stylesheet of the application, at `/assets/css/app.css`. A Phoenix 1.8
 application serves its CSS at this path in development. If the stylesheet imports the
@@ -101,15 +113,17 @@ theme toggle of the application keeps, and uses the colour scheme of the system.
 ## 3. Get a credential for `curl`
 
 ```bash
-export EH_OS_CONTRACT_DEV_TOKEN=<token>
-```
-
-```bash
 mix eh_os_contract.dev.credential --actor clinic.receptionist --scope clinic_id=clinic-1
 ```
 
-Give the token in the environment, not as `--token`. Other users of the computer can see a
-command line, and the shell keeps it in its history.
+Run the command in the project of the application, while the application runs. The command reads
+the token from `_build/dev/eh_os_contract_dev_sign_in`. To give another token, set it in the
+environment, not as `--token`. Other users of the computer can see a command line, and the shell
+keeps it in its history:
+
+```bash
+export EH_OS_CONTRACT_DEV_TOKEN=<token>
+```
 
 The command asks the running application for the credential, and prints it. The key stays in the
 memory of the application.
@@ -125,6 +139,7 @@ memory of the application.
 | Renewal | When the credential of a session expires, the mode signs a new one with the same claims. |
 | A restart | Each session from before the restart is signed out, and the browser goes to `/dev/sign-in`. The application stops trusting the old key. |
 | The token | A random value, made at start and printed. The page and the endpoint need it. |
+| The file | The address of the page, with the token, in `_build/dev/eh_os_contract_dev_sign_in` while the application runs. Only your user can read it. |
 
 ## Who can reach the page?
 

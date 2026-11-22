@@ -13,7 +13,8 @@ defmodule EhOsContract.Auth.Child do
       `test/fixtures/development` loaded, as `mix phx.server` loads an application's.
 
   `env:` sets the child's environment variables; `MIX_ENV`, the release's and EHOS's are unset
-  unless it names them. `config:` goes over the configuration every child gets: the package's
+  unless it names them. `MIX_BUILD_PATH` is a new directory of each run, removed after it,
+  unless `env:` names it: the mode writes its address file there, and children run at once. `config:` goes over the configuration every child gets: the package's
   issuer and audience, the switch `development: true`, a key set at a closed loopback port, and
   the test repo. `contracts: true` compiles the fixture's domain and contract and loads them as
   the fixture's application, the one the engine reads. `body` is the code to run; its last
@@ -28,7 +29,14 @@ defmodule EhOsContract.Auth.Child do
   @doc "Runs `body` in a child process, as the moduledoc says, and answers its value."
   def run(body, opts \\ []) do
     opts = Keyword.validate!(opts, mix: :project, env: [], config: [], contracts: false)
-    env = Enum.map(@cleared, &{&1, nil}) ++ opts[:env]
+
+    build =
+      Path.join(
+        System.tmp_dir!(),
+        "eh_os_contract_auth_child_#{System.unique_integer([:positive])}"
+      )
+
+    env = Enum.map(@cleared, &{&1, nil}) ++ [{"MIX_BUILD_PATH", build}] ++ opts[:env]
     lib = Path.join(Mix.Project.build_path(), "lib")
 
     script = """
@@ -40,7 +48,14 @@ defmodule EhOsContract.Auth.Child do
     """
 
     {output, status} =
-      System.cmd("elixir", ["-e", script], env: [{"ERL_LIBS", lib} | env], stderr_to_stdout: true)
+      try do
+        System.cmd("elixir", ["-e", script],
+          env: [{"ERL_LIBS", lib} | env],
+          stderr_to_stdout: true
+        )
+      after
+        File.rm_rf(build)
+      end
 
     case Regex.run(~r/^RESULT:(\S+)$/m, output) do
       [_, encoded] -> encoded |> Base.decode64!() |> :erlang.binary_to_term()
