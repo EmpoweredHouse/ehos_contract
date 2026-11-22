@@ -6,11 +6,12 @@ defmodule EhOsContract.Auth.DevelopmentCredentialTaskTest do
   alias EhOsContract.Auth.Development
   alias Mix.Tasks.EhOsContract.Dev.Credential
 
-  # The file the mode writes, in this project's build directory, holding `token`.
-  defp address_file(token) do
+  # The file the mode writes, in this project's build directory, holding `token` in the page's
+  # address at `origin`.
+  defp address_file(token, origin \\ "http://localhost:4000") do
     file = Development.address_file()
     File.mkdir_p!(Path.dirname(file))
-    File.write!(file, "http://localhost:4000/dev/sign-in?token=#{token}\n")
+    File.write!(file, "#{origin}/dev/sign-in?token=#{token}\n")
     on_exit(fn -> File.rm(file) end)
   end
 
@@ -68,7 +69,7 @@ defmodule EhOsContract.Auth.DevelopmentCredentialTaskTest do
       File.rm(Development.address_file())
 
       assert_raise Mix.Error,
-                   ~r/eh_os_contract_dev_sign_in does not hold one.*EH_OS_CONTRACT_DEV_TOKEN=<token>/,
+                   ~r/eh_os_contract_auth\/dev_sign_in does not hold one.*EH_OS_CONTRACT_DEV_TOKEN=<token>/,
                    fn ->
                      Mix.Tasks.EhOsContract.Dev.Credential.run(~w(--actor clinic.manager))
                    end
@@ -92,6 +93,24 @@ defmodule EhOsContract.Auth.DevelopmentCredentialTaskTest do
 
       assert_receive {:token, "from-the-file"}
       assert_received {:mix_shell, :info, ["signed"]}
+    end
+
+    test "without --url, sends the token from the file to the address in the file" do
+      System.delete_env("EH_OS_CONTRACT_DEV_TOKEN")
+      address_file("from-the-file", application())
+
+      Credential.run(~w(--actor clinic.manager))
+
+      assert_receive {:token, "from-the-file"}
+    end
+
+    test "refuses an address in the file that is not this computer's" do
+      System.delete_env("EH_OS_CONTRACT_DEV_TOKEN")
+      address_file("from-the-file", "http://clinic.example:4000")
+
+      assert_raise Mix.Error, ~r/the token goes only to this computer/, fn ->
+        Credential.run(~w(--actor clinic.manager))
+      end
     end
 
     test "takes the variable before the file, and refuses a file without a token" do

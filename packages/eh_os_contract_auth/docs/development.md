@@ -41,20 +41,25 @@ children is correct in each environment.
 [eh_os_contract_auth] Development sign-in, with a key made at this start:
     http://localhost:4000/dev/sign-in?token=…
   This address is printed once. To see it again while the application runs:
-    cat _build/dev/eh_os_contract_dev_sign_in
+    cat _build/dev/eh_os_contract_auth/dev_sign_in
 ```
 
 The application prints the address 1 time, at start. It also writes the address to the file
-`eh_os_contract_dev_sign_in` in the build directory of the project, `_build/dev`. To get the address
-again, for example after a sign-out or in a new browser, show the file:
+`eh_os_contract_auth/dev_sign_in` in the build directory of the project, `_build/dev`. To get the
+address again, for example after a sign-out or in a new browser, show the file:
 
 ```bash
-cat _build/dev/eh_os_contract_dev_sign_in
+cat _build/dev/eh_os_contract_auth/dev_sign_in
 ```
 
-Only your user can read the file (mode 0600), and git ignores `_build/`. The application removes
-the file when it stops. If the application cannot write the file, it starts, and the terminal
-tells you so. Then keep the address that the terminal shows.
+Only your user can open the directory of the file (mode 0700), and git ignores `_build/`. If the
+application cannot write the file, it starts, and the terminal tells you so. Then keep the address
+that the terminal shows.
+
+- When the application stops normally, it removes the file. After Ctrl+C and `a`, or a kill, the
+  file stays, with a token that does not work. The next start replaces the file.
+- A second start of the application in the same project, such as `mix run priv/repo/seeds.exs`
+  while `mix phx.server` runs, does not change the file. It prints its own address only.
 
 To print the full address, give the child the address of the application:
 `{EhOsContract.Auth.Development, url: "http://localhost:4000"}`.
@@ -92,7 +97,7 @@ A link to `/auth/ehos/sign-in`, such as the "Sign in" link of a layout, also goe
 `EhOsContract.Auth.SignIn.Router` sends the browser to `/dev/sign-in`, with the same `return_to`.
 The page opens when the browser opened the address with the token after the last start. After a
 restart or a sign-out, the page answers 403: open the address in
-`_build/dev/eh_os_contract_dev_sign_in` again.
+`_build/dev/eh_os_contract_auth/dev_sign_in` again.
 
 The page links the stylesheet of the application, at `/assets/css/app.css`. A Phoenix 1.8
 application serves its CSS at this path in development. If the stylesheet imports the
@@ -117,9 +122,9 @@ mix eh_os_contract.dev.credential --actor clinic.receptionist --scope clinic_id=
 ```
 
 Run the command in the project of the application, while the application runs. The command reads
-the token from `_build/dev/eh_os_contract_dev_sign_in`. To give another token, set it in the
-environment, not as `--token`. Other users of the computer can see a command line, and the shell
-keeps it in its history:
+the token and the address of the application from `_build/dev/eh_os_contract_auth/dev_sign_in`.
+To give another token, set it in the environment, not as `--token`. Other users of the computer
+can see a command line, and the shell keeps it in its history:
 
 ```bash
 export EH_OS_CONTRACT_DEV_TOKEN=<token>
@@ -139,7 +144,7 @@ memory of the application.
 | Renewal | When the credential of a session expires, the mode signs a new one with the same claims. |
 | A restart | Each session from before the restart is signed out, and the browser goes to `/dev/sign-in`. The application stops trusting the old key. |
 | The token | A random value, made at start and printed. The page and the endpoint need it. |
-| The file | The address of the page, with the token, in `_build/dev/eh_os_contract_dev_sign_in` while the application runs. Only your user can read it. |
+| The file | The address of the page, with the token, in `_build/dev/eh_os_contract_auth/dev_sign_in` while the application runs. Only your user can read it. |
 
 ## Who can reach the page?
 

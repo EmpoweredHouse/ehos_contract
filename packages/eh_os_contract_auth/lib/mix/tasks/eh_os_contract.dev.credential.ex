@@ -17,14 +17,15 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
 
     * the token the application printed when it started. Without `--token` and
       `EH_OS_CONTRACT_DEV_TOKEN`, it is read from the file the running application writes it
-      to, `eh_os_contract_dev_sign_in` in the build directory, such as `_build/dev`. Run the
-      command in the application's project, in the same Mix environment. `--token` takes it,
+      to, `eh_os_contract_auth/dev_sign_in` in the build directory, such as `_build/dev`. Run
+      the command in the application's project, in the same Mix environment. `--token` takes it,
       but a command line is seen by other users of the computer and kept in the shell's
       history;
     * `--actor`: a role of the domain, `<domain>.<actor>`; once per actor, at least once;
     * `--scope`: `<scope>=<value>`, once per scope of the actors' capabilities;
     * `--subject`: the person, `dev` by default;
-    * `--url`: the application's address, `http://localhost:4000` by default. Only
+    * `--url`: the application's address. By default, the one in the application's file when
+      the token comes from it and the file has one, and `http://localhost:4000` otherwise. Only
       `http://` on `localhost`, `127.0.0.1` or `[::1]`, so the token is not sent anywhere
       else.
 
@@ -47,12 +48,15 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
       true -> :ok
     end
 
-    token = opts[:token] || System.get_env("EH_OS_CONTRACT_DEV_TOKEN") || token_from_file!()
+    {token, address} =
+      if token = opts[:token] || System.get_env("EH_OS_CONTRACT_DEV_TOKEN"),
+        do: {token, nil},
+        else: from_file!()
 
     actors = Keyword.get_values(opts, :actor)
     if actors == [], do: Mix.raise("name at least one actor: --actor <domain>.<actor>")
 
-    url = url!(opts[:url] || "http://localhost:4000")
+    url = url!(opts[:url] || origin(address) || "http://localhost:4000")
     {:ok, _started} = Application.ensure_all_started(:req)
 
     body = %{
@@ -81,14 +85,14 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
     end
   end
 
-  # The token in the address the running application keeps in its file.
-  defp token_from_file! do
+  # The token, and the address it is in, that the running application keeps in its file.
+  defp from_file! do
     file = EhOsContract.Auth.Development.address_file()
 
     with {:ok, address} <- File.read(file),
-         %URI{query: query} when is_binary(query) <- URI.parse(String.trim(address)),
+         %URI{query: query} = uri when is_binary(query) <- URI.parse(String.trim(address)),
          {:ok, token} when token != "" <- Map.fetch(URI.decode_query(query), "token") do
-      token
+      {token, uri}
     else
       _missing ->
         Mix.raise(
@@ -98,6 +102,13 @@ defmodule Mix.Tasks.EhOsContract.Dev.Credential do
         )
     end
   end
+
+  # The application's own address, without the page: nil for an address without a host, as the
+  # application writes it when it was not given its `url:`.
+  defp origin(%URI{host: host} = uri) when is_binary(host),
+    do: URI.to_string(%URI{uri | path: nil, query: nil, fragment: nil})
+
+  defp origin(_address), do: nil
 
   defp url!(url) do
     case URI.parse(url) do
