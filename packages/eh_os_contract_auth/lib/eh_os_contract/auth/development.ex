@@ -51,13 +51,16 @@ defmodule EhOsContract.Auth.Development do
   only with it, from a loopback address, with a `Host` of `localhost`, `127.0.0.1` or
   `[::1]`. A computer on the network, a proxy or a tunnel does not have it.
 
-  **The file.** The address is printed once. While the mode runs, it is also in a file that
-  only the user can read (mode 0600), `eh_os_contract_dev_sign_in` in the build directory
-  (`Mix.Project.build_path/0`, such as `_build/dev`), so `cat` shows it again after a
-  sign-out or in another browser. `mix eh_os_contract.dev.credential` reads the token from it.
-  The mode removes the file when it stops; a file left by a process that was killed is
-  replaced at the next start. Where the file cannot be written, the mode starts and the
-  terminal says so.
+  **The file.** The address is printed once. While the mode runs, it is also in the file
+  `eh_os_contract_auth/dev_sign_in` of the build directory (`Mix.Project.build_path/0`, such
+  as `_build/dev`), in a directory only the user can open (mode 0700), so `cat` shows it
+  again after a sign-out or in another browser. `mix eh_os_contract.dev.credential` reads
+  the token and the address from it. The mode removes the file when it stops normally. A
+  stop that skips that, such as Ctrl+C and `a` or a kill, leaves the file with a token that
+  no longer works, and the next start replaces it. A start while another one of the same
+  build directory runs, such as `mix run priv/repo/seeds.exs` beside `mix phx.server`,
+  leaves the running one's file alone and prints its own address only. Where the file
+  cannot be written, the mode starts and the terminal says so.
 
   **A person signed in.** `sign_in/3` writes a session for the browser as signing in
   through EHOS does; `credential/3` answers a bearer credential, for `curl`. The
@@ -86,7 +89,7 @@ defmodule EhOsContract.Auth.Development do
   @marker __MODULE__
   @path "/dev/sign-in"
   @placeholder_address "https://application.localhost"
-  @address_file "eh_os_contract_dev_sign_in"
+  @address_file "eh_os_contract_auth/dev_sign_in"
 
   @typedoc "What `start_link/1` takes."
   @type option :: {:url, String.t()}
@@ -291,9 +294,12 @@ defmodule EhOsContract.Auth.Development do
   @doc false
   # Where the mode writes the address of its page while it runs, which
   # `mix eh_os_contract.dev.credential` reads. In the build directory of the Mix project, which
-  # the mode needs loaded and which git ignores.
+  # the mode needs loaded and which git ignores. Beside it, the operating system's process id
+  # of the start that wrote it.
   @spec address_file() :: Path.t()
   def address_file, do: Path.join(Mix.Project.build_path(), @address_file)
+
+  defp owner_file, do: address_file() <> ".owner"
 
   defp mode do
     case :ets.lookup(@marker, :mode) do
@@ -489,7 +495,7 @@ defmodule EhOsContract.Auth.Development do
     page = (opts[:url] || "") <> @path <> "?token=" <> token
     # So that `terminate/2` runs, and removes the file, when the supervisor stops the mode.
     Process.flag(:trap_exit, true)
-    written = write_address(address_file(), page)
+    written = write_address(page)
     announce(page, opts[:url], written)
 
     {:ok,
@@ -506,13 +512,14 @@ defmodule EhOsContract.Auth.Development do
   @impl GenServer
   def format_status(status), do: Map.update(status, :state, nil, &Map.delete(&1, :private))
 
-  # The file is removed only while it holds this start's address: another application started
-  # since in the same build directory keeps its own.
+  # The files are removed only while they hold this start's address: another application
+  # started since in the same build directory keeps its own.
   @impl GenServer
   def terminate(_reason, %{file: {path, content_hash}}) do
     with {:ok, content} <- File.read(path),
          true <- Plug.Crypto.secure_compare(hash(content), content_hash) do
       File.rm(path)
+      File.rm(owner_file())
     end
 
     :ok
@@ -520,21 +527,62 @@ defmodule EhOsContract.Auth.Development do
 
   def terminate(_reason, _state), do: :ok
 
-  # A new file, readable by its owner only, before the address is in it: an old file, from a
-  # process that was killed, is removed first, and the exclusive create refuses whatever
-  # takes its place, a symlink among them.
-  defp write_address(path, page) do
+  # The address goes into a directory only the user can open, so a file is never readable by
+  # another user, even in the moment between its create and its chmod. The owner's process id
+  # is written first: a start while that process runs leaves its file alone.
+  defp write_address(page) do
+    with :ok <- private_dir(Path.dirname(address_file())),
+         :ok <- not_in_use(),
+         :ok <- File.write(owner_file(), System.pid()) do
+      create(address_file(), page)
+    end
+  end
+
+  # A directory, not a symlink to one, set to 0700, which only its owner can do.
+  defp private_dir(dir) do
+    with :ok <- File.mkdir_p(dir),
+         {:ok, %File.Stat{type: :directory}} <- File.lstat(dir) do
+      File.chmod(dir, 0o700)
+    else
+      {:ok, %File.Stat{}} -> {:error, :enotdir}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp not_in_use do
+    with {:ok, owner} <- File.read(owner_file()),
+         owner = String.trim(owner),
+         true <- owner != System.pid() and running?(owner) do
+      {:error, {:in_use, owner}}
+    else
+      _free -> :ok
+    end
+  end
+
+  # Whether the operating system runs the process `os_pid`. Where it cannot be asked, as on
+  # Windows, it does not, and the file is replaced.
+  defp running?(os_pid) do
+    String.match?(os_pid, ~r/\A[0-9]+\z/) and match?({:unix, _}, :os.type()) and
+      match?({_, 0}, System.cmd("kill", ["-0", os_pid], stderr_to_stdout: true))
+  rescue
+    ErlangError -> false
+  end
+
+  # An old file, from a process that was killed, is removed first, and the exclusive create
+  # refuses whatever takes its place, a symlink among them.
+  defp create(path, page) do
     _ = File.rm(path)
 
-    with :ok <- File.mkdir_p(Path.dirname(path)),
-         {:ok, device} <- File.open(path, [:write, :exclusive, :binary]) do
-      result =
-        with :ok <- File.chmod(path, 0o600), do: IO.binwrite(device, page <> "\n")
+    with {:ok, device} <- File.open(path, [:write, :exclusive, :binary]),
+         do: write_and_close(path, device, page)
+  end
 
-      :ok = File.close(device)
-      if result != :ok, do: File.rm(path)
-      result
-    end
+  defp write_and_close(path, device, page) do
+    written = with :ok <- File.chmod(path, 0o600), do: IO.binwrite(device, page <> "\n")
+    closed = File.close(device)
+    result = if written == :ok, do: closed, else: written
+    if result != :ok, do: File.rm(path)
+    result
   end
 
   # The key is pinned in the `Keys` process only, and one that restarts has lost it: the mode
@@ -603,6 +651,10 @@ defmodule EhOsContract.Auth.Development do
         :ok ->
           "This address is printed once. To see it again while the application runs:\n" <>
             "    cat #{file}"
+
+        {:error, {:in_use, owner}} ->
+          "This address is printed only here: another start of this application, operating " <>
+            "system process #{owner}, keeps its own in #{file}."
 
         {:error, reason} ->
           "This address is printed once, and could not be written to #{file} " <>

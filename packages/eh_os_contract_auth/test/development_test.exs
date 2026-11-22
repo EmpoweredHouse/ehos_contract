@@ -44,41 +44,87 @@ defmodule EhOsContract.Auth.DevelopmentTest do
 
     assert printed =~ "Development sign-in, with a key made at this start"
     assert printed =~ "This address is printed once. To see it again while the application runs:"
-    assert printed =~ ~r{cat \S+/eh_os_contract_dev_sign_in}
+    assert printed =~ ~r{cat \S+/eh_os_contract_auth/dev_sign_in}
     assert printed =~ "mix eh_os_contract.dev.credential --actor <role>"
     refute printed =~ "--token"
     refute printed =~ "export EH_OS_CONTRACT_DEV_TOKEN="
   end
 
   test "while the mode runs, the address is in a file only the user can read, removed at stop" do
-    assert {{:ok, written}, 0o600, true, false} =
+    assert {{:ok, written}, 0o600, 0o700, true, [], true} =
              run("""
              file = Development.address_file()
              written = File.read(file)
-             mode = Bitwise.band(File.stat!(file).mode, 0o777)
+             mode = fn path -> Bitwise.band(File.stat!(path).mode, 0o777) end
+             modes = {mode.(file), mode.(Path.dirname(file))}
+             owner = File.read!(file <> ".owner") == System.pid()
              :ok = Supervisor.stop(sup)
-             {written, mode, printed =~ "cat " <> file, File.exists?(file)}
+             Tuple.to_list({written}) ++ Tuple.to_list(modes) ++ [printed =~ "cat " <> file, File.ls!(Path.dirname(file)), owner]
+             |> List.to_tuple()
              """)
 
     assert written =~ ~r{\Ahttp://localhost:4000/dev/sign-in\?token=\S+\n\z}
   end
 
   test "a file left by a process that was killed is replaced, and one another start wrote is kept" do
-    assert {false, 0o600, "another start's address\n"} =
+    assert {false, 0o600, 0o700, "another start's address\n"} =
              Child.run(
                """
-               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_dev_sign_in")
+               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_auth/dev_sign_in")
                File.mkdir_p!(Path.dirname(file))
+               File.chmod!(Path.dirname(file), 0o755)
                File.write!(file, "http://localhost:4000/dev/sign-in?token=old\\n")
                File.chmod!(file, 0o644)
+               # an operating system process id that no process has
+               File.write!(file <> ".owner", "99999999")
                """ <>
                  @started <>
                  """
                  old? = File.read!(file) =~ "token=old"
-                 mode = Bitwise.band(File.stat!(file).mode, 0o777)
+                 mode = fn path -> Bitwise.band(File.stat!(path).mode, 0o777) end
+                 modes = {mode.(file), mode.(Path.dirname(file))}
                  File.write!(file, "another start's address\\n")
                  :ok = Supervisor.stop(sup)
-                 {old?, mode, File.read!(file)}
+                 {old?, elem(modes, 0), elem(modes, 1), File.read!(file)}
+                 """,
+               contracts: true
+             )
+  end
+
+  test "a start while another start of the same build directory runs leaves that one's file alone" do
+    assert {"the running start's address\n", true, false, "the running start's address\n"} =
+             Child.run(
+               """
+               file = Path.join(System.fetch_env!("MIX_BUILD_PATH"), "eh_os_contract_auth/dev_sign_in")
+               File.mkdir_p!(Path.dirname(file))
+               File.write!(file, "the running start's address\\n")
+               # the test's own process, which runs while the child does
+               File.write!(file <> ".owner", System.fetch_env!("RUNNING_OS_PID"))
+               """ <>
+                 @started <>
+                 """
+                 during = File.read!(file)
+                 :ok = Supervisor.stop(sup)
+                 {during, printed =~ "another start of this application, operating system process",
+                  printed =~ "To see it again", File.read!(file)}
+                 """,
+               contracts: true,
+               env: [{"RUNNING_OS_PID", System.pid()}]
+             )
+  end
+
+  test "a symlink where the private directory goes is not written through" do
+    assert {true, true, []} =
+             Child.run(
+               """
+               build = System.fetch_env!("MIX_BUILD_PATH")
+               elsewhere = Path.join(build, "elsewhere")
+               File.mkdir_p!(elsewhere)
+               File.ln_s!(elsewhere, Path.join(build, "eh_os_contract_auth"))
+               """ <>
+                 @started <>
+                 """
+                 {Development.token?(token), printed =~ "could not be written to", File.ls!(elsewhere)}
                  """,
                contracts: true
              )

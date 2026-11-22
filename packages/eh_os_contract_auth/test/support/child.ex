@@ -14,7 +14,8 @@ defmodule EhOsContract.Auth.Child do
 
   `env:` sets the child's environment variables; `MIX_ENV`, the release's and EHOS's are unset
   unless it names them. `MIX_BUILD_PATH` is a new directory of each run, removed after it,
-  unless `env:` names it: the mode writes its address file there, and children run at once. `config:` goes over the configuration every child gets: the package's
+  unless `env:` names it: the mode writes its address file there, and children run at
+  once. `config:` goes over the configuration every child gets: the package's
   issuer and audience, the switch `development: true`, a key set at a closed loopback port, and
   the test repo. `contracts: true` compiles the fixture's domain and contract and loads them as
   the fixture's application, the one the engine reads. `body` is the code to run; its last
