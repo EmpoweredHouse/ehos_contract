@@ -1,7 +1,7 @@
 # EhosContract.Auth
 
 This package connects an application built on
-[`ehos_contract`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract)
+[`ehos_contract`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract)
 to EHOS, the platform that hosts it. This page is for a developer who connects such an application.
 It says what the package does, and links to the pages that tell you how to use it.
 
@@ -16,7 +16,7 @@ the keys in the database of the application. After one fetch succeeds, the appli
 credentials while EHOS is down, also after a restart. The package then writes a row for each
 decision, a refusal too.
 
-The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+The [glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that these pages use. The words of the platform, such as
 *installation* and *environment*, are the words of EHOS.
 

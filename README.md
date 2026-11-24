@@ -1,6 +1,6 @@
 # ehos_contract
 
-[![check](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/eh-os-contract/actions/workflows/ci.yml)
+[![check](https://github.com/EmpoweredHouse/ehos_contract/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EmpoweredHouse/ehos_contract/actions/workflows/ci.yml)
 
 This repository holds `ehos_contract`, an engine for event-driven Elixir applications, and three
 packages around it. You describe a business process as Elixir modules. The application runs on these

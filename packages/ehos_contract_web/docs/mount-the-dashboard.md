@@ -19,10 +19,10 @@ conformance and the graphs of your contracts at a path that you choose.
    def deps do
      [
        {:ehos_contract,
-        git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+        git: "https://github.com/EmpoweredHouse/ehos_contract.git",
         sparse: "packages/ehos_contract"},
        {:ehos_contract_web,
-        git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+        git: "https://github.com/EmpoweredHouse/ehos_contract.git",
         sparse: "packages/ehos_contract_web"}
      ]
    end

@@ -24,7 +24,7 @@ Give the actor of the person who grants `may_grant:`, with the roles that they c
 actor :office_employee, :human, "Office employee", may_grant: [:client]
 ```
 
-The [domain of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/domain-data.md)
+The [domain of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/domain-data.md)
 tells the other options of an actor. The compiler refuses `may_grant:` in each of these cases:
 
 - on a system actor;

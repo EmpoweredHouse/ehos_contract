@@ -27,6 +27,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   application, the modules `EhosContract.GraphRenderer.*`, and the stylesheet's variables
   `--ehos-contract-graph-*`. A graph document names its format `ehos_contract.graph.v1`, and the
   schema in `priv/schema/` requires it; EHOS reads documents under either name.
+  The repository is `EmpoweredHouse/ehos_contract`, so a dependency from git names
+  `github: "EmpoweredHouse/ehos_contract"`; GitHub forwards the old address.
 
 ## [0.10.0] - 2026-11-22
 

@@ -4,7 +4,7 @@ This page tells a developer how to open the pages of the application as a person
 their own computer, where no EHOS runs. Without EHOS, nobody can sign in through EHOS, so each page
 behind `EhosContract.Auth.Session` sends the browser to a sign-in that answers 503. In the
 development mode, the application signs the credential itself, with a key that it makes when it
-starts. The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+starts. The [glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines the words of the contract language that this page uses.
 
 The credential goes through the same checks as a credential from EHOS: `EhosContract.Auth.verify/2`,

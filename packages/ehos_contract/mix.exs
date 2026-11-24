@@ -5,7 +5,7 @@ defmodule EhosContract.MixProject do
   # conformance report carries. A change that can move a verdict raises the minor
   # version and gets a line in CHANGELOG.md — the rule is written there.
   @version "0.15.3-dev"
-  @source_url "https://github.com/EmpoweredHouse/eh-os-contract"
+  @source_url "https://github.com/EmpoweredHouse/ehos_contract"
 
   # The concept pages, in `docs/` beside the others, in the order a reader takes them. ExDoc
   # writes every page into one directory, so a page in a subdirectory would link an image by a

@@ -7,7 +7,7 @@ the page needs.
 
 A *graph document* is the facts of a domain, a contract or a process module as JSON, in the format
 `graph.v1`. An *overlay* gives what the log says about the same facts. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines both.
 
 ## Before you start

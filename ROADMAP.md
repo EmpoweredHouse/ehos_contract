@@ -24,7 +24,7 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## The publication programme (from 18 October 2026)
 
-Issues labelled [`publication`](https://github.com/EmpoweredHouse/eh-os-contract/issues?q=label%3Apublication).
+Issues labelled [`publication`](https://github.com/EmpoweredHouse/ehos_contract/issues?q=label%3Apublication).
 
 | Stage | What | Issue | Status |
 | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ applications moved to them.
 
 - **DD, "domain-driven design checked by code"** (5–18 October 2026): seven waves, in which each rule of the
   model that can be written down got something that checks it. Done but for #287; its stages are the issues
-  labelled [`dd`](https://github.com/EmpoweredHouse/eh-os-contract/issues?q=label%3Add), by wave (`wave-0` …
+  labelled [`dd`](https://github.com/EmpoweredHouse/ehos_contract/issues?q=label%3Add), by wave (`wave-0` …
   `wave-6`), released from v0.3.0 to v0.7.0.
 - **Before DD** (August to early October 2026): the engine, the second contract language (`docs/adr/contract-v2.md`),
   the dashboard, the credential verifier and the graph renderer. Their record is `docs/adr/`, the packages'

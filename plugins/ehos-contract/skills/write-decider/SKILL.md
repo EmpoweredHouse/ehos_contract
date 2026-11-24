@@ -15,7 +15,7 @@ before trusting it.
 application built on EHOS enables. There, the engine's paths below are under `deps/ehos_contract/`,
 at the version the application pins: `packages/ehos_contract/docs/contract.md` is
 `deps/ehos_contract/packages/ehos_contract/docs/contract.md`. `CLAUDE.md`, `docs/` and `sandbox/`
-are ehos-contract's, on [GitHub](https://github.com/EmpoweredHouse/eh-os-contract): where
+are ehos-contract's, on [GitHub](https://github.com/EmpoweredHouse/ehos_contract): where
 a step names `sandbox/lib/…`, read the application's own `lib/<app>/`, and where it runs the gate
 from `sandbox/`, run the application's `mix precommit`.
 

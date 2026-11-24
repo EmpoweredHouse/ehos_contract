@@ -383,4 +383,4 @@ endpoints that the child refused.
 ## Background
 
 Why the sign-in and the session work this way:
-[`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/browser-session.md).
+[`docs/adr/browser-session.md`](https://github.com/EmpoweredHouse/ehos_contract/blob/main/docs/adr/browser-session.md).

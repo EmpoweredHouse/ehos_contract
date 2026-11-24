@@ -4,7 +4,7 @@ EHOS deploys an image of the application with its *manifest*. The manifest is th
 the application, with what its contracts offer added. This page is for a developer who writes
 `ehos.yaml` and generates the manifest in CI. It tells what `mix ehos_contract.manifest` reads,
 what it writes, and what it refuses. The [glossary of the
-engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that this page uses.
 
 `ehos.yaml` tells EHOS what the workload needs: a database, the routes that it serves, its health
@@ -158,7 +158,7 @@ field that it does not know:
 **A scoped capability gets no scope values from EHOS.** The task offers a scoped command or query
 as a capability without its scope. A role binding of EHOS has no scope values. So each call through
 EHOS to a scoped capability gets `{:error, :unscoped_grant}`. [Narrow a call to the values of a
-grant](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/scope.md)
+grant](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/scope.md)
 tells what the engine does with scope values.
 
 ### What the manifest does not hold

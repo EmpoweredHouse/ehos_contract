@@ -4,11 +4,11 @@ This package draws the model of an application as a graph in a Phoenix LiveView.
 developer who wants to show a domain, a contract or a process module on a page of their own
 application. It says what the package draws, what it needs, and how to install it.
 
-The engine, [`ehos_contract`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract),
+The engine, [`ehos_contract`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract),
 describes each domain, contract and process module as a *graph document*: its facts as JSON, in the
 format `graph.v1`. An *overlay* gives what the log says about the same facts, such as how many
 times each event occurred. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines both words. This package draws them:
 
 - a card for each node, such as a command, an event or a contract;
@@ -58,7 +58,7 @@ The panel says what the reader selected, from the document alone. Some examples:
 - **The page needs the script and the stylesheet of the package.**
   [Draw a graph document](docs/draw-a-document.md) tells you how to add them.
 
-The dashboard of [`ehos_contract_web`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract_web)
+The dashboard of [`ehos_contract_web`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract_web)
 draws its graphs with this package.
 
 ## Install it
@@ -67,7 +67,7 @@ Add the package from git, as the other packages of this repository:
 
 ```elixir
 {:ehos_contract_graph,
- git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+ git: "https://github.com/EmpoweredHouse/ehos_contract.git",
  sparse: "packages/ehos_contract_graph"}
 ```
 
