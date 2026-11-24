@@ -5,10 +5,10 @@ defmodule Billing.PropertiesTest do
   contract.
   """
 
-  use EhOsContract.PropertyCase, contract: Billing.Contracts.Subscriptions, max_runs: 100
+  use EhosContract.PropertyCase, contract: Billing.Contracts.Subscriptions, max_runs: 100
 end
 
 defmodule Billing.PaymentsPropertiesTest do
   @moduledoc false
-  use EhOsContract.PropertyCase, contract: Billing.Contracts.Payments, max_runs: 100
+  use EhosContract.PropertyCase, contract: Billing.Contracts.Payments, max_runs: 100
 end

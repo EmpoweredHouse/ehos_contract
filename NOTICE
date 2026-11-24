@@ -1,4 +1,4 @@
-eh-os-contract
+ehos-contract
 Copyright 2026 Empowered House PSA
 
 Licensed under the Apache License, Version 2.0 (LICENSE).
@@ -6,6 +6,6 @@ Licensed under the Apache License, Version 2.0 (LICENSE).
 Two of the packages ship software developed by third parties, and say what and under which licence in a
 NOTICE of their own, which travels with the package:
 
-- packages/eh_os_contract_web/NOTICE: the Phoenix and LiveView client scripts, the fonts, and the graph
+- packages/ehos_contract_web/NOTICE: the Phoenix and LiveView client scripts, the fonts, and the graph
   renderer's libraries, all bundled into the dashboard's assets;
-- packages/eh_os_contract_graph/NOTICE: dagre, graphlib and d3, bundled into the renderer's script.
+- packages/ehos_contract_graph/NOTICE: dagre, graphlib and d3, bundled into the renderer's script.

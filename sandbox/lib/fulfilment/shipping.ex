@@ -4,5 +4,5 @@ defmodule Fulfilment.Shipping do
   decision, and the policy that books the carrier for a packed parcel.
   """
 
-  use Boundary, deps: [EhOsContract, Fulfilment.Contracts], exports: [Shipment, BookCarrier]
+  use Boundary, deps: [EhosContract, Fulfilment.Contracts], exports: [Shipment, BookCarrier]
 end

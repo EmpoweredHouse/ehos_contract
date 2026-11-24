@@ -6,7 +6,7 @@ defmodule Lending.Processes.Loan do
   against it. A loan longer than three months is overdue.
   """
 
-  use EhOsContract.Process,
+  use EhosContract.Process,
     id: "lending.loan",
     domain: Lending.Domain,
     label: "A loan, from lending to return",

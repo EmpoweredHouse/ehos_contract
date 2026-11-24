@@ -61,7 +61,7 @@ defmodule Lending.Circulation.Loan do
 
   @doc """
   What each invariant means of a state the decisions reached, for the properties
-  `EhOsContract.PropertyCase` writes: a copy is back only after it was lent, and a fee
+  `EhosContract.PropertyCase` writes: a copy is back only after it was lent, and a fee
   is owed only on a copy back.
   """
   @spec holds?(atom(), State.t()) :: boolean()

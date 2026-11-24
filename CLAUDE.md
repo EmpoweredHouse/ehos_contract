@@ -1,24 +1,24 @@
-# eh_os_contract — the library's repository
+# ehos_contract — the library's repository
 
-This is the repository of the `eh_os_contract` library: a contract of a business process, and two things built
+This is the repository of the `ehos_contract` library: a contract of a business process, and two things built
 on it — dispatching events for an event-driven application, and checking whether what happened matches what the
 contract says. Other repositories install its packages from git (`sparse:`), later from Hex.
 
 | Directory | What |
 | --- | --- |
-| `packages/eh_os_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md`, `docs/refusals.md` |
-| `packages/eh_os_contract_web/` | the mountable dashboard |
-| `packages/eh_os_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `docs/configuration.md`) |
-| `packages/eh_os_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
-| `sandbox/` | the development host `:eh_os_contract_host` and the test material: three invented case studies, lending, billing and fulfilment |
+| `packages/ehos_contract/` | **the library**: the contract DSL, dispatch, the log, conformance, `docs/contract.md`, `docs/refusals.md` |
+| `packages/ehos_contract_web/` | the mountable dashboard |
+| `packages/ehos_contract_auth/` | verifying EHOS credentials, keys from JWKS (what to configure: its `docs/configuration.md`) |
+| `packages/ehos_contract_graph/` | the graph renderer: a `graph.v1` document drawn in a LiveView, without the engine (plan E13b) |
+| `sandbox/` | the development host `:ehos_contract_host` and the test material: three invented case studies, lending, billing and fulfilment |
 | `docs/` | the design record (`docs/adr/`) |
-| `plugins/eh-os-contract/`, `.claude-plugin/` | the `eh-os-contract` Claude Code plugin and the marketplace that publishes it: the skills for writing contracts that applications use |
+| `plugins/ehos-contract/`, `.claude-plugin/` | the `ehos-contract` Claude Code plugin and the marketplace that publishes it: the skills for writing contracts that applications use |
 
 Each of the five is its own Mix project. The packages build and test on their own, without `sandbox/`, and that
 is a property we keep: `sandbox/` is the library's first consumer, not part of it.
 
 **This repository also maintains the skills applications write contracts with.** It is a Claude Code
-marketplace, and its plugin `eh-os-contract` (`plugins/eh-os-contract/`) carries the skills an application built on
+marketplace, and its plugin `ehos-contract` (`plugins/ehos-contract/`) carries the skills an application built on
 EHOS uses: `module-boundary-check`, `contract-distillation`, `add-event`, `change-contract`, `write-decider` and
 `write-reaction`, linked from `.claude/skills/` for work here. Applications enable it at the tag of its release,
 and `ehos_app`'s template is to do that for every project it generates, so keeping these skills true to the
@@ -37,7 +37,7 @@ one written beside the material. `Billing` is the sandbox's one publishing appli
 verifier's audience and `ehos.yaml` name. `mix sandbox.traffic` fills a development log with weeks of their runs,
 drift included, so the dashboard has something to show (its moduledoc says what, and on which database). Another
 invented domain, `UniversalityGate`, lives in
-`packages/eh_os_contract/test/support/` and says so in its first line.
+`packages/ehos_contract/test/support/` and says so in its first line.
 
 The clients' material the library was first developed against, and a test set copied from it for drawing the
 graph, left for a private repository of the maintainers in the publication programme's PB4 (#386). It runs
@@ -45,7 +45,7 @@ there as a host of its own on these packages, fetched from git; nothing of it co
 
 Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
 the code has the new name; the old one remains only in `docs/adr/` and in the archived working plan, where `PNS.X`
-means today's `EhOsContract.X`.
+means today's `EhosContract.X`.
 
 ## Before you change anything
 
@@ -56,11 +56,11 @@ means today's `EhOsContract.X`.
 | A stage's scope, decisions, review and pull requests | its GitHub issue (labels `publication`; `dd`, `wave-<n>` before it); how to run a stage through one: `CONTRIBUTING.md`, "From an idea to `main`", and the maintainers' `ehos-dev:stage-issue` skill |
 | What this repository is | [`README.md`](README.md) |
 | The layout, the gate, the development host | [`CONTRIBUTING.md`](CONTRIBUTING.md), "What does each directory hold?", "Run the gate" and "Run the development host and the dashboard" |
-| **How to write a domain and a contract** | [`packages/eh_os_contract/docs/contract.md`](packages/eh_os_contract/docs/contract.md) |
-| What will not compile: every refusal with its code | [`packages/eh_os_contract/docs/refusals.md`](packages/eh_os_contract/docs/refusals.md) |
-| Every key of both DSLs: type, required or optional, default (generated) | [`packages/eh_os_contract/docs/dsl/`](packages/eh_os_contract/docs/dsl) |
-| Every rule of `mix eh_os_contract.check` (generated) | [`packages/eh_os_contract/docs/rules.md`](packages/eh_os_contract/docs/rules.md) |
-| What to write and run when you add something, so the docs stay true | [`packages/eh_os_contract/MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
+| **How to write a domain and a contract** | [`packages/ehos_contract/docs/contract.md`](packages/ehos_contract/docs/contract.md) |
+| What will not compile: every refusal with its code | [`packages/ehos_contract/docs/refusals.md`](packages/ehos_contract/docs/refusals.md) |
+| Every key of both DSLs: type, required or optional, default (generated) | [`packages/ehos_contract/docs/dsl/`](packages/ehos_contract/docs/dsl) |
+| Every rule of `mix ehos_contract.check` (generated) | [`packages/ehos_contract/docs/rules.md`](packages/ehos_contract/docs/rules.md) |
+| What to write and run when you add something, so the docs stay true | [`packages/ehos_contract/MAINTAINING-DOCS.md`](packages/ehos_contract/MAINTAINING-DOCS.md) |
 | The initial assumptions and decisions, the `§N` code comments cite | [`docs/adr/architecture.md`](docs/adr/architecture.md) |
 | The contract language v2, its rules and shapes | [`docs/adr/contract-v2.md`](docs/adr/contract-v2.md) |
 | Code shapes, schemas, pitfalls, libraries: the `notes §N` comments cite | [`docs/adr/technology-notes.md`](docs/adr/technology-notes.md) |
@@ -90,26 +90,26 @@ commands, events, invariants and lifecycles, what reacts to the events, what is 
 to, its promises, and scenarios. Both are Spark DSLs; what is wrong with them fails the compile, with a code
 and a message (`docs/refusals.md`). Everything the library does reads those modules.
 
-**`packages/eh_os_contract`, the engine:**
+**`packages/ehos_contract`, the engine:**
 
-- **Dispatch and the log.** `EhOsContract.dispatch/3` asks whether the actor may issue the command (an
-  `EhOsContract.Authorizer`), checks its fields, reads the unit's history from the engine's own event log
+- **Dispatch and the log.** `EhosContract.dispatch/3` asks whether the actor may issue the command (an
+  `EhosContract.Authorizer`), checks its fields, reads the unit's history from the engine's own event log
   (Postgres), lets the implementation decide, and appends only what the contract declares. A unit's state is
   its events, folded. Personal fields are encrypted per subject, and erasing a subject destroys its key
-  (crypto-shredding, `EhOsContract.Vault`). A field the host must supply rather than the caller comes from an
-  `EhOsContract.Supplier`.
+  (crypto-shredding, `EhosContract.Vault`). A field the host must supply rather than the caller comes from an
+  `EhosContract.Supplier`.
 - **Reactions and read models.** Policies, process managers with timers and effects (the reactions), and read
   models, run inside the dispatch's transaction (`:in_transaction`) or after it (`:at_least_once`: an ordered
   subscription to the log, or an Oban job inserted in the same transaction). A policy or a read model that
   takes another context's event has to say which.
 - **Between applications.** An event leaves only through `publish`: a relay reads the log and hands it to an
-  `EhOsContract.Bus`. One arrives in an inbox that only a policy takes, never in the receiver's log. The library
+  `EhosContract.Bus`. One arrives in an inbox that only a policy takes, never in the receiver's log. The library
   ships `Bus.Local`, for tests and a single node; transport adapters (JetStream, EHOS's relay) are EHOS's, and
   the library depends on no broker.
-- **The door from outside.** Raw data with a credential enters through `EhOsContract.call/3`, and over HTTP
-  through `EhOsContract.Plug` on top of it. The contract also generates OpenAPI and AsyncAPI documents and an
+- **The door from outside.** Raw data with a credential enters through `EhosContract.call/3`, and over HTTP
+  through `EhosContract.Plug` on top of it. The contract also generates OpenAPI and AsyncAPI documents and an
   exported model.
-- **Tests from the contract.** Scenarios run as tests (`EhOsContract.ScenarioCase`) against the same rules
+- **Tests from the contract.** Scenarios run as tests (`EhosContract.ScenarioCase`) against the same rules
   dispatch applies.
 - **Conformance.** It answers one question:
 
@@ -119,17 +119,17 @@ and a message (`docs/refusals.md`). Everything the library does reads those modu
   which transitions were not declared, which promises are broken, and which version of the contract is
   deployed and since when.
 - **Tasks:** `check` (the rules a compiler cannot hold: errors, warnings and notices), `report`, `graph`, `pages`, `glossary`,
-  `view`, `subscriptions`, `rewrap`, `schema` (every event's fields by version in the host's `eh_os_contract.lock`,
+  `view`, `subscriptions`, `rewrap`, `schema` (every event's fields by version in the host's `ehos_contract.lock`,
   and a recorded version whose fields changed refused).
 
-**`packages/eh_os_contract_web`** is a dashboard a host mounts: each contract's conformance and its graph, and a
+**`packages/ehos_contract_web`** is a dashboard a host mounts: each contract's conformance and its graph, and a
 JSON API with the model, the conformance and the OpenAPI and AsyncAPI documents. The host decides who may see it
-(`EhOsContract.Web.Resolver`).
+(`EhosContract.Web.Resolver`).
 
-**`packages/eh_os_contract_auth`** connects an application to EHOS, the platform that hosts it: it verifies the
+**`packages/ehos_contract_auth`** connects an application to EHOS, the platform that hosts it: it verifies the
 credentials EHOS issues against keys kept in the application's database (and is the `Authorizer` for them),
 signs a person in to the application's pages through EHOS's own sign-in, and writes the application manifest
-EHOS deploys from (`mix eh_os_contract.manifest`). The engine does not depend on it.
+EHOS deploys from (`mix ehos_contract.manifest`). The engine does not depend on it.
 
 Everything else has an owner: performance is GCP's, errors are Datadog's, **the state of the business is the
 client application's**. The library keeps the client's read models and queries — their state, declared in the
@@ -143,24 +143,24 @@ docker compose up -d && cd sandbox && mix ecto.setup && mix check
 ```
 
 `mix check` in `sandbox/` runs `format --check-formatted`, `compile --force --warnings-as-errors`,
-`eh_os_contract.check`, `eh_os_contract.schema --check` (against `sandbox/eh_os_contract.lock`) and the sandbox's
+`ehos_contract.check`, `ehos_contract.schema --check` (against `sandbox/ehos_contract.lock`) and the sandbox's
 tests, then `mix check` of each package in its own invocation:
-`packages/eh_os_contract` (with `eh_os_contract.docs --check` and `eh_os_contract.rules --check`, which hold the
+`packages/ehos_contract` (with `ehos_contract.docs --check` and `ehos_contract.rules --check`, which hold the
 generated pages — the DSL reference in `docs/dsl/`, the configuration, the rule catalogue in `docs/rules.md`, and the
 generated regions of the prose pages — to the code; `test/docs_test.exs`, which holds the examples and the refusal
 table of `docs/refusals.md` to it, and what a prose page says it covers (`<!-- covers: … -->`,
-`EhOsContract.Docs.Prose`) to the entities, keys and rules that exist; `docs
+`EhosContract.Docs.Prose`) to the entities, keys and rules that exist; `docs
 --warnings-as-errors`, which fails on a reference in a doc to a missing or hidden function of an existing module, a
 hidden module, a module outside `lib/`, or a missing page (not to a module that does not exist at all); and
 `test/doc_coverage_test.exs`, which fails on a public function of `lib/` with no `@doc` or `@spec`), then
-`ehos_diagrams.gen --check` in `packages/eh_os_contract`, `packages/eh_os_contract_auth` and
-`packages/eh_os_contract_graph` under `:dev`, which
+`ehos_diagrams.gen --check` in `packages/ehos_contract`, `packages/ehos_contract_auth` and
+`packages/ehos_contract_graph` under `:dev`, which
 holds the diagrams in `docs/img/` to their sources in `docs/diagrams/` (only where `mix deps.get` fetched the
 private ehos-tools; without it the gate
 says it did not check them, and CI's `diagrams` job does, except for a pull request from a fork or Dependabot,
 #527), then
-`packages/eh_os_contract_web`,
-`packages/eh_os_contract_auth` and `packages/eh_os_contract_graph` (each with its own `docs --warnings-as-errors`
+`packages/ehos_contract_web`,
+`packages/ehos_contract_auth` and `packages/ehos_contract_graph` (each with its own `docs --warnings-as-errors`
 and `test/doc_coverage_test.exs`). **It has to pass.** Separate invocations, not an umbrella, so that each package
 stands alone; the gate lives in `sandbox/` because only it sees every project. `--warnings-as-errors` is
 required: `boundary` reports violations as warnings, so without it the boundaries are documentation. Postgres
@@ -177,12 +177,12 @@ out=$(mix check 2>&1); rc=$?; echo "$out" | tail -4; echo "EXIT=$rc"
 **`mix run` with `MIX_ENV=test` writes outside the Ecto sandbox** (the test transaction, not the `sandbox/`
 directory). The Ecto sandbox covers tests, not Mix tasks, so one `MIX_ENV=test mix run -e '...'` leaves rows in
 the test database **for good** and breaks everything that counts records afterwards — the same trap
-`EhOsContract.Deployment.record!` sets at boot. Look at anything with `MIX_ENV=dev`; if you fall in,
+`EhosContract.Deployment.record!` sets at boot. Look at anything with `MIX_ENV=dev`; if you fall in,
 `MIX_ENV=test mix ecto.drop && MIX_ENV=test mix ecto.create && MIX_ENV=test mix ecto.migrate` recovers — the
 environment on each command, since an assignment in front of one applies to that one only.
 
-**The Postgres databases are shared by every worktree**: their names are fixed (`eh_os_contract_host_test`,
-`…_dev`, `eh_os_contract_test`, …). Two traps follow, both from 4 October:
+**The Postgres databases are shared by every worktree**: their names are fixed (`ehos_contract_host_test`,
+`…_dev`, `ehos_contract_test`, …). Two traps follow, both from 4 October:
 
 - **`too_many_connections`.** The gate next to someone else's `phx.server` or tests fails on connections, not on
   code (`AppendLockTest`, `SchemaTest`). Do not retry in a loop: stop your own dev server, wait until
@@ -277,14 +277,14 @@ Code goes in as a pull request and a person verifies it. Two things follow when 
 
 ## What we do not build
 
-- **A project generator** (`mix eh_os_contract.new`): not before something has been copied by a second client.
+- **A project generator** (`mix ehos_contract.new`): not before something has been copied by a second client.
 - **Real integrations in the test material**: a behaviour and a fake. A real registry or mail server is a
   client's domain cost and teaches the library nothing.
 - **Identity**: accounts, roles, sign-in and sign-out screens, an identity provider. EHOS owns them. The engine
   knows an actor only as an opaque subject with the capabilities its verified credential grants; roles are the
-  contract's actors. `eh_os_contract_auth` verifies EHOS's credentials and hands a person to EHOS to sign in; it
+  contract's actors. `ehos_contract_auth` verifies EHOS's credentials and hands a person to EHOS to sign in; it
   shows no sign-in screen of its own.
-- **A message broker or its adapters**: EHOS's. The library defines `EhOsContract.Bus` and ships only the local
+- **A message broker or its adapters**: EHOS's. The library defines `EhosContract.Bus` and ships only the local
   one.
 - **An API layer of its own** (REST or GraphQL) beyond the generated documents and the `call/3` door.
 - **Alerts, operational views, metrics.**

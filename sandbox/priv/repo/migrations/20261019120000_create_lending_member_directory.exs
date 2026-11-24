@@ -1,4 +1,4 @@
-defmodule EhOsContractHost.Repo.Migrations.CreateLendingMemberDirectory do
+defmodule EhosContractHost.Repo.Migrations.CreateLendingMemberDirectory do
   @moduledoc """
   The table of `Lending.Membership.Directory`: one row per membership, with the
   member's name and e-mail, deleted when the member is erased.

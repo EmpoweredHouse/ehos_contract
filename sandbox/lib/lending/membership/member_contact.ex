@@ -8,6 +8,6 @@ defmodule Lending.Membership.MemberContact do
   @impl true
   def member_contact(%MemberContact{member_id: member}, _ctx) do
     from(m in Row, where: m.member_id == ^member, order_by: m.membership_id)
-    |> EhOsContract.Config.fetch!(:repo).all()
+    |> EhosContract.Config.fetch!(:repo).all()
   end
 end

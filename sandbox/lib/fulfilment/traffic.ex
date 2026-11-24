@@ -20,7 +20,7 @@ defmodule Fulfilment.Traffic do
   - order-8 was paid two hours ago, its day still running.
   """
 
-  alias EhOsContract.Actor
+  alias EhosContract.Actor
   alias Fulfilment.Contracts.{Orders, Shipping, Warehouse}
   alias Fulfilment.Contracts.Orders.Commands.{CancelOrder, ConfirmPayment, PlaceOrder}
   alias Fulfilment.Contracts.Shipping.Commands.DispatchParcel

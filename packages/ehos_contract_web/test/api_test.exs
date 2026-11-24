@@ -1,0 +1,482 @@
+defmodule EhosContract.Web.ApiTest do
+  @moduledoc """
+  Stage 5.8: **the conformance report as data, over HTTP.**
+
+  Until now the only way to read anything this engine computes was a mix task in a
+  terminal, which means exactly one kind of consumer. The screens and this share one
+  access decision — the host's `EhosContract.Web.Resolver` — deliberately: a host writes the
+  rule once, and a transport does not get to soften it.
+  """
+
+  use EhosContract.Web.TestHost.DataCase, async: false
+
+  import Phoenix.ConnTest
+  import Plug.Conn, only: [put_req_header: 3, get_resp_header: 2]
+
+  alias EhosContract.Web.TestHost.Access
+
+  @endpoint EhosContract.Web.TestHost.Endpoint
+
+  # A conformance request names the contract it asks about.
+  @contract "/api/conformance?contract=web_test_host.case_handling"
+
+  setup do
+    {:ok, conn: build_conn() |> put_req_header("accept", "application/json")}
+  end
+
+  describe "who gets an answer" do
+    test "a caller the resolver refuses gets JSON, not a redirect", %{conn: conn} do
+      # A redirect is a datum only a browser can use. An API client following one
+      # would fetch the host's login page and try to parse it as JSON.
+      conn = get(conn, "/api/conformance")
+
+      assert conn.status == 403
+      assert Jason.decode!(conn.resp_body) == %{"error" => "forbidden"}
+      assert get_resp_header(conn, "location") == []
+    end
+
+    test "a read-only actor gets the report", %{conn: conn} do
+      conn = conn |> Access.put_actor("u-1", ["ehos_contract_read"]) |> get(@contract)
+
+      assert conn.status == 200
+      assert %{"schema" => "ehos_contract.conformance.v3"} = Jason.decode!(conn.resp_body)
+    end
+
+    test "and so does an admin, identically", %{conn: conn} do
+      # `:read_only` and `:all` both pass and neither is redacted. Redacting for one
+      # would be this package forming an opinion about how sensitive a client's own
+      # data is.
+      admin = conn |> Access.put_actor("u-2", ["ehos_contract_admin"]) |> get(@contract)
+
+      reader =
+        build_conn()
+        |> Access.put_actor("u-1", ["ehos_contract_read"])
+        |> get(@contract)
+
+      assert admin.status == 200
+      assert Jason.decode!(admin.resp_body)["report"] == Jason.decode!(reader.resp_body)["report"]
+    end
+  end
+
+  describe "what comes back" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["ehos_contract_read"])}
+    end
+
+    test "a named contract is served", %{conn: conn} do
+      contract = EhosContract.Registry.contracts() |> List.first()
+      id = EhosContract.Model.fetch(contract).id
+      conn = get(conn, "/api/conformance?contract=#{id}")
+
+      assert conn.status == 200
+      report = Jason.decode!(conn.resp_body)["report"]
+      assert report["contract"] == id
+      assert report["module"] == inspect(contract)
+    end
+
+    # Plan DD, P1a (#183): a contract is named by its id; its module's name is not one.
+    test "a module's name is not a contract's name", %{conn: conn} do
+      module = EhosContract.Registry.contracts() |> List.first() |> inspect()
+      conn = get(conn, "/api/conformance?contract=#{module}")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "unknown contract"
+    end
+
+    test "without `contract=`, several registered contracts are a bad request", %{conn: conn} do
+      # The host registers two, and a report of whichever came first would answer a
+      # question nobody asked.
+      conn = get(conn, "/api/conformance")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "several contracts are registered"
+    end
+
+    # A list or a map from the query string is a bad request, as an unknown name is.
+    test "a contract or a period given as a list is a bad request, not a crash", %{conn: conn} do
+      for query <- ["contract[]=x", "contract[a]=b", @contract <> "&since[]=x"] do
+        path = if String.starts_with?(query, "/"), do: query, else: "/api/conformance?" <> query
+        assert get(conn, path).status == 400, query
+      end
+    end
+
+    # Plan DD, P2w (#259): a process module's report, keyed by its id.
+    test "a named process is served, keyed process and not contract", %{conn: conn} do
+      conn = get(conn, "/api/conformance?process=web_test_host.case_run")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert body["schema"] == "ehos_contract.conformance.v3"
+      assert body["report"]["process"] == "web_test_host.case_run"
+      refute Map.has_key?(body["report"], "contract")
+
+      assert [%{"promises" => [%{"promise" => "closed_within_a_week"}]}] =
+               body["report"]["processes"]
+    end
+
+    test "an empty parameter is one not given", %{conn: conn} do
+      conn = get(conn, "/api/conformance?contract=&process=web_test_host.case_run")
+
+      assert conn.status == 200
+      assert Jason.decode!(conn.resp_body)["report"]["process"] == "web_test_host.case_run"
+    end
+
+    test "a contract and a process at once are a bad request", %{conn: conn} do
+      conn = get(conn, @contract <> "&process=web_test_host.case_run")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "not both"
+    end
+
+    test "an unknown process, or one given as a list, is a bad request", %{conn: conn} do
+      unknown = get(conn, "/api/conformance?process=web_test_host.nothing")
+      assert unknown.status == 400
+      assert Jason.decode!(unknown.resp_body)["detail"] =~ "unknown process"
+
+      assert get(conn, "/api/conformance?process[]=x").status == 400
+    end
+
+    test "an unknown contract is a bad request, not a crash", %{conn: conn} do
+      conn = get(conn, "/api/conformance?contract=Not.A.Contract")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "unknown contract"
+    end
+
+    test "an unparseable period is a bad request naming which one", %{conn: conn} do
+      conn = get(conn, @contract <> "&since=yesterday")
+
+      assert conn.status == 400
+      assert Jason.decode!(conn.resp_body)["detail"] =~ "since"
+    end
+  end
+
+  describe "the generated specification" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["ehos_contract_read"])}
+    end
+
+    test "the index lists every contract with its digest", %{conn: conn} do
+      conn = get(conn, "/api/asyncapi")
+
+      assert conn.status == 200
+      %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhosContract.Registry.contracts()
+               |> Enum.map(&EhosContract.Model.fetch(&1).id)
+               |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a document is served, and its ETag is its digest", %{conn: conn} do
+      name = EhosContract.Model.fetch(EhosContract.Registry.contracts() |> List.first()).id
+      conn = get(conn, "/api/asyncapi/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["asyncapi"] == "3.0.0"
+      assert document["operations"] == %{}
+
+      # Served twice on purpose: a consumer comparing what an instance claims
+      # against what its build recorded can do it with a HEAD and no body.
+      assert get_resp_header(conn, "etag") == [
+               ~s("#{document["info"]["x-ehos-contract-digest"]}")
+             ]
+    end
+
+    test "an unknown contract is 404, not an empty document", %{conn: conn} do
+      conn = get(conn, "/api/asyncapi/Not.A.Contract")
+
+      assert conn.status == 404
+    end
+
+    test "it is not public", %{conn: _conn} do
+      # It names every event, every field and every label in the client's own words.
+      # That is a map of their business, not "just a schema".
+      conn = build_conn() |> put_req_header("accept", "application/json")
+
+      assert get(conn, "/api/asyncapi").status == 403
+      assert get(conn, "/api/asyncapi/Anything").status == 403
+    end
+  end
+
+  describe "the exported model" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["ehos_contract_read"])}
+    end
+
+    test "the index names its schema and lists v2 contracts only", %{conn: conn} do
+      conn = get(conn, "/api/model")
+
+      assert conn.status == 200
+
+      assert %{"schema" => "ehos_contract.model-index.v2", "contracts" => contracts} =
+               Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhosContract.Registry.contracts()
+               |> Enum.map(&EhosContract.Model.fetch(&1).id)
+               |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a model document is served with its digest as the ETag", %{conn: conn} do
+      name = EhosContract.Model.fetch(EhosContract.Registry.contracts() |> List.first()).id
+      conn = get(conn, "/api/model/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["schema"] == "ehos_contract.model.v1"
+      assert document["contract"]["id"] == name
+      assert get_resp_header(conn, "etag") == [~s("#{document["digest"]}")]
+    end
+
+    test "an unknown or unauthenticated request receives no model", %{conn: conn} do
+      assert get(conn, "/api/model/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/model").status == 403
+      assert get(public, "/api/model/Anything").status == 403
+    end
+  end
+
+  describe "the graph documents" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["ehos_contract_read"])}
+    end
+
+    alias EhosContract.Graph.{Document, Overlay}
+
+    test "the index lists every contract and domain with its version and digest", %{conn: conn} do
+      conn = get(conn, "/api/graph")
+      assert conn.status == 200
+
+      assert %{"schema" => "ehos_contract.graph_index.v1", "contracts" => cs, "domains" => ds} =
+               Jason.decode!(conn.resp_body)
+
+      assert Enum.map(cs, & &1["contract"]) ==
+               EhosContract.Registry.contracts()
+               |> Enum.map(&EhosContract.Model.fetch(&1).id)
+               |> Enum.sort()
+
+      [first | _] = cs
+      contract = EhosContract.Registry.contract(first["contract"])
+      assert first["module"] == inspect(contract)
+      assert first["digest"] == Document.contract(contract)["digest"]
+      assert [%{"domain" => _, "name" => _, "digest" => _} | _] = ds
+
+      # Plan DD, P2e (#220): the process modules beside the contracts.
+      assert %{"processes" => [process]} = Jason.decode!(conn.resp_body)
+      module = EhosContract.Web.TestHost.Fixtures.CaseRun
+
+      assert process == %{
+               "process" => "web_test_host.case_run",
+               "module" => inspect(module),
+               "version" => EhosContract.Model.fetch(module).version,
+               "digest" => Document.process(module)["digest"]
+             }
+    end
+
+    test "a process module's document, with its digest as the ETag, and its overlay",
+         %{conn: conn} do
+      module = EhosContract.Web.TestHost.Fixtures.CaseRun
+      document = Document.process(module)
+      served = get(conn, "/api/graph/process/web_test_host.case_run")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(document)
+      assert get_resp_header(served, "etag") == [~s("#{document["digest"]}")]
+
+      cached =
+        conn
+        |> put_req_header("if-none-match", ~s("#{document["digest"]}"))
+        |> get("/api/graph/process/web_test_host.case_run")
+
+      assert cached.status == 304
+
+      overlay =
+        get(conn, "/api/graph/process/web_test_host.case_run/overlay?since=2026-01-01T00:00:00Z")
+
+      assert overlay.status == 200
+
+      assert %{
+               "schema" => "ehos_contract.graph_overlay.v1",
+               "kind" => "process",
+               "process" => "web_test_host.case_run",
+               "since" => "2026-01-01T00:00:00Z",
+               "document_digest" => digest
+             } = Jason.decode!(overlay.resp_body)
+
+      assert digest == document["digest"]
+
+      backwards = "since=2026-02-01T00:00:00Z&until=2026-01-01T00:00:00Z"
+
+      assert get(conn, "/api/graph/process/web_test_host.case_run/overlay?#{backwards}").status ==
+               400
+    end
+
+    test "a contract's document is the function's, byte for byte, with its digest as the ETag",
+         %{conn: conn} do
+      contract = List.first(EhosContract.Registry.contracts())
+      document = Document.contract(contract)
+      id = EhosContract.Model.fetch(contract).id
+      served = get(conn, "/api/graph/#{id}")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(document)
+      assert get_resp_header(served, "etag") == [~s("#{document["digest"]}")]
+
+      cached =
+        conn
+        |> put_req_header("if-none-match", ~s("#{document["digest"]}"))
+        |> get("/api/graph/#{id}")
+
+      assert cached.status == 304
+
+      for held <- [
+            ~s("other", W/"#{document["digest"]}"),
+            ~s("a,b", "#{document["digest"]}"),
+            "*"
+          ] do
+        conn =
+          conn |> put_req_header("if-none-match", held) |> get("/api/graph/#{id}")
+
+        assert conn.status == 304, held
+      end
+
+      for stale <- [~s("other"), ~s("other,#{String.slice(document["digest"], 0, 8)}")] do
+        conn = conn |> put_req_header("if-none-match", stale) |> get("/api/graph/#{id}")
+        assert conn.status == 200, stale
+      end
+    end
+
+    test "a contract's overlay says its period; a bad one is refused", %{conn: conn} do
+      contract = EhosContract.Model.fetch(List.first(EhosContract.Registry.contracts())).id
+      served = get(conn, "/api/graph/#{contract}/overlay?since=2026-01-01T00:00:00Z")
+
+      assert served.status == 200
+
+      assert %{"schema" => "ehos_contract.graph_overlay.v1", "since" => "2026-01-01T00:00:00Z"} =
+               Jason.decode!(served.resp_body)
+
+      assert get(conn, "/api/graph/#{contract}/overlay?since=yesterday").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?until=tomorrow").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?since[]=x").status == 400
+      assert get(conn, "/api/graph/#{contract}/overlay?until[a]=x").status == 400
+
+      backwards = "since=2026-02-01T00:00:00Z&until=2026-01-01T00:00:00Z"
+      assert get(conn, "/api/graph/#{contract}/overlay?#{backwards}").status == 400
+
+      domain = inspect(List.first(EhosContract.Registry.domains()))
+      assert get(conn, "/api/graph/domain/#{domain}/overlay?#{backwards}").status == 400
+
+      until = get(conn, "/api/graph/#{contract}/overlay?until=2026-02-01T00:00:00Z")
+      assert %{"until" => "2026-02-01T00:00:00Z", "since" => nil} = Jason.decode!(until.resp_body)
+    end
+
+    test "a domain's document and overlay, with its process modules", %{conn: conn} do
+      domain = EhosContract.Web.TestHost.Fixtures.Domain
+      modules = EhosContract.Registry.contracts() ++ EhosContract.Registry.processes()
+      served = get(conn, "/api/graph/domain/#{inspect(domain)}")
+
+      assert served.status == 200
+      assert served.resp_body == Document.encode(Document.domain(domain, modules))
+
+      assert [%{"name" => "web_test_host.case_run"}] =
+               Jason.decode!(served.resp_body)["nodes"]["process"]
+
+      overlay = Jason.decode!(get(conn, "/api/graph/domain/#{inspect(domain)}/overlay").resp_body)
+      assert overlay == Jason.decode!(Document.encode(Overlay.domain(domain, modules)))
+    end
+
+    test "what the registry does not hold is 404, and an unauthenticated caller gets nothing",
+         %{conn: conn} do
+      # A contract is named by its id: its module's name is an unknown contract.
+      module = inspect(List.first(EhosContract.Registry.contracts()))
+
+      for path <- [
+            "/api/graph/not_a.contract",
+            "/api/graph/not_a.contract/overlay",
+            "/api/graph/#{module}",
+            "/api/graph/#{module}/overlay",
+            "/api/graph/domain/Not.A.Domain",
+            "/api/graph/domain/Not.A.Domain/overlay",
+            "/api/graph/process/not_a.process",
+            "/api/graph/process/not_a.process/overlay",
+            # A contract is not a process module, nor the other way round.
+            "/api/graph/process/web_test_host.case_handling",
+            "/api/graph/web_test_host.case_run"
+          ],
+          do: assert(get(conn, path).status == 404, path)
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+
+      for path <- [
+            "/api/graph",
+            "/api/graph/Anything",
+            "/api/graph/Anything/overlay",
+            "/api/graph/domain/Anything",
+            "/api/graph/domain/Anything/overlay",
+            "/api/graph/process/Anything",
+            "/api/graph/process/Anything/overlay"
+          ],
+          do: assert(get(public, path).status == 403, path)
+    end
+  end
+
+  describe "the generated command-and-query API" do
+    setup %{conn: conn} do
+      {:ok, conn: Access.put_actor(conn, "u-1", ["ehos_contract_read"])}
+    end
+
+    test "the index lists v2 contracts with OpenAPI digests", %{conn: conn} do
+      conn = get(conn, "/api/openapi")
+
+      assert conn.status == 200
+      %{"contracts" => contracts} = Jason.decode!(conn.resp_body)
+
+      assert Enum.map(contracts, & &1["contract"]) ==
+               EhosContract.Registry.contracts()
+               |> Enum.map(&EhosContract.Model.fetch(&1).id)
+               |> Enum.sort()
+
+      assert Enum.all?(contracts, &(byte_size(&1["digest"]) == 12))
+    end
+
+    test "a document is served with relative plug paths and its digest as the ETag", %{conn: conn} do
+      name = "web_test_host.case_handling"
+      conn = get(conn, "/api/openapi/#{name}")
+
+      assert conn.status == 200
+      document = Jason.decode!(conn.resp_body)
+      assert document["openapi"] == "3.1.2"
+      assert Map.has_key?(document["paths"], "/commands/web_test_host.open_case")
+
+      assert get_resp_header(conn, "etag") == [
+               ~s("#{document["info"]["x-ehos-contract-digest"]}")
+             ]
+    end
+
+    test "unknown and unauthenticated requests receive no specification", %{conn: conn} do
+      assert get(conn, "/api/openapi/Not.A.Contract").status == 404
+
+      public = build_conn() |> put_req_header("accept", "application/json")
+      assert get(public, "/api/openapi").status == 403
+      assert get(public, "/api/openapi/Anything").status == 403
+    end
+  end
+
+  describe "the screens still work" do
+    test "the dashboard's HTML routes are untouched by the API mount" do
+      conn =
+        build_conn()
+        |> Access.put_actor("u-3", ["ehos_contract_admin"])
+        |> get("/dashboard/contract")
+
+      assert conn.status == 200
+    end
+  end
+end

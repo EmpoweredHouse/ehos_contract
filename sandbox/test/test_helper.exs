@@ -8,5 +8,5 @@
 # gap stops being checkable. A tagged red test is the only form of a known defect
 # that turns green by itself when somebody fixes it.
 ExUnit.configure(exclude: [:known_defect])
-:ok = EhOsContractHost.CommitRepo.reset!()
+:ok = EhosContractHost.CommitRepo.reset!()
 ExUnit.start()

@@ -31,7 +31,7 @@ defmodule Billing.Traffic do
     StartSubscription
   }
 
-  alias EhOsContract.Actor
+  alias EhosContract.Actor
 
   @manager Actor.credential(
              "manager-mo",

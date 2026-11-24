@@ -1,0 +1,931 @@
+{
+  "context": "context:Fulfilment.Domain:warehouse",
+  "contract": "fulfilment.warehouse",
+  "digest": "bd9fffe57f2d",
+  "domain": "Fulfilment.Domain",
+  "kind": "contract",
+  "module": "Fulfilment.Contracts.Warehouse",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Fulfilment.Domain:lead",
+        "label": "Warehouse lead",
+        "name": "lead",
+        "responsibilities": [],
+        "role": "fulfilment.lead",
+        "scope": [
+          "warehouse_id"
+        ],
+        "source": null
+      },
+      {
+        "actor_kind": "human",
+        "id": "actor:Fulfilment.Domain:picker",
+        "label": "Picker",
+        "name": "picker",
+        "responsibilities": [],
+        "role": "fulfilment.picker",
+        "scope": [
+          "warehouse_id"
+        ],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:fulfilment.warehouse:open_pick_list",
+        "label": "Open a pick list",
+        "name": "open_pick_list",
+        "source": null,
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "capability": "fulfilment.assign_pick_list",
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "picker_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:fulfilment.warehouse:assign_pick_list",
+        "label": "Assign a pick list to a picker",
+        "name": "assign_pick_list",
+        "scope": "warehouse_id",
+        "source": null,
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor_is": "picker_id",
+        "capability": "fulfilment.confirm_pick",
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:fulfilment.warehouse:confirm_pick",
+        "label": "Confirm a pick list picked",
+        "name": "confirm_pick",
+        "scope": "warehouse_id",
+        "source": null,
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor_is": "picker_id",
+        "capability": "fulfilment.pack_parcel",
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "weight_grams",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "command:fulfilment.warehouse:pack_parcel",
+        "label": "Pack a parcel",
+        "name": "pack_parcel",
+        "scope": "warehouse_id",
+        "source": null,
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      }
+    ],
+    "constraint": [],
+    "context": [
+      {
+        "id": "context:Fulfilment.Domain:warehouse",
+        "label": "Warehouse",
+        "name": "warehouse",
+        "source": null
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.warehouse:opened",
+        "label": "Pick list opened",
+        "name": "opened",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.warehouse.opened",
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "picker_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.warehouse:assigned",
+        "label": "Pick list assigned",
+        "name": "assigned",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.warehouse.assigned",
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.warehouse:picked",
+        "label": "Pick list picked",
+        "name": "picked",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.warehouse.picked",
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "weight_grams",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "event:fulfilment.warehouse:parcel_packed",
+        "label": "Parcel packed",
+        "name": "parcel_packed",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.warehouse.parcel_packed",
+        "unit": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "declared_as": "event:fulfilment.orders:payment_confirmed",
+        "declared_in": "fulfilment.orders",
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.warehouse:payment_confirmed",
+        "label": "Payment confirmed",
+        "name": "payment_confirmed",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.orders.payment_confirmed"
+      }
+    ],
+    "external": [],
+    "invariant": [
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:opened_once",
+        "label": "A pick list is opened once",
+        "name": "opened_once",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:assigned_until_picked",
+        "label": "A pick list is assigned while it is open and not yet picked",
+        "name": "assigned_until_picked",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:confirmed_by_its_picker",
+        "label": "A pick list is confirmed by the picker it is assigned to",
+        "name": "confirmed_by_its_picker",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:picked_once",
+        "label": "A pick list is picked once",
+        "name": "picked_once",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:packed_by_its_picker",
+        "label": "A parcel is packed by the picker the list is assigned to",
+        "name": "packed_by_its_picker",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.warehouse:unit:pick_list:picked_before_packed",
+        "label": "A parcel is packed once, from a picked list",
+        "name": "picked_before_packed",
+        "of": "unit:fulfilment.warehouse:pick_list",
+        "source": null
+      }
+    ],
+    "policy": [
+      {
+        "delivery": "at_least_once",
+        "id": "policy:fulfilment.warehouse:open_pick_list_when_paid",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "infrastructure"
+        },
+        "label": "Open a pick list for a paid order",
+        "name": "open_pick_list_when_paid",
+        "source": null
+      }
+    ],
+    "process_manager": [],
+    "publication": [],
+    "query": [],
+    "read_model": [],
+    "status": [],
+    "subject": [],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:fulfilment.warehouse:pick_list",
+        "identity": [
+          "warehouse_id",
+          "order_id"
+        ],
+        "label": "Pick list",
+        "name": "pick_list",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "opened",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "label": null,
+            "name": "picker_id",
+            "required": false,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "picked",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "packed",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": []
+  },
+  "relations": {
+    "allowed_in": [],
+    "backed_by": [],
+    "builds": [
+      {
+        "from": "event:fulfilment.warehouse:opened",
+        "id": "builds:event:fulfilment.warehouse:opened:unit:fulfilment.warehouse:pick_list",
+        "to": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "from": "event:fulfilment.warehouse:assigned",
+        "id": "builds:event:fulfilment.warehouse:assigned:unit:fulfilment.warehouse:pick_list",
+        "to": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "from": "event:fulfilment.warehouse:picked",
+        "id": "builds:event:fulfilment.warehouse:picked:unit:fulfilment.warehouse:pick_list",
+        "to": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "from": "event:fulfilment.warehouse:parcel_packed",
+        "id": "builds:event:fulfilment.warehouse:parcel_packed:unit:fulfilment.warehouse:pick_list",
+        "to": "unit:fulfilment.warehouse:pick_list"
+      }
+    ],
+    "calls": [],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [],
+    "emits": [
+      {
+        "from": "command:fulfilment.warehouse:open_pick_list",
+        "id": "emits:command:fulfilment.warehouse:open_pick_list:event:fulfilment.warehouse:opened",
+        "to": "event:fulfilment.warehouse:opened"
+      },
+      {
+        "from": "command:fulfilment.warehouse:assign_pick_list",
+        "id": "emits:command:fulfilment.warehouse:assign_pick_list:event:fulfilment.warehouse:assigned",
+        "to": "event:fulfilment.warehouse:assigned"
+      },
+      {
+        "from": "command:fulfilment.warehouse:confirm_pick",
+        "id": "emits:command:fulfilment.warehouse:confirm_pick:event:fulfilment.warehouse:picked",
+        "to": "event:fulfilment.warehouse:picked"
+      },
+      {
+        "from": "command:fulfilment.warehouse:pack_parcel",
+        "id": "emits:command:fulfilment.warehouse:pack_parcel:event:fulfilment.warehouse:parcel_packed",
+        "to": "event:fulfilment.warehouse:parcel_packed"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [],
+    "handled_by": [
+      {
+        "from": "event:fulfilment.warehouse:payment_confirmed",
+        "id": "handled_by:event:fulfilment.warehouse:payment_confirmed:policy:fulfilment.warehouse:open_pick_list_when_paid",
+        "to": "policy:fulfilment.warehouse:open_pick_list_when_paid"
+      }
+    ],
+    "issues": [
+      {
+        "from": "policy:fulfilment.warehouse:open_pick_list_when_paid",
+        "id": "issues:policy:fulfilment.warehouse:open_pick_list_when_paid:command:fulfilment.warehouse:open_pick_list",
+        "to": "command:fulfilment.warehouse:open_pick_list"
+      }
+    ],
+    "may_ask": [],
+    "may_issue": [
+      {
+        "from": "actor:Fulfilment.Domain:lead",
+        "id": "may_issue:actor:Fulfilment.Domain:lead:command:fulfilment.warehouse:assign_pick_list",
+        "to": "command:fulfilment.warehouse:assign_pick_list"
+      },
+      {
+        "from": "actor:Fulfilment.Domain:picker",
+        "id": "may_issue:actor:Fulfilment.Domain:picker:command:fulfilment.warehouse:confirm_pick",
+        "to": "command:fulfilment.warehouse:confirm_pick"
+      },
+      {
+        "from": "actor:Fulfilment.Domain:picker",
+        "id": "may_issue:actor:Fulfilment.Domain:picker:command:fulfilment.warehouse:pack_parcel",
+        "to": "command:fulfilment.warehouse:pack_parcel"
+      }
+    ],
+    "may_record": [],
+    "projected_into": [],
+    "published_as": [],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:fulfilment.warehouse:open_pick_list",
+        "id": "refused_on:command:fulfilment.warehouse:open_pick_list:invariant:fulfilment.warehouse:unit:pick_list:opened_once",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:opened_once"
+      },
+      {
+        "from": "command:fulfilment.warehouse:assign_pick_list",
+        "id": "refused_on:command:fulfilment.warehouse:assign_pick_list:invariant:fulfilment.warehouse:unit:pick_list:assigned_until_picked",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:assigned_until_picked"
+      },
+      {
+        "actor_is": true,
+        "from": "command:fulfilment.warehouse:confirm_pick",
+        "id": "refused_on:command:fulfilment.warehouse:confirm_pick:invariant:fulfilment.warehouse:unit:pick_list:confirmed_by_its_picker",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:confirmed_by_its_picker"
+      },
+      {
+        "from": "command:fulfilment.warehouse:confirm_pick",
+        "id": "refused_on:command:fulfilment.warehouse:confirm_pick:invariant:fulfilment.warehouse:unit:pick_list:picked_once",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:picked_once"
+      },
+      {
+        "actor_is": true,
+        "from": "command:fulfilment.warehouse:pack_parcel",
+        "id": "refused_on:command:fulfilment.warehouse:pack_parcel:invariant:fulfilment.warehouse:unit:pick_list:packed_by_its_picker",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:packed_by_its_picker"
+      },
+      {
+        "from": "command:fulfilment.warehouse:pack_parcel",
+        "id": "refused_on:command:fulfilment.warehouse:pack_parcel:invariant:fulfilment.warehouse:unit:pick_list:picked_before_packed",
+        "to": "invariant:fulfilment.warehouse:unit:pick_list:picked_before_packed"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [
+      {
+        "covers": [
+          "handled_by:event:fulfilment.warehouse:payment_confirmed:policy:fulfilment.warehouse:open_pick_list_when_paid",
+          "issues:policy:fulfilment.warehouse:open_pick_list_when_paid:command:fulfilment.warehouse:open_pick_list"
+        ],
+        "description": "a paid order opens its pick list",
+        "event": {
+          "data": {
+            "order_id": "order-1",
+            "warehouse_id": "w-1"
+          },
+          "event": "event:fulfilment.warehouse:payment_confirmed"
+        },
+        "id": "scenario:fulfilment.warehouse:a paid order opens its pick list",
+        "illustrates": [],
+        "issues": [
+          {
+            "command": "command:fulfilment.warehouse:open_pick_list",
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            }
+          }
+        ],
+        "target": "policy:fulfilment.warehouse:open_pick_list_when_paid"
+      }
+    ],
+    "process_manager": [],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:fulfilment.warehouse:open_pick_list",
+          "data": {
+            "order_id": "order-1",
+            "warehouse_id": "w-1"
+          }
+        },
+        "covers": [
+          "emits:command:fulfilment.warehouse:open_pick_list:event:fulfilment.warehouse:opened"
+        ],
+        "description": "a pick list is opened",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:opened"
+          }
+        ],
+        "given": [],
+        "id": "scenario:fulfilment.warehouse:a pick list is opened",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.warehouse:open_pick_list",
+          "data": {}
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:open_pick_list:invariant:fulfilment.warehouse:unit:pick_list:opened_once"
+        ],
+        "description": "a pick list is opened once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a pick list is opened once",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:opened_once",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.warehouse:assign_pick_list",
+          "data": {
+            "picker_id": "picker-ada"
+          }
+        },
+        "covers": [
+          "emits:command:fulfilment.warehouse:assign_pick_list:event:fulfilment.warehouse:assigned"
+        ],
+        "description": "the lead assigns an open pick list",
+        "expect": [
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:the lead assigns an open pick list",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.warehouse:assign_pick_list",
+          "data": {
+            "picker_id": "picker-bob"
+          }
+        },
+        "covers": [
+          "emits:command:fulfilment.warehouse:assign_pick_list:event:fulfilment.warehouse:assigned"
+        ],
+        "description": "the lead assigns it again before it is picked",
+        "expect": [
+          {
+            "data": {
+              "picker_id": "picker-bob"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:the lead assigns it again before it is picked",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.warehouse:assign_pick_list",
+          "data": {
+            "picker_id": "picker-bob"
+          }
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:assign_pick_list:invariant:fulfilment.warehouse:unit:pick_list:assigned_until_picked"
+        ],
+        "description": "a picked list is not assigned again",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          },
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:picked"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a picked list is not assigned again",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:assigned_until_picked",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-ada",
+        "command": {
+          "command": "command:fulfilment.warehouse:confirm_pick",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:fulfilment.warehouse:confirm_pick:event:fulfilment.warehouse:picked"
+        ],
+        "description": "the picker it is assigned to confirms it",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:picked"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:the picker it is assigned to confirms it",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-bob",
+        "command": {
+          "command": "command:fulfilment.warehouse:confirm_pick",
+          "data": {}
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:confirm_pick:invariant:fulfilment.warehouse:unit:pick_list:confirmed_by_its_picker"
+        ],
+        "description": "a colleague does not confirm another's pick list",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a colleague does not confirm another's pick list",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:confirmed_by_its_picker",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-ada",
+        "command": {
+          "command": "command:fulfilment.warehouse:confirm_pick",
+          "data": {}
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:confirm_pick:invariant:fulfilment.warehouse:unit:pick_list:picked_once"
+        ],
+        "description": "a pick list is picked once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          },
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:picked"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a pick list is picked once",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:picked_once",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-ada",
+        "command": {
+          "command": "command:fulfilment.warehouse:pack_parcel",
+          "data": {
+            "weight_grams": 1200
+          }
+        },
+        "covers": [
+          "emits:command:fulfilment.warehouse:pack_parcel:event:fulfilment.warehouse:parcel_packed"
+        ],
+        "description": "a picked list is packed",
+        "expect": [
+          {
+            "data": {
+              "weight_grams": 1200
+            },
+            "event": "event:fulfilment.warehouse:parcel_packed"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          },
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:picked"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a picked list is packed",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-ada",
+        "command": {
+          "command": "command:fulfilment.warehouse:pack_parcel",
+          "data": {
+            "weight_grams": 1200
+          }
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:pack_parcel:invariant:fulfilment.warehouse:unit:pick_list:picked_before_packed"
+        ],
+        "description": "a list not picked is not packed",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a list not picked is not packed",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:picked_before_packed",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      },
+      {
+        "actor": "actor:Fulfilment.Domain:picker",
+        "as": "picker-bob",
+        "command": {
+          "command": "command:fulfilment.warehouse:pack_parcel",
+          "data": {
+            "weight_grams": 25000
+          }
+        },
+        "covers": [
+          "refused_on:command:fulfilment.warehouse:pack_parcel:invariant:fulfilment.warehouse:unit:pick_list:packed_by_its_picker"
+        ],
+        "description": "a colleague does not pack another's parcel",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "warehouse_id": "w-1"
+            },
+            "event": "event:fulfilment.warehouse:opened"
+          },
+          {
+            "data": {
+              "picker_id": "picker-ada"
+            },
+            "event": "event:fulfilment.warehouse:assigned"
+          },
+          {
+            "data": {},
+            "event": "event:fulfilment.warehouse:picked"
+          }
+        ],
+        "id": "scenario:fulfilment.warehouse:a colleague does not pack another's parcel",
+        "rejected": "invariant:fulfilment.warehouse:unit:pick_list:packed_by_its_picker",
+        "target": "unit:fulfilment.warehouse:pick_list"
+      }
+    ]
+  },
+  "schema": "ehos_contract.graph.v1",
+  "version": "c334268c5498"
+}

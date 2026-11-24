@@ -5,6 +5,6 @@ defmodule Fulfilment.Warehouse do
   """
 
   use Boundary,
-    deps: [EhOsContract, Fulfilment.Contracts],
+    deps: [EhosContract, Fulfilment.Contracts],
     exports: [PickList, OpenPickListWhenPaid]
 end

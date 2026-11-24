@@ -5,8 +5,8 @@ defmodule Fulfilment.Domain do
   carrier and dispatches the parcel.
   """
 
-  use EhOsContract.Domain, name: :fulfilment, language: :en
-  use Boundary, deps: [EhOsContract], exports: [{Values, []}]
+  use EhosContract.Domain, name: :fulfilment, language: :en
+  use Boundary, deps: [EhosContract], exports: [{Values, []}]
 
   subdomain :core, "Fulfilment", type: :core
   subdomain :supporting, "Logistics", type: :supporting

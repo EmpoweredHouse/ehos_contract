@@ -1,4 +1,4 @@
-defmodule EhOsContractHost.E10OutputsTest do
+defmodule EhosContractHost.E10OutputsTest do
   @moduledoc """
   Plan E10: the L5 output and the system graph — today the domain's `graph.v1`
   document it is drawn from — are pinned on the real sandbox contracts, not only on
@@ -10,9 +10,9 @@ defmodule EhOsContractHost.E10OutputsTest do
   import ExUnit.CaptureIO
 
   test "check reports the proven in-transaction fan-out" do
-    Mix.Task.reenable("eh_os_contract.check")
+    Mix.Task.reenable("ehos_contract.check")
 
-    output = capture_io(fn -> Mix.Tasks.EhOsContract.Check.run([]) end)
+    output = capture_io(fn -> Mix.Tasks.EhosContract.Check.run([]) end)
 
     assert output =~
              "WARN  in-transaction-policy-fan-out: policy :invoice_the_period of " <>
@@ -25,7 +25,7 @@ defmodule EhOsContractHost.E10OutputsTest do
     # term covers. The fulfilment (`Fulfilment`) gives three notices of the same kind, and
     # no warning. The clients' trees, which gave the rest, left for a private repository in
     # the publication programme's PB4 (#386).
-    assert output =~ "eh_os_contract.check: 0 errors, 3 warnings, 7 notices"
+    assert output =~ "ehos_contract.check: 0 errors, 3 warnings, 7 notices"
   end
 
   # The personal values the scenarios give: the library's member, and another's e-mail.
@@ -33,15 +33,15 @@ defmodule EhOsContractHost.E10OutputsTest do
 
   # The library's membership gives a member's name and e-mail to its query's scenario.
   test "no exported model carries a personal scenario value" do
-    contracts = EhOsContract.Registry.contracts()
+    contracts = EhosContract.Registry.contracts()
     assert Lending.Contracts.Membership in contracts
 
     # The check is not empty: the contract does hold the value its export must not carry.
-    assert inspect(EhOsContract.Model.fetch(Lending.Contracts.Membership), limit: :infinity) =~
+    assert inspect(EhosContract.Model.fetch(Lending.Contracts.Membership), limit: :infinity) =~
              "Ada Lovelace"
 
     for contract <- contracts do
-      encoded = contract |> EhOsContract.Model.to_data() |> Jason.encode!()
+      encoded = contract |> EhosContract.Model.to_data() |> Jason.encode!()
 
       for personal <- @personal do
         refute encoded =~ personal, "#{inspect(contract)} exports #{personal}"
@@ -52,11 +52,11 @@ defmodule EhOsContractHost.E10OutputsTest do
   # Plan DD, S3 (#256): a process module carries scenarios too. It is not exported yet
   # (P2e, #220), so its model is held to the same, as what an export will be made from.
   test "no process module's model carries a personal scenario value" do
-    processes = EhOsContract.Registry.processes()
+    processes = EhosContract.Registry.processes()
     assert Lending.Processes.LateFee in processes
 
     for process <- processes do
-      model = process |> EhOsContract.Model.fetch() |> inspect(limit: :infinity)
+      model = process |> EhosContract.Model.fetch() |> inspect(limit: :infinity)
 
       for personal <- @personal do
         refute model =~ personal, "#{inspect(process)} carries #{personal}"
@@ -65,7 +65,7 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   test "billing's invoice is the only AsyncAPI message boundary" do
-    document = EhOsContract.AsyncAPI.document(Billing.Contracts.Subscriptions)
+    document = EhosContract.AsyncAPI.document(Billing.Contracts.Subscriptions)
 
     assert %{"issued" => %{"address" => "billing.invoice.issued.v1"}} = document["channels"]
 
@@ -79,20 +79,20 @@ defmodule EhOsContractHost.E10OutputsTest do
 
     assert %{"billing.invoice.issued.v1" => message} = document["components"]["messages"]
 
-    assert message["x-eh-os-contract-source-event"] == "issued"
-    assert message["x-eh-os-contract-idempotent-on"] == ["subscription_id", "period_id"]
+    assert message["x-ehos-contract-source-event"] == "issued"
+    assert message["x-ehos-contract-idempotent-on"] == ["subscription_id", "period_id"]
     assert message["payload"]["required"] == ["period_id", "subscription_id", "total"]
   end
 
   test "the warehouse's OpenAPI surface: a picker's commands scoped, and none of the policy's" do
-    document = EhOsContract.OpenAPI.document(Fulfilment.Contracts.Warehouse)
+    document = EhosContract.OpenAPI.document(Fulfilment.Contracts.Warehouse)
 
     assert Map.has_key?(document["paths"], "/commands/fulfilment.confirm_pick")
     refute Map.has_key?(document["paths"], "/commands/fulfilment.open_pick_list")
 
     operation = document["paths"]["/commands/fulfilment.confirm_pick"]["post"]
-    assert operation["x-eh-os-contract-scope"] == "warehouse_id"
-    assert operation["x-eh-os-contract-roles"] == ["fulfilment.picker"]
+    assert operation["x-ehos-contract-scope"] == "warehouse_id"
+    assert operation["x-ehos-contract-roles"] == ["fulfilment.picker"]
   end
 
   # The sandbox's `ehos.yaml` names the invented `Billing`, the one domain that publishes
@@ -102,9 +102,9 @@ defmodule EhOsContractHost.E10OutputsTest do
   @tag :tmp_dir
   test "the manifest task extends ehos.yaml with billing's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "billing.json")
-    Mix.Task.reenable("eh_os_contract.manifest")
+    Mix.Task.reenable("ehos_contract.manifest")
 
-    output = capture_io(fn -> Mix.Tasks.EhOsContract.Manifest.run(["--output", path]) end)
+    output = capture_io(fn -> Mix.Tasks.EhosContract.Manifest.run(["--output", path]) end)
 
     assert output =~ "written: #{path}"
 
@@ -121,7 +121,7 @@ defmodule EhOsContractHost.E10OutputsTest do
              "schema" => "ehos.manifest/v2",
              "ehos_yaml" => "ehos.yaml/v1",
              "application" => "billing",
-             "engine" => %{"name" => "eh_os_contract", "version" => EhOsContract.version()},
+             "engine" => %{"name" => "ehos_contract", "version" => EhosContract.version()},
              "serves" => [%{"name" => "web", "port" => 4010}],
              "health" => %{"port" => 4011, "ready" => "/health/ready", "live" => "/health/live"},
              "offers" => %{
@@ -168,8 +168,8 @@ defmodule EhOsContractHost.E10OutputsTest do
   end
 
   defp refusal(args) do
-    Mix.Task.reenable("eh_os_contract.manifest")
-    error = assert_raise Mix.Error, fn -> Mix.Tasks.EhOsContract.Manifest.run(args) end
+    Mix.Task.reenable("ehos_contract.manifest")
+    error = assert_raise Mix.Error, fn -> Mix.Tasks.EhosContract.Manifest.run(args) end
     error.message
   end
 
@@ -177,12 +177,12 @@ defmodule EhOsContractHost.E10OutputsTest do
   test "the system graph connects billing's contexts, contracts and publication", %{
     tmp_dir: dir
   } do
-    alias EhOsContract.Graph.Document
+    alias EhosContract.Graph.Document
 
     path = Path.join(dir, "billing.json")
-    Mix.Task.reenable("eh_os_contract.graph")
+    Mix.Task.reenable("ehos_contract.graph")
 
-    Mix.Tasks.EhOsContract.Graph.run(~w(--domain billing --output #{path}))
+    Mix.Tasks.EhosContract.Graph.run(~w(--domain billing --output #{path}))
 
     graph = Jason.decode!(File.read!(path))
     contract = &Document.id([:contract, &1])

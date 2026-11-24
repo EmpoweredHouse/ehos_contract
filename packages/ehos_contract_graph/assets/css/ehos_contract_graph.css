@@ -1,0 +1,1226 @@
+/* The look of ehos_contract_graph's cards, labels, arrows and panel.
+
+   On the EmpoweredHouse design system's tokens (ehos_design: --surface-*, --border-*, --text-*, --mono, …),
+   which the host's own stylesheet defines: this file uses them and defines none of them, so it follows the
+   host's theme. What it adds is named --ehos-contract-graph-*. Every class is .ehg-*, every state .is-*.
+
+   Nothing here is a position, a size of the graph or the zoom: positions and sizes are in the hook's
+   constructed stylesheets and the zoom is a Web Animation (assets/js/ehos_contract_graph.js), because the
+   host's Content-Security-Policy refuses a `style` attribute and LiveView takes away one it did not render.
+   Until the hook has laid the graph out, the viewport is hidden, so nothing is seen piled at the top left. */
+
+.ehg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+/* How wide the panel opens, which a host may set; a reader who drags its edge sets its width over this, and the
+   browser keeps theirs. */
+:root {
+  --ehos-contract-graph-panel-width: 420px;
+}
+
+/* The bar over the canvas: the search, the log's switch and focus. The zoom is in the picture's corner. */
+
+.ehg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.ehg-search {
+  display: flex;
+  flex: 0 1 300px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ehg-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.ehg-search input:focus-visible {
+  outline: 2px solid var(--accent-ink, var(--text-primary));
+  outline-offset: 1px;
+}
+
+.ehg-found {
+  flex: none;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ehg-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehg-tool {
+  padding: 4px 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ehg-tool:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong, var(--border-soft));
+}
+
+/* The picture and, over its top right corner, the zoom: one control, whose menu may reach past the picture's
+   edge, so it is not inside the canvas, which clips what it holds and pans what is pressed in it (#489). */
+
+.ehg-stage {
+  position: relative;
+}
+
+.ehg-zoom {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 12px;
+}
+
+.ehg-zoom-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.ehg-zoom-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.ehg-zoom[open] > .ehg-zoom-toggle,
+.ehg-zoom-toggle:focus-visible {
+  color: var(--text-primary);
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+.ehg-zoom-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 128px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-1);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.25);
+}
+
+.ehg-zoom-menu button {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ehg-zoom-menu button:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.ehg-zoom-menu button:focus-visible {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+
+/* What the search does not find, faint; what it finds keeps its look. */
+.ehg .is-unmatched {
+  opacity: 0.25;
+}
+
+/* As tall as this until the hook has laid the graph out; then as tall as the graph at the scale it starts at,
+   never taller than this. */
+/* Contained: what changes inside a canvas — a zoom, a selection, a new layout — is laid out and painted inside
+   it, never the page around it. Its height is always set, so size containment costs nothing. */
+.ehg-canvas {
+  position: relative;
+  overflow: hidden;
+  contain: strict;
+  height: min(72vh, 760px);
+  max-height: min(72vh, 760px);
+  min-height: 120px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 8px);
+  background: var(--surface-1);
+  /* A pan by touch is the graph's, not the page's. d3-zoom sets the tap highlight through the CSSOM on a touch
+     device, which the policy allows and LiveView's next patch takes away; it is here so it stays. */
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: grab;
+}
+
+.ehg-canvas:active {
+  cursor: grabbing;
+}
+
+.ehg-viewport {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  visibility: hidden;
+}
+
+/* During a pan or a zoom: a layer of its own, which the browser moves without painting the cards and the arrows
+   again; after it, painted once more at the scale it was left at, sharp. */
+.ehg-viewport.ehg-moving {
+  will-change: transform;
+}
+
+/* The arrows. The line the reader sees takes no pointer; a wide stroke nobody sees, which no dash and no
+   fill reaches, takes the click. */
+
+.ehg-arrows {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ehg-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12px;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.ehg-line {
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1.25px;
+}
+
+.ehg-head {
+  fill: var(--text-tertiary);
+  fill: context-stroke;
+}
+
+/* An arrow's line and head, as its label names them (data-line, data-head), which the hook copies onto it: a
+   step after the transaction or a relation that is not causation dotted, a promise heavy, and a relation
+   that is not a delivery — owning a timer, resting on a system, a symmetric pattern — without a head. */
+
+.ehg-arrow[data-line="dotted"] .ehg-line {
+  stroke-dasharray: 4 3;
+}
+
+.ehg-arrow[data-line="thick"] .ehg-line {
+  stroke-width: 2.5px;
+}
+
+.ehg-arrow[data-head="none"] .ehg-line {
+  marker-end: none;
+}
+
+/* A group: a box behind its cards, laid out by the hook, with its title at the top; only the title takes a
+   click, so a press inside the box pans as it does anywhere else. Its title is cut to the box, whole on
+   hover, and lies over an arrow that crosses it, so that it stays legible. */
+
+.ehg-group {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 48px;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-2);
+  pointer-events: none;
+}
+
+.ehg-group-title {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* The pixel past the text keeps an italic last letter whole where the name is clipped. */
+.ehg-group-name {
+  min-width: 0;
+  padding-right: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Beside the name, never cut with it. */
+.ehg-group-mark {
+  flex: none;
+  padding-left: 3px;
+}
+
+/* A box's title is its button: it says so when pointed at or reached by the keyboard, and one whose box
+   leads somewhere, a host's page or a picture inside, ends in a mark (#488), which a screen reader skips. */
+
+.ehg-group-title:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.ehg-group-title:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
+.ehg-group.leads .ehg-group-title {
+  color: var(--text-primary);
+}
+
+/* While the hook measures the boxes, each takes its own size, not the one the last layout gave it. */
+
+.ehg-measuring .ehg-group {
+  width: max-content !important;
+  height: auto !important;
+}
+
+/* Why a box holds no card, in words, under its title. */
+
+.ehg-group-note {
+  margin: 4px 2px 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* A landscape's box of an application no domain document describes: dashed and see-through, so it reads as
+   there but not known, never as a domain with nothing in it. */
+
+.ehg-group[data-kind=application] {
+  border-style: dashed;
+  border-color: var(--text-tertiary);
+  background: transparent;
+}
+
+.ehg-group[data-kind=application] .ehg-group-title {
+  background: transparent;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.ehg-group.is-selected {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+/* The cards, and the labels on the arrows: buttons, so a click and the keyboard both select. Their width is
+   their content's, never their container's: the hook measures them before the viewport has a size, and an
+   absolutely placed box otherwise shrinks to fit what is left of its container, so a card measured narrow
+   would be drawn wider, over its neighbours. */
+
+.ehg-card,
+.ehg-relation {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  width: max-content;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* A card of its kind, as a catalog draws one: a badge with the kind's icon and name, the client's label, the name in
+   code, what it lists, and where it lives in a footer. The kind's colour (--ehos-contract-graph-hue) is its border,
+   its badge and a faint tint; the ink is the host's text colour, so a card reads in either theme. No shadow and two
+   weights, as the design system asks. */
+
+.ehg-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 7px 10px 8px;
+  border: 1.5px solid var(--ehos-contract-graph-hue);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--ehos-contract-graph-hue) 9%, var(--surface-1));
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.ehg-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ehg-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ehos-contract-graph-hue);
+  font-family: var(--mono, monospace);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ehg-icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ehg-label {
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.ehg-name,
+.ehg-field,
+.ehg-foot {
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+  overflow-wrap: break-word;
+}
+
+.ehg-name {
+  color: var(--text-secondary);
+}
+
+.ehg-label + .ehg-field,
+.ehg-name + .ehg-field {
+  margin-top: 3px;
+}
+
+.ehg-foot {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+}
+
+.ehg-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.ehg-card .ehg-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ehos-contract-graph-hue) 18%, transparent);
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+}
+
+/* A contract's drift on the domain's map: where it is worth going in, in the error colour. */
+.ehg-card .ehg-drift {
+  background: var(--error-soft);
+  color: var(--error-ink);
+}
+
+.ehg-relation {
+  padding: 1px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.ehg-relation .ehg-count {
+  margin-left: 4px;
+}
+
+.ehg-relation.ehg-blank {
+  width: 0;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The palette: a hue per kind, in Event Storming's families (a command blue, an event orange, a policy lilac and a
+   process manager magenta, an actor yellow, a read model green, a rule red), lighter on the dark surfaces the design
+   system starts from and deeper on its light ones. Kinds of one family share a hue only where no view draws them
+   together: a unit and an actor, a context and a command, a contract and a read model. A kind not in the table takes
+   the host's tertiary ink. */
+
+.ehg-card,
+.ehg-legend-kind {
+  --ehos-contract-graph-hue: var(--text-tertiary);
+}
+
+.ehg,
+.ehg-explorer {
+  --ehos-contract-graph-command: #6aa6e8;
+  --ehos-contract-graph-event: #f0954a;
+  --ehos-contract-graph-policy: #c39af0;
+  --ehos-contract-graph-process-manager: #e39ce8;
+  --ehos-contract-graph-effect: #f28cb8;
+  --ehos-contract-graph-timer: #a6a39a;
+  --ehos-contract-graph-actor: #d9b443;
+  --ehos-contract-graph-unit: #d9b443;
+  --ehos-contract-graph-read-model: #7cc58a;
+  --ehos-contract-graph-query: #a5d68a;
+  --ehos-contract-graph-rule: #f07272;
+  --ehos-contract-graph-external: #5fb6d6;
+  --ehos-contract-graph-process: #9d98f0;
+  --ehos-contract-graph-context: #6aa6e8;
+  --ehos-contract-graph-contract: #7cc58a;
+  --ehos-contract-graph-publication: #5fc8c8;
+  --ehos-contract-graph-service: #9fb2bf;
+  --ehos-contract-graph-ends: #7cc58a;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .ehg,
+  :root:not([data-theme="dark"]) .ehg-explorer {
+    --ehos-contract-graph-command: #2f6db5;
+    --ehos-contract-graph-event: #b85c0c;
+    --ehos-contract-graph-policy: #7b4fa8;
+    --ehos-contract-graph-process-manager: #9c27b0;
+    --ehos-contract-graph-effect: #ad1457;
+    --ehos-contract-graph-timer: #6b6559;
+    --ehos-contract-graph-actor: #8a6d12;
+    --ehos-contract-graph-unit: #8a6d12;
+    --ehos-contract-graph-read-model: #3d7a4f;
+    --ehos-contract-graph-query: #4f7f2a;
+    --ehos-contract-graph-rule: #b3261e;
+    --ehos-contract-graph-external: #2b7f9e;
+    --ehos-contract-graph-process: #5a55c7;
+    --ehos-contract-graph-context: #2f6db5;
+    --ehos-contract-graph-contract: #3d7a4f;
+    --ehos-contract-graph-publication: #00838f;
+    --ehos-contract-graph-service: #546e7a;
+    --ehos-contract-graph-ends: #2e7d32;
+  }
+}
+
+[data-theme="light"] .ehg,
+[data-theme="light"] .ehg-explorer {
+  --ehos-contract-graph-command: #2f6db5;
+  --ehos-contract-graph-event: #b85c0c;
+  --ehos-contract-graph-policy: #7b4fa8;
+  --ehos-contract-graph-process-manager: #9c27b0;
+  --ehos-contract-graph-effect: #ad1457;
+  --ehos-contract-graph-timer: #6b6559;
+  --ehos-contract-graph-actor: #8a6d12;
+  --ehos-contract-graph-unit: #8a6d12;
+  --ehos-contract-graph-read-model: #3d7a4f;
+  --ehos-contract-graph-query: #4f7f2a;
+  --ehos-contract-graph-rule: #b3261e;
+  --ehos-contract-graph-external: #2b7f9e;
+  --ehos-contract-graph-process: #5a55c7;
+  --ehos-contract-graph-context: #2f6db5;
+  --ehos-contract-graph-contract: #3d7a4f;
+  --ehos-contract-graph-publication: #00838f;
+  --ehos-contract-graph-service: #546e7a;
+  --ehos-contract-graph-ends: #2e7d32;
+}
+
+.ehg [data-kind="command"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-command); }
+.ehg [data-kind="event"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-event); }
+.ehg [data-kind="policy"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-policy); }
+.ehg [data-kind="process_manager"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-process-manager); }
+.ehg [data-kind="effect"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-effect); }
+.ehg [data-kind="timer"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-timer); }
+.ehg [data-kind="actor"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-actor); }
+.ehg [data-kind="unit"],
+.ehg [data-kind="status"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-unit); }
+.ehg [data-kind="read_model"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-read-model); }
+.ehg [data-kind="query"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-query); }
+.ehg [data-kind="invariant"],
+.ehg [data-kind="constraint"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-rule); }
+.ehg [data-kind="external"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-external); }
+.ehg [data-kind="process"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-process); }
+.ehg [data-kind="context"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-context); }
+.ehg [data-kind="contract"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-contract); }
+.ehg [data-kind="publication"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-publication); }
+.ehg [data-kind="domain_service"] { --ehos-contract-graph-hue: var(--ehos-contract-graph-service); }
+
+/* An external system is outside the application: its border dashed. */
+.ehg-card[data-kind="external"] {
+  border-style: dashed;
+}
+
+/* A look of a kind: an event that ends a run of a process in the colour of an end, a lifecycle's end a status drawn
+   heavier, and where a new aggregate starts a dot, in the ink of the host's theme. */
+
+.ehg-card[data-variant="terminal"] {
+  --ehos-contract-graph-hue: var(--ehos-contract-graph-ends);
+  border-width: 2.5px;
+}
+
+.ehg-card[data-variant="final"] {
+  border-width: 3px;
+}
+
+.ehg-card[data-kind="start"] {
+  --ehos-contract-graph-hue: var(--text-primary);
+  width: 18px;
+  min-width: 0;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+/* The dot is the unit's card, so the log's count of its aggregates comes with it; the dot says nothing, as
+   the picture's did. */
+.ehg-card[data-kind="start"] > * {
+  display: none;
+}
+
+/* The legend, under the canvas: what each colour and icon and each look of an arrow means, for what this picture
+   draws. */
+
+.ehg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  list-style: none;
+}
+
+.ehg-legend > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ehg-legend-kind .ehg-icon {
+  color: var(--ehos-contract-graph-hue);
+}
+
+/* A card drawn other than its kind, as a small card: an end of a run in the colour of an end, a final status
+   heavier. */
+.ehg-legend-swatch {
+  width: 14px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-tertiary);
+  border-radius: 3px;
+}
+
+.ehg-legend-variant[data-variant="terminal"] .ehg-legend-swatch {
+  border: 2.5px solid var(--ehos-contract-graph-ends);
+}
+
+.ehg-legend-variant[data-variant="final"] .ehg-legend-swatch {
+  border-width: 3px;
+}
+
+/* Said to a screen reader, not shown. */
+.ehg-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Each swatch drawn as the arrows are: the same ink and widths, a head where the arrows have one. */
+.ehg-legend-line svg {
+  width: 24px;
+  height: 8px;
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1.25px;
+}
+
+.ehg-legend-line .ehg-legend-head {
+  fill: var(--text-tertiary);
+  stroke: none;
+}
+
+.ehg-legend-line[data-look="dotted"] path:first-child {
+  stroke-dasharray: 4 3;
+}
+
+.ehg-legend-line[data-look="thick"] path:first-child {
+  stroke-width: 2.5px;
+}
+
+.ehg-legend-line[data-look="observed"] svg {
+  stroke: var(--error-ink);
+}
+
+.ehg-legend-line[data-look="observed"] .ehg-legend-head {
+  fill: var(--error-ink);
+}
+
+/* What is selected, what touches it, and the rest, faint. None of these changes a size, so a selection
+   never lays the graph out again. */
+
+.ehg-card:focus-visible,
+.ehg-relation:focus-visible,
+.ehg-card.is-selected,
+.ehg-relation.is-selected {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.ehg .is-far {
+  opacity: 0.3;
+}
+
+.ehg-arrow.is-selected .ehg-line,
+.ehg-arrow.is-near .ehg-line {
+  stroke: var(--text-primary);
+  stroke-width: 2px;
+}
+
+/* What the log says. A step never taken is dashed, one not taken yet dotted, one where something fails or a
+   move the lifecycle does not allow in the error colour. */
+
+.ehg-arrow.is-untraversed .ehg-line {
+  stroke-dasharray: 5 4;
+}
+
+.ehg-arrow.is-pending .ehg-line {
+  stroke-dasharray: 1 3;
+}
+
+.ehg-arrow.is-failing .ehg-line,
+.ehg-arrow.is-undeclared .ehg-line {
+  stroke: var(--error-ink);
+}
+
+.ehg-relation.is-failing,
+.ehg-relation.is-undeclared {
+  color: var(--error-ink);
+}
+
+/* The panel. */
+
+/* A sidebar at the right of the window, as tall as the window, whichever canvas it is of: one is open at a
+   time (the hook closes the others). Its left edge is a grip that drags its width; its body scrolls. On a
+   narrow screen it covers the window. */
+.ehg-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  width: var(--ehos-contract-graph-panel-width);
+  max-width: 100vw;
+  border-left: 1px solid var(--border-soft);
+  background: var(--surface-1);
+  font-size: 12px;
+}
+
+/* Another canvas's panel opened: this one is hidden at once, and goes with its server's answer. */
+.ehg-panel[hidden] {
+  display: none;
+}
+
+.ehg-panel-grip {
+  flex: none;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ehg-panel-grip:hover,
+.ehg-panel-grip:active {
+  background: var(--border-soft);
+}
+
+.ehg-panel-body {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 16px 24px 10px;
+}
+
+@media (max-width: 720px) {
+  .ehg-panel {
+    width: 100vw;
+  }
+
+  .ehg-panel-grip {
+    display: none;
+  }
+}
+
+.ehg-panel header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+}
+
+.ehg-panel header > button {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  padding: 0 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The client's words as they wrote them, whatever the host's headings look like. */
+.ehg-panel h4 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.ehg-panel-kind {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ehg-panel dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0 0 10px;
+}
+
+.ehg-panel dt {
+  color: var(--text-tertiary);
+  font-family: var(--mono, monospace);
+}
+
+.ehg-panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ehg-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* The panel's parts: a titled section each, the client's words as they wrote them, the renderer's sentences
+   around them. */
+
+.ehg-panel p {
+  margin: 0 0 6px;
+}
+
+.ehg-panel-name,
+.ehg-panel code {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.ehg-panel-name {
+  grid-column: 1;
+  margin: 0;
+  color: var(--text-tertiary);
+}
+
+.ehg-part {
+  margin: 0 0 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-faint, var(--border-soft));
+}
+
+.ehg-part-title,
+.ehg-step {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ehg-panel .ehg-step {
+  margin: 6px 0 2px;
+}
+
+.ehg-list {
+  margin: 0 0 6px;
+  padding-left: 16px;
+}
+
+.ehg-list li {
+  margin: 0 0 3px;
+}
+
+/* A node named in a panel or a table: a button that selects it, with its kind beside it. */
+.ehg-ref {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong, var(--border-soft));
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ehg-ref:hover {
+  text-decoration-color: currentColor;
+}
+
+.ehg-ref-kind {
+  margin-inline-start: 4px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.ehg-grant {
+  margin-inline-start: 6px;
+  color: var(--text-secondary);
+}
+
+.ehg-quiet,
+.ehg-source {
+  color: var(--text-secondary);
+}
+
+.ehg-strong {
+  font-weight: 600;
+}
+
+/* Something missing: a command nothing issues, a stage no event sits in, a move the lifecycle does not
+   allow. */
+.ehg-empty,
+.ehg-refused {
+  color: var(--error-ink);
+}
+
+/* A field, the same everywhere: its name, its label, its type, and what it says of a person, a value, an
+   entity, a system. */
+.ehg-fields {
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.ehg-fields li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  margin: 0 0 6px;
+}
+
+.ehg-field-name {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+}
+
+.ehg-field-type {
+  color: var(--text-tertiary);
+}
+
+.ehg-field-note {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+}
+
+.ehg-personal {
+  color: var(--error-ink);
+}
+
+.ehg-panel .ehg-terms {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ehg-terms dt {
+  color: var(--text-primary);
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.ehg-terms dd > span {
+  display: block;
+}
+
+.ehg-avoid {
+  color: var(--error-ink);
+}
+
+.ehg-translation {
+  color: var(--text-secondary);
+}
+
+.ehg-trigger {
+  margin: 0 0 8px;
+}
+
+.ehg-trigger-title {
+  font-weight: 600;
+}
+
+/* A scenario: its description in the client's words, then what was given, what happened and what came of
+   it, with the data as the document has it — a personal value is not there. */
+.ehg-scenario {
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--surface-2);
+}
+
+.ehg-scenario-title {
+  font-weight: 600;
+}
+
+.ehg-happened {
+  margin: 0 0 4px;
+}
+
+.ehg-panel .ehg-data {
+  margin: 2px 0 4px 12px;
+  font-size: 11px;
+}
+
+.ehg-row {
+  margin: 0 0 4px;
+}
+
+/* The actors of a domain, people and systems apart. */
+.ehg-actors table {
+  width: 100%;
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ehg-actors caption {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: start;
+  text-transform: uppercase;
+}
+
+.ehg-actors th,
+.ehg-actors td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: start;
+  vertical-align: top;
+}
+
+.ehg-actors th {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.ehg-cell-line {
+  display: block;
+}
+
+/* The explorer: the path back up along its two branches, the line on what a place shows, the ways of drawing
+   it, and the list of processes. */
+
+.ehg-explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* The path, the one way through (#490): its steps, and at the domain the step to its other branch, the
+   processes. */
+.ehg-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.ehg-path button:hover {
+  color: var(--text-primary);
+}
+
+/* What the place shows, or the way of drawing it the reader chose, in a line. */
+.ehg-about {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ehg-path ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  list-style: none;
+}
+
+.ehg-path li + li::before {
+  content: "›";
+  margin-right: 4px;
+  color: var(--text-tertiary);
+}
+
+.ehg-path button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong, var(--border-soft));
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ehg-path [aria-current] {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.ehg-lenses {
+  display: flex;
+  gap: 4px;
+}
+
+.ehg-tool.is-current {
+  border-color: var(--border-strong, var(--border-soft));
+  color: var(--text-primary);
+}
+
+.ehg-failed {
+  color: var(--error-ink);
+}
+
+.ehg-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ehg-places button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ehos-contract-graph-process);
+  border-radius: var(--radius-md, 8px);
+  background: color-mix(in srgb, var(--ehos-contract-graph-process) 9%, var(--surface-1));
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The facts of the code, folded under "Technical details" (#490): the panel says the business first, and what
+   it says in plain words gives way to the same in code once they are unfolded. A part marked as nothing but
+   such facts folds with them, its title too; a panel with nothing to fold offers no fold. */
+
+.ehg-tech {
+  margin: 4px 0 10px;
+  font-size: 12px;
+}
+
+.ehg-tech > summary {
+  width: fit-content;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ehg-tech > summary:hover,
+.ehg-tech[open] > summary {
+  color: var(--text-primary);
+}
+
+.ehg-panel:has(.ehg-tech:not([open])) .ehg-code,
+.ehg-panel:has(.ehg-tech[open]) .ehg-plain,
+.ehg-panel:not(:has(.ehg-code)) .ehg-tech {
+  display: none;
+}
+
+/* The panel's way to where the selected card leads: a button, or a link to a host's page. */
+.ehg-panel .ehg-open {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong, var(--border-soft));
+  border-radius: var(--radius-sm, 6px);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}

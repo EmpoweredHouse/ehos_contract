@@ -8,13 +8,13 @@ maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 
 | Directory | What it holds |
 | --- | --- |
-| [`packages/eh_os_contract`](packages/eh_os_contract) | The engine: the domain and contract languages, dispatch, the log, conformance, and its documentation in `docs/`. |
-| [`packages/eh_os_contract_web`](packages/eh_os_contract_web) | The dashboard that a host mounts. |
-| [`packages/eh_os_contract_auth`](packages/eh_os_contract_auth) | The verifier of EHOS's credentials, the sign-in through EHOS, and the application manifest. |
-| [`packages/eh_os_contract_graph`](packages/eh_os_contract_graph) | The renderer of a `graph.v1` document in a LiveView. It depends on no other package of this repository. |
-| [`sandbox`](sandbox) | The development host `:eh_os_contract_host`, with three invented case studies as test material. |
+| [`packages/ehos_contract`](packages/ehos_contract) | The engine: the domain and contract languages, dispatch, the log, conformance, and its documentation in `docs/`. |
+| [`packages/ehos_contract_web`](packages/ehos_contract_web) | The dashboard that a host mounts. |
+| [`packages/ehos_contract_auth`](packages/ehos_contract_auth) | The verifier of EHOS's credentials, the sign-in through EHOS, and the application manifest. |
+| [`packages/ehos_contract_graph`](packages/ehos_contract_graph) | The renderer of a `graph.v1` document in a LiveView. It depends on no other package of this repository. |
+| [`sandbox`](sandbox) | The development host `:ehos_contract_host`, with three invented case studies as test material. |
 | [`docs`](docs) | The design record, `docs/adr/`. |
-| [`plugins/eh-os-contract`](plugins/eh-os-contract), [`.claude-plugin`](.claude-plugin) | The Claude Code plugin that applications use, and the marketplace that publishes it. |
+| [`plugins/ehos-contract`](plugins/ehos-contract), [`.claude-plugin`](.claude-plugin) | The Claude Code plugin that applications use, and the marketplace that publishes it. |
 
 Each package and `sandbox/` is a Mix project of its own. A package builds and tests without
 `sandbox/`. `sandbox/` is the first consumer of the packages, not a part of them: it depends on them
@@ -45,34 +45,34 @@ The gate runs the `mix check` of each package in that package, so each package n
 dependencies. From the root of the repository, fetch them as CI does:
 
 ```bash
-(cd packages/eh_os_contract && mix deps.get --only test)
+(cd packages/ehos_contract && mix deps.get --only test)
 ```
 
 ```bash
-(cd packages/eh_os_contract_web && mix deps.get --only test)
+(cd packages/ehos_contract_web && mix deps.get --only test)
 ```
 
 ```bash
-(cd packages/eh_os_contract_auth && mix deps.get --only test)
+(cd packages/ehos_contract_auth && mix deps.get --only test)
 ```
 
 ```bash
-(cd packages/eh_os_contract_graph && mix deps.get --only test)
+(cd packages/ehos_contract_graph && mix deps.get --only test)
 ```
 
 If you have access to `ehos-tools`, fetch all of the dependencies of the engine, the credential
 verifier and the graph renderer instead. Then the gate also checks the diagrams:
 
 ```bash
-(cd packages/eh_os_contract && mix deps.get)
+(cd packages/ehos_contract && mix deps.get)
 ```
 
 ```bash
-(cd packages/eh_os_contract_auth && mix deps.get)
+(cd packages/ehos_contract_auth && mix deps.get)
 ```
 
 ```bash
-(cd packages/eh_os_contract_graph && mix deps.get)
+(cd packages/ehos_contract_graph && mix deps.get)
 ```
 
 Then start PostgreSQL and run the gate:
@@ -90,11 +90,11 @@ mix check
 1. `format --check-formatted`.
 2. `compile --force --warnings-as-errors`. `boundary` reports a crossed boundary as a warning, so
    without this flag the boundaries are not checked.
-3. `eh_os_contract.check` and `eh_os_contract.schema --check`, against `sandbox/eh_os_contract.lock`.
+3. `ehos_contract.check` and `ehos_contract.schema --check`, against `sandbox/ehos_contract.lock`.
 4. The tests of the sandbox.
 5. `mix check` of each package, each in its own run, so that each package stands alone. Each
    package builds its docs with `--warnings-as-errors` and runs `test/doc_coverage_test.exs`. The
-   engine also runs `eh_os_contract.docs --check`, `eh_os_contract.rules --check` and
+   engine also runs `ehos_contract.docs --check`, `ehos_contract.rules --check` and
    `test/docs_test.exs`. These hold the generated pages and the examples of the prose pages to the
    code.
 6. After the engine, `ehos_diagrams.gen --check` in `:dev`, in the engine, the credential verifier
@@ -113,7 +113,7 @@ is ready for review. A draft waits until it is marked ready. A pull request that
 
 ## Run the development host and the dashboard
 
-The sandbox host mounts the dashboard of `packages/eh_os_contract_web` at `/dashboard`. From the
+The sandbox host mounts the dashboard of `packages/ehos_contract_web` at `/dashboard`. From the
 root of the repository:
 
 ```bash
@@ -124,7 +124,7 @@ mix phx.server
 Then open `http://localhost:4010/dashboard`. If you set `PORT`, the server uses that port instead. The sandbox host lets each person in, read-only, to
 the dashboard and to its JSON API. The server listens on each network interface of the machine.
 Run it only on a network that you trust. A host decides who can see its dashboard with an
-`EhOsContract.Web.Resolver`.
+`EhosContract.Web.Resolver`.
 
 An empty log gives empty screens. `mix sandbox.traffic` fills a log with about 6 weeks of runs of
 the case studies. The runs include drift:
@@ -140,24 +140,24 @@ because `mix ecto.reset` deletes the database first. Give the two variables on e
 `sandbox/`:
 
 ```bash
-MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix ecto.reset
+MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix ecto.reset
 ```
 
 ```bash
-MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix sandbox.traffic
+MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix sandbox.traffic
 ```
 
 ```bash
-MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
+MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix phx.server
 ```
 
 The same answers are JSON under the `/api` mount of the host:
-[the JSON API of the dashboard](packages/eh_os_contract_web/docs/api.md) lists the routes.
+[the JSON API of the dashboard](packages/ehos_contract_web/docs/api.md) lists the routes.
 
 ## Change the script or the stylesheet of a package
 
-The dashboard, `packages/eh_os_contract_web`, and the graph renderer,
-`packages/eh_os_contract_graph`, each commit their built script and stylesheet under
+The dashboard, `packages/ehos_contract_web`, and the graph renderer,
+`packages/ehos_contract_graph`, each commit their built script and stylesheet under
 `priv/static/`. A host and the gate use the committed files, so only the person who changes
 `assets/` builds them.
 
@@ -173,14 +173,14 @@ Without that access, `mix deps.get` in the package fails.
 2. Fetch all the dependencies of the package, `:dev` included. Example, for the graph renderer:
 
    ```bash
-   (cd packages/eh_os_contract_graph && mix deps.get)
+   (cd packages/ehos_contract_graph && mix deps.get)
    ```
 
 3. Build the script and the stylesheet in the same package. The build uses esbuild, a downloaded
    binary, and needs no Node. Example, for the graph renderer:
 
    ```bash
-   (cd packages/eh_os_contract_graph && mix assets.build)
+   (cd packages/ehos_contract_graph && mix assets.build)
    ```
 
    If you changed the graph renderer, also build the dashboard. Its script and stylesheet carry
@@ -203,12 +203,12 @@ dependency, at one commit. `mix assets.build` imports its tokens,
 into `priv/static/assets/fonts/`. A host gets nothing from `ehos_design`. To take a new version of
 the design system:
 
-1. Move the `ref` of `ehos_design` in `packages/eh_os_contract_web/mix.exs` to the commit of the new
+1. Move the `ref` of `ehos_design` in `packages/ehos_contract_web/mix.exs` to the commit of the new
    tag.
 2. Fetch it and build the assets:
 
    ```bash
-   (cd packages/eh_os_contract_web && mix deps.get && mix assets.build)
+   (cd packages/ehos_contract_web && mix deps.get && mix assets.build)
    ```
 
 3. Commit `mix.exs`, `mix.lock` and `priv/static/assets/`.
@@ -230,7 +230,7 @@ stale, so each place links to the next instead.
 | A pull request | The problem and its fix in short for anyone, its risks, then what changed in the code, why, how it was tested, what the review found | Once, when it is opened and as review comments are settled |
 | A package's `CHANGELOG.md` | What changed for a host, version by version | In the pull request that changes what a host sees ("Changelogs and releases", below) |
 | The code and its tests | What the library does | — |
-| `packages/eh_os_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/eh_os_contract/MAINTAINING-DOCS.md) |
+| `packages/ehos_contract/docs/`, the READMEs, the `@doc`s | How does a host use the library? | With the change that alters what they describe; what is generated, what is written and what to run is in [`MAINTAINING-DOCS.md`](packages/ehos_contract/MAINTAINING-DOCS.md) |
 
 `ROADMAP.md` is short on purpose: the reasons are in the issues, whose labels list each programme's stages
 (`publication` for the current one, `dd` and `wave-<n>` for the one before it). The working plan the
@@ -294,20 +294,20 @@ developer — in [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
 - **A breaking change**, one a host has to act on when it upgrades, starts its line with `**Breaking:**`, under the
   subsection it belongs to. In the engine, a change that can move a verdict starts its line with
   `**Moves a verdict:**` and raises the minor version: the rule at the top of
-  [`packages/eh_os_contract/CHANGELOG.md`](packages/eh_os_contract/CHANGELOG.md).
+  [`packages/ehos_contract/CHANGELOG.md`](packages/ehos_contract/CHANGELOG.md).
 - **The format is Keep a Changelog as written**: one `## [Unreleased]`, `## [X.Y.Z] - YYYY-MM-DD` for a release
   (a version never published, as the engine's 0.1.0, has no date: `## [X.Y.Z]` and "Never published."),
   only the subsections `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` and `Security`, prose only between a
   version's heading and its first subsection, and no link references at the end.
 - **Between releases a package's version ends in `-dev`**, and a feature's pull request never changes it.
 - **A package that depends on another of this repository's names the version it needs** in its `mix.exs`
-  (`@eh_os_contract_requirement` in the dashboard and the verifier, `@eh_os_contract_graph_requirement` in the
+  (`@ehos_contract_requirement` in the dashboard and the verifier, `@ehos_contract_graph_requirement` in the
   dashboard), and Mix holds the sibling to it even by path. A pull request that makes a package use something
   its sibling has not released yet raises the requirement to the sibling's `-dev` version, `~> 0.9.2-dev` (a
   plain `~> 0.9.2` refuses `0.9.2-dev`), and the release turns it into `~> 0.9.2`. A release that moves a
   sibling to a new minor raises every requirement on it in the same pull request, or nothing resolves:
   `0.10.0` does not satisfy `~> 0.9.1`.
-- **A package is built for Hex with `EH_OS_CONTRACT_HEX=1` on the command line** of `mix hex.build` or
+- **A package is built for Hex with `EHOS_CONTRACT_HEX=1` on the command line** of `mix hex.build` or
   `mix hex.publish`, which then see its siblings by version rather than by path; installed from Hex, the
   package finds the same by the `hex_metadata.config` beside its `mix.exs`. Left exported in a shell, the
   variable makes the sandbox and the packages look for the siblings on Hex. CI's `hex-build` job builds and
@@ -317,13 +317,13 @@ Releases are made by the maintainers, with the `ehos-dev:release` skill ("Workin
 follows the same procedure in this repository and EHOS's others. In this repository:
 
 - **One tag, `vX.Y.Z`, follows the engine's version; each package keeps its own.** An application requires
-  `eh_os_contract_auth` `~> 0.2.0` while the engine is at 0.4.0, and one shared number would break it.
+  `ehos_contract_auth` `~> 0.2.0` while the engine is at 0.4.0, and one shared number would break it.
 - **At a release, each package with lines under `## [Unreleased]` moves to its next version**, its lines under
   `## [X.Y.Z] - YYYY-MM-DD`, in the release's pull request; a package with none stays at its `-dev` and is not
   released at that tag, though `release.json` names its version.
 - **Every release moves the engine**, since the tag is its version. A release of other packages alone moves the
   engine by a patch from its last release, and that version's section says so under `### Changed`: "Released
-  with eh_os_contract_auth 0.1.1; nothing in the engine changed."
+  with ehos_contract_auth 0.1.1; nothing in the engine changed."
 - **The tag runs `.github/workflows/release.yml`.** Its Prepare job, which can only read, checks the tag, writes
   `release.json` (`mix contract.release_file` in `sandbox/`) and takes each released package's section of its
   changelog; its Publish job, in the environment `release`, creates the GitHub release and has the documentation
@@ -337,14 +337,14 @@ follows the same procedure in this repository and EHOS's others. In this reposit
   this repository's `main` through git, that is the next patch's `-dev`, not the next minor's: an application
   requires `~> 0.7.0` of the engine and `~> 0.4.0` of the verifier, and `0.8.0-dev` or `0.5.0-dev` on `main`
   would refuse its next `mix deps.update`.
-- **The `eh-os-contract` Claude Code plugin** is the repository's skills an application uses, in
-  `plugins/eh-os-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
+- **The `ehos-contract` Claude Code plugin** is the repository's skills an application uses, in
+  `plugins/ehos-contract/skills/` and linked from `.claude/skills/` for work here; `review-pr` and
   `write-docs` stay this repository's alone. The plugin is a directory of its own so that nothing else
   in the repository reaches an application through it: a hook or an MCP server added at the root for
   work here is not the plugin's. `.claude-plugin/marketplace.json` publishes it. The plugin is not a
-  package and has no `-dev`: raise its `version` (`plugins/eh-os-contract/.claude-plugin/plugin.json`)
+  package and has no `-dev`: raise its `version` (`plugins/ehos-contract/.claude-plugin/plugin.json`)
   in the pull request that changes one of its skills, then tag that pull request's merge commit
-  `eh-os-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
+  `ehos-contract-plugin-vX.Y.Z` and push the tag; it publishes no GitHub release. The tag rulesets
   must hold it as they hold `v*`, since applications' settings name it. An application takes a new
   version by moving the `ref` in its `.claude/settings.json`, which `ehos_app`'s installer is to do. A
   skill it carries says, at its top, where its paths are in an application.

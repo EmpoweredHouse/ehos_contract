@@ -6,6 +6,6 @@ defmodule Lending.Membership do
   """
 
   use Boundary,
-    deps: [EhOsContract, Lending.Contracts],
+    deps: [EhosContract, Lending.Contracts],
     exports: [Registration, Directory, MemberContact]
 end

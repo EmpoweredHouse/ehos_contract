@@ -23,7 +23,7 @@ defmodule Lending.Contracts.Circulation do
   nothing more about the person.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Lending.Domain,
     context: :circulation,
     id: "lending.circulation"

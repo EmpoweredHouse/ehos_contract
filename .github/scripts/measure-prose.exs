@@ -3,8 +3,8 @@
 # (a refusal or rule code, a layer L1–L5, `§`, a plan name, an issue number) does not
 # carry a sentence. Fenced code, HTML comments, tables, headings and images are left out.
 #
-#     elixir .github/scripts/measure-prose.exs packages/eh_os_contract/docs/contract.md …
-#     elixir .github/scripts/measure-prose.exs --long packages/eh_os_contract/docs/contract.md
+#     elixir .github/scripts/measure-prose.exs packages/ehos_contract/docs/contract.md …
+#     elixir .github/scripts/measure-prose.exs --long packages/ehos_contract/docs/contract.md
 #
 # "Codes" counts every code in running text; "Sentences a code carries" counts the sentences
 # with a code outside the parenthesis that closes them. `--long` lists each long sentence and

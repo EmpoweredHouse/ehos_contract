@@ -29,8 +29,8 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
 
     assert output |> File.read!() |> Jason.decode!() == %{
              "schema" => "ehos.release/v1",
-             "component" => "eh_os_contract",
-             "version" => EhOsContract.version(),
+             "component" => "ehos_contract",
+             "version" => EhosContract.version(),
              "commit" => @commit,
              "produces" => [
                "ehos.manifest/v2",
@@ -41,26 +41,26 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
                "ehos.manifest/v7",
                "ehos.manifest/v8",
                "ehos.manifest/v9",
-               "eh_os_contract.api/v1",
-               "eh_os_contract.graph/v1"
+               "ehos_contract.api/v1",
+               "ehos_contract.graph/v1"
              ],
              "accepts" => ["ehos.credential/v1"],
              "requires" => %{},
              "packages" => %{
-               "eh_os_contract" => EhOsContract.version(),
-               "eh_os_contract_auth" => vsn.(:eh_os_contract_auth),
-               "eh_os_contract_web" => vsn.(:eh_os_contract_web),
-               "eh_os_contract_graph" => vsn.(:eh_os_contract_graph)
+               "ehos_contract" => EhosContract.version(),
+               "ehos_contract_auth" => vsn.(:ehos_contract_auth),
+               "ehos_contract_web" => vsn.(:ehos_contract_web),
+               "ehos_contract_graph" => vsn.(:ehos_contract_graph)
              }
            }
   end
 
   # What a release produces is what the manifest generator can write, not a list kept here.
-  test "produces the manifest versions EhOsContract.Auth.Manifest writes" do
+  test "produces the manifest versions EhosContract.Auth.Manifest writes" do
     produces = ReleaseFile.release(@commit)["produces"]
 
-    assert produces -- ["eh_os_contract.api/v1", "eh_os_contract.graph/v1"] ==
-             EhOsContract.Auth.Manifest.schemas()
+    assert produces -- ["ehos_contract.api/v1", "ehos_contract.graph/v1"] ==
+             EhosContract.Auth.Manifest.schemas()
   end
 
   # The graph document names its version in its own `schema`; the release names that version in
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
   # v1.
   test "produces the graph document's version, as its JSON Schema names it" do
     [named] =
-      EhOsContract.Graph.Document.schema_path()
+      EhosContract.Graph.Document.schema_path()
       |> File.read!()
       |> Jason.decode!()
       |> schema_consts()

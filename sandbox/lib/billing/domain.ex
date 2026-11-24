@@ -4,8 +4,8 @@ defmodule Billing.Domain do
   month with the usage they recorded, and payments, collected through a payment gateway.
   """
 
-  use EhOsContract.Domain, name: :billing, language: :en
-  use Boundary, deps: [EhOsContract], exports: [{Values, []}]
+  use EhosContract.Domain, name: :billing, language: :en
+  use Boundary, deps: [EhosContract], exports: [{Values, []}]
 
   subdomain :core, "Billing", type: :core
   subdomain :generic, "Payments", type: :generic

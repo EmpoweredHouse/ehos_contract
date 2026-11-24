@@ -81,7 +81,7 @@ jobs:
         id: name
         env:
           REF: ${{ steps.ref.outputs.ref }}
-        run: echo "name=eh-os-contract-docs-${REF//\//-}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "name=ehos-contract-docs-${REF//\//-}-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: erlef/setup-beam@v1
         id: beam
@@ -105,53 +105,53 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            packages/eh_os_contract/deps/*
-            !packages/eh_os_contract/deps/ehos_*
-          key: eh-os-contract-core-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+            packages/ehos_contract/deps/*
+            !packages/ehos_contract/deps/ehos_*
+          key: ehos-contract-core-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract/mix.lock') }}
 
       - name: Restore dashboard foundation deps
         uses: actions/cache/restore@v4
         with:
-          path: packages/eh_os_contract_web/deps
-          key: eh-os-contract-web-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+          path: packages/ehos_contract_web/deps
+          key: ehos-contract-web-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_web/mix.lock') }}
 
       - name: Restore credential verifier deps
         uses: actions/cache/restore@v4
         with:
           path: |
-            packages/eh_os_contract_auth/deps/*
-            !packages/eh_os_contract_auth/deps/ehos_*
-          key: eh-os-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+            packages/ehos_contract_auth/deps/*
+            !packages/ehos_contract_auth/deps/ehos_*
+          key: ehos-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_auth/mix.lock') }}
 
       - name: Restore graph renderer deps
         uses: actions/cache/restore@v4
         with:
           path: |
-            packages/eh_os_contract_graph/deps/*
-            !packages/eh_os_contract_graph/deps/ehos_*
-          key: eh-os-contract-graph-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+            packages/ehos_contract_graph/deps/*
+            !packages/ehos_contract_graph/deps/ehos_*
+          key: ehos-contract-graph-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_graph/mix.lock') }}
 
       # `--only test`, as in ci.yml: the engine's `:dev` dependencies, which draw its
       # diagrams and which `mix docs` does not need, live in the private ehos-tools, and this
       # job has no credentials for it.
       - name: Install engine deps
-        working-directory: packages/eh_os_contract
+        working-directory: packages/ehos_contract
         run: mix deps.get --only test
 
       # `--only test`, as in ci.yml: the dashboard's `:dev` dependency is in a private
       # repository this job has no credentials for, and the docs build under MIX_ENV=test.
       - name: Install dashboard foundation deps
-        working-directory: packages/eh_os_contract_web
+        working-directory: packages/ehos_contract_web
         run: mix deps.get --only test
 
       # `--only test`, as for the engine: the verifier's `:dev` dependencies draw its diagrams.
       - name: Install credential verifier deps
-        working-directory: packages/eh_os_contract_auth
+        working-directory: packages/ehos_contract_auth
         run: mix deps.get --only test
 
       # `--only test`, as for the engine: the renderer's `:dev` dependencies draw its diagrams.
       - name: Install graph renderer deps
-        working-directory: packages/eh_os_contract_graph
+        working-directory: packages/ehos_contract_graph
         run: mix deps.get --only test
 
       - name: Build the documentation

@@ -1,16 +1,16 @@
 {
-  "name": "eh-os-contract",
+  "name": "ehos-contract",
   "owner": {
     "name": "EmpoweredHouse"
   },
   "metadata": {
-    "description": "The Claude Code plugin of eh-os-contract, for the applications that write contracts with it."
+    "description": "The Claude Code plugin of ehos-contract, for the applications that write contracts with it."
   },
   "plugins": [
     {
-      "name": "eh-os-contract",
-      "source": "./plugins/eh-os-contract",
-      "description": "Skills for writing and changing contracts with eh_os_contract, for an application built on EHOS: where a feature lives, distilling a process into a domain and contracts, adding an event, changing a contract that has history, writing a decider and a reaction."
+      "name": "ehos-contract",
+      "source": "./plugins/ehos-contract",
+      "description": "Skills for writing and changing contracts with ehos_contract, for an application built on EHOS: where a feature lives, distilling a process into a domain and contracts, adding an event, changing a contract that has history, writing a decider and a reaction."
     }
   ]
 }

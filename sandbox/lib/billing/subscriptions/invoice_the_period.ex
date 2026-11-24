@@ -5,7 +5,7 @@ defmodule Billing.Subscriptions.InvoiceThePeriod do
   usage line's id is the record's prefixed with `usage:`, so no record can share the
   fee's.
 
-  It is the shape `mix eh_os_contract.check` warns of (`in-transaction-policy-fan-out`):
+  It is the shape `mix ehos_contract.check` warns of (`in-transaction-policy-fan-out`):
   every line is decided while the application's append lock is held, so a period with
   many records holds every other append. A host billing at volume delivers it
   `:at_least_once`; this one is in the transaction so that the warning has a real

@@ -1,0 +1,104 @@
+defmodule EhosContract.CheckScenarioCoverageTest do
+  @moduledoc """
+  Plan EL2, rule 4 of the prose review: **a policy, a process manager or a query no scenario
+  runs** (ESDM's `feature-without-scenarios`), a warning at its declaration, with
+  one of each covered beside it.
+  """
+
+  use EhosContract.DslCase, async: false
+
+  alias EhosContract.Check.{Completeness, Finding}
+
+  @visits EhosContract.Fixtures.CoverageVisits
+
+  setup_all do
+    compile(
+      contract("CoverageVisits", """
+        aggregate :visit, "Visit" do
+          identity :visit_id
+          command :book, "Book", by: :reception, emits: :booked
+          command :remind, "Remind", emits: :reminded
+          event :booked, "Booked"
+          event :reminded, "Reminded"
+        end
+
+        policy :remind_on_booking, "Remind after booking", handles: :booked, issues: :remind
+        policy :remind_again, "Remind again", handles: :reminded, issues: :remind
+
+        process_manager :chase, "Chase" do
+          correlate :visit_id
+          starts_on :booked, sets: :later
+          timer :later, "Later", wait: {1, :day}, issues: :remind
+          ends_on :reminded
+        end
+
+        read_model :bookings, "Visits", projects: :booked do
+          field :visit_id, :id
+        end
+
+        query :bookings_of, "Visits", reads: :bookings, by: :reception do
+          param :visit_id, :id
+        end
+
+        query :all_bookings, "All visits", reads: :bookings, by: :reception
+
+        scenario "booking — reminder" do
+          on :booked
+          target :remind_on_booking
+          issues :remind
+        end
+
+        scenario "asking about a visit" do
+          given :booked
+          query :bookings_of, %{visit_id: "visit-anna"}
+          answers []
+        end
+      """),
+      "coverage_visits.ex"
+    )
+
+    compile(
+      contract("CoverageNotes", """
+        aggregate :visit, "Visit" do
+          identity :visit_id
+          event :noted, "Noted", recorded_by: :reception
+          event :called, "Called", recorded_by: :reception
+        end
+
+        scenario "reception notes a visit" do
+          actor :reception
+          record :noted
+          expect :noted
+        end
+      """),
+      "coverage_notes.ex"
+    )
+
+    :ok
+  end
+
+  test "an event an actor records that no scenario records, at its declaration (issue #430)" do
+    found =
+      for %Finding{rule: "recording-without-scenario"} = f <-
+            Completeness.findings([EhosContract.Fixtures.CoverageNotes]),
+          do: {f.message, Finding.place(f)}
+
+    assert [
+             {"event :called of EhosContract.Fixtures.CoverageNotes is recorded by " <>
+                "[:reception], and no scenario records it, so nothing shows what they may " <>
+                "write into the log", {"coverage_notes.ex", 7}}
+           ] = found
+  end
+
+  test "an uncovered policy, process manager and query, each at its declaration" do
+    found =
+      for %Finding{rule: "reaction-without-scenario"} = f <- Completeness.findings([@visits]),
+          do: {f.message, Finding.place(f)}
+
+    assert [
+             {"policy :remind_again of " <> _, {"coverage_visits.ex", 13}},
+             {"process manager :chase of " <> _, {"coverage_visits.ex", 15}},
+             {"query :all_bookings of " <> _, {"coverage_visits.ex", 30}}
+           ] = Enum.sort_by(found, &elem(&1, 1))
+  end
+end

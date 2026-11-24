@@ -13,7 +13,7 @@ defmodule Billing.Contracts.Payments do
   manager's.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Billing.Domain,
     context: :payments,
     id: "billing.payments"

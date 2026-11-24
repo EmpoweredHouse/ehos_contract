@@ -1,12 +1,12 @@
 ---
 name: review-pr
-description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/eh_os_contract/lib/ or sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix eh_os_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
+description: Before approving or sending back a pull request to this repository — a new declaration, a decider or a reaction, a contract edit, or anything under packages/ehos_contract/lib/ or sandbox/lib/ — separate what `mix check` already guarantees (the compile refusals with their codes, the scenarios as tests) from what only a person can catch: a new `mix ehos_contract.check` warning left unexplained, a decision or a scenario that reads invented, an edit to a contract with history that `change-contract`'s table flags, a fix without a reverse check, Polish outside the allowed strings, a change a host sees without a CHANGELOG line or with one that says too little, a verdict-moving change not marked as one, a diff larger than its stated scope. Use for any review here, by a person or by an agent on a person's behalf. Not for your own change before its pull request — that is `ehos-dev:pre-pr-review`.
 ---
 
 # Reviewing a pull request
 
-Checked on 30 September 2026 (plan E11e) against `CLAUDE.md`, `packages/eh_os_contract/docs/contract.md`,
-`packages/eh_os_contract/docs/rules.md` and the gate's aliases in `sandbox/mix.exs`. Not yet run on a real pull request in
+Checked on 30 September 2026 (plan E11e) against `CLAUDE.md`, `packages/ehos_contract/docs/contract.md`,
+`packages/ehos_contract/docs/rules.md` and the gate's aliases in `sandbox/mix.exs`. Not yet run on a real pull request in
 this form.
 
 ## Where this sits
@@ -22,25 +22,25 @@ change to it, row by row.
 ## 1 — What not to re-check, because the gate did
 
 `docker compose up -d && cd sandbox && mix ecto.setup && mix check` runs formatting,
-`compile --force --warnings-as-errors`, `eh_os_contract.check`, the sandbox's tests, and each
-package's own `mix check` — the engine's with `eh_os_contract.docs --check` and
-`eh_os_contract.rules --check`. **If it is not green, there is nothing to review yet.** Ask for the
+`compile --force --warnings-as-errors`, `ehos_contract.check`, the sandbox's tests, and each
+package's own `mix check` — the engine's with `ehos_contract.docs --check` and
+`ehos_contract.rules --check`. **If it is not green, there is nothing to review yet.** Ask for the
 exit code itself; `mix check | tail -4` reports `tail`'s, which is always zero (`CLAUDE.md`, 6
 August: 24 failures committed behind it). The safe form ends in `echo "EXIT=$rc"`.
 
 Given a green gate, three things are closed:
 
-- **Every compile refusal** — `packages/eh_os_contract/docs/refusals.md`: `N`, `F`, `A`, `C`, `P`,
+- **Every compile refusal** — `packages/ehos_contract/docs/refusals.md`: `N`, `F`, `A`, `C`, `P`,
   `R`, `K`, `S`, `D`, `X` and `I` codes, from the schema to the rules between modules. Among them: an event outside a command's
   `emits:`, a refusal outside its `rejects:` (`I4`, `I5`), an invariant with no `rejected` scenario
   (`S8`), a sibling's field used and removed (`X6`), an `:at_least_once` reaction without
   `idempotency` (`P3`).
-- **The scenarios, as tests.** `EhOsContract.ScenarioCase` makes each one a test against the
+- **The scenarios, as tests.** `EhosContract.ScenarioCase` makes each one a test against the
   implementation, so "the code does what the scenario says" is closed. Whether the scenario says the
   right thing is not (below).
-- **The generated documentation is current**: `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` against the code,
-  `packages/eh_os_contract/docs/contract.md`'s examples and `packages/eh_os_contract/docs/refusals.md`'s table against
-  the code (`test/docs_test.exs`), and the diagrams in `packages/eh_os_contract/docs/img/` against their sources
+- **The generated documentation is current**: `packages/ehos_contract/docs/dsl/` and `packages/ehos_contract/docs/rules.md` against the code,
+  `packages/ehos_contract/docs/contract.md`'s examples and `packages/ehos_contract/docs/refusals.md`'s table against
+  the code (`test/docs_test.exs`), and the diagrams in `packages/ehos_contract/docs/img/` against their sources
   (`mix ehos_diagrams.gen --check`, in `:dev`: CI's `diagrams` job, and the gate where ehos-tools is fetched).
 - **The docs are complete and most of their references resolve**: every public function of each package's
   `lib/` has a `@doc` or `@doc false`, and every documented one a `@spec` (`test/doc_coverage_test.exs`;
@@ -54,18 +54,18 @@ Given a green gate, three things are closed:
 
 ### New `check` lines
 
-`mix eh_os_contract.check` prints warnings and notices on every run, and the task itself does not fail on
+`mix ehos_contract.check` prints warnings and notices on every run, and the task itself does not fail on
 them: the sandbox runs it without `--warnings-as-errors`. The sandbox's counts are pinned in
 `sandbox/test/e10_outputs_test.exs`, with what each comes from, so a new sandbox line fails that test and
 its pull request re-pins it; the engine's counts are pinned nowhere, so compare them with `main`'s (the
 gate prints both). Every new line needs a sentence from its author —
 "expected, because…" or a fix — and so does a line that disappears: a value newly declared
-`code: true` silences `free-text-not-personal` for every field of it, and has to earn that. `packages/eh_os_contract/docs/rules.md` says what each rule means; the ones that most often
+`code: true` silences `free-text-not-personal` for every field of it, and has to earn that. `packages/ehos_contract/docs/rules.md` says what each rule means; the ones that most often
 hide a mistake:
 
 | Rule | Ask |
 | --- | --- |
-| `no-contracts` | Always a blocker on a change that touches a contract: `config :eh_os_contract, applications:` is wrong. |
+| `no-contracts` | Always a blocker on a change that touches a contract: `config :ehos_contract, applications:` is wrong. |
 | `emits-never-produced` | Is the declaration wider than the decision, or does the code return an event around `emit/1`? |
 | `competing-in-transaction-consumers` | Does one reaction depend on the other's order? Then it should react to what the other decides. |
 | `in-transaction-policy-fan-out` | Every other append waits for the whole list. Should it be `:at_least_once`? |
@@ -131,12 +131,12 @@ neither: read the line as a host would. Does it say what changed for them, in th
 change a host has to act on when it upgrades start with `**Breaking:**`? Is the `No changelog:`
 reason true — a change to `lib/` that a host cannot see, not one nobody wanted to describe?
 
-`packages/eh_os_contract/CHANGELOG.md`: a change that can move a verdict raises the minor version and
+`packages/ehos_contract/CHANGELOG.md`: a change that can move a verdict raises the minor version and
 gets a line starting with `**Moves a verdict:**`. A verdict is anything the conformance report prints
 as a number or a state. Nothing mechanical enforces that part, and this list of files that trigger
 the question lives here and only here:
 
-`packages/eh_os_contract/lib/eh_os_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
+`packages/ehos_contract/lib/ehos_contract/` — `conformance.ex`, `conformance/`, `trace.ex`,
 `run.ex`, `stage_order.ex`, `paths.ex`, `coverage.ex`, `event_run.ex`, `deployment.ex`,
 `dependency.ex`, `digest.ex`, `contract/build.ex` (the contract's version and its declarations' digests), `duration.ex`,
 `upcast.ex` (how an older row reads, and so what every reader of it counts),

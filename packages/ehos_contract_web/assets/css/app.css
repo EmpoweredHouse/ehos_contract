@@ -1,0 +1,348 @@
+/* The dashboard's own look, on the EmpoweredHouse design system
+   (docs/adr/dashboard-design-system.md, following the EHOS console's).
+
+   The design system's tokens come first, from the ehos_design package, which is a
+   dependency of the build only: this file refers to its custom properties and never defines one of
+   the same name. What this file adds is named --ehos-contract-*, and test/design_system_test.exs
+   holds it to that prefix (and, where the package is fetched, to its token names).
+
+   Plain selectors on purpose, no framework: this page is the whole document (root_layout replaces
+   the host's own layout for these routes), so tag selectors cannot leak anywhere else. */
+
+/* The tokens: dark by default, light under prefers-color-scheme, pinned by data-theme on <html>. */
+@import "../../deps/ehos_design/packages/ehos_design/priv/css/colors_and_type.css";
+
+/* The graph renderer's cards, arrows and panel (plan E13b), from the package beside this one. It defines
+   only --ehos-contract-graph-* and reads the tokens above. */
+@import "../../../ehos_contract_graph/priv/static/ehos_contract_graph.css";
+
+/* Fonts, served beside this stylesheet by the Plug.Static line the host already has. Relative
+   URLs, so they follow wherever that line mounts the assets; the build leaves them as written
+   (--external in config/config.exs). Weights 400 and 500 only, which is all the design system
+   uses; latin-ext carries the Polish letters a contract's labels are written in. */
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/albert-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/albert-sans-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/albert-sans-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/albert-sans-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("fonts/jetbrains-mono-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("fonts/jetbrains-mono-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* The dashboard's named colours, kept from before the design system, each now pointing at a token.
+   They were meant as a host's override surface, but the root layout loads this stylesheet alone, so
+   no host can reach them today; they are kept so that the hook which lets one in has names to set.
+   `ok` and `warning` are neutral on purpose: the design system has no colour for either, and the
+   verdict's sentence already says which it is. */
+:root {
+  --ehos-contract-bg: var(--canvas);
+  --ehos-contract-bg-muted: var(--surface-1);
+  --ehos-contract-border: var(--border-faint);
+  --ehos-contract-text: var(--text-primary);
+  --ehos-contract-text-muted: var(--text-tertiary);
+  --ehos-contract-accent: var(--accent-ink);
+  --ehos-contract-danger: var(--error-ink);
+  --ehos-contract-warning: var(--text-primary);
+  --ehos-contract-ok: var(--text-primary);
+  --ehos-contract-radius: var(--radius-sm);
+  --ehos-contract-focus-ring: 0 0 0 2px var(--canvas), 0 0 0 4px var(--accent-ink),
+    0 0 24px var(--focus-glow);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ehos-contract-bg);
+  color: var(--ehos-contract-text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: var(--body-lh);
+  letter-spacing: var(--body-track);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Weights 400 and 500 only: more authority is more size, never more weight. */
+b,
+strong {
+  font-weight: 500;
+}
+
+a {
+  color: inherit;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+/* Focus is always visible, as the lime ring, and never removed without it. The transparent outline
+   is what forced-colors mode draws in place of the ring, which it drops. */
+:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--ehos-contract-focus-ring);
+}
+
+main {
+  display: block;
+  padding: 0 28px 48px;
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+/* A page with graphs on it takes the window's width, a graph being read across, with a margin on each side. A
+   graph's panel lies over the page's right side rather than narrowing it, so no graph is resized by it. */
+main:has(.ehg) {
+  max-width: none;
+  padding-inline: clamp(24px, 3vw, 56px);
+}
+
+/* No edge-to-edge bar: nav sits inside the same padded column as everything else. The page being
+   viewed is raised onto surface-2 with a hairline and carries the lime dot — the one signal on the
+   page, as in Shugyo's sidebar. */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 20px 0 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--ehos-contract-border);
+}
+
+nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ehos-contract-radius);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+nav a:hover {
+  color: var(--ehos-contract-text);
+}
+
+nav a[aria-current="page"] {
+  color: var(--ehos-contract-text);
+  background: var(--surface-2);
+  border-color: var(--border-soft);
+}
+
+nav a[aria-current="page"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ehos-contract-accent);
+}
+
+/* A page's title at 21px; section titles smaller, never heavier. */
+h2 {
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: var(--h3-track);
+  line-height: var(--h3-lh);
+  margin: 32px 0 8px;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: var(--h3-track);
+  margin: 16px 0 8px;
+}
+
+/* A label above a group: mono, uppercase, tertiary — the design system's eyebrow. */
+h4 {
+  font-family: var(--mono);
+  font-size: var(--eyebrow-size);
+  font-weight: 400;
+  letter-spacing: var(--eyebrow-track);
+  text-transform: uppercase;
+  color: var(--ehos-contract-text-muted);
+  margin: 20px 0 6px;
+}
+
+p {
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+ul {
+  margin: 6px 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+}
+
+li {
+  margin: 4px 0;
+}
+
+li::marker {
+  color: var(--text-muted);
+}
+
+/* A panel: surface-1, a faint hairline, 12px. No shadow — depth is the surfaces and the lines. */
+section {
+  background: var(--ehos-contract-bg-muted);
+  border: 1px solid var(--ehos-contract-border);
+  border-radius: var(--radius-lg);
+  padding: 4px 20px 16px;
+  margin: 16px 0;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+/* A field: surface-2, a soft hairline; focus turns the hairline lime and adds the ring. The graph
+   screen's process selector is the only one. */
+select {
+  max-width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ehos-contract-text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-hover) var(--ease), box-shadow 250ms var(--ease);
+}
+
+select:hover {
+  border-color: var(--border-strong);
+}
+
+select:focus-visible {
+  border-color: var(--accent-border);
+}
+
+/* The access level is a role, and a role is mono. */
+.access-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--ehos-contract-radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  font-family: var(--mono);
+  font-size: var(--eyebrow-size);
+  letter-spacing: var(--eyebrow-track);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 12px 0;
+}
+
+/* The verdict is the one line the report exists to be read from, so it is the one place colour
+   carries the answer: breached in the error colour, with its dot, and nothing else coloured. Met
+   and in progress are said by the sentence, in the text colour, and a met promise is the ordinary
+   case rather than a signal. */
+.outcome-breached,
+.outcome-pending,
+.outcome-ok {
+  font-weight: 500;
+}
+
+.outcome-breached {
+  color: var(--ehos-contract-danger);
+}
+
+.outcome-breached::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.outcome-pending {
+  color: var(--ehos-contract-warning);
+}
+
+.outcome-ok {
+  color: var(--ehos-contract-ok);
+}
+
+/* Deliberately not coloured and deliberately quieter than the verdict above it. A qualification
+   explains what the verdict's number does *not* mean — one of them says outright that an outage is
+   not a breach on the client's side — and inheriting the verdict's colour would make it contradict
+   itself. */
+.outcome-qualification {
+  color: var(--ehos-contract-text-muted);
+  font-size: var(--caption-size);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: 0 16px 32px;
+  }
+
+  section {
+    padding: 4px 14px 12px;
+  }
+}

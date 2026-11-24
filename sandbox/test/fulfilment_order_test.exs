@@ -6,9 +6,9 @@ defmodule Fulfilment.OrderTest do
   a week before it was paid is judged from the payment, not from its placing.
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
-  alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
+  alias EhosContract.{Actor, Clock, Event, Testing, Trace}
   alias Fulfilment.Contracts.{Orders, Shipping, Warehouse}
   alias Fulfilment.Contracts.Orders.Commands.{ConfirmPayment, PlaceOrder}
   alias Fulfilment.Contracts.Shipping.Commands.DispatchParcel
@@ -37,7 +37,7 @@ defmodule Fulfilment.OrderTest do
   end
 
   defp at(moment, contract, command, actor) do
-    {:ok, _} = Clock.at(moment, fn -> EhOsContract.dispatch(contract, command, actor: actor) end)
+    {:ok, _} = Clock.at(moment, fn -> EhosContract.dispatch(contract, command, actor: actor) end)
   end
 
   # Order `id` placed and paid, picked, packed and booked, then dispatched at `dispatched`.
@@ -100,7 +100,7 @@ defmodule Fulfilment.OrderTest do
 
     {:ok, _} =
       Clock.at(DateTime.add(@paid, 2 * 24 * 3600), fn ->
-        EhOsContract.record(Shipping, %Delivered{order_id: "order-1"},
+        EhosContract.record(Shipping, %Delivered{order_id: "order-1"},
           actor: Actor.system(:carrier_integration)
         )
       end)

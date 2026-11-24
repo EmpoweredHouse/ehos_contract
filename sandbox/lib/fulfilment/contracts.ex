@@ -5,6 +5,6 @@ defmodule Fulfilment.Contracts do
   """
 
   use Boundary,
-    deps: [EhOsContract],
+    deps: [EhosContract],
     exports: [{Orders, []}, {Shipping, []}, {Warehouse, []}]
 end

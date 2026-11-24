@@ -5,7 +5,7 @@ defmodule Lending.HoldRaceTest do
   key.**
 
   The boundary is `Lending.Contracts.Circulation`'s hold: one hold per copy, and none on
-  a withdrawn copy. Everything here commits, on `EhOsContractHost.CommitRepo`, with the
+  a withdrawn copy. Everything here commits, on `EhosContractHost.CommitRepo`, with the
   engine's `:repo` pointed at it for the test: the sandbox's own repo gives each test
   one connection, which serialises every dispatch.
   """
@@ -14,23 +14,23 @@ defmodule Lending.HoldRaceTest do
 
   import Ecto.Query
 
-  alias EhOsContract.{Actor, Event, Rejection, Store}
-  alias EhOsContractHost.CommitRepo, as: Repo
+  alias EhosContract.{Actor, Event, Rejection, Store}
+  alias EhosContractHost.CommitRepo, as: Repo
   alias Lending.Contracts.Circulation
   alias Lending.Contracts.Circulation.Commands.{LendCopy, PlaceHold, WithdrawCopy}
 
   @librarian Actor.credential("librarian-una", ["lending.withdraw_copy"])
 
   setup do
-    previous = Application.fetch_env!(:eh_os_contract, :repo)
-    Application.put_env(:eh_os_contract, :repo, Repo)
-    on_exit(fn -> Application.put_env(:eh_os_contract, :repo, previous) end)
+    previous = Application.fetch_env!(:ehos_contract, :repo)
+    Application.put_env(:ehos_contract, :repo, Repo)
+    on_exit(fn -> Application.put_env(:ehos_contract, :repo, previous) end)
     # The log keeps every copy across tests, so each test races over a copy of its own.
     %{copy: "copy-race-#{System.unique_integer([:positive])}"}
   end
 
   defp hold(copy, member) do
-    EhOsContract.dispatch(
+    EhosContract.dispatch(
       Circulation,
       %PlaceHold{copy_id: copy, member_id: member},
       actor: Actor.credential(member, ["lending.place_hold"])
@@ -38,7 +38,7 @@ defmodule Lending.HoldRaceTest do
   end
 
   defp lend(copy, member) do
-    EhOsContract.dispatch(
+    EhosContract.dispatch(
       Circulation,
       %LendCopy{
         loan_id: "#{copy}-loan",
@@ -52,7 +52,7 @@ defmodule Lending.HoldRaceTest do
   end
 
   defp withdraw(copy),
-    do: EhOsContract.dispatch(Circulation, %WithdrawCopy{copy_id: copy}, actor: @librarian)
+    do: EhosContract.dispatch(Circulation, %WithdrawCopy{copy_id: copy}, actor: @librarian)
 
   # This copy's events in the log, in the order they were appended.
   defp log(copy) do
@@ -139,7 +139,7 @@ defmodule Lending.HoldRaceTest do
 
     :telemetry.attach(
       handler,
-      [:eh_os_contract_host, :commit_repo, :query],
+      [:ehos_contract_host, :commit_repo, :query],
       fn _event, _measurements, %{query: sql, params: params}, _ ->
         if sql =~ "SELECT TRUE" and sql =~ ~s("position" > $1),
           do: send(parent, {:check, sql, params})
@@ -155,7 +155,7 @@ defmodule Lending.HoldRaceTest do
 
     assert_received {:check, sql, params}
 
-    Repo.query!("ANALYZE eh_os_contract_events")
+    Repo.query!("ANALYZE ehos_contract_events")
 
     {:ok, plan} =
       Repo.transaction(fn ->
@@ -167,7 +167,7 @@ defmodule Lending.HoldRaceTest do
     refute plan =~ "Bitmap", plan
 
     assert plan =~
-             ~r/Index Scan using eh_os_contract_events_pkey .*\n\s+Index Cond: \("position" > /,
+             ~r/Index Scan using ehos_contract_events_pkey .*\n\s+Index Cond: \("position" > /,
            plan
   end
 

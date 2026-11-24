@@ -1,19 +1,19 @@
-defmodule EhOsContract.GraphRendererTest do
+defmodule EhosContract.GraphRendererTest do
   @moduledoc """
-  Plan E13b, batch 1: the renderer of `eh_os_contract_graph` draws every document of
+  Plan E13b, batch 1: the renderer of `ehos_contract_graph` draws every document of
   the sandbox's case studies, as the engine gives it today, with the overlay the engine
   reads from the log over it. The renderer's own suite runs on fixtures taken once, which
   do not follow these trees as they change; this does, and holds the fixtures to today's
   schema.
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
   import Phoenix.LiveViewTest
 
-  alias EhOsContract.Graph.{Document, Overlay}
-  alias EhOsContract.GraphRenderer.{Canvas, Lookup, Panel, View}
-  alias EhOsContract.Registry
+  alias EhosContract.Graph.{Document, Overlay}
+  alias EhosContract.GraphRenderer.{Canvas, Lookup, Panel, View}
+  alias EhosContract.Registry
 
   # Built when a test first asks for it, never into a module attribute: on OTP 28 a
   # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a
@@ -26,7 +26,7 @@ defmodule EhOsContract.GraphRendererTest do
     end
   end
 
-  @fixtures Path.expand("../../packages/eh_os_contract_graph/test/fixtures", __DIR__)
+  @fixtures Path.expand("../../packages/ehos_contract_graph/test/fixtures", __DIR__)
 
   # Every contract's, every process module's (plan DD, P2e, #220) and every domain's, with
   # its process modules, as the dashboard draws them.

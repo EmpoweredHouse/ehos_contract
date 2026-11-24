@@ -5,7 +5,7 @@ defmodule Lending.Membership.Directory do
   generates for that table, with the member's name and e-mail in the clear, since
   the desk reads them. `forget/2` deletes an erased member's rows, so nothing of them
   is left in this table. An event replayed after its member was erased carries
-  `EhOsContract.Erased` in place of each personal field: a registration so replayed
+  `EhosContract.Erased` in place of each personal field: a registration so replayed
   writes no row, and an e-mail change finds none to update.
   """
 
@@ -16,7 +16,7 @@ defmodule Lending.Membership.Directory do
   # A registration replayed after its member was erased, by a rebuild, writes no row:
   # the erasure that follows it in the log has nothing left to delete.
   @impl true
-  def member_registered(%MemberRegistered{name: %EhOsContract.Erased{}}), do: :ok
+  def member_registered(%MemberRegistered{name: %EhosContract.Erased{}}), do: :ok
 
   def member_registered(%MemberRegistered{} = registered) do
     repo().insert_all(
@@ -60,5 +60,5 @@ defmodule Lending.Membership.Directory do
   defp text(value) when is_binary(value), do: value
   defp text(_erased), do: nil
 
-  defp repo, do: EhOsContract.Config.fetch!(:repo)
+  defp repo, do: EhosContract.Config.fetch!(:repo)
 end

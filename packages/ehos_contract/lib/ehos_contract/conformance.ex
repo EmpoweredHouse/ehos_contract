@@ -1,0 +1,607 @@
+defmodule EhosContract.Conformance do
+  # A step counts occurrences since plan DD, P1a (#183); until then the rule for no
+  # activity read "zero runs". Process modules: plan DD, P2d (#213).
+  @moduledoc """
+  The answers to the screen's four questions, computed from the contract and the log.
+
+  This module is where they converge, so that the report did not appear as a
+  fourth mix task beside three others.
+
+  ## Where lying is easy
+
+  A step counts its **occurrences**: a step is the contract's, and a contract has no
+  runs to count; a run is a process module's. A process's promises and durations are
+  judged per **run**. And the report has to avoid lying in the three situations where lying is
+  easy:
+
+  **Nothing happening is no basis for a verdict, not three untraversed paths.** A
+  contract nobody used has every step untraversed — and listing them as findings
+  turns "no data" into "we have three problems". This is the same rule promise
+  evaluation rests on: with no `from` there is nothing to judge. So with no activity
+  — no event recorded in the period — the list of untraversed steps is **empty**, while
+  what waits and what fails is still listed.
+
+  **Work waiting in a queue is "not yet", not "never".** A step whose event will be
+  produced by queued work is listed as in flight rather than as untraversed, and so
+  is every step behind it. Without that the report would lie on every ordinary
+  delay.
+
+  **A path being attempted and failing is not a dead path.** "Declared, never
+  observed" reads as a dead contract or an untested path, and for code that runs
+  and crashes on every run both readings are wrong — the path is wired, exercised
+  and broken, which is the opposite finding and goes to a different person. So a
+  failing step is listed apart, with its source. The report must not turn *no
+  answer* into *the answer is no*.
+
+  ## The shape
+
+  A path is one step the contract declares, and the command is a node of its own:
+
+  | Step | from | via | to |
+  | --- | --- | --- | --- |
+  | a command emits | the command | — | the event |
+  | a reaction issues | the event | the policy or process manager | the command |
+  | a policy issues on a received event | another application's event | the policy | the command |
+  | a timer issues | the timer | the process manager | the command |
+  | an effect acts | the event | the effect | — |
+
+  Each end is `%{kind, name, label}`. A step says how often it was `taken`, counted
+  in occurrences whatever run, if any, each falls in. An effect leaves nothing in the
+  log when it acts, so its `taken` is `nil`: it is never untraversed, only waiting or
+  failing.
+
+  What waits (`in_flight`) and what fails (`failing`) are split by source, because
+  each goes to a different person. Waiting: events an ordered consumer has not reached
+  yet (`lag`), timers scheduled and not fired (`timers`), effect jobs not run yet
+  (`effects`). Failing: commands that failed where the step runs (`commands`), the
+  consumer's subscription stopped at an event it cannot apply (`subscription`), effect
+  jobs Oban discarded (`effects`). A command that failed in its decision, or in a read
+  model's projection, fails every step it emits. A step a policy takes on another
+  application's event is never waiting or failing: a delivery its policy fails on is
+  rolled back and delivered again by the transport, so a path that always fails there
+  reads as untraversed.
+
+  The assertions are a process module's `promises`. Beside them, `out_of_order` counts
+  the runs that entered a later stage before an earlier one, with the pairs of stages
+  (`EhosContract.StageOrder`): a claim about the process, kept apart from a contract's
+  undeclared transitions. An aggregate that declares its
+  lifecycle adds the first two questions for its transitions, under `lifecycles`.
+  `as_data/2` names the shape `ehos_contract.conformance.v3`: the steps are the
+  contract's (`activity`, `paths`) and `contract` is its `id:`, with `module` beside
+  it; a contract's `processes` is always empty. A process module's report has
+  `process`, its `id:`, in the place of `contract`, and only its process under
+  `processes`; a report has exactly one of the two. v2 is not served.
+
+  ## The boundary
+
+  The report talks about **paths**, not about companies. If 47 of 50 runs did not
+  take a path, the finding is the path and the number; which runs those were is a
+  question about the state of the business and belongs to the client application.
+  """
+
+  import Ecto.Query
+
+  alias EhosContract.{Deployment, Model, Trace}
+
+  @doc """
+  All four of the screen's questions for one contract over a period, as data.
+
+  This module produces the answers; it does not render them. The wording of a
+  client-facing report belongs to the client application, because the engine
+  cannot know the language its readers speak — every business string in here
+  comes from the contract's own `label`, which is the one place written in the
+  client's language.
+
+  ## `unverified` declarations are omitted, not marked
+
+  A process module's `deadline` or promise the process owner has not confirmed **does
+  not appear**.
+  `mix ehos_contract.check` warns about it on every run, which is right for a developer
+  check, but an evidence report is a different artifact with a different reader:
+  a number the client never agreed to, printed next to numbers they did, reads as
+  measured. A false metric is worse than a missing one when it is the metric the
+  product sells. `EhosContract.Trace.evaluate/3` still evaluates an unconfirmed
+  promise; the report is the only thing that omits it.
+
+  ## A process module
+
+  A process module (`use EhosContract.Process`) gets a report of its own, under
+  `processes`: its runs, its confirmed declarations, its
+  duration against its `deadline` and its promises' verdicts, and its deployment. It has
+  no steps, lifecycles or scenarios of its own; those are its contracts'. Its report is
+  keyed `process:`, its `id:`, where a contract's is keyed `contract:`.
+  """
+  @spec report(module(), keyword()) :: map()
+  def report(module, opts \\ []), do: module |> Model.fetch() |> from_model(opts)
+
+  # A process module came onto the wire in plan DD, P2w (#259), agreed with EHOS;
+  # until then it stayed off by the decision on #213.
+  @doc """
+  The same report, projected onto values that survive JSON.
+
+  Separate from `report/2` rather than replacing it: everything in this package
+  reads the Elixir shape, and a transport is the only caller that needs the other
+  one. See `EhosContract.Conformance.Wire` for what each mapping is and why.
+
+  A contract's report and a process module's share the schema,
+  `ehos_contract.conformance.v3`, and each has exactly one of `"contract"` and
+  `"process"` under `"report"`, which tells a reader which it is.
+  """
+  @spec as_data(module(), keyword()) :: map()
+  def as_data(module, opts \\ []) do
+    %{
+      # A name for the shape, so a consumer comparing two responses can tell a
+      # changed report from a changed projection. The engine version is already
+      # inside the report itself and is deliberately not repeated here.
+      "schema" => "ehos_contract.conformance.v3",
+      "generated_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
+      "report" => module |> report(opts) |> EhosContract.Conformance.Wire.encode()
+    }
+  end
+
+  # --- a v2 contract (v2 §13, plan E7c) ---------------------------------------------------
+
+  @doc """
+  The report of the contract `model` (`EhosContract.Model.fetch/1`), as `report/2`
+  gives it. The four questions: a path is a step — from, via, to, each
+  `%{kind, name, label}` — with how often it was taken and each source of waiting and
+  failing apart (see "The shape" above); `processes` is empty, since the runs, their
+  promises and durations are a process module's report; the deployed version is
+  `EhosContract.Deployment`'s. What is left out: every untaken step when nothing
+  happened in the contract.
+
+  The model of a process module gives its own report; see `report/2`.
+  """
+  @spec from_model(map(), keyword()) :: map()
+  def from_model(model, opts \\ [])
+
+  def from_model(%{kind: :process} = model, opts) do
+    %{
+      process: model.id,
+      module: model.module,
+      engine: EhosContract.version(),
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: Deployment.report(model.module, opts),
+      processes: [process(model, opts)]
+    }
+  end
+
+  def from_model(model, opts) do
+    deployment = Deployment.report(model.module, opts)
+    activity = EhosContract.Paths.activity(model, opts)
+
+    %{
+      # The contract's name to readers outside the code, as every row of the log names
+      # it (plan DD, ID4, #178); its module beside it, for a reader in this code.
+      contract: model.id,
+      module: model.module,
+      engine: EhosContract.version(),
+      period: %{since: Keyword.get(opts, :since), until: Keyword.get(opts, :until)},
+      deployment: deployment,
+      # The code's half of the deployment, beside the agreement's: a v2 contract's
+      # wiring is its steps and the modules that implement them.
+      wiring: %{version: deployment.deployed.wiring_version, since: deployment.deployed.since},
+      activity: activity,
+      paths: paths(model, activity, opts),
+      # A contract declares no process; the key stays for the readers of the shape.
+      processes: [],
+      lifecycles: lifecycles(model, opts),
+      scenarios: EhosContract.Coverage.of(model, opts),
+      drift: drift(model, opts)
+    }
+  end
+
+  # Every step, and the three lists of the questions. Untraversed only when the contract
+  # recorded an event in the period: a command refused or failed with nothing recorded
+  # is no basis for "never", as zero runs was not. What waits and what fails is listed
+  # whatever the activity: an attempted, failing path is never "nothing happened".
+  defp paths(model, activity, opts) do
+    steps = EhosContract.Paths.observe(model, opts)
+    in_flight = Enum.filter(steps, &waiting?/1)
+    failing = Enum.filter(steps, &failing?/1)
+    pending = downstream_of(in_flight, steps)
+
+    untraversed = Enum.filter(steps, &untraversed?(&1, activity, pending))
+
+    %{steps: steps, untraversed: untraversed, in_flight: in_flight, failing: failing}
+  end
+
+  @doc """
+  The report of a process module's process, `model`: its runs, what tells them apart
+  (`correlate`, the fields in order), confirmed declarations, durations and promises,
+  judged by `EhosContract.Trace`. Its runs are filed under its `id:`. A contract has no
+  process to report, and this raises for one.
+  """
+  @spec process(map(), keyword()) :: map()
+  def process(model, opts \\ []) do
+    %{} = process = Model.process(model)
+
+    runs = EhosContract.Paths.runs_of(model, process.name, opts)
+
+    %{
+      process: process.name,
+      label: process.label,
+      accountable: actor_label(model, process.accountable),
+      # What one run is, so a reader says it without loading the module (plan DD, P2e
+      # (#220), review).
+      correlate: process.correlate,
+      runs: runs,
+      declarations:
+        for %{unverified: false} = value <- [process.deadline] do
+          %{key: :deadline, value: {value.amount, value.unit}}
+        end,
+      duration: duration(model, opts),
+      promises: promise_verdicts(model, opts),
+      # Plan DD, O1 (#260): under its own key, as EHOS asked.
+      out_of_order: EhosContract.StageOrder.evaluate(model, opts)
+    }
+  end
+
+  @doc """
+  Every step of `contract`, in the shape this module's "The shape" describes, `opts` as
+  `report/2` takes them, with how the report reads it: `untraversed`, the report's
+  "never" — an event the contract recorded in the period and the step not taken, with
+  nothing waiting or failing there and nothing it starts from still on its way — and
+  `pending`, not taken and held back from "never" because what it starts from is still
+  on its way. What the report lists as untraversed is exactly the steps marked so here.
+  """
+  @spec steps(module() | map(), keyword()) :: [map()]
+  def steps(contract, opts \\ []) do
+    model = Model.fetch(contract)
+    steps = EhosContract.Paths.observe(model, opts)
+    activity = EhosContract.Paths.activity(model, opts)
+    pending = downstream_of(Enum.filter(steps, &waiting?/1), steps)
+
+    for step <- steps do
+      Map.merge(step, %{
+        untraversed: untraversed?(step, activity, pending),
+        pending: idle?(step) and behind?(step, pending)
+      })
+    end
+  end
+
+  # "Never": with no event recorded in the period there is no basis for it.
+  defp untraversed?(step, activity, pending),
+    do: activity.events > 0 and idle?(step) and not behind?(step, pending)
+
+  # Not taken, with nothing waiting or failing at the step itself.
+  defp idle?(step), do: step.taken == 0 and not waiting?(step) and not failing?(step)
+
+  # What the step starts from is still on its way.
+  defp behind?(step, pending), do: MapSet.member?(pending, step.from)
+
+  # Whether anything waits at `step`, one of `steps/2`'s: an event its ordered consumer
+  # has not reached, a timer not fired, an effect job not run. The report lists such a
+  # step as in flight. Called by conformance.ex, graph/overlay.ex.
+  @doc false
+  @spec waiting?(map()) :: boolean()
+  def waiting?(step), do: Enum.any?(Map.values(step.in_flight), &(&1 > 0))
+
+  # What a waiting step leads to, and what that leads to in turn: a step starting there
+  # has not been taken *yet*, since what it starts from is still on its way. Without
+  # this a chain of steps behind one queue reads as "never" everywhere but its head.
+  @spec downstream_of([map()], [map()]) :: MapSet.t()
+  defp downstream_of(waiting, steps) do
+    reached = for %{to: %{} = to} <- waiting, into: MapSet.new(), do: to
+    close(reached, steps)
+  end
+
+  defp close(reached, steps) do
+    more =
+      for %{from: from, to: %{} = to} <- steps,
+          MapSet.member?(reached, from),
+          not MapSet.member?(reached, to),
+          into: MapSet.new(),
+          do: to
+
+    if MapSet.size(more) == 0, do: reached, else: close(MapSet.union(reached, more), steps)
+  end
+
+  # Whether anything fails at `step`, one of `steps/2`'s: a command that failed where it
+  # runs, an effect job discarded, its consumer's subscription stopped. The report lists
+  # such a step as failing. Called by conformance.ex, graph/overlay.ex.
+  @doc false
+  @spec failing?(map()) :: boolean()
+  def failing?(%{failing: f}), do: f.commands > 0 or f.effects > 0 or f.subscription != nil
+
+  # The role, as the domain names the actor the process is addressed to.
+  defp actor_label(_model, nil), do: nil
+
+  defp actor_label(model, actor) do
+    case Enum.find(Model.fetch(model.domain).actors, &(&1.name == actor)) do
+      %{label: label} -> label
+      nil -> Atom.to_string(actor)
+    end
+  end
+
+  # The process `deadline`, measured. `nil` — not a map of zeroes — when the process
+  # declares none or has not confirmed the one it declares. A number the client never
+  # agreed to, printed next to numbers they did, reads as measured.
+  defp duration(model, opts) do
+    case Model.process(model) do
+      %{name: name, deadline: %{unverified: false} = deadline} ->
+        model.module
+        |> EhosContract.Run.evaluate(name, opts)
+        |> EhosContract.Run.summary()
+        |> Map.put(:deadline, {deadline.amount, deadline.unit})
+
+      _none ->
+        nil
+    end
+  end
+
+  @doc """
+  The verdicts of each promise of a process module, given its model
+  (`EhosContract.Model.fetch/1`), over the runs it opened
+  in the period `opts` names, as the report gives them under `promises`: the promise's
+  name and its events' labels, its window, and how many runs kept it (`satisfied`, of
+  them `satisfied_via_eventually` and `satisfied_via_or_else`), broke it (`violated`),
+  still wait (`pending`) or broke it while an external it depends on was down
+  (`suspended`), out of `instances`, judged under its current declaration — runs judged
+  under an earlier one are counted in `under_earlier_declaration` alone. A promise the
+  owner has yet to confirm (`unverified`) is left out. `opts` takes `:since`, `:until`
+  and `:now`, as `report/2` does. Raises `ArgumentError` for a contract's model, which
+  has no process, before it reads anything.
+
+      EhosContract.Conformance.promise_verdicts(Model.fetch(MyApp.Processes.Loan), since: since)
+      #=> [%{promise: :back_within_a_month, satisfied: 38, violated: 2, pending: 1, ...}]
+  """
+  @spec promise_verdicts(map(), keyword()) :: [map()]
+  def promise_verdicts(model, opts \\ []) do
+    process =
+      Model.process(model) ||
+        raise ArgumentError,
+              "#{inspect(model.module)} is not a process module: it has no promises"
+
+    label = fn name ->
+      case name && Model.declaring(model, name) do
+        {_contract, event} -> event.label
+        _none -> name && Atom.to_string(name)
+      end
+    end
+
+    boundaries = Deployment.declaration_boundaries(model.module)
+
+    for promise <- process.promises, not promise.unverified do
+      verdicts = Trace.evaluate(model.module, promise.name, opts)
+      boundary = Map.get(boundaries, "promise:#{promise.name}")
+      {current, earlier} = split_by_declaration(verdicts, boundary)
+
+      %{
+        promise: promise.name,
+        from_label: label.(promise.from),
+        eventually_label: label.(promise.eventually),
+        or_else_label: label.(promise.or_else),
+        within: promise.within && {promise.within.amount, promise.within.unit},
+        declaration_changed_at: boundary,
+        under_earlier_declaration: length(earlier)
+      }
+      |> Map.merge(Trace.summary(current))
+    end
+  end
+
+  # v2 refuses an undeclared emit at run time, so what is left of drift is what did
+  # not come through dispatch under today's declarations: an event of the deployed
+  # version that no command it declares emits — written around dispatch, when it
+  # names no command at all. History under an older version is not drift.
+  @spec drift(map(), keyword()) :: [map()]
+  defp drift(model, opts) do
+    declared =
+      MapSet.new(
+        for(c <- model.commands, e <- c.emits, do: {Atom.to_string(c.name), e}) ++
+          for(%{recorded_by: [_ | _]} = e <- model.events, do: {"record:#{e.name}", e.name})
+      )
+
+    names = Map.new(model.events, &{&1.type, &1})
+    commands = Map.new(model.commands, &{Atom.to_string(&1.name), &1})
+
+    from(e in EhosContract.Event,
+      left_join: c in EhosContract.CommandRecord,
+      on: c.id == e.command_id,
+      where: e.contract == ^model.id and e.contract_version == ^model.version,
+      group_by: [c.type, e.type],
+      select: {c.type, e.type, count(e.id)}
+    )
+    |> drift_bounds(opts)
+    |> repo().all()
+    |> Enum.flat_map(fn {command, type, count} ->
+      event = Map.get(names, type)
+
+      if event == nil or MapSet.member?(declared, {command, event.name}) do
+        []
+      else
+        from =
+          case Map.get(commands, command) do
+            nil -> nil
+            c -> %{kind: :command, name: c.name, label: c.label}
+          end
+
+        [%{from: from, to: %{kind: :event, name: event.name, label: event.label}, count: count}]
+      end
+    end)
+  end
+
+  defp drift_bounds(query, opts) do
+    query
+    |> then(fn q -> if at = opts[:since], do: where(q, [e], e.occurred_at >= ^at), else: q end)
+    |> then(fn q -> if at = opts[:until], do: where(q, [e], e.occurred_at <= ^at), else: q end)
+  end
+
+  defp repo, do: EhosContract.Config.fetch!(:repo)
+
+  # --- an aggregate's lifecycle (plan LC3, #99) -------------------------------------------
+  #
+  # The first two questions again, for an aggregate that declares its lifecycle: which
+  # declared transitions no aggregate took, and which moves the graph does not allow
+  # happened anyway. A process's steps go forward; an aggregate's statuses go round in
+  # loops, so a path here is a transition, and what was not declared is what the status
+  # could not follow. The status is walked over each aggregate's whole stream, by the
+  # same graph dispatch holds it to, and only the events of the period are counted.
+  # A stream is this contract's rows, as `drift` reads them: one a renamed module
+  # wrote under its old name starts again from no status.
+  #
+  # Not lying here is the same as for a process. With no aggregate in the period
+  # nothing is untraversed. And an aggregate that has not ended can still take every
+  # transition it can reach from where it stands, so those are "not yet", listed
+  # apart, never "never" — a visit still booked will be admitted or cancelled.
+
+  @doc """
+  The report's `lifecycles` alone, for `contract` over a period (`:since`, `:until`):
+  what a lifecycle's diagram lays over its transitions without computing the rest of
+  the report.
+  """
+  @spec lifecycles(module() | map(), keyword()) :: [map()]
+  def lifecycles(contract, opts) when is_atom(contract),
+    do: contract |> Model.fetch() |> lifecycles(opts)
+
+  def lifecycles(%{module: _} = model, opts) do
+    for %{lifecycle: lifecycle} = unit <- model.units do
+      events = for e <- model.events, e.unit == unit.name, do: e
+      names = Map.new(events, &{&1.type, &1.name})
+
+      %{aggregates: aggregates, standing: standing, taken: taken, undeclared: undeclared} =
+        tally(model, lifecycle, names, opts)
+
+      reachable = reachable(lifecycle, standing)
+
+      status = &status_ref(lifecycle, &1)
+      event = &event_ref(events, &1)
+
+      declared =
+        for(i <- lifecycle.initial, do: {nil, i.on, i.status}) ++
+          for t <- lifecycle.transitions, do: {t.from, t.event, t.to}
+
+      transitions =
+        for {from, on, to} = key <- declared do
+          %{
+            from: status.(from),
+            event: event.(on),
+            to: status.(to),
+            count: Map.get(taken, key, 0)
+          }
+        end
+
+      %{
+        unit: unit.name,
+        label: unit.label,
+        aggregates: aggregates,
+        transitions: transitions,
+        untraversed:
+          if(aggregates > 0,
+            do: Enum.filter(transitions, &(&1.count == 0 and not pending?(&1, reachable))),
+            else: []
+          ),
+        pending: Enum.filter(transitions, &(&1.count == 0 and pending?(&1, reachable))),
+        undeclared:
+          for {{from, on}, count} <-
+                Enum.sort_by(undeclared, fn {{from, on}, count} -> {-count, from, on} end) do
+            %{from: status.(from), event: event.(on), count: count}
+          end
+      }
+    end
+  end
+
+  # Every status an aggregate standing in `standing` can still get to.
+  defp reachable(lifecycle, standing) do
+    edges = for t <- lifecycle.transitions, do: {t.from, t.to}
+    grow(standing, edges)
+  end
+
+  defp grow(seen, edges) do
+    more = for {from, to} <- edges, from in seen, to not in seen, into: MapSet.new(), do: to
+    if MapSet.size(more) == 0, do: seen, else: grow(MapSet.union(seen, more), edges)
+  end
+
+  # An initial transition is never pending: an aggregate that will start has no
+  # stream yet, and the period cannot be waiting for one.
+  defp pending?(%{from: nil}, _reachable), do: false
+  defp pending?(%{from: %{name: from}}, reachable), do: MapSet.member?(reachable, from)
+
+  # The aggregates' streams, walked one at a time as the rows arrive: only those with
+  # an event of these types in the period, each read whole, since the status at the
+  # period's start is what its earlier events left. Rows without a stream belong to no
+  # aggregate. Memory is the longest stream, never the log.
+  defp tally(_model, lifecycle, names, _opts) when map_size(names) == 0,
+    do: EhosContract.Lifecycle.tally(lifecycle, [])
+
+  defp tally(model, lifecycle, names, opts) do
+    since = opts[:since]
+    until = opts[:until]
+    types = Map.keys(names)
+    contract = model.id
+
+    of_these =
+      from(e in EhosContract.Event,
+        where: e.contract == ^contract and e.type in ^types and not is_nil(e.stream_id)
+      )
+
+    in_period =
+      of_these
+      |> drift_bounds(opts)
+      |> select([e], e.stream_id)
+
+    query =
+      from(e in of_these,
+        where: e.stream_id in subquery(in_period),
+        order_by: [e.stream_id, e.stream_version],
+        select: {e.stream_id, e.type, e.occurred_at}
+      )
+
+    counted? = fn at ->
+      (since == nil or DateTime.compare(at, since) != :lt) and
+        (until == nil or DateTime.compare(at, until) != :gt)
+    end
+
+    {:ok, tally} =
+      repo().transaction(fn ->
+        query
+        |> repo().stream(max_rows: 5_000)
+        |> Stream.chunk_by(&elem(&1, 0))
+        |> Stream.map(fn rows ->
+          for {_stream, type, at} <- rows, do: {Map.get(names, type), counted?.(at)}
+        end)
+        |> then(&EhosContract.Lifecycle.tally(lifecycle, &1))
+      end)
+
+    tally
+  end
+
+  # `nil` is where an aggregate stands before its first event: the start.
+  defp status_ref(_lifecycle, nil), do: nil
+
+  defp status_ref(lifecycle, name) do
+    label = Enum.find_value(lifecycle.statuses, &(&1.name == name && &1.label))
+    %{kind: :status, name: name, label: label || Atom.to_string(name)}
+  end
+
+  defp event_ref(events, name) do
+    label = Enum.find_value(events, &(&1.name == name && &1.label))
+    %{kind: :event, name: name, label: label || Atom.to_string(name)}
+  end
+
+  # Runs that began before this assertion was last changed were judged under a
+  # promise that is no longer the one declared, so they do not belong in the same
+  # counts. `EhosContract.Trace` is not involved: every verdict already carries `from_at`,
+  # which is the moment the promise attached to that run, and the question of which
+  # promise was in force is the report's, not the evaluator's.
+  #
+  # The boundary is the last change full stop, not a change inside the reported
+  # period. A report for July, run in September, on an assertion changed in August
+  # is the case a period-bounded rule would miss — and it is the worse one, because
+  # nothing in the output would hint that the rule had moved.
+  #
+  # Two buckets, not one per version: an assertion changed three times inside the
+  # period puts two superseded rules in the same earlier count. That is a smaller
+  # untruth than today's, which folds them into `satisfied`, and the report prints
+  # the boundary date so a reader can narrow `--since` themselves.
+  @spec split_by_declaration([map()], DateTime.t() | nil) :: {[map()], [map()]}
+  defp split_by_declaration(verdicts, nil), do: {verdicts, []}
+
+  defp split_by_declaration(verdicts, at) do
+    # `!= :lt`, not `== :gt`: a run whose `from` lands in the same microsecond as
+    # the deployment is judged under the new rule, because the new rule was in
+    # force from that moment. Arbitrary at the boundary, but decided rather than
+    # accidental.
+    Enum.split_with(verdicts, &(DateTime.compare(&1.from_at, at) != :lt))
+  end
+end

@@ -1,0 +1,599 @@
+{
+  "context": "context:Fulfilment.Domain:shipping",
+  "contract": "fulfilment.shipping",
+  "digest": "230b0b15a443",
+  "domain": "Fulfilment.Domain",
+  "kind": "contract",
+  "module": "Fulfilment.Contracts.Shipping",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Fulfilment.Domain:dispatcher",
+        "label": "Dispatcher",
+        "name": "dispatcher",
+        "responsibilities": [],
+        "role": "fulfilment.dispatcher",
+        "scope": [],
+        "source": null
+      },
+      {
+        "actor_kind": "system",
+        "context": "context:Fulfilment.Domain:shipping",
+        "id": "actor:Fulfilment.Domain:carrier_integration",
+        "label": "Carrier integration",
+        "name": "carrier_integration",
+        "responsibilities": [],
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "service",
+            "required": true,
+            "type": "service",
+            "value": "value:Fulfilment.Domain:service"
+          },
+          {
+            "label": null,
+            "name": "weight_grams",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "command:fulfilment.shipping:book_shipment",
+        "label": "Book a shipment",
+        "name": "book_shipment",
+        "source": null,
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "capability": "fulfilment.dispatch_parcel",
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:fulfilment.shipping:dispatch_parcel",
+        "label": "Hand a parcel to the carrier",
+        "name": "dispatch_parcel",
+        "source": null,
+        "unit": "unit:fulfilment.shipping:shipment"
+      }
+    ],
+    "constraint": [
+      {
+        "id": "constraint:fulfilment.shipping:policy:book_carrier:freight_above_twenty_kilograms",
+        "label": "A parcel over twenty kilograms goes as freight",
+        "name": "freight_above_twenty_kilograms",
+        "of": "policy:fulfilment.shipping:book_carrier",
+        "source": null
+      }
+    ],
+    "context": [
+      {
+        "id": "context:Fulfilment.Domain:shipping",
+        "label": "Shipping",
+        "name": "shipping",
+        "source": null
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "service",
+            "required": true,
+            "type": "service",
+            "value": "value:Fulfilment.Domain:service"
+          },
+          {
+            "label": null,
+            "name": "weight_grams",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "event:fulfilment.shipping:booked",
+        "label": "Shipment booked",
+        "name": "booked",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.shipping.booked",
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.shipping:dispatched",
+        "label": "Parcel handed to the carrier",
+        "name": "dispatched",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.shipping.dispatched",
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:fulfilment.shipping:delivered",
+        "label": "Parcel delivered",
+        "name": "delivered",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.shipping.delivered",
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "declared_as": "event:fulfilment.warehouse:parcel_packed",
+        "declared_in": "fulfilment.warehouse",
+        "fields": [
+          {
+            "label": null,
+            "name": "warehouse_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "weight_grams",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "id": "event:fulfilment.shipping:parcel_packed",
+        "label": "Parcel packed",
+        "name": "parcel_packed",
+        "schema_version": 1,
+        "source": null,
+        "type": "fulfilment.warehouse.parcel_packed"
+      }
+    ],
+    "external": [
+      {
+        "direction": "bidirectional",
+        "id": "external:Fulfilment.Domain:carrier",
+        "label": "Carrier",
+        "name": "carrier",
+        "operations": [],
+        "source": null,
+        "unavailable_looks_like": "the carrier's tracking does not answer"
+      }
+    ],
+    "invariant": [
+      {
+        "id": "invariant:fulfilment.shipping:unit:shipment:booked_once",
+        "label": "A shipment is booked once",
+        "name": "booked_once",
+        "of": "unit:fulfilment.shipping:shipment",
+        "source": null
+      },
+      {
+        "id": "invariant:fulfilment.shipping:unit:shipment:dispatched_once_when_booked",
+        "label": "A booked shipment is dispatched once",
+        "name": "dispatched_once_when_booked",
+        "of": "unit:fulfilment.shipping:shipment",
+        "source": null
+      }
+    ],
+    "policy": [
+      {
+        "delivery": "at_least_once",
+        "id": "policy:fulfilment.shipping:book_carrier",
+        "idempotency": {
+          "key": "event_id",
+          "owner": "infrastructure"
+        },
+        "label": "Book the carrier for a packed parcel, by its weight",
+        "name": "book_carrier",
+        "source": null
+      }
+    ],
+    "process_manager": [],
+    "publication": [],
+    "query": [],
+    "read_model": [],
+    "status": [
+      {
+        "id": "status:fulfilment.shipping:shipment:booked",
+        "label": "Booked",
+        "name": "booked",
+        "source": null,
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "id": "status:fulfilment.shipping:shipment:dispatched",
+        "label": "With the carrier",
+        "name": "dispatched",
+        "source": null,
+        "unit": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "final": true,
+        "id": "status:fulfilment.shipping:shipment:delivered",
+        "label": "Delivered",
+        "name": "delivered",
+        "source": null,
+        "unit": "unit:fulfilment.shipping:shipment"
+      }
+    ],
+    "subject": [],
+    "timer": [],
+    "unit": [
+      {
+        "id": "unit:fulfilment.shipping:shipment",
+        "identity": [
+          "order_id"
+        ],
+        "label": "Shipment",
+        "name": "shipment",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "order_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Fulfilment.Domain:service",
+        "invariants": [],
+        "label": "Carrier service",
+        "name": "service",
+        "source": null,
+        "type": {
+          "enum": [
+            {
+              "label": "Parcel",
+              "value": "parcel"
+            },
+            {
+              "label": "Freight",
+              "value": "freight"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "relations": {
+    "allowed_in": [
+      {
+        "from": "command:fulfilment.shipping:dispatch_parcel",
+        "id": "allowed_in:command:fulfilment.shipping:dispatch_parcel:status:fulfilment.shipping:shipment:booked",
+        "to": "status:fulfilment.shipping:shipment:booked"
+      }
+    ],
+    "backed_by": [
+      {
+        "from": "actor:Fulfilment.Domain:carrier_integration",
+        "id": "backed_by:actor:Fulfilment.Domain:carrier_integration:external:Fulfilment.Domain:carrier",
+        "to": "external:Fulfilment.Domain:carrier"
+      }
+    ],
+    "builds": [
+      {
+        "from": "event:fulfilment.shipping:booked",
+        "id": "builds:event:fulfilment.shipping:booked:unit:fulfilment.shipping:shipment",
+        "to": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "from": "event:fulfilment.shipping:dispatched",
+        "id": "builds:event:fulfilment.shipping:dispatched:unit:fulfilment.shipping:shipment",
+        "to": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "from": "event:fulfilment.shipping:delivered",
+        "id": "builds:event:fulfilment.shipping:delivered:unit:fulfilment.shipping:shipment",
+        "to": "unit:fulfilment.shipping:shipment"
+      }
+    ],
+    "calls": [],
+    "cancels": [],
+    "consulted_by": [],
+    "depends_on": [
+      {
+        "from": "event:fulfilment.shipping:delivered",
+        "id": "depends_on:event:fulfilment.shipping:delivered:external:Fulfilment.Domain:carrier",
+        "to": "external:Fulfilment.Domain:carrier"
+      }
+    ],
+    "emits": [
+      {
+        "from": "command:fulfilment.shipping:book_shipment",
+        "id": "emits:command:fulfilment.shipping:book_shipment:event:fulfilment.shipping:booked",
+        "to": "event:fulfilment.shipping:booked"
+      },
+      {
+        "from": "command:fulfilment.shipping:dispatch_parcel",
+        "id": "emits:command:fulfilment.shipping:dispatch_parcel:event:fulfilment.shipping:dispatched",
+        "to": "event:fulfilment.shipping:dispatched"
+      }
+    ],
+    "ends": [],
+    "enters": [
+      {
+        "from": "event:fulfilment.shipping:booked",
+        "id": "enters:event:fulfilment.shipping:booked:status:fulfilment.shipping:shipment:booked",
+        "to": "status:fulfilment.shipping:shipment:booked"
+      }
+    ],
+    "fires": [],
+    "handled_by": [
+      {
+        "from": "event:fulfilment.shipping:parcel_packed",
+        "id": "handled_by:event:fulfilment.shipping:parcel_packed:policy:fulfilment.shipping:book_carrier",
+        "to": "policy:fulfilment.shipping:book_carrier"
+      }
+    ],
+    "issues": [
+      {
+        "from": "policy:fulfilment.shipping:book_carrier",
+        "id": "issues:policy:fulfilment.shipping:book_carrier:command:fulfilment.shipping:book_shipment",
+        "to": "command:fulfilment.shipping:book_shipment"
+      }
+    ],
+    "may_ask": [],
+    "may_issue": [
+      {
+        "from": "actor:Fulfilment.Domain:dispatcher",
+        "id": "may_issue:actor:Fulfilment.Domain:dispatcher:command:fulfilment.shipping:dispatch_parcel",
+        "to": "command:fulfilment.shipping:dispatch_parcel"
+      }
+    ],
+    "may_record": [
+      {
+        "from": "actor:Fulfilment.Domain:carrier_integration",
+        "id": "may_record:actor:Fulfilment.Domain:carrier_integration:event:fulfilment.shipping:delivered",
+        "to": "event:fulfilment.shipping:delivered"
+      }
+    ],
+    "projected_into": [],
+    "published_as": [],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:fulfilment.shipping:book_shipment",
+        "id": "refused_on:command:fulfilment.shipping:book_shipment:invariant:fulfilment.shipping:unit:shipment:booked_once",
+        "to": "invariant:fulfilment.shipping:unit:shipment:booked_once"
+      },
+      {
+        "from": "command:fulfilment.shipping:dispatch_parcel",
+        "id": "refused_on:command:fulfilment.shipping:dispatch_parcel:invariant:fulfilment.shipping:unit:shipment:dispatched_once_when_booked",
+        "outside_from": true,
+        "to": "invariant:fulfilment.shipping:unit:shipment:dispatched_once_when_booked"
+      }
+    ],
+    "sets": [],
+    "starts": [],
+    "transition": [
+      {
+        "event": "event:fulfilment.shipping:dispatched",
+        "from": "status:fulfilment.shipping:shipment:booked",
+        "id": "transition:status:fulfilment.shipping:shipment:booked:status:fulfilment.shipping:shipment:dispatched:event:fulfilment.shipping:dispatched",
+        "to": "status:fulfilment.shipping:shipment:dispatched"
+      },
+      {
+        "event": "event:fulfilment.shipping:delivered",
+        "from": "status:fulfilment.shipping:shipment:dispatched",
+        "id": "transition:status:fulfilment.shipping:shipment:dispatched:status:fulfilment.shipping:shipment:delivered:event:fulfilment.shipping:delivered",
+        "to": "status:fulfilment.shipping:shipment:delivered"
+      }
+    ]
+  },
+  "scenarios": {
+    "policy": [
+      {
+        "covers": [
+          "handled_by:event:fulfilment.shipping:parcel_packed:policy:fulfilment.shipping:book_carrier",
+          "issues:policy:fulfilment.shipping:book_carrier:command:fulfilment.shipping:book_shipment"
+        ],
+        "description": "a light parcel is booked as a parcel",
+        "event": {
+          "data": {
+            "order_id": "order-1",
+            "warehouse_id": "w-1",
+            "weight_grams": 1200
+          },
+          "event": "event:fulfilment.shipping:parcel_packed"
+        },
+        "id": "scenario:fulfilment.shipping:a light parcel is booked as a parcel",
+        "illustrates": [
+          "constraint:fulfilment.shipping:policy:book_carrier:freight_above_twenty_kilograms"
+        ],
+        "issues": [
+          {
+            "command": "command:fulfilment.shipping:book_shipment",
+            "data": {
+              "order_id": "order-1",
+              "service": "parcel",
+              "weight_grams": 1200
+            }
+          }
+        ],
+        "target": "policy:fulfilment.shipping:book_carrier"
+      },
+      {
+        "covers": [
+          "handled_by:event:fulfilment.shipping:parcel_packed:policy:fulfilment.shipping:book_carrier",
+          "issues:policy:fulfilment.shipping:book_carrier:command:fulfilment.shipping:book_shipment"
+        ],
+        "description": "a heavy parcel is booked as freight",
+        "event": {
+          "data": {
+            "order_id": "order-1",
+            "warehouse_id": "w-1",
+            "weight_grams": 25000
+          },
+          "event": "event:fulfilment.shipping:parcel_packed"
+        },
+        "id": "scenario:fulfilment.shipping:a heavy parcel is booked as freight",
+        "illustrates": [
+          "constraint:fulfilment.shipping:policy:book_carrier:freight_above_twenty_kilograms"
+        ],
+        "issues": [
+          {
+            "command": "command:fulfilment.shipping:book_shipment",
+            "data": {
+              "order_id": "order-1",
+              "service": "freight",
+              "weight_grams": 25000
+            }
+          }
+        ],
+        "target": "policy:fulfilment.shipping:book_carrier"
+      }
+    ],
+    "process_manager": [],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:fulfilment.shipping:book_shipment",
+          "data": {
+            "order_id": "order-1",
+            "service": "parcel",
+            "weight_grams": 1200
+          }
+        },
+        "covers": [
+          "emits:command:fulfilment.shipping:book_shipment:event:fulfilment.shipping:booked"
+        ],
+        "description": "a shipment is booked",
+        "expect": [
+          {
+            "data": {
+              "service": "parcel"
+            },
+            "event": "event:fulfilment.shipping:booked"
+          }
+        ],
+        "given": [],
+        "id": "scenario:fulfilment.shipping:a shipment is booked",
+        "target": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.shipping:book_shipment",
+          "data": {
+            "service": "parcel",
+            "weight_grams": 1200
+          }
+        },
+        "covers": [
+          "refused_on:command:fulfilment.shipping:book_shipment:invariant:fulfilment.shipping:unit:shipment:booked_once"
+        ],
+        "description": "a shipment is booked once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "service": "parcel",
+              "weight_grams": 1200
+            },
+            "event": "event:fulfilment.shipping:booked"
+          }
+        ],
+        "id": "scenario:fulfilment.shipping:a shipment is booked once",
+        "rejected": "invariant:fulfilment.shipping:unit:shipment:booked_once",
+        "target": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.shipping:dispatch_parcel",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:fulfilment.shipping:dispatch_parcel:event:fulfilment.shipping:dispatched"
+        ],
+        "description": "a booked parcel is handed to the carrier",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:fulfilment.shipping:dispatched"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "order_id": "order-1",
+              "service": "parcel",
+              "weight_grams": 1200
+            },
+            "event": "event:fulfilment.shipping:booked"
+          }
+        ],
+        "id": "scenario:fulfilment.shipping:a booked parcel is handed to the carrier",
+        "target": "unit:fulfilment.shipping:shipment"
+      },
+      {
+        "command": {
+          "command": "command:fulfilment.shipping:dispatch_parcel",
+          "data": {
+            "order_id": "order-1"
+          }
+        },
+        "covers": [
+          "refused_on:command:fulfilment.shipping:dispatch_parcel:invariant:fulfilment.shipping:unit:shipment:dispatched_once_when_booked"
+        ],
+        "description": "a shipment not booked is not dispatched",
+        "expect": [],
+        "given": [],
+        "id": "scenario:fulfilment.shipping:a shipment not booked is not dispatched",
+        "rejected": "invariant:fulfilment.shipping:unit:shipment:dispatched_once_when_booked",
+        "target": "unit:fulfilment.shipping:shipment"
+      }
+    ]
+  },
+  "schema": "ehos_contract.graph.v1",
+  "version": "6956ae4eddbb"
+}

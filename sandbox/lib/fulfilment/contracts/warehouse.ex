@@ -15,7 +15,7 @@ defmodule Fulfilment.Contracts.Warehouse do
     carrier, so renaming it breaks shipping's contract and its policy.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Fulfilment.Domain,
     context: :warehouse,
     id: "fulfilment.warehouse"

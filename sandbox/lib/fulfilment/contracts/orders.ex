@@ -4,7 +4,7 @@ defmodule Fulfilment.Contracts.Orders do
   payment, or cancels it while it is unpaid.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Fulfilment.Domain,
     context: :orders,
     id: "fulfilment.orders"

@@ -5,6 +5,6 @@ defmodule Lending.Circulation do
   """
 
   use Boundary,
-    deps: [EhOsContract, Lending.Contracts],
+    deps: [EhosContract, Lending.Contracts],
     exports: [Copy, Loan, CopyHold, OverdueChase]
 end

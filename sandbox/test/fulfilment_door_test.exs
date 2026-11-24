@@ -5,7 +5,7 @@ defmodule Fulfilment.DoorTest do
 
   | Level | Whose | Answer on refusal |
   |---|---|---|
-  | who is this | the credential, verified by `EhOsContract.Auth.Plug` | 401 |
+  | who is this | the credential, verified by `EhosContract.Auth.Plug` | 401 |
   | may they confirm a pick at all | the capability granted | 403 `missing_capability` |
   | may they act in **this warehouse** | the grant's scope (`scope: :warehouse_id`) | 403 `outside_scope` |
 
@@ -13,18 +13,18 @@ defmodule Fulfilment.DoorTest do
   picker it is assigned to (`actor_is`), answered 422 like any other refusal.
   """
 
-  use EhOsContractHost.DataCase, async: false
-  use EhOsContract.Auth.Testing
+  use EhosContractHost.DataCase, async: false
+  use EhosContract.Auth.Testing
 
   import Phoenix.ConnTest
   import Plug.Conn
 
-  alias EhOsContract.{Actor, Event, Testing}
+  alias EhosContract.{Actor, Event, Testing}
   alias Fulfilment.Contracts.{Orders, Shipping, Warehouse}
   alias Fulfilment.Contracts.Orders.Commands.{ConfirmPayment, PlaceOrder}
   alias Fulfilment.Contracts.Warehouse.Commands.AssignPickList
 
-  @endpoint EhOsContractHostWeb.Endpoint
+  @endpoint EhosContractHostWeb.Endpoint
 
   @confirm "fulfilment.confirm_pick"
   @list %{warehouse_id: "w-1", order_id: "order-1"}
@@ -55,17 +55,17 @@ defmodule Fulfilment.DoorTest do
       Actor.credential("desk-cy", ["fulfilment.place_order", "fulfilment.confirm_payment"])
 
     {:ok, _} =
-      EhOsContract.dispatch(
+      EhosContract.dispatch(
         Orders,
         %PlaceOrder{order_id: "order-1", warehouse_id: "w-1", items: 3},
         actor: desk
       )
 
-    {:ok, _} = EhOsContract.dispatch(Orders, %ConfirmPayment{order_id: "order-1"}, actor: desk)
+    {:ok, _} = EhosContract.dispatch(Orders, %ConfirmPayment{order_id: "order-1"}, actor: desk)
     Testing.drain()
 
     {:ok, _} =
-      EhOsContract.dispatch(
+      EhosContract.dispatch(
         Warehouse,
         struct!(AssignPickList, Map.put(@list, :picker_id, "picker-ada")),
         actor:
@@ -78,7 +78,7 @@ defmodule Fulfilment.DoorTest do
   end
 
   test "no credential: 401, before any decision" do
-    decisions = fn -> Repo.query!("SELECT count(*) FROM eh_os_contract_auth_decisions").rows end
+    decisions = fn -> Repo.query!("SELECT count(*) FROM ehos_contract_auth_decisions").rows end
     before = decisions.()
 
     conn =
@@ -178,7 +178,7 @@ defmodule Fulfilment.DoorTest do
       ).rows
       |> List.flatten()
 
-    assert "eh_os_contract_events" in tables
+    assert "ehos_contract_events" in tables
 
     for table <- tables,
         column <-
