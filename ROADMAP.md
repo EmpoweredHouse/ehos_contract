@@ -6,12 +6,13 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (22 November 2026)
+## Where things stand (24 November 2026)
 
-- **Released:** v0.15.2, with `ehos_contract_web` 0.11.0 and the graph renderer 0.10.0 (both require a
-  Phoenix LiveView that fixes EEF-CVE-2026-126334; the dashboard's script has the LiveView 1.2.14 client)
-  and the engine 0.15.2, with nothing changed in it; `ehos_contract_auth` stays at 0.16.1. The
-  plugin's skills are at 0.14.3. Applications install them from git. The pull request after the tag
+- **Released:** v0.16.0, the library under its new name, `ehos_contract` (#428): the engine 0.16.0,
+  `ehos_contract_auth` 0.17.0, `ehos_contract_web` 0.12.0 and the graph renderer 0.11.0, all four with
+  Breaking changes a host follows from their changelogs, and the storage renamed by the engine's
+  migration version 7 and the credentials' version 4. The plugin `ehos-contract` is at 0.15.0.
+  Applications install them from git, at `EmpoweredHouse/ehos_contract`. The pull request after the tag
   moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).

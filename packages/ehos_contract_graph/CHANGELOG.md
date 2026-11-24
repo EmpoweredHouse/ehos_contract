@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-24
+
 ### Changed
 
 - **Breaking:** The package is called `ehos_contract_graph`, no longer `eh_os_contract_graph`: the
