@@ -16,10 +16,17 @@ that tag, though `release.json` lists their versions. Between releases the versi
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+ehos_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
 their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
+
+### Changed
+
+- **Breaking:** The package is called `ehos_contract_graph`, no longer `eh_os_contract_graph`: the
+  application, the modules `EhosContract.GraphRenderer.*`, and the stylesheet's variables
+  `--ehos-contract-graph-*`. A graph document names its format `ehos_contract.graph.v1`, and the
+  schema in `priv/schema/` requires it; EHOS reads documents under either name.
 
 ## [0.10.0] - 2026-11-22
 

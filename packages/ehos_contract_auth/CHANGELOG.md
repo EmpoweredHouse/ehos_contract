@@ -1,6 +1,6 @@
 # Changelog
 
-The rule this package follows is the one written in `packages/eh_os_contract/CHANGELOG.md`: a
+The rule this package follows is the one written in `packages/ehos_contract/CHANGELOG.md`: a
 change a consumer can see gets a line here, in its own pull request.
 
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
@@ -19,21 +19,28 @@ that tag, though `release.json` lists their versions. Between releases the versi
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+ehos_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
 their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
 ### Changed
 
-- The development mode (`EhOsContract.Auth.Development`) writes the address of `/dev/sign-in`, with
-  its token, to `_build/dev/eh_os_contract_auth/dev_sign_in` while it runs, in a directory that only
+- **Breaking:** The package is called `ehos_contract_auth`, no longer `eh_os_contract_auth`: the
+  application, the modules `EhosContract.Auth.*`, the tasks `mix ehos_contract.*` and
+  `config :ehos_contract_auth`. Its storage follows in version 4, which renames its tables from
+  `eh_os_contract_auth_*` to `ehos_contract_auth_*`; add a migration calling
+  `EhosContract.Auth.Migrations.up(version: 4)`. The manifest names its engine `ehos_contract`.
+  People signed in to the application's pages sign in once more: the session's key and the salt
+  its tokens are encrypted with carry the package's name.
+- The development mode (`EhosContract.Auth.Development`) writes the address of `/dev/sign-in`, with
+  its token, to `_build/dev/ehos_contract_auth/dev_sign_in` while it runs, in a directory that only
   the user can open (mode 0700). After a sign-out or in a new browser, `cat` shows the address
   again, so the application does not need a restart. A normal stop removes the file; a second start
   of the same project while the first runs leaves it alone, except on Windows. The start banner
-  says so, and no longer prints `export EH_OS_CONTRACT_DEV_TOKEN=…`.
-- `mix eh_os_contract.dev.credential` reads the token, and the application's address, from that
-  file when `--token` and `EH_OS_CONTRACT_DEV_TOKEN` are not given.
+  says so, and no longer prints `export EHOS_CONTRACT_DEV_TOKEN=…`.
+- `mix ehos_contract.dev.credential` reads the token, and the application's address, from that
+  file when `--token` and `EHOS_CONTRACT_DEV_TOKEN` are not given.
 
 ## [0.16.1] - 2026-11-20
 

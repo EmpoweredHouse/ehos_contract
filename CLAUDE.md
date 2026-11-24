@@ -43,9 +43,13 @@ The clients' material the library was first developed against, and a test set co
 graph, left for a private repository of the maintainers in the publication programme's PB4 (#386). It runs
 there as a host of its own on these packages, fetched from git; nothing of it comes back here.
 
-Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`). Everything in
-the code has the new name; the old one remains only in `docs/adr/` and in the archived working plan, where `PNS.X`
-means today's `EhosContract.X`.
+Until 23 September the package was called `pns` (`PNS.*`, host `:pns_prototype`, tables `pns_*`), and until 24
+November `eh_os_contract` (`EhOsContract.*`, host `:eh_os_contract_host`, tables `eh_os_contract_*`, #428).
+Everything in the code has today's name; the old ones remain in `docs/adr/`, in the changelogs' released sections
+and in the archived working plan, where `PNS.X` and `EhOsContract.X` mean today's `EhosContract.X`. Three strings
+keep `eh_os_contract` on purpose, because databases hold them: the SQL of migrations V01–V06 (engine) and V01–V03
+(credentials), which databases ran and V07 and V04 rename after; the append lock's class; and what a subject's
+data key is bound to when wrapped. The repository's GitHub address keeps `eh-os-contract` until it is renamed.
 
 ## Before you change anything
 

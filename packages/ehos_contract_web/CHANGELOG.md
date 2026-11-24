@@ -1,6 +1,6 @@
 # Changelog
 
-The rule this package follows is the one written in `packages/eh_os_contract/CHANGELOG.md`:
+The rule this package follows is the one written in `packages/ehos_contract/CHANGELOG.md`:
 a change that can move something the dashboard reports raises the minor version and
 gets a line here.
 
@@ -20,10 +20,17 @@ that tag, though `release.json` lists their versions. Between releases the versi
 at a release, a package with lines under `## [Unreleased]` moves to its next version. Every release
 moves the engine, whose version the tag is: a release of other packages alone moves it by a patch
 from its last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+ehos_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
 their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
+
+### Changed
+
+- **Breaking:** The package is called `ehos_contract_web`, no longer `eh_os_contract_web`: the
+  application, the modules `EhosContract.Web.*`, the router macros `ehos_contract_dashboard/2` and
+  `ehos_contract_api/2`, the stylesheet's variables `--ehos-contract-*` and the API's format
+  identifiers (`ehos_contract.graph_index.v1`, `ehos_contract.model-index.v2`).
 
 ## [0.11.0] - 2026-11-22
 

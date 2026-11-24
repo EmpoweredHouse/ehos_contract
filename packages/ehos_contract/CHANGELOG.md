@@ -10,7 +10,7 @@ counted as exceeding a deadline, a declaration counted as changed. Wording,
 docstrings, tests and fixtures do not.
 
 The rule exists because a report is arithmetic, and two clients running two engine
-versions get two answers to the same question. `EhOsContract.version/0` puts the version in
+versions get two answers to the same question. `EhosContract.version/0` puts the version in
 the report; this file says what each one changed. A version in a report that
 nothing explains is decoration.
 
@@ -43,7 +43,7 @@ though `release.json` lists their versions. Between releases the version in `mix
 release, a package with lines under `## [Unreleased]` moves to its next version. Every release moves
 the engine, whose version the tag is: a release of other packages alone moves it by a patch from its
 last release, and that version's section says so under `### Changed` ("Released with
-eh_os_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
+ehos_contract_auth 0.1.1; nothing in the engine changed."). The maintainers make a release by
 their release procedure, and pushing the tag publishes it (`.github/workflows/release.yml`).
 
 ## [Unreleased]
@@ -55,6 +55,25 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   where their jobs wait. Until now those jobs stayed in Oban's table and nothing said so. The warning
   names the line to add, `queues: [events: 10]`. It does not stop the start. The engine does not
   check under Oban's `testing: :manual` or `:inline`, or when Oban starts after the engine (#671).
+
+### Changed
+
+- **Breaking:** The package is called `ehos_contract`, as the rest of the EHOS family is, no longer
+  `eh_os_contract`: the application `:ehos_contract`, the modules `EhosContract.*`, the tasks
+  `mix ehos_contract.*` and the compiler `:ehos_contract`, `config :ehos_contract`, the key variable
+  `EHOS_CONTRACT_KEK`, the schema lock `ehos_contract.lock`, the format identifiers
+  (`ehos_contract.graph.v1`, `ehos_contract.model.v1`, …) and the OpenAPI and AsyncAPI extensions
+  `x-ehos-contract-*`. The storage follows in version 7: it renames every table, index, trigger and
+  function from `eh_os_contract_*` to `ehos_contract_*`, rewrites the engine's two event types in the
+  log (`ehos_contract.subject_erased`, `ehos_contract.timer_elapsed`) and Oban's jobs of its workers,
+  so a timer or an effect scheduled before the upgrade still runs. To upgrade: rename the dependency,
+  the compiler and the tasks in `mix.exs`; replace `EhOsContract` with `EhosContract` and
+  `:eh_os_contract` with `:ehos_contract` in code, tests, configuration and existing migration files;
+  `git mv eh_os_contract.lock ehos_contract.lock`; set `EHOS_CONTRACT_KEK` where the key variable is
+  set; and add a migration calling `EhosContract.Migrations.up(version: 7)`. Oban's jobs are
+  rewritten in the `oban_jobs` the `search_path` finds; with Oban in another prefix, rename their
+  `worker` from `EhOsContract.` to `EhosContract.` there. The engine's moduledoc names version 7, and
+  `docs/getting-started.md` the new dependency.
 
 ## [0.15.2] - 2026-11-22
 
