@@ -234,11 +234,13 @@ At start, the engine checks this. If a contract declares an effect delivered `:a
 process manager with a timer, and Oban runs no queue `:events`, the engine logs one warning:
 
 ```text
-[warning] Oban runs no queue :events (its queues: [:default]), so the jobs of EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table and never run: add the queue where the host configures Oban, queues: [events: 10]
+[warning] Oban runs no queue :events (its queues: [:default]), so the jobs of EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table until a node runs the queue: add it where the host configures Oban, queues: [events: 10]
 ```
 
-The application still starts and serves its commands. Another node may run the queue; then this node
-can ignore the warning. Under Oban's `testing: :manual` or `:inline`, the engine does not check.
+The application still starts and serves its commands. If another node runs the queue, this node can
+ignore the warning. The engine reads the queues that the configuration of Oban starts, so a queue
+that the host starts later also gets the warning. The engine does not check under Oban's
+`testing: :manual` or `:inline`, or when Oban starts after the engine.
 
 Set `async: false` on each test module that writes the log: `use ExUnit.Case, async: false`. Each append holds one lock until its
 transaction ends. In the Ecto sandbox, a transaction lasts for the whole test. Two such tests wait

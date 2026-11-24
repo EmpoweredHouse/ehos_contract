@@ -169,7 +169,8 @@ defmodule EhOsContract do
      written before rows named a contract by its id does. It logs a warning too
      when a contract declares an effect delivered `:at_least_once` or a process
      manager with a timer, and Oban runs no queue `:events`, where their jobs wait;
-     under Oban's `testing: :manual` or `:inline` it does not check.
+     under Oban's `testing: :manual` or `:inline`, or with Oban started after the
+     engine, it does not check.
   2. It registers every consumer fed from the log, each with a row of its own in
      `eh_os_contract_subscriptions`, marks the read models whose declaration changed
      `stale`, and rebuilds those that define `reset/0`.
