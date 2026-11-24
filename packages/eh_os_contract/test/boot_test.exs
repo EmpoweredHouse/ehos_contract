@@ -10,7 +10,7 @@ defmodule EhOsContract.BootTest do
 
   alias DispatchRig.Ledger
   alias DispatchRig.Ledger.Commands.{Deposit, OpenAccount}
-  alias EhOsContract.{Actor, Implementations, SubscriptionRecord}
+  alias EhOsContract.{Actor, Implementations, Model, SubscriptionRecord}
 
   @clerk Actor.credential("u-1", ["dispatch_rig.open_account", "dispatch_rig.deposit"])
 
@@ -136,6 +136,64 @@ defmodule EhOsContract.BootTest do
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhOsContract)
     assert message =~ "read model :members of ShreddingRig.Members project personal data"
+  end
+
+  # #671: the effects delivered :at_least_once and the timers wait in the queue
+  # :events. The suite's Oban runs no queue (`testing: :manual`); these tests put in its
+  # place one that runs what a host configured, and the suite's back after.
+  describe "Oban's queues" do
+    import ExUnit.CaptureLog
+
+    defp with_oban(overrides, fun) do
+      conf = Application.fetch_env!(:eh_os_contract, Oban)
+      :ok = Supervisor.stop(Oban.whereis(Oban))
+
+      on_exit(fn ->
+        {:ok, pid} = Oban.start_link(conf)
+        Process.unlink(pid)
+      end)
+
+      start_supervised!(
+        {Oban,
+         Keyword.merge(conf, [testing: :disabled, plugins: false, peer: false] ++ overrides)}
+      )
+
+      fun.()
+    end
+
+    test "a host whose Oban runs no :events is warned once, with the queue to add" do
+      assert Enum.any?(EhOsContract.Registry.contracts(), fn contract ->
+               Enum.any?(Model.fetch(contract).effects, &(&1.delivery == :at_least_once))
+             end),
+             "the suite declares an effect delivered :at_least_once, or this tests nothing"
+
+      log =
+        with_oban([queues: [default: 10]], fn ->
+          capture_log(fn -> start_supervised!(EhOsContract) end)
+        end)
+
+      assert log =~
+               "Oban runs no queue :events (its queues: [:default]), so the jobs of " <>
+                 "EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table and never " <>
+                 "run: add the queue where the host configures Oban, queues: [events: 10]"
+
+      assert length(String.split(log, "Oban runs no queue :events")) == 2, "warned once"
+    end
+
+    test "control: a host whose Oban runs :events is not warned" do
+      log =
+        with_oban([queues: [default: 10, events: 10]], fn ->
+          capture_log(fn -> start_supervised!(EhOsContract) end)
+        end)
+
+      refute log =~ ":events"
+    end
+
+    test "under Oban's testing modes, which run no queue by design, nothing is said" do
+      # The suite's own Oban: `testing: :manual`, and its queues therefore none.
+      assert Oban.config(Oban).queues == []
+      refute capture_log(fn -> start_supervised!(EhOsContract) end) =~ ":events"
+    end
   end
 
   describe "without :manual" do

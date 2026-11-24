@@ -28,6 +28,7 @@ defmodule EhOsContract.Supervisor do
     # Every contract dispatch reaches, `exclude:` or not, and the siblings they consume.
     known = Map.values(Implementations.index(nil).contracts)
     EhOsContract.UndeclaredTypes.warn_contracts(repo, known)
+    warn_events_queue(models)
 
     runners =
       case EhOsContract.Config.get(:subscriptions) do
@@ -50,6 +51,38 @@ defmodule EhOsContract.Supervisor do
         raise ArgumentError,
               "EhOsContract's subscription_poll: is a number of milliseconds from 1 to " <>
                 "4294967295, got: #{inspect(other)}"
+    end
+  end
+
+  # The effects delivered :at_least_once and the timers of process managers are Oban
+  # jobs in the queue :events, which a host's Oban may not run: then they wait in the
+  # table, and nothing says so (#671). A warning, not a refusal: the application
+  # still serves its commands, and another node may run the queue. Under Oban's
+  # testing modes no queue runs by design, and `EhOsContract.Testing.drain/1` runs it;
+  # an Oban not started before the engine cannot tell.
+  defp warn_events_queue(models) do
+    effects? =
+      Enum.any?(models, fn m -> Enum.any?(m.effects, &(&1.delivery == :at_least_once)) end)
+
+    timers? = Enum.any?(models, fn m -> Enum.any?(m.process_managers, &(&1.timers != [])) end)
+
+    waiting =
+      if(effects?, do: [EhOsContract.EffectJob], else: []) ++
+        if timers?, do: [EhOsContract.TimerJob], else: []
+
+    case Oban.whereis(Oban) && Oban.config(Oban) do
+      %{testing: :disabled, queues: queues} when waiting != [] ->
+        unless Keyword.has_key?(queues, :events) do
+          Logger.warning(
+            "Oban runs no queue :events (its queues: #{inspect(Keyword.keys(queues))}), so " <>
+              "the jobs of #{Enum.map_join(waiting, " and ", &inspect/1)} wait in its table " <>
+              "and never run: add the queue where the host configures Oban, " <>
+              "queues: [events: 10]"
+          )
+        end
+
+      _otherwise ->
+        :ok
     end
   end
 

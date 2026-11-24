@@ -48,6 +48,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- At start, the engine logs one warning when a contract declares an effect delivered
+  `:at_least_once` or a process manager with a timer and the host's Oban runs no queue `:events`,
+  where their jobs wait. Until now those jobs stayed in Oban's table and nothing said so. The warning
+  names the line to add, `queues: [events: 10]`. It does not stop the start, and under Oban's
+  `testing: :manual` or `:inline` the engine does not check (#671).
+
 ## [0.15.2] - 2026-11-22
 
 ### Changed
