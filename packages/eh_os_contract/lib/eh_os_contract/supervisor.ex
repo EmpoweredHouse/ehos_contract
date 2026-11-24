@@ -29,6 +29,11 @@ defmodule EhOsContract.Supervisor do
     known = Map.values(Implementations.index(nil).contracts)
     EhOsContract.UndeclaredTypes.warn_contracts(repo, known)
 
+    warn_events_queue(
+      waiting_jobs(Implementations.index(nil)),
+      Oban.whereis(Oban) && Oban.config(Oban)
+    )
+
     runners =
       case EhOsContract.Config.get(:subscriptions) do
         :manual -> []
@@ -52,6 +57,49 @@ defmodule EhOsContract.Supervisor do
                 "4294967295, got: #{inspect(other)}"
     end
   end
+
+  # The effects delivered :at_least_once and the timers of process managers are Oban
+  # jobs in the queue :events, which a host's Oban may not run: then they wait in the
+  # table, and nothing says so (#671). A warning, not a refusal: the application
+  # still serves its commands, and another node may run the queue. Read from the
+  # index of the configured applications, which `exclude:` does not narrow, so a
+  # contract it leaves out and dispatch still reaches counts too.
+  defp waiting_jobs(index) do
+    timers? =
+      Enum.any?(index.consumers, fn consumer ->
+        consumer.kind == :process_manager and
+          Enum.any?(
+            Model.fetch(consumer.contract).process_managers,
+            &(&1.name == consumer.name and &1.timers != [])
+          )
+      end)
+
+    for {true, job} <- [
+          {index.effects != %{}, EhOsContract.EffectJob},
+          {timers?, EhOsContract.TimerJob}
+        ],
+        do: job
+  end
+
+  # Nothing waits in the queue.
+  defp warn_events_queue([], _oban), do: :ok
+  # Oban not started before the engine: this node cannot tell.
+  defp warn_events_queue(_waiting, nil), do: :ok
+
+  defp warn_events_queue(waiting, %{testing: :disabled, queues: queues}) do
+    unless Keyword.has_key?(queues, :events) do
+      Logger.warning(
+        "Oban runs no queue :events (its queues: #{inspect(Keyword.keys(queues))}), so " <>
+          "the jobs of #{Enum.map_join(waiting, " and ", &inspect/1)} wait in its table " <>
+          "until a node runs the queue: add it where the host configures Oban, " <>
+          "queues: [events: 10]"
+      )
+    end
+  end
+
+  # Oban's testing modes run no queue by design, and `EhOsContract.Testing.drain/1`
+  # runs :events.
+  defp warn_events_queue(_waiting, %{testing: _manual_or_inline}), do: :ok
 
   defp subscribe!(repo, poll) do
     consumers = Implementations.subscribed()

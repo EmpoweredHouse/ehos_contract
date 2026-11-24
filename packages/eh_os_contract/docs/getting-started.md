@@ -230,6 +230,18 @@ config :my_app, Oban, repo: MyApp.Repo, queues: [events: 10]
 If Oban does not run this queue outside tests, the jobs stay in the table. No effect runs, and no timer
 fires. In tests, `EhOsContract.Testing.drain/1` runs them.
 
+At start, the engine checks this. If a contract declares an effect delivered `:at_least_once` or a
+process manager with a timer, and Oban runs no queue `:events`, the engine logs one warning:
+
+```text
+[warning] Oban runs no queue :events (its queues: [:default]), so the jobs of EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table until a node runs the queue: add it where the host configures Oban, queues: [events: 10]
+```
+
+The application still starts and serves its commands. If another node runs the queue, this node can
+ignore the warning. The engine reads the queues that the configuration of Oban starts, so a queue
+that the host starts later also gets the warning. The engine does not check under Oban's
+`testing: :manual` or `:inline`, or when Oban starts after the engine.
+
 Set `async: false` on each test module that writes the log: `use ExUnit.Case, async: false`. Each append holds one lock until its
 transaction ends. In the Ecto sandbox, a transaction lasts for the whole test. Two such tests wait
 for each other, and one fails on the timeout of the repo.
