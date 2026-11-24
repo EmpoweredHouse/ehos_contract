@@ -162,9 +162,7 @@ defmodule EhOsContract.BootTest do
     end
 
     test "a host whose Oban runs no :events is warned once, with the queue to add" do
-      assert Enum.any?(EhOsContract.Registry.contracts(), fn contract ->
-               Enum.any?(Model.fetch(contract).effects, &(&1.delivery == :at_least_once))
-             end),
+      assert Implementations.index(nil).effects != %{},
              "the suite declares an effect delivered :at_least_once, or this tests nothing"
 
       log =
@@ -174,15 +172,41 @@ defmodule EhOsContract.BootTest do
 
       assert log =~
                "Oban runs no queue :events (its queues: [:default]), so the jobs of " <>
-                 "EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table and never " <>
-                 "run: add the queue where the host configures Oban, queues: [events: 10]"
+                 "EhOsContract.EffectJob and EhOsContract.TimerJob wait in its table until a " <>
+                 "node runs the queue: add it where the host configures Oban, queues: [events: 10]"
 
-      assert length(String.split(log, "Oban runs no queue :events")) == 2, "warned once"
+      assert [_, _] = String.split(log, "Oban runs no queue :events"), "warned once"
+    end
+
+    # `exclude:` narrows the registry's scan, not what dispatch enqueues: a contract it
+    # leaves out still has its effects and timers run as jobs.
+    test "a contract left out by exclude: still counts" do
+      waiting =
+        for contract <- EhOsContract.Registry.contracts(),
+            model = Model.fetch(contract),
+            Enum.any?(model.effects, &(&1.delivery == :at_least_once)) or
+              Enum.any?(model.process_managers, &(&1.timers != [])),
+            do: contract |> Module.split() |> hd()
+
+      Application.put_env(:eh_os_contract, :exclude, Enum.uniq(waiting))
+
+      on_exit(fn ->
+        Application.delete_env(:eh_os_contract, :exclude)
+        EhOsContract.Registry.load!()
+      end)
+
+      log =
+        with_oban([queues: [default: 10]], fn ->
+          capture_log(fn -> start_supervised!(EhOsContract) end)
+        end)
+
+      assert log =~ "the jobs of EhOsContract.EffectJob and EhOsContract.TimerJob wait"
     end
 
     test "control: a host whose Oban runs :events is not warned" do
+      # Paused, so the queue is configured and runs no job of the shared database.
       log =
-        with_oban([queues: [default: 10, events: 10]], fn ->
+        with_oban([queues: [default: 10, events: [limit: 1, paused: true]]], fn ->
           capture_log(fn -> start_supervised!(EhOsContract) end)
         end)
 

@@ -28,7 +28,11 @@ defmodule EhOsContract.Supervisor do
     # Every contract dispatch reaches, `exclude:` or not, and the siblings they consume.
     known = Map.values(Implementations.index(nil).contracts)
     EhOsContract.UndeclaredTypes.warn_contracts(repo, known)
-    warn_events_queue(models)
+
+    warn_events_queue(
+      waiting_jobs(Implementations.index(nil)),
+      Oban.whereis(Oban) && Oban.config(Oban)
+    )
 
     runners =
       case EhOsContract.Config.get(:subscriptions) do
@@ -57,34 +61,44 @@ defmodule EhOsContract.Supervisor do
   # The effects delivered :at_least_once and the timers of process managers are Oban
   # jobs in the queue :events, which a host's Oban may not run: then they wait in the
   # table, and nothing says so (#671). A warning, not a refusal: the application
-  # still serves its commands, and another node may run the queue. Under Oban's
-  # testing modes no queue runs by design, and `EhOsContract.Testing.drain/1` runs it;
-  # an Oban not started before the engine cannot tell.
-  defp warn_events_queue(models) do
-    effects? =
-      Enum.any?(models, fn m -> Enum.any?(m.effects, &(&1.delivery == :at_least_once)) end)
-
-    timers? = Enum.any?(models, fn m -> Enum.any?(m.process_managers, &(&1.timers != [])) end)
-
-    waiting =
-      if(effects?, do: [EhOsContract.EffectJob], else: []) ++
-        if timers?, do: [EhOsContract.TimerJob], else: []
-
-    case Oban.whereis(Oban) && Oban.config(Oban) do
-      %{testing: :disabled, queues: queues} when waiting != [] ->
-        unless Keyword.has_key?(queues, :events) do
-          Logger.warning(
-            "Oban runs no queue :events (its queues: #{inspect(Keyword.keys(queues))}), so " <>
-              "the jobs of #{Enum.map_join(waiting, " and ", &inspect/1)} wait in its table " <>
-              "and never run: add the queue where the host configures Oban, " <>
-              "queues: [events: 10]"
+  # still serves its commands, and another node may run the queue. Read from the
+  # index dispatch enqueues from, so a contract left out by `exclude:` counts too.
+  defp waiting_jobs(index) do
+    timers? =
+      Enum.any?(index.consumers, fn consumer ->
+        consumer.kind == :process_manager and
+          Enum.any?(
+            Model.fetch(consumer.contract).process_managers,
+            &(&1.name == consumer.name and &1.timers != [])
           )
-        end
+      end)
 
-      _otherwise ->
-        :ok
+    for {true, job} <- [
+          {index.effects != %{}, EhOsContract.EffectJob},
+          {timers?, EhOsContract.TimerJob}
+        ],
+        do: job
+  end
+
+  # Nothing waits in the queue.
+  defp warn_events_queue([], _oban), do: :ok
+  # Oban not started before the engine: this node cannot tell.
+  defp warn_events_queue(_waiting, nil), do: :ok
+
+  defp warn_events_queue(waiting, %{testing: :disabled, queues: queues}) do
+    unless Keyword.has_key?(queues, :events) do
+      Logger.warning(
+        "Oban runs no queue :events (its queues: #{inspect(Keyword.keys(queues))}), so " <>
+          "the jobs of #{Enum.map_join(waiting, " and ", &inspect/1)} wait in its table " <>
+          "until a node runs the queue: add it where the host configures Oban, " <>
+          "queues: [events: 10]"
+      )
     end
   end
+
+  # Oban's testing modes run no queue by design, and `EhOsContract.Testing.drain/1`
+  # runs :events.
+  defp warn_events_queue(_waiting, %{testing: _manual_or_inline}), do: :ok
 
   defp subscribe!(repo, poll) do
     consumers = Implementations.subscribed()
