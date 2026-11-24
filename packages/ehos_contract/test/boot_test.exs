@@ -54,8 +54,8 @@ defmodule EhosContract.BootTest do
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhosContract)
 
     assert message =~
-             "storage is at version 1, and this release needs version 6: add a migration " <>
-               "calling EhosContract.Migrations.up(version: 6)"
+             "storage is at version 1, and this release needs version 7: add a migration " <>
+               "calling EhosContract.Migrations.up(version: 7)"
 
     assert EhosContract.TestRepo.all(EhosContract.Deployment) == [],
            "refused before anything is recorded"
@@ -71,12 +71,12 @@ defmodule EhosContract.BootTest do
   # version may remove one it does, so a node of an older release stops rather than
   # failing on every append. A deploy stops the old nodes before it migrates.
   test "storage a newer release migrated stops the boot, saying it is newer" do
-    Repo.query!("COMMENT ON TABLE ehos_contract_events IS '7'")
+    Repo.query!("COMMENT ON TABLE ehos_contract_events IS '8'")
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhosContract)
 
     assert message =~
-             "storage is at version 7, newer than version 6, which this release of " <>
+             "storage is at version 8, newer than version 7, which this release of " <>
                "ehos_contract knows"
 
     assert EhosContract.TestRepo.all(EhosContract.Deployment) == [],
@@ -89,11 +89,11 @@ defmodule EhosContract.BootTest do
     Repo.query!("ALTER TABLE ehos_contract_events ADD COLUMN instance_id text")
 
     assert {:error, {{%ArgumentError{message: message}, _}, _}} = start_supervised(EhosContract)
-    assert message =~ "records version 6, and it was migrated before 0.3.0"
+    assert message =~ "records version 7, and it was migrated before 0.3.0"
   end
 
   test "control: storage at the release's version lets the boot through" do
-    Repo.query!("COMMENT ON TABLE ehos_contract_events IS '6'")
+    Repo.query!("COMMENT ON TABLE ehos_contract_events IS '7'")
     assert start_supervised!(EhosContract)
   end
 

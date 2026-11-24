@@ -44,9 +44,11 @@ defmodule EhosContract.ContractExamplesTest do
     {"timer :chase, wait: {24, :hour}",
      ~s|timer :chase, "Documentation deadline", wait: {24, :hour}|,
      "plan N3: a timer's label is required, and names what the timer is for"},
-    {"use EhosContract.Contract, domain: Clinic.Domain, context: :settlement\n",
+    {"use EhOsContract.Contract, domain: Clinic.Domain, context: :settlement\n",
      ~s|use EhosContract.Contract, domain: Clinic.Domain, context: :settlement, id: "clinic.visit_settlement"\n|,
-     "plan DD, ID3 (#173): a contract names its id, which labels its events"}
+     "plan DD, ID3 (#173): a contract names its id, which labels its events"},
+    {"EhOsContract.", "EhosContract.",
+     "#428: the library's modules were EhOsContract, the name the ADR keeps"}
   ]
 
   unless File.exists?(@adr),

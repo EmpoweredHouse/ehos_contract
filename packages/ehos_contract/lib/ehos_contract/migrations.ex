@@ -47,7 +47,10 @@ defmodule EhosContract.Migrations do
   alone is a deployment of its own. Version 5 keeps the status a failing subscription
   failed in, so that skipping the event goes back to it: a rebuild goes on rebuilding.
   Version 6 adds a trigger that wakes the subscription runners when a transaction that
-  appended to the log commits, also a transaction of the host's own code.
+  appended to the log commits, also a transaction of the host's own code. Version 7
+  renames the storage from `eh_os_contract_*`, the library's name until 0.11, to
+  `ehos_contract_*`, with the rows the engine wrote under the old name: the two event
+  types of its own, and Oban's jobs of its workers.
 
   **A version that removes a column stops the release before it.** The engine refuses
   to start on storage newer than its own version, since a node of the older release
@@ -119,8 +122,10 @@ defmodule EhosContract.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 6
+  @current_version 7
 
+  # Under either name: versions 1 to 6 are recorded on `eh_os_contract_events`, the
+  # table's name until version 7 renames it (#428), and the comment moves with it.
   # In `current_schema()`, where `CREATE TABLE` puts the tables, and not the first
   # match on the path: with `search_path: "ledger, public"` and the tables already
   # in `public`, that match would be theirs.
@@ -128,7 +133,7 @@ defmodule EhosContract.Migrations do
   SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
   FROM pg_class
   JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-  WHERE pg_class.relname = 'ehos_contract_events'
+  WHERE pg_class.relname IN ('ehos_contract_events', 'eh_os_contract_events')
   AND pg_namespace.nspname = current_schema()
   """
 
@@ -138,7 +143,7 @@ defmodule EhosContract.Migrations do
   @pre_release_query """
   SELECT 1 FROM information_schema.columns
   WHERE table_schema = current_schema()
-  AND table_name = 'ehos_contract_events'
+  AND table_name IN ('ehos_contract_events', 'eh_os_contract_events')
   AND column_name = 'instance_id'
   """
 
@@ -311,7 +316,73 @@ defmodule EhosContract.Migrations do
   # Version 0 is the absence of the tables, and the comment goes with them.
   defp record_version(0), do: :ok
 
+  defp record_version(version) when version < 7 do
+    execute("COMMENT ON TABLE eh_os_contract_events IS '#{version}'")
+  end
+
   defp record_version(version) do
     execute("COMMENT ON TABLE ehos_contract_events IS '#{version}'")
+  end
+
+  # A `DO` block renaming every constraint, index, trigger, function, table, sequence
+  # and view of `current_schema()` whose name starts with `from`, but not with
+  # `except` when one is given, to start with `to` instead. Read from the catalog when the block runs, so
+  # that it finds what earlier statements of the same migration created. Constraints
+  # go first, as renaming one renames the index behind it; tables last, while the
+  # triggers' `ON` still names them. Used by V07 and by the credential package's V04.
+  @doc false
+  @spec rename_prefix(String.t(), String.t(), String.t() | nil) :: String.t()
+  def rename_prefix(from, to, except \\ nil) do
+    matches = fn
+      column when except == nil ->
+        "pg_catalog.starts_with(#{column}, '#{from}')"
+
+      column ->
+        "pg_catalog.starts_with(#{column}, '#{from}') AND " <>
+          "NOT pg_catalog.starts_with(#{column}, '#{except}')"
+    end
+
+    renamed = fn column ->
+      "'#{to}' || pg_catalog.substr(#{column}, #{String.length(from) + 1})"
+    end
+
+    """
+    DO $$ DECLARE r record; BEGIN
+      FOR r IN SELECT c.conname, c.conrelid::regclass AS rel FROM pg_catalog.pg_constraint c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.connamespace
+        WHERE n.nspname = current_schema() AND #{matches.("c.conname")} LOOP
+        EXECUTE pg_catalog.format('ALTER TABLE %s RENAME CONSTRAINT %I TO %I',
+          r.rel, r.conname, #{renamed.("r.conname")});
+      END LOOP;
+      FOR r IN SELECT c.relname FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('i', 'I')
+          AND #{matches.("c.relname")} LOOP
+        EXECUTE pg_catalog.format('ALTER INDEX %I RENAME TO %I', r.relname, #{renamed.("r.relname")});
+      END LOOP;
+      FOR r IN SELECT t.tgname, t.tgrelid::regclass AS rel FROM pg_catalog.pg_trigger t
+        JOIN pg_catalog.pg_class c ON c.oid = t.tgrelid
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND NOT t.tgisinternal
+          AND #{matches.("t.tgname")} LOOP
+        EXECUTE pg_catalog.format('ALTER TRIGGER %I ON %s RENAME TO %I',
+          r.tgname, r.rel, #{renamed.("r.tgname")});
+      END LOOP;
+      FOR r IN SELECT p.oid::regprocedure AS fn, p.proname FROM pg_catalog.pg_proc p
+        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = current_schema() AND #{matches.("p.proname")} LOOP
+        EXECUTE pg_catalog.format('ALTER FUNCTION %s RENAME TO %I', r.fn, #{renamed.("r.proname")});
+      END LOOP;
+      FOR r IN SELECT c.relname, c.relkind FROM pg_catalog.pg_class c
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p', 'S', 'v', 'm')
+          AND #{matches.("c.relname")} LOOP
+        EXECUTE pg_catalog.format('ALTER %s %I RENAME TO %I',
+          CASE r.relkind WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW'
+            WHEN 'm' THEN 'MATERIALIZED VIEW' ELSE 'TABLE' END,
+          r.relname, #{renamed.("r.relname")});
+      END LOOP;
+    END $$
+    """
   end
 end

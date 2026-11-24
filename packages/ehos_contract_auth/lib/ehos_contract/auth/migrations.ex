@@ -25,7 +25,7 @@ defmodule EhosContract.Auth.Migrations do
   use Ecto.Migration
 
   @initial_version 1
-  @current_version 3
+  @current_version 4
 
   @doc "The oldest version this module can create."
   @spec initial_version() :: pos_integer()
@@ -72,7 +72,7 @@ defmodule EhosContract.Auth.Migrations do
     SELECT pg_catalog.obj_description(pg_class.oid, 'pg_class')
     FROM pg_class
     JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-    WHERE pg_class.relname = 'ehos_contract_auth_keys'
+    WHERE pg_class.relname IN ('ehos_contract_auth_keys', 'eh_os_contract_auth_keys')
     AND pg_namespace.nspname = current_schema()
     """
 
@@ -96,6 +96,11 @@ defmodule EhosContract.Auth.Migrations do
   end
 
   defp record_version(0), do: :ok
+
+  # Versions 1 to 3 are recorded on the table's name until V04 renamed it (#428).
+  defp record_version(version) when version < 4 do
+    execute("COMMENT ON TABLE eh_os_contract_auth_keys IS '#{version}'")
+  end
 
   defp record_version(version) do
     execute("COMMENT ON TABLE ehos_contract_auth_keys IS '#{version}'")

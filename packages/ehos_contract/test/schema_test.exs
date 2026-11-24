@@ -213,7 +213,7 @@ defmodule EhosContract.SchemaTest do
 
     assert engine_tables(schema) == @tables
     assert "oban_jobs" in tables(schema)
-    assert version(schema) == "6"
+    assert version(schema) == "7"
 
     assert functions(schema) -- ["oban_jobs_notify"] == [
              "ehos_contract_append_lock",
@@ -224,7 +224,7 @@ defmodule EhosContract.SchemaTest do
 
     assert tables("public") == public
 
-    # A host's second call reads the schema's "6", and creates nothing twice.
+    # A host's second call reads the schema's "7", and creates nothing twice.
     assert Ecto.Migrator.up(SchemaRepo, 4, Host, log: false) == :ok
     admin!("DELETE FROM #{schema}.schema_migrations WHERE version = 4")
     assert engine_tables(schema) == @tables
@@ -237,11 +237,11 @@ defmodule EhosContract.SchemaTest do
     migrate(:up)
 
     assert engine_tables(schema) == @tables
-    assert version(schema) == "6"
+    assert version(schema) == "7"
     assert tables("public") == public
   end
 
-  # `public` holds the engine's tables at "6" here, and the owner may read them.
+  # `public` holds the engine's tables at "7" here, and the owner may read them.
   test "with public on the path too, the version is the schema's, and public is left alone",
        %{schema: schema, owner: owner} = context do
     public = tables("public")
@@ -249,7 +249,7 @@ defmodule EhosContract.SchemaTest do
 
     migrate(:up)
     assert engine_tables(schema) == @tables
-    assert version(schema) == "6"
+    assert version(schema) == "7"
 
     migrate(:down)
     assert tables(schema) == ["schema_migrations"]
@@ -260,7 +260,7 @@ defmodule EhosContract.SchemaTest do
     migrate(:down)
 
     assert tables("public") == public
-    assert version("public") == "6"
+    assert version("public") == "7"
   end
 
   # Migrated by the owner, run by the role the application runs as, with Oban where

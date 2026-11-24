@@ -25,6 +25,24 @@ defmodule EhosContract.Auth.SchemaTest.HostCreatingSchema do
   def down, do: EhosContract.Auth.Migrations.down()
 end
 
+defmodule EhosContract.Auth.SchemaTest.HostAtV03 do
+  @moduledoc "A host that migrated before V04 renamed the tables (#428), then upgrades."
+
+  use Ecto.Migration
+
+  def up, do: EhosContract.Auth.Migrations.up(version: 3)
+  def down, do: EhosContract.Auth.Migrations.down()
+end
+
+defmodule EhosContract.Auth.SchemaTest.HostToV04 do
+  @moduledoc "The host's upgrade to V04, a migration of its own."
+
+  use Ecto.Migration
+
+  def up, do: EhosContract.Auth.Migrations.up(version: 4)
+  def down, do: EhosContract.Auth.Migrations.down(version: 4)
+end
+
 defmodule EhosContract.Auth.SchemaTest do
   @moduledoc """
   Issue #51: **the package's tables in a schema other than `public`**, as EHOS gives
@@ -46,7 +64,7 @@ defmodule EhosContract.Auth.SchemaTest do
 
   alias EhosContract.{Actor, Auth, Authorizer}
   alias EhosContract.Auth.{Keys, SchemaRepo, TestRepo}
-  alias EhosContract.Auth.SchemaTest.{Host, HostCreatingSchema}
+  alias EhosContract.Auth.SchemaTest.{Host, HostAtV03, HostCreatingSchema, HostToV04}
 
   @tables [
     "ehos_contract_auth_decisions",
@@ -153,8 +171,52 @@ defmodule EhosContract.Auth.SchemaTest do
     version
   end
 
+  # Every table, index and constraint of `schema` under a prefix, by name.
+  defp named(schema, prefix) do
+    admin!([
+      {"""
+       SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = $1 AND starts_with(c.relname, $2)
+       UNION
+       SELECT k.conname FROM pg_constraint k JOIN pg_namespace n ON n.oid = k.connamespace
+       WHERE n.nspname = $1 AND starts_with(k.conname, $2)
+       ORDER BY 1
+       """, [schema, prefix]}
+    ])
+    |> List.flatten()
+  end
+
   defp owned(role),
     do: admin!([{"SELECT count(*) FROM pg_class WHERE relowner = $1::text::regrole", [role]}])
+
+  # Issue #428: the package was `eh_os_contract_auth`, and V01–V03 named its storage so.
+  test "V04 renames every table, index and constraint V01–V03 created, and its down names them back",
+       %{schema: schema, owner: owner} = context do
+    connect(context, owner, schema)
+    Ecto.Migrator.run(SchemaRepo, [{1, HostAtV03}], :up, all: true, log: false)
+
+    old = named(schema, "eh_os_contract_auth_")
+    assert "eh_os_contract_auth_keys" in old
+    assert "eh_os_contract_auth_decisions_decided_at_index" in old
+    assert named(schema, "ehos_contract_auth_") == []
+
+    Ecto.Migrator.run(SchemaRepo, [{1, HostAtV03}, {2, HostToV04}], :up, all: true, log: false)
+
+    assert version(schema) == "4"
+    assert named(schema, "eh_os_contract_auth_") == []
+
+    assert named(schema, "ehos_contract_auth_") ==
+             old
+             |> Enum.map(
+               &String.replace_prefix(&1, "eh_os_contract_auth_", "ehos_contract_auth_")
+             )
+             |> Enum.sort()
+
+    Ecto.Migrator.run(SchemaRepo, [{1, HostAtV03}, {2, HostToV04}], :down, to: 2, log: false)
+
+    assert named(schema, "eh_os_contract_auth_") == old
+    assert named(schema, "ehos_contract_auth_") == []
+  end
 
   test "an owner that cannot create in public migrates the schema up, down and up again",
        %{schema: schema, owner: owner} = context do
@@ -163,9 +225,9 @@ defmodule EhosContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "3"
+    assert version(schema) == "4"
 
-    # A host's second call reads the schema's "3", and creates nothing twice.
+    # A host's second call reads the schema's "4", and creates nothing twice.
     assert Ecto.Migrator.up(SchemaRepo, 2, Host, log: false) == :ok
     admin!(["DELETE FROM #{schema}.schema_migrations WHERE version = 2"])
 
@@ -174,11 +236,11 @@ defmodule EhosContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "3"
+    assert version(schema) == "4"
     assert tables("public") == public
   end
 
-  # `public` holds the package's tables at "3" here, and the owner may read them.
+  # `public` holds the package's tables at "4" here, and the owner may read them.
   test "with public on the path too, the version is the schema's, and public is left alone",
        %{schema: schema, owner: owner} = context do
     public = tables("public")
@@ -186,16 +248,16 @@ defmodule EhosContract.Auth.SchemaTest do
 
     migrate(:up)
     assert tables(schema) == @tables
-    assert version(schema) == "3"
+    assert version(schema) == "4"
 
     migrate(:down)
     assert tables(schema) == ["schema_migrations"]
     assert tables("public") == public
-    assert version("public") == "3"
+    assert version("public") == "4"
   end
 
   # As the database's superuser, since the owner may not create a schema. `public` is
-  # on the path and holds the tables at "3". Ecto records the migration in
+  # on the path and holds the tables at "4". Ecto records the migration in
   # `public.schema_migrations`, since it reads its table before the schema exists, so
   # the version is one of the test's own and its row goes after it.
   test "a schema the host's own migration creates gets the tables" do
@@ -216,7 +278,7 @@ defmodule EhosContract.Auth.SchemaTest do
     Ecto.Migrator.run(SchemaRepo, [{version, HostCreatingSchema}], :up, all: true, log: false)
 
     assert tables(new) == @tables -- ["schema_migrations"]
-    assert version(new) == "3"
+    assert version(new) == "4"
   end
 
   test "the role the application runs as keeps the keys and records the decisions",

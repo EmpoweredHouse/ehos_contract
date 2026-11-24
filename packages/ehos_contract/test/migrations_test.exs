@@ -57,38 +57,57 @@ defmodule EhosContract.MigrationsTest do
   defp column(sql, params \\ []),
     do: Repo.query!(sql, params).rows |> List.flatten() |> Enum.sort()
 
-  defp version do
-    one("SELECT obj_description('public.ehos_contract_events'::regclass, 'pg_class')")
+  # The storage's prefix at the version the database is at: `eh_os_contract` until V07
+  # renames it (#428).
+  defp p do
+    if one("SELECT to_regclass('public.ehos_contract_events') IS NOT NULL"),
+      do: "ehos_contract",
+      else: "eh_os_contract"
   end
+
+  defp version do
+    one("SELECT obj_description('public.#{p()}_events'::regclass, 'pg_class')")
+  end
+
+  # Names under the prefix V07 gives them, whichever the database has.
+  defp renamed(names),
+    do: Enum.map(names, &String.replace_prefix(&1, "eh_os_contract_", "ehos_contract_"))
 
   # The engine's own tables, which the auth package's (`ehos_contract_auth_*`) are not.
   defp tables do
     column("""
     SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name LIKE 'eh\\_os\\_contract\\_%'
-      AND table_name NOT LIKE 'eh\\_os\\_contract\\_auth\\_%'
+    WHERE table_schema = 'public'
+      AND (table_name LIKE 'ehos\\_contract\\_%' OR table_name LIKE 'eh\\_os\\_contract\\_%')
+      AND table_name NOT LIKE '%contract\\_auth\\_%'
     """)
+    |> renamed()
+    |> Enum.sort()
   end
 
   defp functions do
     column("""
     SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname LIKE 'eh\\_os\\_contract\\_%'
+    WHERE n.nspname = 'public'
+      AND (p.proname LIKE 'ehos\\_contract\\_%' OR p.proname LIKE 'eh\\_os\\_contract\\_%')
     ORDER BY p.proname
     """)
+    |> renamed()
+    |> Enum.sort()
   end
 
   defp triggers do
     column(
-      "SELECT tgname FROM pg_trigger WHERE tgrelid = 'ehos_contract_events'::regclass " <>
+      "SELECT tgname FROM pg_trigger WHERE tgrelid = '#{p()}_events'::regclass " <>
         "AND NOT tgisinternal ORDER BY tgname"
     )
+    |> renamed()
   end
 
-  test "V01 creates the whole store, V02 adds what a decision read, V03 drops a contract's run, V04 adds the words' digest, V05 the status a subscription failed in, V06 the wake at commit" do
+  test "V01 creates the whole store, V02 adds what a decision read, V03 drops a contract's run, V04 adds the words' digest, V05 the status a subscription failed in, V06 the wake at commit, V07 the name" do
     assert EhosContract.Migrations.initial_version() == 1
-    assert EhosContract.Migrations.current_version() == 6
-    assert version() == "6"
+    assert EhosContract.Migrations.current_version() == 7
+    assert version() == "7"
 
     # Issue #550: a failing subscription keeps the status it failed in, for a skip.
     assert resume_status?()
@@ -104,13 +123,13 @@ defmodule EhosContract.MigrationsTest do
 
     assert column("""
            SELECT column_name FROM information_schema.columns
-           WHERE table_name = 'ehos_contract_event_runs'
+           WHERE table_name = '#{p()}_event_runs'
            """) == ["instance_id", "position", "process"]
 
     # Plan DD, T2a (#240).
     assert one("""
            SELECT data_type FROM information_schema.columns
-           WHERE table_name = 'ehos_contract_commands' AND column_name = 'inputs'
+           WHERE table_name = '#{p()}_commands' AND column_name = 'inputs'
            """) == "jsonb"
 
     assert tables() == @tables
@@ -126,25 +145,25 @@ defmodule EhosContract.MigrationsTest do
     assert one("""
            SELECT string_agg(a.attname, ',')
            FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-           WHERE i.indrelid = 'ehos_contract_events'::regclass AND i.indisprimary
+           WHERE i.indrelid = '#{p()}_events'::regclass AND i.indisprimary
            """) == "position"
 
     # The database hands out positions, and nothing may choose one: `a` is ALWAYS.
     assert one("""
            SELECT attidentity FROM pg_attribute
-           WHERE attrelid = 'ehos_contract_events'::regclass AND attname = 'position'
+           WHERE attrelid = '#{p()}_events'::regclass AND attname = 'position'
            """) == "a"
 
     # `id` is not the primary key any more, and still unique.
     assert one("""
            SELECT pg_get_constraintdef(oid) FROM pg_constraint
-           WHERE conname = 'ehos_contract_events_id_key'
+           WHERE conname = '#{p()}_events_id_key'
            """) == "UNIQUE (id)"
 
     # The conformance queries find one contract's commands by outcome and time (#185).
     assert one("""
            SELECT pg_get_indexdef(indexrelid) FROM pg_index
-           WHERE indexrelid = 'ehos_contract_commands_contract_outcome_recorded_at_index'::regclass
+           WHERE indexrelid = '#{p()}_commands_contract_outcome_recorded_at_index'::regclass
            """) =~ "btree (contract, outcome, recorded_at)"
   end
 
@@ -168,7 +187,7 @@ defmodule EhosContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "6"
+    assert version() == "7"
     assert tables() == @tables
     assert functions() == @functions
   end
@@ -180,31 +199,32 @@ defmodule EhosContract.MigrationsTest do
   @upgrade_to_v4 20_261_016_120_000
   @upgrade_to_v5 20_261_102_120_000
   @upgrade_to_v6 20_261_119_120_000
+  @upgrade_to_v7 20_261_124_120_000
 
   defp resume_status? do
     one("""
     SELECT count(*) FROM information_schema.columns
-    WHERE table_name = 'ehos_contract_subscriptions' AND column_name = 'resume_status'
+    WHERE table_name = '#{p()}_subscriptions' AND column_name = 'resume_status'
     """) == 1
   end
 
   defp words_columns do
     column("""
     SELECT column_name FROM information_schema.columns
-    WHERE table_name = 'ehos_contract_deployments' AND column_name LIKE 'text\\_%'
+    WHERE table_name = '#{p()}_deployments' AND column_name LIKE 'text\\_%'
     """)
   end
 
   defp versions_index do
     one("""
-    SELECT pg_get_indexdef('ehos_contract_deployments_versions_index'::regclass)
+    SELECT pg_get_indexdef('#{p()}_deployments_versions_index'::regclass)
     """)
   end
 
   defp deployment!(text_digest, at) do
     Repo.query!(
       """
-      INSERT INTO ehos_contract_deployments
+      INSERT INTO #{p()}_deployments
         (id, contract, contract_version, wiring_version, events, edges, text_digest, first_seen_at)
       VALUES (gen_random_uuid(), 'MigrationsTest', 'v', 'w', '{}', '{}', $1, $2)
       """,
@@ -221,7 +241,7 @@ defmodule EhosContract.MigrationsTest do
          SELECT column_name || ' ' || is_nullable FROM information_schema.columns
          WHERE table_name = $1 AND column_name IN ('process', 'instance_id')
          """,
-         ["ehos_contract_#{table}"]
+         ["#{p()}_#{table}"]
        )}
     end
   end
@@ -229,7 +249,7 @@ defmodule EhosContract.MigrationsTest do
   defp inputs? do
     one("""
     SELECT count(*) FROM information_schema.columns
-    WHERE table_name = 'ehos_contract_commands' AND column_name = 'inputs'
+    WHERE table_name = '#{p()}_commands' AND column_name = 'inputs'
     """) == 1
   end
 
@@ -240,8 +260,16 @@ defmodule EhosContract.MigrationsTest do
     deployment!("t2", ~U[2026-10-02 00:00:00.000000Z])
 
     on_exit(fn ->
-      Repo.query!("DELETE FROM ehos_contract_deployments WHERE contract = 'MigrationsTest'")
+      Repo.query!("DELETE FROM #{p()}_deployments WHERE contract = 'MigrationsTest'")
     end)
+
+    # Issue #428: V07 gives the storage its old name back.
+    migrate(:down, to: @upgrade_to_v7)
+
+    assert version() == "6"
+    assert p() == "eh_os_contract"
+    assert tables() == @tables
+    assert functions() == @functions
 
     # Issue #635: V06 takes its trigger and its function back, and nothing else.
     migrate(:down, to: @upgrade_to_v6)
@@ -259,14 +287,14 @@ defmodule EhosContract.MigrationsTest do
     # Issue #550: before V05, dispatch went on projecting an inline read model that
     # failed while it was rebuilt, so V05 has it rebuilt from the start.
     Repo.query!(
-      "INSERT INTO ehos_contract_subscriptions " <>
+      "INSERT INTO #{p()}_subscriptions " <>
         "(name, kind, mode, version, status, failed_position, failure, attempts) " <>
         "VALUES ('MigrationsTest', 'read_model', 'inline', 'v', 'failing', 7, 'RuntimeError', 3), " <>
         "('MigrationsTest:ordered', 'read_model', 'ordered', 'v', 'failing', 7, 'RuntimeError', 3)"
     )
 
     on_exit(fn ->
-      Repo.query!("DELETE FROM ehos_contract_subscriptions WHERE name LIKE 'MigrationsTest%'")
+      Repo.query!("DELETE FROM #{p()}_subscriptions WHERE name LIKE 'MigrationsTest%'")
     end)
 
     migrate(:up, all: true)
@@ -274,7 +302,7 @@ defmodule EhosContract.MigrationsTest do
     assert column("""
            SELECT concat_ws(' ', name, status, coalesce(resume_status, '-'),
                             coalesce(failed_position::text, '-'), attempts)
-           FROM ehos_contract_subscriptions WHERE name LIKE 'MigrationsTest%' ORDER BY name
+           FROM #{p()}_subscriptions WHERE name LIKE 'MigrationsTest%' ORDER BY name
            """) == ["MigrationsTest stale - - 0", "MigrationsTest:ordered failing - 7 3"]
 
     migrate(:down, to: @upgrade_to_v5)
@@ -286,13 +314,11 @@ defmodule EhosContract.MigrationsTest do
     assert versions_index() =~ "(contract, contract_version, wiring_version)"
 
     assert one("""
-           SELECT min(first_seen_at)::text FROM ehos_contract_deployments
+           SELECT min(first_seen_at)::text FROM #{p()}_deployments
            WHERE contract = 'MigrationsTest'
            """) =~ "2026-10-01"
 
-    assert one(
-             "SELECT count(*) FROM ehos_contract_deployments WHERE contract = 'MigrationsTest'"
-           ) == 1
+    assert one("SELECT count(*) FROM #{p()}_deployments WHERE contract = 'MigrationsTest'") == 1
 
     migrate(:down, to: @upgrade_to_v3)
 
@@ -313,11 +339,93 @@ defmodule EhosContract.MigrationsTest do
 
     migrate(:up, all: true)
 
-    assert version() == "6"
+    assert version() == "7"
     assert inputs?()
     assert runs_columns() == %{events: [], commands: []}
     assert words_columns() == ["text_digest", "text_digests"]
     assert resume_status?()
+  end
+
+  defp event!(type, contract) do
+    Repo.query!(
+      """
+      INSERT INTO #{p()}_events (id, type, contract, contract_version, correlation_id, actor, occurred_at)
+      VALUES (gen_random_uuid(), $1, $2, 'v', gen_random_uuid(), 'MigrationsTest', now())
+      """,
+      [type, contract]
+    )
+  end
+
+  defp events do
+    column("SELECT type || ' ' || contract FROM #{p()}_events WHERE actor = 'MigrationsTest'")
+  end
+
+  defp workers,
+    do: column("SELECT worker FROM oban_jobs WHERE args = '{\"MigrationsTest\": true}'")
+
+  # Issue #428: the library was `eh_os_contract`, and a database at V06 holds the name in
+  # its storage, in the engine's own rows of the log and in Oban's jobs of its workers.
+  test "V07 renames the storage and the engine's rows, and its down gives the old ones back" do
+    on_exit(fn ->
+      Repo.query!("DELETE FROM oban_jobs WHERE args = '{\"MigrationsTest\": true}'")
+      Repo.query!("ALTER TABLE #{p()}_events DISABLE TRIGGER USER")
+      Repo.query!("DELETE FROM #{p()}_events WHERE actor = 'MigrationsTest'")
+      Repo.query!("ALTER TABLE #{p()}_events ENABLE TRIGGER USER")
+    end)
+
+    migrate(:down, to: @upgrade_to_v7)
+    assert version() == "6"
+
+    event!("eh_os_contract.subject_erased", "eh_os_contract")
+    event!("eh_os_contract.timer_elapsed", "Clinic.Visits")
+    # An application's own event, whose names merely contain the old one.
+    event!("clinic.eh_os_contract.subject_erased", "Clinic.eh_os_contract")
+
+    Repo.query!(
+      "INSERT INTO oban_jobs (worker, args) SELECT w, '{\"MigrationsTest\": true}' FROM " <>
+        "unnest(ARRAY['EhOsContract.TimerJob', 'EhOsContract.EffectJob', " <>
+        "'Clinic.EhOsContract.TimerJob']) AS w"
+    )
+
+    migrate(:up, all: true)
+
+    assert version() == "7"
+    assert tables() == @tables
+    assert functions() == @functions
+
+    assert events() == [
+             "clinic.eh_os_contract.subject_erased Clinic.eh_os_contract",
+             "ehos_contract.subject_erased ehos_contract",
+             "ehos_contract.timer_elapsed Clinic.Visits"
+           ]
+
+    assert workers() ==
+             ["Clinic.EhOsContract.TimerJob", "EhosContract.EffectJob", "EhosContract.TimerJob"]
+
+    # The log refuses a change again once V07 has made its own.
+    assert_raise Postgrex.Error, ~r/ehos_contract_events is append-only: UPDATE is refused/, fn ->
+      Repo.query!("UPDATE ehos_contract_events SET actor = actor")
+    end
+
+    # The trigger wakes the runners on the channel they listen on under the new name.
+    assert one("SELECT prosrc FROM pg_proc WHERE proname = 'ehos_contract_events_notify'") =~
+             ".oban_ehos_contract'"
+
+    migrate(:down, to: @upgrade_to_v7)
+
+    assert p() == "eh_os_contract"
+
+    assert events() == [
+             "clinic.eh_os_contract.subject_erased Clinic.eh_os_contract",
+             "eh_os_contract.subject_erased eh_os_contract",
+             "eh_os_contract.timer_elapsed Clinic.Visits"
+           ]
+
+    assert workers() ==
+             ["Clinic.EhOsContract.TimerJob", "EhOsContract.EffectJob", "EhOsContract.TimerJob"]
+
+    assert one("SELECT prosrc FROM pg_proc WHERE proname = 'eh_os_contract_events_notify'") =~
+             ".oban_eh_os_contract'"
   end
 
   # A version no migration file in the test database has, so running it touches
@@ -325,7 +433,7 @@ defmodule EhosContract.MigrationsTest do
   @host_version 99_990_101_000_000
 
   test "a database recording a version this release does not know is refused, both ways" do
-    Repo.query!("COMMENT ON TABLE ehos_contract_events IS '7'")
+    Repo.query!("COMMENT ON TABLE #{p()}_events IS '8'")
 
     Repo.query!(
       "INSERT INTO schema_migrations (version, inserted_at) VALUES ($1, now())",
@@ -335,10 +443,10 @@ defmodule EhosContract.MigrationsTest do
     on_exit(fn ->
       Repo.query!("DELETE FROM schema_migrations WHERE version = $1", [@host_version])
       current = EhosContract.Migrations.current_version()
-      Repo.query!("COMMENT ON TABLE ehos_contract_events IS '#{current}'")
+      Repo.query!("COMMENT ON TABLE #{p()}_events IS '#{current}'")
     end)
 
-    refused = ~r/records version 7, and this release of ehos_contract knows versions up to/
+    refused = ~r/records version 8, and this release of ehos_contract knows versions up to/
 
     assert_raise ArgumentError, refused, fn ->
       Ecto.Migrator.down(Repo, @host_version, EhosContract.MigrationsTest.Host, log: false)
@@ -352,23 +460,23 @@ defmodule EhosContract.MigrationsTest do
 
     # Nothing ran: the tables are there, and the database still says what it said.
     assert tables() == @tables
-    assert version() == "7"
+    assert version() == "8"
   end
 
   test "a database migrated before 0.3.0 is refused by its column, whatever it records" do
-    Repo.query!("ALTER TABLE ehos_contract_events ADD COLUMN instance_id text")
-    on_exit(fn -> Repo.query!("ALTER TABLE ehos_contract_events DROP COLUMN instance_id") end)
+    Repo.query!("ALTER TABLE #{p()}_events ADD COLUMN instance_id text")
+    on_exit(fn -> Repo.query!("ALTER TABLE #{p()}_events DROP COLUMN instance_id") end)
 
-    assert_raise ArgumentError, ~r/records version 6, and it was migrated before 0\.3\.0/, fn ->
+    assert_raise ArgumentError, ~r/records version 7, and it was migrated before 0\.3\.0/, fn ->
       Ecto.Migrator.up(Repo, @host_version, EhosContract.MigrationsTest.Host, log: false)
     end
 
-    assert version() == "6"
+    assert version() == "7"
   end
 
   test "a version this release does not have is refused as a target" do
-    assert_raise ArgumentError, ~r/and 7 is not one of them/, fn ->
-      EhosContract.Migrations.up(version: 7)
+    assert_raise ArgumentError, ~r/and 8 is not one of them/, fn ->
+      EhosContract.Migrations.up(version: 8)
     end
 
     assert_raise ArgumentError, ~r/and 0 is not one of them/, fn ->
@@ -379,14 +487,14 @@ defmodule EhosContract.MigrationsTest do
   test "the tables refuse what their checks refuse, whoever writes it" do
     assert_raise Postgrex.Error, ~r/ehos_contract_subscriptions_status/, fn ->
       Repo.query!(
-        "INSERT INTO ehos_contract_subscriptions (name, kind, mode, version, status) " <>
+        "INSERT INTO #{p()}_subscriptions (name, kind, mode, version, status) " <>
           "VALUES ('MigrationsTest', 'read_model', 'ordered', 'v', 'skipped')"
       )
     end
 
     assert_raise Postgrex.Error, ~r/ehos_contract_subscriptions_resume_status/, fn ->
       Repo.query!(
-        "INSERT INTO ehos_contract_subscriptions " <>
+        "INSERT INTO #{p()}_subscriptions " <>
           "(name, kind, mode, version, status, resume_status) " <>
           "VALUES ('MigrationsTest', 'read_model', 'ordered', 'v', 'failing', 'failing')"
       )
@@ -394,7 +502,7 @@ defmodule EhosContract.MigrationsTest do
 
     assert_raise Postgrex.Error, ~r/ehos_contract_subject_keys_version/, fn ->
       Repo.query!(
-        "INSERT INTO ehos_contract_subject_keys " <>
+        "INSERT INTO #{p()}_subject_keys " <>
           "(subject_type, subject_id, key_version, kek_id, wrapped_key) " <>
           "VALUES ('patient', 'patient-anna', 0, 'kek-1', '\\x00')"
       )
@@ -402,7 +510,7 @@ defmodule EhosContract.MigrationsTest do
 
     assert_raise Postgrex.Error, ~r/ehos_contract_commands_outcome/, fn ->
       Repo.query!(
-        "INSERT INTO ehos_contract_commands (id, contract, type, issued_by, correlation_id, outcome) " <>
+        "INSERT INTO #{p()}_commands (id, contract, type, issued_by, correlation_id, outcome) " <>
           "VALUES ($1, 'C', 't', 'actor:a', $2, 'skipped')",
         [Ecto.UUID.bingenerate(), Ecto.UUID.bingenerate()]
       )
