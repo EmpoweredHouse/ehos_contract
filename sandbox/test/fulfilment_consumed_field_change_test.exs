@@ -13,7 +13,7 @@ defmodule Fulfilment.ConsumedFieldChangeTest do
 
   The subscriber's contract breaks through its scenarios, which feed the policy a
   `parcel_packed` with `weight_grams:`; the contract has no compile dependency on its
-  sibling, so the refusal is the rules between modules (`EhOsContract.Contract.Links`),
+  sibling, so the refusal is the rules between modules (`EhosContract.Contract.Links`),
   which the project's compiler runs.
   """
 
@@ -56,7 +56,7 @@ defmodule Fulfilment.ConsumedFieldChangeTest do
       compile(copy(@publisher, namespace, change), @publisher) ++
         compile(copy(@subscriber, namespace), @subscriber) ++ [Fulfilment.Contracts.Orders]
 
-    for {message, anno} <- EhOsContract.Contract.Links.check(modules),
+    for {message, anno} <- EhosContract.Contract.Links.check(modules),
         do: {message, anno && to_string(:erl_anno.file(anno)), anno && :erl_anno.line(anno)}
   end
 

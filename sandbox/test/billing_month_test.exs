@@ -7,14 +7,14 @@ defmodule Billing.MonthTest do
   judged on what happened (`Billing.Processes.Month`).
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
   alias Billing.Adapters.PaymentGateway.Fake
   alias Billing.Contracts.Subscriptions
   alias Billing.Contracts.Subscriptions.Commands.{CancelSubscription, CloseBillingPeriod}
   alias Billing.Contracts.Subscriptions.Commands.{RecordUsage, StartSubscription}
   alias Billing.Domain.Values.UsageRecord
-  alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
+  alias EhosContract.{Actor, Clock, Event, Testing, Trace}
 
   @manager Actor.credential("manager-mo", [
              "billing.start_subscription",
@@ -29,15 +29,15 @@ defmodule Billing.MonthTest do
   # effect subscribe before any subscription starts. The gateway takes every charge
   # unless a test says otherwise.
   setup do
-    Application.delete_env(:eh_os_contract_host, Fake)
-    on_exit(fn -> Application.delete_env(:eh_os_contract_host, Fake) end)
+    Application.delete_env(:ehos_contract_host, Fake)
+    on_exit(fn -> Application.delete_env(:ehos_contract_host, Fake) end)
     Testing.drain()
     :ok
   end
 
   defp send!(command, at) do
     {:ok, _} =
-      Clock.at(at, fn -> EhOsContract.dispatch(Subscriptions, command, actor: @manager) end)
+      Clock.at(at, fn -> EhosContract.dispatch(Subscriptions, command, actor: @manager) end)
   end
 
   defp subscribe(id, at) do
@@ -131,11 +131,11 @@ defmodule Billing.MonthTest do
 
     for period <- ["2026-09", "2026-07"] do
       assert {:error,
-              %EhOsContract.Rejection{
+              %EhosContract.Rejection{
                 invariant: :only_an_ended_period_of_the_subscription_is_closed
               }} =
                Clock.at(~U[2026-09-15 10:00:00Z], fn ->
-                 EhOsContract.dispatch(
+                 EhosContract.dispatch(
                    Subscriptions,
                    %CloseBillingPeriod{subscription_id: "sub-1", period_id: period},
                    actor: @manager
@@ -156,7 +156,7 @@ defmodule Billing.MonthTest do
     # Had the timer stayed set, its close would have been decided, and refused as a
     # close of a subscription no longer billed.
     assert Repo.all(
-             from(c in "eh_os_contract_commands",
+             from(c in "ehos_contract_commands",
                where: c.invariant == "only_an_active_subscription_is_billed",
                select: c.id
              )
@@ -187,7 +187,7 @@ defmodule Billing.MonthTest do
   end
 
   test "the gateway down once: the outage is observed, and the next attempt collects" do
-    Application.put_env(:eh_os_contract_host, Fake, down: 1)
+    Application.put_env(:ehos_contract_host, Fake, down: 1)
     subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
 
     drain(~U[2026-09-01 01:00:00Z])
@@ -199,7 +199,7 @@ defmodule Billing.MonthTest do
   end
 
   test "the gateway down throughout: nothing is collected, and the month is suspended, not broken" do
-    Application.put_env(:eh_os_contract_host, Fake, down: :always)
+    Application.put_env(:ehos_contract_host, Fake, down: :always)
     subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
 
     drain(~U[2026-09-01 01:00:00Z])
@@ -214,7 +214,7 @@ defmodule Billing.MonthTest do
 
     assert {:error, {:invalid, [period_id: {:invariant, :named_by_month}]}} =
              Clock.at(~U[2026-09-15 10:00:00Z], fn ->
-               EhOsContract.dispatch(
+               EhosContract.dispatch(
                  Subscriptions,
                  %CloseBillingPeriod{subscription_id: "sub-1", period_id: "2026-8"},
                  actor: @manager
@@ -228,7 +228,7 @@ defmodule Billing.MonthTest do
     subscribe("sub-1", ~U[2026-08-15 10:00:00Z])
 
     assert {:error, {:invalid, [usage: _]}} =
-             EhOsContract.dispatch(
+             EhosContract.dispatch(
                Subscriptions,
                %RecordUsage{
                  subscription_id: "sub-1",
@@ -240,7 +240,7 @@ defmodule Billing.MonthTest do
 
   defp observations do
     Repo.all(
-      from(o in "eh_os_contract_dependency_observations",
+      from(o in "ehos_contract_dependency_observations",
         where: o.external == "payment_gateway",
         select: type(o.observed_at, :utc_datetime_usec)
       )

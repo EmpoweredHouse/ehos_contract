@@ -5,7 +5,7 @@ defmodule Billing.Amounts do
   to pay out.
   """
 
-  use Boundary, deps: [EhOsContract, Billing.Domain], exports: [Money, Quantity]
+  use Boundary, deps: [EhosContract, Billing.Domain], exports: [Money, Quantity]
 end
 
 defmodule Billing.Amounts.Money do

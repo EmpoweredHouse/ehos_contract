@@ -38,51 +38,51 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
-            eh_os_contract:
-              - 'packages/eh_os_contract/lib/**'
-              - 'packages/eh_os_contract/priv/schema/**'
-              - 'packages/eh_os_contract/docs/**'
-              - 'packages/eh_os_contract/.formatter.exs'
-              - 'packages/eh_os_contract/mix.exs'
-            eh_os_contract_changelog:
-              - 'packages/eh_os_contract/CHANGELOG.md'
-            eh_os_contract_auth:
-              - 'packages/eh_os_contract_auth/lib/**'
-              - 'packages/eh_os_contract_auth/priv/schemas/**'
-              - 'packages/eh_os_contract_auth/.formatter.exs'
-              - 'packages/eh_os_contract_auth/mix.exs'
-            eh_os_contract_auth_changelog:
-              - 'packages/eh_os_contract_auth/CHANGELOG.md'
-            eh_os_contract_web:
-              - 'packages/eh_os_contract_web/lib/**'
-              - 'packages/eh_os_contract_web/priv/static/**'
-              - 'packages/eh_os_contract_web/assets/**'
-              - 'packages/eh_os_contract_web/.formatter.exs'
-              - 'packages/eh_os_contract_web/mix.exs'
-            eh_os_contract_web_changelog:
-              - 'packages/eh_os_contract_web/CHANGELOG.md'
-            eh_os_contract_graph:
-              - 'packages/eh_os_contract_graph/lib/**'
-              - 'packages/eh_os_contract_graph/priv/static/**'
-              - 'packages/eh_os_contract_graph/priv/schema/**'
-              - 'packages/eh_os_contract_graph/assets/**'
-              - 'packages/eh_os_contract_graph/.formatter.exs'
-              - 'packages/eh_os_contract_graph/mix.exs'
-            eh_os_contract_graph_changelog:
-              - 'packages/eh_os_contract_graph/CHANGELOG.md'
+            ehos_contract:
+              - 'packages/ehos_contract/lib/**'
+              - 'packages/ehos_contract/priv/schema/**'
+              - 'packages/ehos_contract/docs/**'
+              - 'packages/ehos_contract/.formatter.exs'
+              - 'packages/ehos_contract/mix.exs'
+            ehos_contract_changelog:
+              - 'packages/ehos_contract/CHANGELOG.md'
+            ehos_contract_auth:
+              - 'packages/ehos_contract_auth/lib/**'
+              - 'packages/ehos_contract_auth/priv/schemas/**'
+              - 'packages/ehos_contract_auth/.formatter.exs'
+              - 'packages/ehos_contract_auth/mix.exs'
+            ehos_contract_auth_changelog:
+              - 'packages/ehos_contract_auth/CHANGELOG.md'
+            ehos_contract_web:
+              - 'packages/ehos_contract_web/lib/**'
+              - 'packages/ehos_contract_web/priv/static/**'
+              - 'packages/ehos_contract_web/assets/**'
+              - 'packages/ehos_contract_web/.formatter.exs'
+              - 'packages/ehos_contract_web/mix.exs'
+            ehos_contract_web_changelog:
+              - 'packages/ehos_contract_web/CHANGELOG.md'
+            ehos_contract_graph:
+              - 'packages/ehos_contract_graph/lib/**'
+              - 'packages/ehos_contract_graph/priv/static/**'
+              - 'packages/ehos_contract_graph/priv/schema/**'
+              - 'packages/ehos_contract_graph/assets/**'
+              - 'packages/ehos_contract_graph/.formatter.exs'
+              - 'packages/ehos_contract_graph/mix.exs'
+            ehos_contract_graph_changelog:
+              - 'packages/ehos_contract_graph/CHANGELOG.md'
 
       - name: A change a host can see has a line in its package's CHANGELOG.md, or says why not
         # The description is handed over in an environment variable, never pasted into the script,
         # so text in it cannot become a command; the template's HTML comments are dropped first.
         env:
-          EH_OS_CONTRACT: ${{ steps.filter.outputs.eh_os_contract }}
-          EH_OS_CONTRACT_CHANGELOG: ${{ steps.filter.outputs.eh_os_contract_changelog }}
-          EH_OS_CONTRACT_AUTH: ${{ steps.filter.outputs.eh_os_contract_auth }}
-          EH_OS_CONTRACT_AUTH_CHANGELOG: ${{ steps.filter.outputs.eh_os_contract_auth_changelog }}
-          EH_OS_CONTRACT_WEB: ${{ steps.filter.outputs.eh_os_contract_web }}
-          EH_OS_CONTRACT_WEB_CHANGELOG: ${{ steps.filter.outputs.eh_os_contract_web_changelog }}
-          EH_OS_CONTRACT_GRAPH: ${{ steps.filter.outputs.eh_os_contract_graph }}
-          EH_OS_CONTRACT_GRAPH_CHANGELOG: ${{ steps.filter.outputs.eh_os_contract_graph_changelog }}
+          EHOS_CONTRACT: ${{ steps.filter.outputs.ehos_contract }}
+          EHOS_CONTRACT_CHANGELOG: ${{ steps.filter.outputs.ehos_contract_changelog }}
+          EHOS_CONTRACT_AUTH: ${{ steps.filter.outputs.ehos_contract_auth }}
+          EHOS_CONTRACT_AUTH_CHANGELOG: ${{ steps.filter.outputs.ehos_contract_auth_changelog }}
+          EHOS_CONTRACT_WEB: ${{ steps.filter.outputs.ehos_contract_web }}
+          EHOS_CONTRACT_WEB_CHANGELOG: ${{ steps.filter.outputs.ehos_contract_web_changelog }}
+          EHOS_CONTRACT_GRAPH: ${{ steps.filter.outputs.ehos_contract_graph }}
+          EHOS_CONTRACT_GRAPH_CHANGELOG: ${{ steps.filter.outputs.ehos_contract_graph_changelog }}
           BODY: ${{ github.event.pull_request.body }}
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -103,10 +103,10 @@ jobs:
               missing+=("$1")
             fi
           }
-          need eh_os_contract "$EH_OS_CONTRACT" "$EH_OS_CONTRACT_CHANGELOG"
-          need eh_os_contract_auth "$EH_OS_CONTRACT_AUTH" "$EH_OS_CONTRACT_AUTH_CHANGELOG"
-          need eh_os_contract_web "$EH_OS_CONTRACT_WEB" "$EH_OS_CONTRACT_WEB_CHANGELOG"
-          need eh_os_contract_graph "$EH_OS_CONTRACT_GRAPH" "$EH_OS_CONTRACT_GRAPH_CHANGELOG"
+          need ehos_contract "$EHOS_CONTRACT" "$EHOS_CONTRACT_CHANGELOG"
+          need ehos_contract_auth "$EHOS_CONTRACT_AUTH" "$EHOS_CONTRACT_AUTH_CHANGELOG"
+          need ehos_contract_web "$EHOS_CONTRACT_WEB" "$EHOS_CONTRACT_WEB_CHANGELOG"
+          need ehos_contract_graph "$EHOS_CONTRACT_GRAPH" "$EHOS_CONTRACT_GRAPH_CHANGELOG"
 
           if [ "${#missing[@]}" -eq 0 ]; then
             echo "Every package whose code changes has a line in its CHANGELOG.md, or none changes."

@@ -29,8 +29,8 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   ## When to run it
 
   The runs go back about six weeks from the last full hour, each event stamped when it
-  happened (`EhOsContract.Clock`), and what reacts to them runs then too: the task pushes
-  the reactions through with `EhOsContract.Testing.drain/1` at each step and every hour
+  happened (`EhosContract.Clock`), and what reacts to them runs then too: the task pushes
+  the reactions through with `EhosContract.Testing.drain/1` at each step and every hour
   between, so a timer fires on time. Six weeks, because the longest promise it breaks is
   thirty days, and billing closes its periods on the first of the month: the window always
   holds a first of the month at least four days old, so its invoices' three days are over.
@@ -41,12 +41,12 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   promise still pending breaks once its window passes. So run it right before looking,
   on a database that holds nothing else:
 
-      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix ecto.reset
-      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix sandbox.traffic
-      $ MIX_ENV=dev EH_OS_CONTRACT_DEV_DB=eh_os_contract_host_dev_traffic mix phx.server
+      $ MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix ecto.reset
+      $ MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix sandbox.traffic
+      $ MIX_ENV=dev EHOS_CONTRACT_DEV_DB=ehos_contract_host_dev_traffic mix phx.server
 
   **The default development database is shared by every checkout of this repository on
-  the machine**, and `mix ecto.reset` empties it for all of them; `EH_OS_CONTRACT_DEV_DB`
+  the machine**, and `mix ecto.reset` empties it for all of them; `EHOS_CONTRACT_DEV_DB`
   names another (`config/dev.exs`). Mind its spelling: misspelled, the variable is not
   read, and `mix ecto.reset` empties the shared default. The task refuses a test
   database by its name, before anything is written. The task refuses a log that holds anything at all,
@@ -71,9 +71,9 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   """
 
   use Mix.Task
-  use Boundary, top_level?: true, deps: [EhOsContract, Lending, Billing, Fulfilment], exports: []
+  use Boundary, top_level?: true, deps: [EhosContract, Lending, Billing, Fulfilment], exports: []
 
-  alias EhOsContract.{Clock, Dependency, Rejection, Testing}
+  alias EhosContract.{Clock, Dependency, Rejection, Testing}
 
   # How far back the runs go, in hours, and so the first drain: the deploy, at which
   # every consumer subscribes before the first event. Six weeks: see the moduledoc.
@@ -92,7 +92,7 @@ defmodule Mix.Tasks.Sandbox.Traffic do
     end
 
     Mix.Task.run("app.config")
-    repo = Application.fetch_env!(:eh_os_contract_host, EhOsContractHost.Repo)
+    repo = Application.fetch_env!(:ehos_contract_host, EhosContractHost.Repo)
 
     # Before the application starts, since its boot already writes the deployment rows:
     # a test database's log is empty between runs, so the refusals below would let it
@@ -104,16 +104,16 @@ defmodule Mix.Tasks.Sandbox.Traffic do
     parameters = Keyword.put(repo[:parameters] || [], :application_name, @connection)
 
     Application.put_env(
-      :eh_os_contract_host,
-      EhOsContractHost.Repo,
+      :ehos_contract_host,
+      EhosContractHost.Repo,
       Keyword.put(repo, :parameters, parameters)
     )
 
-    Application.put_env(:eh_os_contract, :subscriptions, :manual)
-    oban = Application.fetch_env!(:eh_os_contract_host, Oban)
-    Application.put_env(:eh_os_contract_host, Oban, Keyword.put(oban, :testing, :manual))
+    Application.put_env(:ehos_contract, :subscriptions, :manual)
+    oban = Application.fetch_env!(:ehos_contract_host, Oban)
+    Application.put_env(:ehos_contract_host, Oban, Keyword.put(oban, :testing, :manual))
 
-    Application.put_env(:eh_os_contract_host, Billing.Adapters.PaymentGateway,
+    Application.put_env(:ehos_contract_host, Billing.Adapters.PaymentGateway,
       impl: Billing.Traffic.Gateway
     )
 
@@ -140,13 +140,13 @@ defmodule Mix.Tasks.Sandbox.Traffic do
     # rather than against the last hour.
     drain()
 
-    database = Application.fetch_env!(:eh_os_contract_host, EhOsContractHost.Repo)[:database]
+    database = Application.fetch_env!(:ehos_contract_host, EhosContractHost.Repo)[:database]
 
     Mix.shell().info("""
 
     Done, in #{database}. The dashboard on it:
 
-        EH_OS_CONTRACT_DEV_DB=#{database} mix phx.server
+        EHOS_CONTRACT_DEV_DB=#{database} mix phx.server
 
     then http://localhost:4010/dashboard
     """)
@@ -165,14 +165,14 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   end
 
   defp run_operation({:ok, contract, command, actor}) do
-    case EhOsContract.dispatch(contract, command, actor: actor) do
+    case EhosContract.dispatch(contract, command, actor: actor) do
       {:ok, _receipt} -> :ok
       other -> Mix.raise("#{inspect(command.__struct__)} was not decided: #{inspect(other)}")
     end
   end
 
   defp run_operation({:refused, contract, command, actor, invariant}) do
-    case EhOsContract.dispatch(contract, command, actor: actor) do
+    case EhosContract.dispatch(contract, command, actor: actor) do
       {:error, %Rejection{invariant: ^invariant}} ->
         :ok
 
@@ -182,7 +182,7 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   end
 
   defp run_operation({:recorded, contract, event, actor}) do
-    case EhOsContract.record(contract, event, actor: actor) do
+    case EhosContract.record(contract, event, actor: actor) do
       {:ok, _receipt} -> :ok
       other -> Mix.raise("#{inspect(event.__struct__)} was not recorded: #{inspect(other)}")
     end
@@ -195,13 +195,13 @@ defmodule Mix.Tasks.Sandbox.Traffic do
   # pushed through at the weeks' times; anyone else connected, a dev server above all,
   # would react to the task's events at today's.
   defp refuse_a_shared_database! do
-    repo = EhOsContract.Config.fetch!(:repo)
+    repo = EhosContract.Config.fetch!(:repo)
 
-    if repo.exists?(EhOsContract.Event) do
+    if repo.exists?(EhosContract.Event) do
       Mix.raise(
         "The development database's log is not empty. Empty it first with mix ecto.reset; " <>
           "the default database is every checkout's on this machine, so name one of your " <>
-          "own with EH_OS_CONTRACT_DEV_DB"
+          "own with EHOS_CONTRACT_DEV_DB"
       )
     end
 

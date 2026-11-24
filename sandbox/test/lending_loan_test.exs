@@ -5,9 +5,9 @@ defmodule Lending.LoanTest do
   kept by a payment or, the other way, by a waiver (`Lending.Processes.LateFee`).
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
-  alias EhOsContract.{Actor, Clock, Event, Testing, Trace}
+  alias EhosContract.{Actor, Clock, Event, Testing, Trace}
   alias Lending.Contracts.Circulation
   alias Lending.Contracts.Circulation.Commands.{LendCopy, PayLateFee, ReturnCopy, WaiveLateFee}
 
@@ -34,7 +34,7 @@ defmodule Lending.LoanTest do
   defp send!(command, moment),
     do:
       {:ok, _} =
-        at(moment, fn -> EhOsContract.dispatch(Circulation, command, actor: @librarian) end)
+        at(moment, fn -> EhosContract.dispatch(Circulation, command, actor: @librarian) end)
 
   defp lend(loan) do
     send!(

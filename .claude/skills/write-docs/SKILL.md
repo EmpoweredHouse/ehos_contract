@@ -5,7 +5,7 @@ description: Before adding or changing a public module, function, macro, behavio
 
 # Writing the docs a host reads
 
-Checked on 7 October 2026 against the gate of `packages/eh_os_contract` (`mix check`: `eh_os_contract.docs
+Checked on 7 October 2026 against the gate of `packages/ehos_contract` (`mix check`: `ehos_contract.docs
 --check`, `docs --warnings-as-errors`, `test/doc_coverage_test.exs`, `test/docs_test.exs`) and the generated
 pages it holds. Not yet run on a change: read what it says against those before trusting it.
 
@@ -18,13 +18,13 @@ may never see this repository.
 | You write | It appears in | Regenerate with |
 | --- | --- | --- |
 | a `@moduledoc`, `@doc`, `@typedoc`, `@spec` | the module's page on hexdocs | nothing; `mix docs` builds it |
-| a mix task's `@shortdoc` and `@moduledoc` | `docs/cli.md`, `mix help <task>` | `mix eh_os_contract.docs` |
-| a behaviour's `@moduledoc`, `@callback`, its `@doc` | `docs/behaviours.md` | `mix eh_os_contract.docs` |
-| a DSL entity's `describe:`, an option's `doc:` | `docs/dsl/<dsl>-<entity>.md` | `mix eh_os_contract.docs` |
-| a configuration key's `doc:` in `EhOsContract.Config` | `docs/configuration.md` | `mix eh_os_contract.docs` |
-| a rule's text in `EhOsContract.Check.Catalog` | `docs/rules.md` | `mix eh_os_contract.rules` |
+| a mix task's `@shortdoc` and `@moduledoc` | `docs/cli.md`, `mix help <task>` | `mix ehos_contract.docs` |
+| a behaviour's `@moduledoc`, `@callback`, its `@doc` | `docs/behaviours.md` | `mix ehos_contract.docs` |
+| a DSL entity's `describe:`, an option's `doc:` | `docs/dsl/<dsl>-<entity>.md` | `mix ehos_contract.docs` |
+| a configuration key's `doc:` in `EhosContract.Config` | `docs/configuration.md` | `mix ehos_contract.docs` |
+| a rule's text in `EhosContract.Check.Catalog` | `docs/rules.md` | `mix ehos_contract.rules` |
 
-Run the generator in `packages/eh_os_contract`, with `MIX_ENV=dev`, and commit what it writes beside the
+Run the generator in `packages/ehos_contract`, with `MIX_ENV=dev`, and commit what it writes beside the
 change. `--check` fails the gate until you do.
 
 ## A `@moduledoc`
@@ -69,7 +69,7 @@ non_neg_integer()`), since the reference pages print the spec as written.
 
 - the function is public only because another module of the library calls it (`Config.validate!/1`,
   `Tools.domain!/2`);
-- a macro generates it into a host's module (`__eh_os_contract_model__/0`);
+- a macro generates it into a host's module (`__ehos_contract_model__/0`);
 - it implements a callback with `@impl`, which Elixir already hides.
 
 It is wrong when a host calls the function, configures it, or meets it in a message or a stacktrace it
@@ -102,13 +102,13 @@ Many moduledocs still carry such codes; when you change one, take its codes out 
 The docs build fails (`--warnings-as-errors`) on a reference that is not there, and the generated
 pages need references that work away from the module's own page:
 
-- **Qualify** a function, callback or type of another module: `EhOsContract.Store.read_query/2`,
-  `c:EhOsContract.Bus.publish/2`, `t:EhOsContract.Store.entry/0`. A bare `publish/2` resolves only on its
+- **Qualify** a function, callback or type of another module: `EhosContract.Store.read_query/2`,
+  `c:EhosContract.Bus.publish/2`, `t:EhosContract.Store.entry/0`. A bare `publish/2` resolves only on its
   own module's page; the generator of `docs/behaviours.md` and `docs/cli.md` qualifies bare references
   to the module's own functions, callbacks and types, but not to another's.
 - **Never reference what is not published**: a `@doc false` function, a `@moduledoc false` module, a
-  module of `test/support/` or `dev/`, or a `dev/` task (`mix eh_os_contract.docs`, `mix
-  eh_os_contract.rules`; write them without `mix ` so ExDoc does not try to link them).
+  module of `test/support/` or `dev/`, or a `dev/` task (`mix ehos_contract.docs`, `mix
+  ehos_contract.rules`; write them without `mix ` so ExDoc does not try to link them).
 - **ExDoc says nothing about a module that does not exist at all**: a typo in a module's name renders as
   plain code. Check a new module reference by following it on the built page (`MIX_ENV=dev mix docs`,
   then `doc/`).
@@ -122,12 +122,12 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
 
 ## Before the commit
 
-1. `MIX_ENV=dev mix eh_os_contract.docs` (and `eh_os_contract.rules` if a rule's text changed) in
-   `packages/eh_os_contract`, and commit the pages it rewrote.
+1. `MIX_ENV=dev mix ehos_contract.docs` (and `ehos_contract.rules` if a rule's text changed) in
+   `packages/ehos_contract`, and commit the pages it rewrote.
 2. Read the generated page of what you changed, not only the source: a doc that reads well beside the
    code can read badly alone.
 3. The gate: `docs --warnings-as-errors` and `test/doc_coverage_test.exs` run inside each package's
-   `mix check`, the engine's, `eh_os_contract_web`'s, `eh_os_contract_auth`'s and `eh_os_contract_graph`'s
+   `mix check`, the engine's, `ehos_contract_web`'s, `ehos_contract_auth`'s and `ehos_contract_graph`'s
    alike. The other three publish only what a host calls or implements; a module the host never names (a LiveView, a plug its
    router mounts) is `@moduledoc false`, its text kept as a comment.
 
@@ -135,6 +135,6 @@ as examples taken from the material, and only where `CLAUDE.md` allows Polish.
 
 - Prose pages written by hand in `docs/` (`contract.md`, the concept pages, `authorization.md` among them): they have
   their own tests (`docs_test.exs`) and are guides, not reference. How to add one, and what each kind of change
-  asks of the docs: `packages/eh_os_contract/MAINTAINING-DOCS.md`.
+  asks of the docs: `packages/ehos_contract/MAINTAINING-DOCS.md`.
 - Comments for the next maintainer: `CLAUDE.md`, "A code never stands alone in prose", and the issue
   convention (`plan DD, ID1 (#165)`).

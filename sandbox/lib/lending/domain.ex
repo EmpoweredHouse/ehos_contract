@@ -4,11 +4,11 @@ defmodule Lending.Domain do
   and returned, and membership, where the people who borrow them are registered.
 
   The terms carry a German translation each, so that the glossary has a real domain
-  to print in another language (`mix eh_os_contract.glossary --language de`).
+  to print in another language (`mix ehos_contract.glossary --language de`).
   """
 
-  use EhOsContract.Domain, name: :lending, language: :en, time_zone: "Europe/London"
-  use Boundary, deps: [EhOsContract], exports: [{Values, []}]
+  use EhosContract.Domain, name: :lending, language: :en, time_zone: "Europe/London"
+  use Boundary, deps: [EhosContract], exports: [{Values, []}]
 
   subdomain :core, "Lending", type: :core
   subdomain :supporting, "Membership", type: :supporting

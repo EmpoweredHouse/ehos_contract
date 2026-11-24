@@ -1,20 +1,20 @@
 import Config
 
-config :eh_os_contract_host, EhOsContractHost.Repo,
+config :ehos_contract_host, EhosContractHost.Repo,
   # Every checkout on the machine shares the default, and `mix ecto.reset` empties it for
-  # all of them: `EH_OS_CONTRACT_DEV_DB` names one of your own (`mix sandbox.traffic`).
+  # all of them: `EHOS_CONTRACT_DEV_DB` names one of your own (`mix sandbox.traffic`).
   database:
-    (case System.get_env("EH_OS_CONTRACT_DEV_DB") do
-       name when name in [nil, ""] -> "eh_os_contract_host_dev"
+    (case System.get_env("EHOS_CONTRACT_DEV_DB") do
+       name when name in [nil, ""] -> "ehos_contract_host_dev"
        name -> name
      end),
   show_sensitive_data_on_connection_error: true
 
 # No `server: true`: `mix phx.server` serves the endpoint anyway, and with it every
-# mix task that starts the application (`eh_os_contract.report`, `graph --overlay`,
+# mix task that starts the application (`ehos_contract.report`, `graph --overlay`,
 # `trace`, `subscriptions`) bound a port too, and failed with `:eaddrinuse` whenever
 # the dashboard was already running on it.
-config :eh_os_contract_host, EhOsContractHostWeb.Endpoint,
+config :ehos_contract_host, EhosContractHostWeb.Endpoint,
   # 4010 by default, overridable — a developer machine often already has something
   # on 4000, another Phoenix application's default, and a hard-coded port turns
   # "show me the dashboard" into "first find out what else is running".
@@ -24,6 +24,6 @@ config :logger, level: :info
 
 # The master key of the personal fields — a library member's name and e-mail. A key
 # made for this sandbox's development database and nothing else; a real host reads
-# its keys from the runtime environment (`EhOsContract.Vault`).
-config :eh_os_contract, EhOsContract.Vault,
+# its keys from the runtime environment (`EhosContract.Vault`).
+config :ehos_contract, EhosContract.Vault,
   keys: [{"sandbox-dev-2026-09", "pineNKIpeYQWgh3+i0ce+w6ITjYjHEwnd9SwBXbQGUM="}]

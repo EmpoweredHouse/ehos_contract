@@ -1,4 +1,4 @@
-# Reviewing a change to eh-os-contract
+# Reviewing a change to ehos-contract
 
 This repository's half of the `ehos-dev:pre-pr-review` skill: the skill holds the procedure and
 reads this file first. This is the author's half of a review; the reviewer's half is the
@@ -31,17 +31,17 @@ Markdown that no part of `mix check` reads and that sets no rule a review follow
 root `README.md`, and `docs/` except `docs/adr/contract-v2.md`. The gate reads more than it seems
 to:
 
-- `packages/eh_os_contract/test/docs_test.exs` compiles the examples of the package's `README.md`
-  and of each prose page of `packages/eh_os_contract/docs/` (`EhOsContract.Docs.prose/0`),
-  holds the refusal table of `packages/eh_os_contract/docs/refusals.md` to the code, and checks the
+- `packages/ehos_contract/test/docs_test.exs` compiles the examples of the package's `README.md`
+  and of each prose page of `packages/ehos_contract/docs/` (`EhosContract.Docs.prose/0`),
+  holds the refusal table of `packages/ehos_contract/docs/refusals.md` to the code, and checks the
   links of every ExDoc extra, the package's `CHANGELOG.md` included;
-- `mix ehos_diagrams.gen --check` in `packages/eh_os_contract`, run in `:dev` by the gate where the
+- `mix ehos_diagrams.gen --check` in `packages/ehos_contract`, run in `:dev` by the gate where the
   private ehos-tools is fetched and by CI's `diagrams` job, holds the diagrams in `docs/img/` to
   their sources in `docs/diagrams/`, their labels to the glossary, and the pages to no Mermaid;
-- `packages/eh_os_contract/test/dsl/contract_examples_test.exs` compiles the examples of
+- `packages/ehos_contract/test/dsl/contract_examples_test.exs` compiles the examples of
   `docs/adr/contract-v2.md`;
-- `eh_os_contract.docs --check` and `eh_os_contract.rules --check` compare the generated
-  `packages/eh_os_contract/docs/dsl/` and `packages/eh_os_contract/docs/rules.md` with the code.
+- `ehos_contract.docs --check` and `ehos_contract.rules --check` compare the generated
+  `packages/ehos_contract/docs/dsl/` and `packages/ehos_contract/docs/rules.md` with the code.
 
 Everything else is reviewed: anything not Markdown (`.claude/settings.team.json` and its hook,
 `.claude/launch.json`, which runs commands), and what sets the rules a review checks against:
@@ -58,13 +58,13 @@ indexes.
 ## The checks
 
 `docker compose up -d && cd sandbox && mix ecto.setup`, then `mix check` in `sandbox/`, with its own
-exit code. Compare the `eh_os_contract.check` counts with the sandbox's pinned in
+exit code. Compare the `ehos_contract.check` counts with the sandbox's pinned in
 `sandbox/test/e10_outputs_test.exs` and the engine's on `main`, and explain every new line.
 
 ## Verifying for real
 
 A mix task on the dev database (`MIX_ENV=dev`, never `MIX_ENV=test mix run`, see `CLAUDE.md`), the
-dashboard through the `eh_os_contract_host` preview (`.claude/launch.json`), a hook through a pipe
+dashboard through the `ehos_contract_host` preview (`.claude/launch.json`), a hook through a pipe
 test with a synthesised payload. `review-pr` §2, "Verified in reverse", has the shape in which this
 repository writes the reverse check of a fix down.
 
@@ -119,9 +119,9 @@ reason) goes to the maintainers before it is fixed, as every host-visible shape 
 The traps this repository has already paid for are written down once. Check the change against
 them, not against memory:
 
-- A skill under `plugins/eh-os-contract/skills/`, also reached through `.claude/skills/`, ships to
+- A skill under `plugins/ehos-contract/skills/`, also reached through `.claude/skills/`, ships to
   every application that enables the plugin: a change to one raises the version in
-  `plugins/eh-os-contract/.claude-plugin/plugin.json`, or no application sees it, and names no path
+  `plugins/ehos-contract/.claude-plugin/plugin.json`, or no application sees it, and names no path
   of this repository that the skill's "In an application" paragraph does not map.
 - `CLAUDE.md`, sections "The gate" and "Conventions that are easy to break": the gate without `tail`,
   `MIX_ENV=test mix run`, `boundary` siblings, implementations pointing at the contract and never
@@ -151,7 +151,7 @@ Kinds of problems a review here found that neither file names yet:
 - A plugin skill that points at an engine page or a code newer than the engine an application pins
   sends that application's agent to nothing: say where an older engine keeps it. Found in #517.
 - A page that says what the engine does in absolute words ("refuses nothing", "only reports") is
-  read against the code: `mix eh_os_contract.check` fails on an error. Found in #517.
+  read against the code: `mix ehos_contract.check` fails on an error. Found in #517.
 - `actions/cache` archives a listed directory whole: a `!` pattern drops only an entry the list
   itself holds, so exclude from a list of children (`deps/*`), never from the directory. Found in #517.
 - An installation page is read against what the sandbox host really configures (`sandbox/config/`):
@@ -167,7 +167,7 @@ Kinds of problems a review here found that neither file names yet:
   narrows what dispatch decodes and what a boundary reads, and a page that gives the rule without
   the cases where it does not apply misleads. Found in #517.
 - An operator's command on a page is read against what it does to each kind it takes: `mix
-  eh_os_contract.subscriptions` boots the whole host, and a `--reset` is not a retry. It replays a
+  ehos_contract.subscriptions` boots the whole host, and a `--reset` is not a retry. It replays a
   policy into new commands and effects, republishes a relay's whole log, and drops a process
   manager's reactions and timers since the failure. A page that offers one remedy for every kind
   sends an operator to lose data. Found in #517.
@@ -188,8 +188,8 @@ Kinds of problems a review here found that neither file names yet:
   `git restore <file>`. `git checkout -- <file>` after an uncommitted fix removes the fix too.
   Found in #591.
 - A page that names an option is read against where the code takes it: `cacertfile:` and `plug:` are
-  options of a child (`EhOsContract.Auth.SignIn`, `EhOsContract.Auth.Workload`), not keys of its
-  `config :eh_os_contract_auth` block, and each refuses a key it does not take, so a host that
+  options of a child (`EhosContract.Auth.SignIn`, `EhosContract.Auth.Workload`), not keys of its
+  `config :ehos_contract_auth` block, and each refuses a key it does not take, so a host that
   follows the page does not boot. Found in #517.
 
 - A plug a host mounts with `forward` answers every path under its prefix, and Phoenix matches

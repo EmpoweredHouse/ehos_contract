@@ -3,10 +3,10 @@ defmodule Lending.CirculationPropertiesTest do
   The loan's and the copy's decisions tried on legal histories of their contract:
   every history folds, every command decides within the contract, and the loan's
   invariants hold after every decided command, as `holds?/2` says. The hold is a
-  boundary, which `EhOsContract.PropertyCase` leaves out.
+  boundary, which `EhosContract.PropertyCase` leaves out.
   """
 
-  use EhOsContract.PropertyCase, contract: Lending.Contracts.Circulation, max_runs: 100
+  use EhosContract.PropertyCase, contract: Lending.Contracts.Circulation, max_runs: 100
 
   alias Lending.Contracts.Circulation
   alias Lending.Contracts.Circulation.Commands.{LendCopy, ReturnCopy, WaiveLateFee}
@@ -25,6 +25,6 @@ defmodule Lending.CirculationPropertiesTest do
     ]
 
     assert %{lent: true, returned: true, fee_owed: false} =
-             EhOsContract.PropertyCase.walk(Circulation, :loan, commands)
+             EhosContract.PropertyCase.walk(Circulation, :loan, commands)
   end
 end

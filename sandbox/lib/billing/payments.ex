@@ -6,6 +6,6 @@ defmodule Billing.Payments do
   """
 
   use Boundary,
-    deps: [EhOsContract, Billing.Contracts, Billing.Adapters],
+    deps: [EhosContract, Billing.Contracts, Billing.Adapters],
     exports: [Payment, RequestPaymentForInvoice, CollectPayment]
 end

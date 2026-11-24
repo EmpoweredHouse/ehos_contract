@@ -12,7 +12,7 @@ defmodule Billing.Processes.Month do
   broken.
   """
 
-  use EhOsContract.Process,
+  use EhosContract.Process,
     id: "billing.month",
     domain: Billing.Domain,
     label: "A subscription's billing month",

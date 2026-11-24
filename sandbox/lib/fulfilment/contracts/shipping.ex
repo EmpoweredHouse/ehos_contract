@@ -14,7 +14,7 @@ defmodule Fulfilment.Contracts.Shipping do
   counts it as a transition the lifecycle does not declare.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Fulfilment.Domain,
     context: :shipping,
     id: "fulfilment.shipping"

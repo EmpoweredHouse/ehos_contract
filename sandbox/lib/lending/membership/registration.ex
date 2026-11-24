@@ -32,7 +32,7 @@ defmodule Lending.Membership.Registration do
   def change_email(_command, _state), do: reject(:only_a_registered_member_changes)
 
   # Neither callback reads the name or the e-mail back, so an erased member's events,
-  # which read back with `EhOsContract.Erased` in their place, fold like any other.
+  # which read back with `EhosContract.Erased` in their place, fold like any other.
   @impl true
   def evolve(state, %MemberRegistered{member_id: member}),
     do: %{state | registered: true, member_id: member}

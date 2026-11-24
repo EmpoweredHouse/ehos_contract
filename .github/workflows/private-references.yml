@@ -45,17 +45,17 @@ jobs:
       - uses: actions/checkout@v4
 
       # `-P`: the pattern needs a lookahead, so that this repository's own name,
-      # eh-os-contract, is not a reference to EHOS's.
+      # ehos-contract, is not a reference to EHOS's.
       # `shell: bash` adds `-o pipefail`, which the default leaves out.
       - name: No reference into a private repository
         shell: bash
         run: |
           found=$(git grep -P 'EmpoweredHouse/(eh-os(?!-contract)|ehos-tools|ehos-ledger|appunite-equipment)\b|\bD-\d{2,3}\b|\bT-\d{2}\b|eh-os#|\bFM-\d+|PLAN\.md|~/Projects' -- . \
               ':!docs/adr' \
-              ':!packages/eh_os_contract_auth/priv/schemas' \
-              ':!packages/eh_os_contract_web/mix.exs' \
-              ':!packages/eh_os_contract_web/mix.lock' \
-              ':!packages/eh_os_contract_web/NOTICE' \
+              ':!packages/ehos_contract_auth/priv/schemas' \
+              ':!packages/ehos_contract_web/mix.exs' \
+              ':!packages/ehos_contract_web/mix.lock' \
+              ':!packages/ehos_contract_web/NOTICE' \
               ':!.claude/settings.team.json' \
               ':!.github/workflows/private-references.yml' \
               ':!.github/private-references.allow') || [ $? -eq 1 ]

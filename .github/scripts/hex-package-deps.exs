@@ -6,7 +6,7 @@
 #
 #     elixir .github/scripts/hex-package-deps.exs <unpacked package directory>
 #
-# Run it without `EH_OS_CONTRACT_HEX` in the environment: the package has to know it came
+# Run it without `EHOS_CONTRACT_HEX` in the environment: the package has to know it came
 # from Hex by the `hex_metadata.config` beside its `mix.exs`.
 [dir] = System.argv()
 mix_exs = Path.join(dir, "mix.exs")

@@ -1,0 +1,1809 @@
+{
+  "context": "context:Billing.Domain:subscriptions",
+  "contract": "billing.subscriptions",
+  "digest": "36a67230f425",
+  "domain": "Billing.Domain",
+  "kind": "contract",
+  "module": "Billing.Contracts.Subscriptions",
+  "nodes": {
+    "actor": [
+      {
+        "actor_kind": "human",
+        "id": "actor:Billing.Domain:account_manager",
+        "label": "Account manager",
+        "name": "account_manager",
+        "responsibilities": [],
+        "role": "billing.account_manager",
+        "scope": [],
+        "source": null
+      }
+    ],
+    "command": [
+      {
+        "capability": "billing.start_subscription",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "monthly_fee",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "unit_price",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "command:billing.subscriptions:start_subscription",
+        "label": "Start a subscription",
+        "name": "start_subscription",
+        "source": null,
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "capability": "billing.record_usage",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "usage",
+            "required": true,
+            "type": "usage_record",
+            "value": "value:Billing.Domain:usage_record"
+          }
+        ],
+        "id": "command:billing.subscriptions:record_usage",
+        "label": "Record usage",
+        "name": "record_usage",
+        "source": null,
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "capability": "billing.close_billing_period",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "billing_period",
+            "value": "value:Billing.Domain:billing_period"
+          }
+        ],
+        "id": "command:billing.subscriptions:close_billing_period",
+        "label": "Close a billing period",
+        "name": "close_billing_period",
+        "source": null,
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "capability": "billing.cancel_subscription",
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:billing.subscriptions:cancel_subscription",
+        "label": "Cancel a subscription",
+        "name": "cancel_subscription",
+        "source": null,
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "line_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "command:billing.subscriptions:add_invoice_line",
+        "label": "Add an invoice line",
+        "name": "add_invoice_line",
+        "source": null,
+        "unit": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "command:billing.subscriptions:issue_invoice",
+        "label": "Issue an invoice",
+        "name": "issue_invoice",
+        "source": null,
+        "unit": "unit:billing.subscriptions:invoice"
+      }
+    ],
+    "constraint": [],
+    "context": [
+      {
+        "id": "context:Billing.Domain:subscriptions",
+        "label": "Subscriptions",
+        "name": "subscriptions",
+        "source": null
+      }
+    ],
+    "domain_service": [],
+    "effect": [],
+    "entity": [],
+    "event": [
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "monthly_fee",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "unit_price",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.subscriptions:subscribed",
+        "label": "Subscription started",
+        "name": "subscribed",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.subscribed",
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "usage",
+            "required": true,
+            "type": "usage_record",
+            "value": "value:Billing.Domain:usage_record"
+          }
+        ],
+        "id": "event:billing.subscriptions:usage_recorded",
+        "label": "Usage recorded",
+        "name": "usage_recorded",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.usage_recorded",
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "billing_period",
+            "value": "value:Billing.Domain:billing_period"
+          },
+          {
+            "label": null,
+            "name": "monthly_fee",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "unit_price",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "usage",
+            "required": true,
+            "type": {
+              "list": "usage_record"
+            },
+            "value": "value:Billing.Domain:usage_record"
+          }
+        ],
+        "id": "event:billing.subscriptions:billing_period_closed",
+        "label": "Billing period closed",
+        "name": "billing_period_closed",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.billing_period_closed",
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          }
+        ],
+        "id": "event:billing.subscriptions:cancelled",
+        "label": "Subscription cancelled",
+        "name": "cancelled",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.cancelled",
+        "unit": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "line_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "amount",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.subscriptions:line_added",
+        "label": "Invoice line added",
+        "name": "line_added",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.line_added",
+        "unit": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          }
+        ],
+        "id": "event:billing.subscriptions:issued",
+        "label": "Invoice issued",
+        "name": "issued",
+        "schema_version": 1,
+        "source": null,
+        "type": "billing.subscriptions.issued",
+        "unit": "unit:billing.subscriptions:invoice"
+      }
+    ],
+    "external": [],
+    "invariant": [
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:started_once",
+        "label": "A subscription is started once",
+        "name": "started_once",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed",
+        "label": "Only an active subscription is billed",
+        "name": "only_an_active_subscription_is_billed",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:period_closed_once",
+        "label": "A billing period is closed once",
+        "name": "period_closed_once",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed",
+        "label": "Only a month that has ended, since the subscription started, is closed",
+        "name": "only_an_ended_period_of_the_subscription_is_closed",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:bill_fits_an_amount",
+        "label": "A period's bill, fee and usage together, fits in an amount",
+        "name": "bill_fits_an_amount",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:subscription:usage_recorded_once",
+        "label": "A usage record is recorded once",
+        "name": "usage_recorded_once",
+        "of": "unit:billing.subscriptions:subscription",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:invoice:line_added_once",
+        "label": "A line is added to an invoice once",
+        "name": "line_added_once",
+        "of": "unit:billing.subscriptions:invoice",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:invoice:issued_once_with_lines",
+        "label": "An invoice is issued once, with its lines",
+        "name": "issued_once_with_lines",
+        "of": "unit:billing.subscriptions:invoice",
+        "source": null
+      },
+      {
+        "id": "invariant:billing.subscriptions:unit:invoice:total_fits_an_amount",
+        "label": "An invoice's total fits in an amount",
+        "name": "total_fits_an_amount",
+        "of": "unit:billing.subscriptions:invoice",
+        "source": null
+      }
+    ],
+    "policy": [
+      {
+        "delivery": "in_transaction",
+        "id": "policy:billing.subscriptions:invoice_the_period",
+        "label": "Invoice a closed period, one line per usage record",
+        "name": "invoice_the_period",
+        "source": null
+      }
+    ],
+    "process_manager": [
+      {
+        "correlate": [
+          "subscription_id"
+        ],
+        "delivery": "at_least_once",
+        "id": "process_manager:billing.subscriptions:monthly_billing",
+        "label": "Monthly billing",
+        "name": "monthly_billing",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "close_at",
+            "required": false,
+            "type": "timestamp"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "closed",
+            "required": true,
+            "type": {
+              "list": "billing_period"
+            },
+            "value": "value:Billing.Domain:billing_period"
+          }
+        ]
+      }
+    ],
+    "publication": [
+      {
+        "id": "publication:Billing.Domain:billing.invoice.issued.v1",
+        "label": null,
+        "name": "billing.invoice.issued.v1",
+        "source": null
+      }
+    ],
+    "query": [],
+    "read_model": [],
+    "status": [],
+    "subject": [],
+    "timer": [
+      {
+        "at": "close_at",
+        "id": "timer:billing.subscriptions:monthly_billing:period_end",
+        "label": "End of the billing period",
+        "name": "period_end",
+        "process_manager": "process_manager:billing.subscriptions:monthly_billing",
+        "source": null
+      }
+    ],
+    "unit": [
+      {
+        "id": "unit:billing.subscriptions:subscription",
+        "identity": [
+          "subscription_id"
+        ],
+        "label": "Subscription",
+        "name": "subscription",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "active",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "cancelled",
+            "required": true,
+            "type": "boolean"
+          },
+          {
+            "default": 0,
+            "label": null,
+            "name": "monthly_fee",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "default": 0,
+            "label": null,
+            "name": "unit_price",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "label": null,
+            "name": "first_period",
+            "required": false,
+            "type": "billing_period",
+            "value": "value:Billing.Domain:billing_period"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "closed",
+            "required": true,
+            "type": {
+              "list": "billing_period"
+            },
+            "value": "value:Billing.Domain:billing_period"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "unbilled",
+            "required": true,
+            "type": {
+              "list": "usage_record"
+            },
+            "value": "value:Billing.Domain:usage_record"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "recorded",
+            "required": true,
+            "type": {
+              "list": "id"
+            }
+          }
+        ],
+        "unit_kind": "aggregate"
+      },
+      {
+        "id": "unit:billing.subscriptions:invoice",
+        "identity": [
+          "subscription_id",
+          "period_id"
+        ],
+        "label": "Invoice",
+        "name": "invoice",
+        "source": null,
+        "state": [
+          {
+            "label": null,
+            "name": "subscription_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "period_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "default": [],
+            "label": null,
+            "name": "lines",
+            "required": true,
+            "type": {
+              "list": "id"
+            }
+          },
+          {
+            "default": 0,
+            "label": null,
+            "name": "total",
+            "required": true,
+            "type": "money",
+            "value": "value:Billing.Domain:money"
+          },
+          {
+            "default": false,
+            "label": null,
+            "name": "issued",
+            "required": true,
+            "type": "boolean"
+          }
+        ],
+        "unit_kind": "aggregate"
+      }
+    ],
+    "value": [
+      {
+        "fields": [],
+        "id": "value:Billing.Domain:billing_period",
+        "invariants": [
+          {
+            "label": "A billing period is a month written YYYY-MM",
+            "name": "named_by_month",
+            "satisfied_by": [
+              "2026-07",
+              "2026-12"
+            ],
+            "source": null,
+            "violated_by": [
+              "2026-7",
+              "2026-13",
+              "July 2026",
+              "2026-07-01"
+            ]
+          }
+        ],
+        "label": "Billing period",
+        "name": "billing_period",
+        "source": null,
+        "type": "id"
+      },
+      {
+        "fields": [],
+        "id": "value:Billing.Domain:money",
+        "invariants": [
+          {
+            "label": "An amount is not negative",
+            "name": "not_negative",
+            "satisfied_by": [
+              0,
+              2000
+            ],
+            "source": null,
+            "violated_by": [
+              -1,
+              -2000
+            ]
+          }
+        ],
+        "label": "Amount",
+        "name": "money",
+        "source": null,
+        "type": "integer",
+        "unit": "cents"
+      },
+      {
+        "fields": [],
+        "id": "value:Billing.Domain:quantity",
+        "invariants": [
+          {
+            "label": "A number of units is not negative",
+            "name": "not_negative",
+            "satisfied_by": [
+              0,
+              40
+            ],
+            "source": null,
+            "violated_by": [
+              -1
+            ]
+          }
+        ],
+        "label": "Units",
+        "name": "quantity",
+        "source": null,
+        "type": "integer"
+      },
+      {
+        "fields": [
+          {
+            "label": null,
+            "name": "usage_id",
+            "required": true,
+            "type": "id"
+          },
+          {
+            "label": null,
+            "name": "units",
+            "required": true,
+            "type": "quantity",
+            "value": "value:Billing.Domain:quantity"
+          }
+        ],
+        "id": "value:Billing.Domain:usage_record",
+        "invariants": [],
+        "label": "Usage record",
+        "name": "usage_record",
+        "source": null
+      }
+    ]
+  },
+  "relations": {
+    "allowed_in": [],
+    "backed_by": [],
+    "builds": [
+      {
+        "from": "event:billing.subscriptions:subscribed",
+        "id": "builds:event:billing.subscriptions:subscribed:unit:billing.subscriptions:subscription",
+        "to": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "from": "event:billing.subscriptions:usage_recorded",
+        "id": "builds:event:billing.subscriptions:usage_recorded:unit:billing.subscriptions:subscription",
+        "to": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "from": "event:billing.subscriptions:billing_period_closed",
+        "id": "builds:event:billing.subscriptions:billing_period_closed:unit:billing.subscriptions:subscription",
+        "to": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "from": "event:billing.subscriptions:cancelled",
+        "id": "builds:event:billing.subscriptions:cancelled:unit:billing.subscriptions:subscription",
+        "to": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "from": "event:billing.subscriptions:line_added",
+        "id": "builds:event:billing.subscriptions:line_added:unit:billing.subscriptions:invoice",
+        "to": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "from": "event:billing.subscriptions:issued",
+        "id": "builds:event:billing.subscriptions:issued:unit:billing.subscriptions:invoice",
+        "to": "unit:billing.subscriptions:invoice"
+      }
+    ],
+    "calls": [],
+    "cancels": [
+      {
+        "from": "process_manager:billing.subscriptions:monthly_billing",
+        "id": "cancels:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:cancelled:run",
+        "on": "event:billing.subscriptions:cancelled",
+        "phase": "run",
+        "to": "timer:billing.subscriptions:monthly_billing:period_end"
+      }
+    ],
+    "consulted_by": [],
+    "depends_on": [],
+    "emits": [
+      {
+        "from": "command:billing.subscriptions:start_subscription",
+        "id": "emits:command:billing.subscriptions:start_subscription:event:billing.subscriptions:subscribed",
+        "to": "event:billing.subscriptions:subscribed"
+      },
+      {
+        "from": "command:billing.subscriptions:record_usage",
+        "id": "emits:command:billing.subscriptions:record_usage:event:billing.subscriptions:usage_recorded",
+        "to": "event:billing.subscriptions:usage_recorded"
+      },
+      {
+        "from": "command:billing.subscriptions:close_billing_period",
+        "id": "emits:command:billing.subscriptions:close_billing_period:event:billing.subscriptions:billing_period_closed",
+        "to": "event:billing.subscriptions:billing_period_closed"
+      },
+      {
+        "from": "command:billing.subscriptions:cancel_subscription",
+        "id": "emits:command:billing.subscriptions:cancel_subscription:event:billing.subscriptions:cancelled",
+        "to": "event:billing.subscriptions:cancelled"
+      },
+      {
+        "from": "command:billing.subscriptions:add_invoice_line",
+        "id": "emits:command:billing.subscriptions:add_invoice_line:event:billing.subscriptions:line_added",
+        "to": "event:billing.subscriptions:line_added"
+      },
+      {
+        "from": "command:billing.subscriptions:issue_invoice",
+        "id": "emits:command:billing.subscriptions:issue_invoice:event:billing.subscriptions:issued",
+        "to": "event:billing.subscriptions:issued"
+      }
+    ],
+    "ends": [],
+    "enters": [],
+    "fires": [
+      {
+        "from": "timer:billing.subscriptions:monthly_billing:period_end",
+        "id": "fires:timer:billing.subscriptions:monthly_billing:period_end:command:billing.subscriptions:close_billing_period",
+        "to": "command:billing.subscriptions:close_billing_period"
+      }
+    ],
+    "handled_by": [
+      {
+        "from": "event:billing.subscriptions:billing_period_closed",
+        "id": "handled_by:event:billing.subscriptions:billing_period_closed:policy:billing.subscriptions:invoice_the_period",
+        "to": "policy:billing.subscriptions:invoice_the_period"
+      },
+      {
+        "from": "event:billing.subscriptions:billing_period_closed",
+        "id": "handled_by:event:billing.subscriptions:billing_period_closed:process_manager:billing.subscriptions:monthly_billing",
+        "to": "process_manager:billing.subscriptions:monthly_billing"
+      },
+      {
+        "from": "event:billing.subscriptions:cancelled",
+        "id": "handled_by:event:billing.subscriptions:cancelled:process_manager:billing.subscriptions:monthly_billing",
+        "to": "process_manager:billing.subscriptions:monthly_billing"
+      }
+    ],
+    "issues": [
+      {
+        "from": "policy:billing.subscriptions:invoice_the_period",
+        "id": "issues:policy:billing.subscriptions:invoice_the_period:command:billing.subscriptions:add_invoice_line",
+        "to": "command:billing.subscriptions:add_invoice_line"
+      },
+      {
+        "from": "policy:billing.subscriptions:invoice_the_period",
+        "id": "issues:policy:billing.subscriptions:invoice_the_period:command:billing.subscriptions:issue_invoice",
+        "to": "command:billing.subscriptions:issue_invoice"
+      }
+    ],
+    "may_ask": [],
+    "may_issue": [
+      {
+        "from": "actor:Billing.Domain:account_manager",
+        "id": "may_issue:actor:Billing.Domain:account_manager:command:billing.subscriptions:start_subscription",
+        "to": "command:billing.subscriptions:start_subscription"
+      },
+      {
+        "from": "actor:Billing.Domain:account_manager",
+        "id": "may_issue:actor:Billing.Domain:account_manager:command:billing.subscriptions:record_usage",
+        "to": "command:billing.subscriptions:record_usage"
+      },
+      {
+        "from": "actor:Billing.Domain:account_manager",
+        "id": "may_issue:actor:Billing.Domain:account_manager:command:billing.subscriptions:close_billing_period",
+        "to": "command:billing.subscriptions:close_billing_period"
+      },
+      {
+        "from": "actor:Billing.Domain:account_manager",
+        "id": "may_issue:actor:Billing.Domain:account_manager:command:billing.subscriptions:cancel_subscription",
+        "to": "command:billing.subscriptions:cancel_subscription"
+      }
+    ],
+    "may_record": [],
+    "projected_into": [],
+    "published_as": [
+      {
+        "fields": [
+          "subscription_id",
+          "period_id",
+          "total"
+        ],
+        "from": "event:billing.subscriptions:issued",
+        "id": "published_as:event:billing.subscriptions:issued:publication:Billing.Domain:billing.invoice.issued.v1:issued",
+        "idempotent_on": [
+          "subscription_id",
+          "period_id"
+        ],
+        "name": "issued",
+        "to": "publication:Billing.Domain:billing.invoice.issued.v1"
+      }
+    ],
+    "reads": [],
+    "received_as": [],
+    "refused_on": [
+      {
+        "from": "command:billing.subscriptions:start_subscription",
+        "id": "refused_on:command:billing.subscriptions:start_subscription:invariant:billing.subscriptions:unit:subscription:started_once",
+        "to": "invariant:billing.subscriptions:unit:subscription:started_once"
+      },
+      {
+        "from": "command:billing.subscriptions:record_usage",
+        "id": "refused_on:command:billing.subscriptions:record_usage:invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed",
+        "to": "invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed"
+      },
+      {
+        "from": "command:billing.subscriptions:record_usage",
+        "id": "refused_on:command:billing.subscriptions:record_usage:invariant:billing.subscriptions:unit:subscription:usage_recorded_once",
+        "to": "invariant:billing.subscriptions:unit:subscription:usage_recorded_once"
+      },
+      {
+        "from": "command:billing.subscriptions:close_billing_period",
+        "id": "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed",
+        "to": "invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed"
+      },
+      {
+        "from": "command:billing.subscriptions:close_billing_period",
+        "id": "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:period_closed_once",
+        "to": "invariant:billing.subscriptions:unit:subscription:period_closed_once"
+      },
+      {
+        "from": "command:billing.subscriptions:close_billing_period",
+        "id": "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed",
+        "to": "invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed"
+      },
+      {
+        "from": "command:billing.subscriptions:close_billing_period",
+        "id": "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:bill_fits_an_amount",
+        "to": "invariant:billing.subscriptions:unit:subscription:bill_fits_an_amount"
+      },
+      {
+        "from": "command:billing.subscriptions:cancel_subscription",
+        "id": "refused_on:command:billing.subscriptions:cancel_subscription:invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed",
+        "to": "invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed"
+      },
+      {
+        "from": "command:billing.subscriptions:add_invoice_line",
+        "id": "refused_on:command:billing.subscriptions:add_invoice_line:invariant:billing.subscriptions:unit:invoice:line_added_once",
+        "to": "invariant:billing.subscriptions:unit:invoice:line_added_once"
+      },
+      {
+        "from": "command:billing.subscriptions:add_invoice_line",
+        "id": "refused_on:command:billing.subscriptions:add_invoice_line:invariant:billing.subscriptions:unit:invoice:issued_once_with_lines",
+        "to": "invariant:billing.subscriptions:unit:invoice:issued_once_with_lines"
+      },
+      {
+        "from": "command:billing.subscriptions:add_invoice_line",
+        "id": "refused_on:command:billing.subscriptions:add_invoice_line:invariant:billing.subscriptions:unit:invoice:total_fits_an_amount",
+        "to": "invariant:billing.subscriptions:unit:invoice:total_fits_an_amount"
+      },
+      {
+        "from": "command:billing.subscriptions:issue_invoice",
+        "id": "refused_on:command:billing.subscriptions:issue_invoice:invariant:billing.subscriptions:unit:invoice:issued_once_with_lines",
+        "to": "invariant:billing.subscriptions:unit:invoice:issued_once_with_lines"
+      },
+      {
+        "from": "command:billing.subscriptions:issue_invoice",
+        "id": "refused_on:command:billing.subscriptions:issue_invoice:invariant:billing.subscriptions:unit:invoice:total_fits_an_amount",
+        "to": "invariant:billing.subscriptions:unit:invoice:total_fits_an_amount"
+      }
+    ],
+    "sets": [
+      {
+        "from": "process_manager:billing.subscriptions:monthly_billing",
+        "id": "sets:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:subscribed:start",
+        "on": "event:billing.subscriptions:subscribed",
+        "phase": "start",
+        "to": "timer:billing.subscriptions:monthly_billing:period_end"
+      },
+      {
+        "from": "process_manager:billing.subscriptions:monthly_billing",
+        "id": "sets:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:billing_period_closed:run",
+        "on": "event:billing.subscriptions:billing_period_closed",
+        "phase": "run",
+        "to": "timer:billing.subscriptions:monthly_billing:period_end"
+      }
+    ],
+    "starts": [
+      {
+        "from": "event:billing.subscriptions:subscribed",
+        "id": "starts:event:billing.subscriptions:subscribed:process_manager:billing.subscriptions:monthly_billing",
+        "to": "process_manager:billing.subscriptions:monthly_billing"
+      }
+    ],
+    "transition": []
+  },
+  "scenarios": {
+    "policy": [
+      {
+        "covers": [
+          "handled_by:event:billing.subscriptions:billing_period_closed:policy:billing.subscriptions:invoice_the_period",
+          "issues:policy:billing.subscriptions:invoice_the_period:command:billing.subscriptions:add_invoice_line",
+          "issues:policy:billing.subscriptions:invoice_the_period:command:billing.subscriptions:issue_invoice"
+        ],
+        "description": "a closed period is invoiced: the fee, and a line per usage record",
+        "event": {
+          "data": {
+            "monthly_fee": 2000,
+            "period_id": "2026-01",
+            "subscription_id": "sub-1",
+            "unit_price": 5,
+            "usage": [
+              {
+                "units": 40,
+                "usage_id": "usage-1"
+              },
+              {
+                "units": 10,
+                "usage_id": "usage-2"
+              }
+            ]
+          },
+          "event": "event:billing.subscriptions:billing_period_closed"
+        },
+        "id": "scenario:billing.subscriptions:a closed period is invoiced: the fee, and a line per usage record",
+        "illustrates": [],
+        "issues": [
+          {
+            "command": "command:billing.subscriptions:add_invoice_line",
+            "data": {
+              "amount": 2000,
+              "line_id": "fee"
+            }
+          },
+          {
+            "command": "command:billing.subscriptions:add_invoice_line",
+            "data": {
+              "amount": 200,
+              "line_id": "usage:usage-1"
+            }
+          },
+          {
+            "command": "command:billing.subscriptions:add_invoice_line",
+            "data": {
+              "amount": 50,
+              "line_id": "usage:usage-2"
+            }
+          },
+          {
+            "command": "command:billing.subscriptions:issue_invoice",
+            "data": {
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            }
+          }
+        ],
+        "target": "policy:billing.subscriptions:invoice_the_period"
+      }
+    ],
+    "process_manager": [
+      {
+        "cancels": [],
+        "covers": [
+          "starts:event:billing.subscriptions:subscribed:process_manager:billing.subscriptions:monthly_billing",
+          "sets:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:subscribed:start"
+        ],
+        "description": "a subscription started in January first closes on 1 February",
+        "given": [],
+        "id": "scenario:billing.subscriptions:a subscription started in January first closes on 1 February",
+        "illustrates": [],
+        "issues": [],
+        "phase": "start",
+        "sets": [
+          "timer:billing.subscriptions:monthly_billing:period_end"
+        ],
+        "state": {
+          "close_at": "2026-02-01T00:00:00Z"
+        },
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {
+            "monthly_fee": 2000,
+            "subscription_id": "sub-1",
+            "unit_price": 5
+          },
+          "event": "event:billing.subscriptions:subscribed"
+        }
+      },
+      {
+        "cancels": [],
+        "covers": [
+          "fires:timer:billing.subscriptions:monthly_billing:period_end:command:billing.subscriptions:close_billing_period"
+        ],
+        "description": "the end of the period closes the month before it",
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:the end of the period closes the month before it",
+        "illustrates": [],
+        "issues": [
+          {
+            "command": "command:billing.subscriptions:close_billing_period",
+            "data": {
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            }
+          }
+        ],
+        "phase": "run",
+        "sets": [],
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {},
+          "timer": "timer:billing.subscriptions:monthly_billing:period_end"
+        }
+      },
+      {
+        "cancels": [],
+        "covers": [
+          "handled_by:event:billing.subscriptions:billing_period_closed:process_manager:billing.subscriptions:monthly_billing",
+          "sets:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:billing_period_closed:run"
+        ],
+        "description": "January closed — the next period closes on 1 March",
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:January closed — the next period closes on 1 March",
+        "illustrates": [],
+        "issues": [],
+        "phase": "run",
+        "sets": [
+          "timer:billing.subscriptions:monthly_billing:period_end"
+        ],
+        "state": {
+          "close_at": "2026-03-01T00:00:00Z"
+        },
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {
+            "monthly_fee": 2000,
+            "period_id": "2026-01",
+            "subscription_id": "sub-1",
+            "unit_price": 5,
+            "usage": []
+          },
+          "event": "event:billing.subscriptions:billing_period_closed"
+        }
+      },
+      {
+        "cancels": [],
+        "covers": [
+          "handled_by:event:billing.subscriptions:billing_period_closed:process_manager:billing.subscriptions:monthly_billing"
+        ],
+        "description": "an older period closed by hand leaves the date as it is",
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:an older period closed by hand leaves the date as it is",
+        "illustrates": [],
+        "issues": [],
+        "phase": "run",
+        "sets": [],
+        "state": {
+          "close_at": "2026-02-01T00:00:00Z"
+        },
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {
+            "monthly_fee": 2000,
+            "period_id": "2025-11",
+            "subscription_id": "sub-1",
+            "unit_price": 5,
+            "usage": []
+          },
+          "event": "event:billing.subscriptions:billing_period_closed"
+        }
+      },
+      {
+        "cancels": [],
+        "covers": [
+          "handled_by:event:billing.subscriptions:billing_period_closed:process_manager:billing.subscriptions:monthly_billing"
+        ],
+        "description": "a period closed by hand ahead of the run is skipped when its date comes",
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "period_id": "2026-02",
+              "subscription_id": "sub-1",
+              "unit_price": 5,
+              "usage": []
+            },
+            "event": "event:billing.subscriptions:billing_period_closed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a period closed by hand ahead of the run is skipped when its date comes",
+        "illustrates": [],
+        "issues": [],
+        "phase": "run",
+        "sets": [],
+        "state": {
+          "close_at": "2026-04-01T00:00:00Z"
+        },
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {
+            "monthly_fee": 2000,
+            "period_id": "2026-01",
+            "subscription_id": "sub-1",
+            "unit_price": 5,
+            "usage": []
+          },
+          "event": "event:billing.subscriptions:billing_period_closed"
+        }
+      },
+      {
+        "cancels": [
+          "timer:billing.subscriptions:monthly_billing:period_end"
+        ],
+        "covers": [
+          "handled_by:event:billing.subscriptions:cancelled:process_manager:billing.subscriptions:monthly_billing",
+          "cancels:process_manager:billing.subscriptions:monthly_billing:timer:billing.subscriptions:monthly_billing:period_end:event:billing.subscriptions:cancelled:run"
+        ],
+        "description": "a cancelled subscription is closed no more",
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a cancelled subscription is closed no more",
+        "illustrates": [],
+        "issues": [],
+        "phase": "run",
+        "sets": [],
+        "target": "process_manager:billing.subscriptions:monthly_billing",
+        "trigger": {
+          "data": {
+            "subscription_id": "sub-1"
+          },
+          "event": "event:billing.subscriptions:cancelled"
+        }
+      }
+    ],
+    "query": [],
+    "unit": [
+      {
+        "command": {
+          "command": "command:billing.subscriptions:start_subscription",
+          "data": {
+            "monthly_fee": 2000,
+            "subscription_id": "sub-1",
+            "unit_price": 5
+          }
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:start_subscription:event:billing.subscriptions:subscribed"
+        ],
+        "description": "a subscription is started",
+        "expect": [
+          {
+            "data": {
+              "monthly_fee": 2000
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "given": [],
+        "id": "scenario:billing.subscriptions:a subscription is started",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:start_subscription",
+          "data": {
+            "monthly_fee": 3000,
+            "unit_price": 5
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:start_subscription:invariant:billing.subscriptions:unit:subscription:started_once"
+        ],
+        "description": "a subscription is started once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a subscription is started once",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:started_once",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:record_usage",
+          "data": {
+            "usage": {
+              "units": 40,
+              "usage_id": "usage-1"
+            }
+          }
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:record_usage:event:billing.subscriptions:usage_recorded"
+        ],
+        "description": "usage is recorded for its month",
+        "expect": [
+          {
+            "data": {
+              "usage": {
+                "units": 40,
+                "usage_id": "usage-1"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:usage is recorded for its month",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:record_usage",
+          "data": {
+            "usage": {
+              "units": 40,
+              "usage_id": "usage-1"
+            }
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:record_usage:invariant:billing.subscriptions:unit:subscription:usage_recorded_once"
+        ],
+        "description": "a usage record is recorded once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "data": {
+              "usage": {
+                "units": 40,
+                "usage_id": "usage-1"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a usage record is recorded once",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:usage_recorded_once",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2026-02"
+          }
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:close_billing_period:event:billing.subscriptions:billing_period_closed"
+        ],
+        "description": "a period closes with the usage recorded since the last close",
+        "expect": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "period_id": "2026-02",
+              "unit_price": 5,
+              "usage": [
+                {
+                  "units": 10,
+                  "usage_id": "usage-2"
+                }
+              ]
+            },
+            "event": "event:billing.subscriptions:billing_period_closed"
+          }
+        ],
+        "given": [
+          {
+            "at": "2026-01-01T09:00:00Z",
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "at": "2026-01-20T09:00:00Z",
+            "data": {
+              "usage": {
+                "units": 40,
+                "usage_id": "usage-1"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          },
+          {
+            "at": "2026-02-01T00:00:00Z",
+            "data": {
+              "monthly_fee": 2000,
+              "period_id": "2026-01",
+              "unit_price": 5,
+              "usage": [
+                {
+                  "units": 40,
+                  "usage_id": "usage-1"
+                }
+              ]
+            },
+            "event": "event:billing.subscriptions:billing_period_closed"
+          },
+          {
+            "at": "2026-03-01T08:00:00Z",
+            "data": {
+              "usage": {
+                "units": 10,
+                "usage_id": "usage-2"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a period closes with the usage recorded since the last close",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2026-01"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:period_closed_once"
+        ],
+        "description": "a period is closed once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "period_id": "2026-01",
+              "unit_price": 5,
+              "usage": []
+            },
+            "event": "event:billing.subscriptions:billing_period_closed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a period is closed once",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:period_closed_once",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2026-01"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed"
+        ],
+        "description": "a month still running is not closed",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a month still running is not closed",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2026-01"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:bill_fits_an_amount"
+        ],
+        "description": "a bill too large for an amount is not closed",
+        "expect": [],
+        "given": [
+          {
+            "at": "2026-01-01T09:00:00Z",
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5000000000
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "at": "2026-02-02T09:00:00Z",
+            "data": {
+              "usage": {
+                "units": 5000000000,
+                "usage_id": "usage-1"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a bill too large for an amount is not closed",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:bill_fits_an_amount",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2025-12"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed"
+        ],
+        "description": "a month before the subscription started is not closed",
+        "expect": [],
+        "given": [
+          {
+            "at": "2026-01-01T09:00:00Z",
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "at": "2026-03-01T08:00:00Z",
+            "data": {
+              "usage": {
+                "units": 40,
+                "usage_id": "usage-1"
+              }
+            },
+            "event": "event:billing.subscriptions:usage_recorded"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a month before the subscription started is not closed",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:only_an_ended_period_of_the_subscription_is_closed",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:close_billing_period",
+          "data": {
+            "period_id": "2026-01"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:close_billing_period:invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed"
+        ],
+        "description": "a cancelled subscription is billed no more",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          },
+          {
+            "data": {},
+            "event": "event:billing.subscriptions:cancelled"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a cancelled subscription is billed no more",
+        "rejected": "invariant:billing.subscriptions:unit:subscription:only_an_active_subscription_is_billed",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:cancel_subscription",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:cancel_subscription:event:billing.subscriptions:cancelled"
+        ],
+        "description": "a subscription is cancelled",
+        "expect": [
+          {
+            "data": {},
+            "event": "event:billing.subscriptions:cancelled"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "monthly_fee": 2000,
+              "subscription_id": "sub-1",
+              "unit_price": 5
+            },
+            "event": "event:billing.subscriptions:subscribed"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a subscription is cancelled",
+        "target": "unit:billing.subscriptions:subscription"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:add_invoice_line",
+          "data": {
+            "amount": 2000,
+            "line_id": "fee",
+            "period_id": "2026-01",
+            "subscription_id": "sub-1"
+          }
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:add_invoice_line:event:billing.subscriptions:line_added"
+        ],
+        "description": "a line is added to an invoice",
+        "expect": [
+          {
+            "data": {
+              "amount": 2000,
+              "line_id": "fee"
+            },
+            "event": "event:billing.subscriptions:line_added"
+          }
+        ],
+        "given": [],
+        "id": "scenario:billing.subscriptions:a line is added to an invoice",
+        "target": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:add_invoice_line",
+          "data": {
+            "amount": 2000,
+            "line_id": "fee"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:add_invoice_line:invariant:billing.subscriptions:unit:invoice:line_added_once"
+        ],
+        "description": "a line is added once",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 2000,
+              "line_id": "fee",
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.subscriptions:line_added"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a line is added once",
+        "rejected": "invariant:billing.subscriptions:unit:invoice:line_added_once",
+        "target": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:issue_invoice",
+          "data": {}
+        },
+        "covers": [
+          "emits:command:billing.subscriptions:issue_invoice:event:billing.subscriptions:issued"
+        ],
+        "description": "an invoice is issued for the sum of its lines",
+        "expect": [
+          {
+            "data": {
+              "total": 2200
+            },
+            "event": "event:billing.subscriptions:issued"
+          }
+        ],
+        "given": [
+          {
+            "data": {
+              "amount": 2000,
+              "line_id": "fee",
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.subscriptions:line_added"
+          },
+          {
+            "data": {
+              "amount": 200,
+              "line_id": "usage-1"
+            },
+            "event": "event:billing.subscriptions:line_added"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:an invoice is issued for the sum of its lines",
+        "target": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:add_invoice_line",
+          "data": {
+            "amount": 1000,
+            "line_id": "usage-1"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:add_invoice_line:invariant:billing.subscriptions:unit:invoice:total_fits_an_amount"
+        ],
+        "description": "a line that takes the total past an amount is not added",
+        "expect": [],
+        "given": [
+          {
+            "data": {
+              "amount": 9223372036854775000,
+              "line_id": "fee",
+              "period_id": "2026-01",
+              "subscription_id": "sub-1"
+            },
+            "event": "event:billing.subscriptions:line_added"
+          }
+        ],
+        "id": "scenario:billing.subscriptions:a line that takes the total past an amount is not added",
+        "rejected": "invariant:billing.subscriptions:unit:invoice:total_fits_an_amount",
+        "target": "unit:billing.subscriptions:invoice"
+      },
+      {
+        "command": {
+          "command": "command:billing.subscriptions:issue_invoice",
+          "data": {
+            "period_id": "2026-01",
+            "subscription_id": "sub-1"
+          }
+        },
+        "covers": [
+          "refused_on:command:billing.subscriptions:issue_invoice:invariant:billing.subscriptions:unit:invoice:issued_once_with_lines"
+        ],
+        "description": "an invoice without lines is not issued",
+        "expect": [],
+        "given": [],
+        "id": "scenario:billing.subscriptions:an invoice without lines is not issued",
+        "rejected": "invariant:billing.subscriptions:unit:invoice:issued_once_with_lines",
+        "target": "unit:billing.subscriptions:invoice"
+      }
+    ]
+  },
+  "schema": "ehos_contract.graph.v1",
+  "version": "455f2f5b6669"
+}

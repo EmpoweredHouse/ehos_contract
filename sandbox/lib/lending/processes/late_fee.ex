@@ -8,7 +8,7 @@ defmodule Lending.Processes.LateFee do
   at the return, which ends the loan's run.
   """
 
-  use EhOsContract.Process,
+  use EhosContract.Process,
     id: "lending.late_fee",
     domain: Lending.Domain,
     label: "A late fee, from its charge to its settlement",

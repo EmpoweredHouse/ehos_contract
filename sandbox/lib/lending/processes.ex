@@ -4,5 +4,5 @@ defmodule Lending.Processes do
   return, and a late fee from its charge to its payment or waiver.
   """
 
-  use Boundary, deps: [EhOsContract, Lending.Contracts], exports: []
+  use Boundary, deps: [EhosContract, Lending.Contracts], exports: []
 end

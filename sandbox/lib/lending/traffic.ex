@@ -27,7 +27,7 @@ defmodule Lending.Traffic do
 
   alias Lending.Contracts.Membership.Commands.{ChangeEmail, RegisterMember}
 
-  alias EhOsContract.{Actor, Clock}
+  alias EhosContract.{Actor, Clock}
 
   @librarian Actor.credential(
                "librarian-una",

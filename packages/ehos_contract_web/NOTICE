@@ -1,0 +1,132 @@
+EhosContract.Web
+Copyright 2026 Empowered House PSA
+
+This product includes software developed by third parties.
+
+## Albert Sans and JetBrains Mono
+
+`priv/static/assets/fonts/` holds unmodified WOFF2 files of Albert Sans and
+JetBrains Mono, weights 400 and 500, subsets latin and latin-ext, taken from the
+npm packages `@fontsource/albert-sans@5.3.0` and `@fontsource/jetbrains-mono@5.3.0`,
+by way of the `ehos_design` package of EmpoweredHouse/ehos-tools.
+Both are licensed under the SIL Open Font License, Version 1.1, whose full text,
+with each font's copyright line, is beside the files:
+`OFL-albert-sans.txt` and `OFL-jetbrains-mono.txt`.
+
+They are served by the dashboard itself, rather than from Google Fonts, because
+the dashboard runs under its host's Content-Security-Policy and may have no
+internet access.
+
+## Phoenix, Phoenix.HTML and Phoenix LiveView
+
+`priv/static/assets/app.js` bundles the client scripts of Phoenix 1.8.12,
+Phoenix.HTML 4.3.0 and Phoenix LiveView 1.2.10, which the dashboard's screens run
+on, from those packages' `priv/static/`. LiveView's script includes morphdom
+(https://github.com/patrick-steele-idem/morphdom), as the fork LiveView builds
+with (https://github.com/SteffenDE/morphdom). All are used under the MIT
+Licence; Phoenix, Phoenix.HTML and Phoenix LiveView are Copyright (c) 2014, 2014
+and 2018 Chris McCord, and morphdom is Copyright (c) Patrick Steele-Idem:
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+    LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## The graph renderer's libraries
+
+`priv/static/assets/app.js` bundles the script of the graph renderer,
+`ehos_contract_graph`, which carries the software below. The paths below are the
+renderer's, as its own `NOTICE` gives them.
+
+### dagre and graphlib
+
+`assets/vendor/dagre.esm.js` is the unmodified distribution build `dist/dagre.esm.js` of dagre
+(https://github.com/dagrejs/dagre), version 3.1.1, taken via `npm pack @dagrejs/dagre@3.1.1`. It includes
+graphlib (https://github.com/dagrejs/graphlib), version 4.0.5. Both are used under the MIT Licence:
+
+    Copyright (c) 2012-2014 Chris Pettitt
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+
+### d3-zoom and the d3 modules it imports
+
+`assets/vendor/d3-zoom.esm.js` is d3-zoom (https://github.com/d3/d3-zoom), version 3.0.0, with the
+modules it imports — d3-selection 3.0.0, d3-transition 3.0.1, d3-drag 3.0.0, d3-interpolate 3.0.1,
+d3-color 3.1.0, d3-dispatch 3.0.1, d3-timer 3.0.1 and d3-ease 3.0.1 — unmodified, bundled into one ES
+module by esbuild 0.25.0; the comment at its top says how to rebuild it. All but d3-ease are used under
+the ISC Licence, each with its own copyright line (d3-color: 2010-2022; the rest: 2010-2021):
+
+    Copyright 2010-2021 Mike Bostock
+
+    Permission to use, copy, modify, and/or distribute this software for any purpose
+    with or without fee is hereby granted, provided that the above copyright notice
+    and this permission notice appear in all copies.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+    FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+    OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+    TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+    THIS SOFTWARE.
+
+d3-ease (https://github.com/d3/d3-ease) is used under the BSD 3-Clause Licence:
+
+    Copyright 2010-2021 Mike Bostock
+    Copyright 2001 Robert Penner
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this
+      list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+    * Neither the name of the author nor the names of contributors may be used to
+      endorse or promote products derived from this software without specific prior
+      written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

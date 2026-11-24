@@ -1,4 +1,4 @@
-defmodule EhOsContract.GraphDocumentTest do
+defmodule EhosContract.GraphDocumentTest do
   @moduledoc """
   Plan E13a: the `graph.v1` document of every contract and every domain of the sandbox's
   case studies holds to the schema the engine ships, every id in it resolves, and none
@@ -9,8 +9,8 @@ defmodule EhOsContract.GraphDocumentTest do
 
   use ExUnit.Case, async: true
 
-  alias EhOsContract.Graph.Document
-  alias EhOsContract.Registry
+  alias EhosContract.Graph.Document
+  alias EhosContract.Registry
 
   # Built when a test first asks for it, never into a module attribute: on OTP 28 a
   # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a

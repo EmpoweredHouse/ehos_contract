@@ -15,13 +15,13 @@ defmodule Billing.Contracts.Subscriptions do
     bills the usage recorded since the close before it, so after a late run the first
     month caught up carries all of it. Cancelling
     the subscription cancels the next close, and the run is left with nothing to do: it
-    has no `ends_on`, which `mix eh_os_contract.check` warns of.
+    has no `ends_on`, which `mix ehos_contract.check` warns of.
   - **An invoice** is drafted in the transaction that closes the period: a policy adds
     the monthly fee and one line per usage record, then issues it. The invoice is
     published to other applications as `billing.invoice.issued.v1`.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Billing.Domain,
     context: :subscriptions,
     id: "billing.subscriptions"

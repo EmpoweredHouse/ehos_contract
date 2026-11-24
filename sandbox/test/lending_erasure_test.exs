@@ -6,9 +6,9 @@ defmodule Lending.ErasureTest do
   runs them through a host's configuration, its vault key and its migration.
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
-  alias EhOsContract.{Actor, Consumer, Erased, Event}
+  alias EhosContract.{Actor, Consumer, Erased, Event}
   alias Lending.Contracts.Membership
   alias Lending.Contracts.Membership.Commands.{ChangeEmail, RegisterMember}
   alias Lending.Contracts.Membership.Events.MemberRegistered
@@ -22,7 +22,7 @@ defmodule Lending.ErasureTest do
 
   setup do
     {:ok, _} =
-      EhOsContract.dispatch(
+      EhosContract.dispatch(
         Membership,
         %RegisterMember{
           membership_id: "membership-ada",
@@ -37,10 +37,10 @@ defmodule Lending.ErasureTest do
   end
 
   defp contact,
-    do: EhOsContract.query(Membership, %MemberContact{member_id: "member-ada"}, actor: @librarian)
+    do: EhosContract.query(Membership, %MemberContact{member_id: "member-ada"}, actor: @librarian)
 
   defp change_email(email) do
-    EhOsContract.dispatch(
+    EhosContract.dispatch(
       Membership,
       %ChangeEmail{membership_id: "membership-ada", member_id: "member-ada", email: email},
       actor: @librarian
@@ -64,7 +64,7 @@ defmodule Lending.ErasureTest do
   end
 
   test "erasing the member empties the directory, and their events read back erased" do
-    assert {:ok, :erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    assert {:ok, :erased} = EhosContract.erase(:member, "member-ada", actor: @librarian)
 
     assert {:ok, []} = contact()
 
@@ -76,7 +76,7 @@ defmodule Lending.ErasureTest do
   end
 
   test "a registration replayed after the erasure, as a rebuild replays it, writes no row" do
-    {:ok, :erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    {:ok, :erased} = EhosContract.erase(:member, "member-ada", actor: @librarian)
     ada = %Erased{subject: :member, id: "member-ada"}
 
     :ok =
@@ -91,10 +91,10 @@ defmodule Lending.ErasureTest do
   end
 
   test "an erased member's data is not written again" do
-    {:ok, :erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    {:ok, :erased} = EhosContract.erase(:member, "member-ada", actor: @librarian)
 
     assert {:error, :subject_erased} = change_email("ada@example.net")
-    assert {:ok, :already_erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    assert {:ok, :already_erased} = EhosContract.erase(:member, "member-ada", actor: @librarian)
   end
 
   test "the control: a member not erased changes e-mail, and the directory follows" do
@@ -104,7 +104,7 @@ defmodule Lending.ErasureTest do
 
   test "a member with two memberships is answered for each, and erased from both" do
     {:ok, _} =
-      EhOsContract.dispatch(
+      EhosContract.dispatch(
         Membership,
         %RegisterMember{
           membership_id: "membership-ada-2",
@@ -117,7 +117,7 @@ defmodule Lending.ErasureTest do
 
     assert {:ok, [%{name: "Ada Lovelace"}, %{name: "Ada King"}]} = contact()
 
-    {:ok, :erased} = EhOsContract.erase(:member, "member-ada", actor: @librarian)
+    {:ok, :erased} = EhosContract.erase(:member, "member-ada", actor: @librarian)
     assert {:ok, []} = contact()
   end
 end

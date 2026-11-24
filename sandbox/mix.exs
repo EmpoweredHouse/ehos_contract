@@ -1,16 +1,16 @@
-defmodule EhOsContractHost.MixProject do
+defmodule EhosContractHost.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :eh_os_contract_host,
+      app: :ehos_contract_host,
       version: "0.1.0",
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       # Module boundaries enforced at compile time, from the first commit
       # (ADR §5-6). Without this entry `use Boundary` is only documentation. The last
       # one checks v2 contracts against their domain and each other (v2 §6, L3).
-      compilers: [:boundary] ++ Mix.compilers() ++ [:eh_os_contract],
+      compilers: [:boundary] ++ Mix.compilers() ++ [:ehos_contract],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -24,7 +24,7 @@ defmodule EhOsContractHost.MixProject do
   def application do
     [
       extra_applications: [:logger, :crypto],
-      mod: {EhOsContractHost.Application, []}
+      mod: {EhosContractHost.Application, []}
     ]
   end
 
@@ -37,7 +37,7 @@ defmodule EhOsContractHost.MixProject do
       {:postgrex, "~> 0.22"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
-      # Direct, although Ecto and Oban both bring it transitively. `lib/eh_os_contract/` emits
+      # Direct, although Ecto and Oban both bring it transitively. `lib/ehos_contract/` emits
       # telemetry, so it depends on it — and a package whose dependency is satisfied
       # only because a neighbour happens to need it breaks when the neighbour goes.
       {:telemetry, "~> 1.3"},
@@ -49,21 +49,21 @@ defmodule EhOsContractHost.MixProject do
       # the build system now enforces the boundary that `boundary` was enforcing
       # alone, so a domain's tree reaching into the engine's internals fails to
       # compile rather than merely warning.
-      {:eh_os_contract, path: "../packages/eh_os_contract"},
-      # The dashboard. `runtime: false` because :eh_os_contract_web has no `mod:` of
-      # its own to start — EhOsContractHostWeb's own supervisor references its modules
+      {:ehos_contract, path: "../packages/ehos_contract"},
+      # The dashboard. `runtime: false` because :ehos_contract_web has no `mod:` of
+      # its own to start — EhosContractHostWeb's own supervisor references its modules
       # directly instead of relying on the OTP application list.
-      {:eh_os_contract_web, path: "../packages/eh_os_contract_web", runtime: false},
+      {:ehos_contract_web, path: "../packages/ehos_contract_web", runtime: false},
       # The graph renderer (plan E13b), which the dashboard draws with. Direct, the same
       # reasoning as `:telemetry` above: test/graph_renderer_test.exs draws every case
       # study's document with it.
-      {:eh_os_contract_graph, path: "../packages/eh_os_contract_graph"},
-      # The credential verifier (v2 stage EA): the `EhOsContract.Authorizer` this host
+      {:ehos_contract_graph, path: "../packages/ehos_contract_graph"},
+      # The credential verifier (v2 stage EA): the `EhosContract.Authorizer` this host
       # configures, and the bearer plug in front of the commands it serves over HTTP.
-      {:eh_os_contract_auth, path: "../packages/eh_os_contract_auth"},
-      # Direct, the same reasoning as `:telemetry` above: EhOsContractHostWeb calls
+      {:ehos_contract_auth, path: "../packages/ehos_contract_auth"},
+      # Direct, the same reasoning as `:telemetry` above: EhosContractHostWeb calls
       # these by name (Endpoint, Router, PubSub, the Bandit adapter), and they
-      # would otherwise be present only because :eh_os_contract_web happens to need them —
+      # would otherwise be present only because :ehos_contract_web happens to need them —
       # satisfied by a neighbour's dependency is satisfied only until the
       # neighbour changes what it needs.
       {:phoenix, "~> 1.8"},
@@ -73,17 +73,17 @@ defmodule EhOsContractHost.MixProject do
       {:bandit, "~> 1.5"},
       # phoenix_live_view's own `live/2` test helper needs this to parse the
       # dead-render HTML — not optional, and not visible in
-      # phoenix_live_view's own dependency tree (packages/eh_os_contract_web hit the
+      # phoenix_live_view's own dependency tree (packages/ehos_contract_web hit the
       # same thing first).
       {:lazy_html, ">= 0.1.0", only: :test},
       # The graph documents of every case study are held to the engine's schema
-      # (plan E13a). Direct, although `:eh_os_contract_auth` brings it: the same
+      # (plan E13a). Direct, although `:ehos_contract_auth` brings it: the same
       # reasoning as `:telemetry` above. Not `only: :test`, which Mix refuses for a
-      # dependency `:eh_os_contract_auth` declares for every environment; `runtime:
+      # dependency `:ehos_contract_auth` declares for every environment; `runtime:
       # false` as there, so it is not started with the host.
       {:jsv, "~> 0.28.0", runtime: false},
       # The test material's units are tried on legal histories of their contracts
-      # (`EhOsContract.PropertyCase`, plan DD, PC2), which exists only where StreamData is.
+      # (`EhosContract.PropertyCase`, plan DD, PC2), which exists only where StreamData is.
       {:stream_data, "~> 1.1", only: :test}
     ]
   end
@@ -110,10 +110,10 @@ defmodule EhOsContractHost.MixProject do
         # you see locally, delete that file.
         "format --check-formatted",
         "compile --force --warnings-as-errors",
-        "eh_os_contract.check",
+        "ehos_contract.check",
         # Plan DD, V3 (#340): an event's fields changed without a new version, which
         # nothing in a compile notices and the first old row in a log would.
-        "eh_os_contract.schema --check",
+        "ehos_contract.schema --check",
         "test",
         &package_test/1,
         &package_diagrams/1,
@@ -126,7 +126,7 @@ defmodule EhOsContractHost.MixProject do
 
   # The engine's own suite, run from here as well.
   #
-  # Since 2026-08-21 most of the tests live in `packages/eh_os_contract/test/` and `mix
+  # Since 2026-08-21 most of the tests live in `packages/ehos_contract/test/` and `mix
   # test` in this project no longer reaches them — it runs this application's, which
   # are only its own case studies'. A gate that stopped covering the engine on
   # the day the engine got its own suite would be the worst possible outcome of that
@@ -138,12 +138,12 @@ defmodule EhOsContractHost.MixProject do
   defp package_test(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "../packages/eh_os_contract",
+        cd: "../packages/ehos_contract",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
-    if status != 0, do: Mix.raise("the engine's own gate failed (packages/eh_os_contract)")
+    if status != 0, do: Mix.raise("the engine's own gate failed (packages/ehos_contract)")
   end
 
   # The diagrams of the engine, the credential verifier and the graph renderer against their
@@ -156,9 +156,9 @@ defmodule EhOsContractHost.MixProject do
   # behind.
   defp package_diagrams(_args) do
     for {package, name} <- [
-          {"eh_os_contract", "the engine"},
-          {"eh_os_contract_auth", "the credential verifier"},
-          {"eh_os_contract_graph", "the graph renderer"}
+          {"ehos_contract", "the engine"},
+          {"ehos_contract_auth", "the credential verifier"},
+          {"ehos_contract_graph", "the graph renderer"}
         ] do
       dir = "../packages/#{package}"
       generator = "#{dir}/deps/ehos_diagrams/packages/ehos_diagrams/mix.exs"
@@ -186,13 +186,13 @@ defmodule EhOsContractHost.MixProject do
   defp package_test_web(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "../packages/eh_os_contract_web",
+        cd: "../packages/ehos_contract_web",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
     if status != 0,
-      do: Mix.raise("the dashboard foundation's own gate failed (packages/eh_os_contract_web)")
+      do: Mix.raise("the dashboard foundation's own gate failed (packages/ehos_contract_web)")
   end
 
   # The credential verifier (v2 stage EA), the same shape again: a package that
@@ -200,13 +200,13 @@ defmodule EhOsContractHost.MixProject do
   defp package_test_auth(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "../packages/eh_os_contract_auth",
+        cd: "../packages/ehos_contract_auth",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
     if status != 0,
-      do: Mix.raise("the credential verifier's own gate failed (packages/eh_os_contract_auth)")
+      do: Mix.raise("the credential verifier's own gate failed (packages/ehos_contract_auth)")
   end
 
   # The graph renderer (plan E13b), the same shape again: it depends on no other package of
@@ -214,12 +214,12 @@ defmodule EhOsContractHost.MixProject do
   defp package_test_graph(_args) do
     {_output, status} =
       System.cmd("mix", ["check"],
-        cd: "../packages/eh_os_contract_graph",
+        cd: "../packages/ehos_contract_graph",
         env: [{"MIX_ENV", "test"}],
         into: IO.stream(:stdio, :line)
       )
 
     if status != 0,
-      do: Mix.raise("the graph renderer's own gate failed (packages/eh_os_contract_graph)")
+      do: Mix.raise("the graph renderer's own gate failed (packages/ehos_contract_graph)")
   end
 end

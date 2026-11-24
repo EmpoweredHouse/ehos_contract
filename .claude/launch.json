@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "eh_os_contract_host",
+      "name": "ehos_contract_host",
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",

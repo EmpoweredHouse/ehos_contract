@@ -6,6 +6,6 @@ defmodule Billing.Subscriptions do
   """
 
   use Boundary,
-    deps: [EhOsContract, Billing.Contracts, Billing.Periods],
+    deps: [EhosContract, Billing.Contracts, Billing.Periods],
     exports: [Subscription, Invoice, MonthlyBilling, InvoiceThePeriod]
 end

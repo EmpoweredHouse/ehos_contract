@@ -1,0 +1,10 @@
+{
+  "name": "ehos-contract",
+  "version": "0.15.0",
+  "description": "Skills for writing and changing contracts with ehos_contract, for an application built on EHOS: where a feature lives, distilling a process into a domain and contracts, adding an event, changing a contract that has history, writing a decider and a reaction.",
+  "author": {
+    "name": "EmpoweredHouse"
+  },
+  "repository": "https://github.com/EmpoweredHouse/eh-os-contract",
+  "license": "Apache-2.0"
+}

@@ -10,7 +10,7 @@ defmodule Lending.Contracts.Membership do
   member's data again.
   """
 
-  use EhOsContract.Contract,
+  use EhosContract.Contract,
     domain: Lending.Domain,
     context: :membership,
     id: "lending.membership"

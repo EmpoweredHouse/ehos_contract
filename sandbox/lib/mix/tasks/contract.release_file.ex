@@ -13,11 +13,11 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   packages, and is never released, so no host carries the task.
 
   What the file says comes from the packages themselves: each version from its application's
-  specification, the manifest's versions from `EhOsContract.Auth.Manifest.schemas/0`. The two
-  interfaces with no version on the wire, `eh_os_contract.api` (the routes `EhOsContract.Plug`
-  serves) and `ehos.credential` (what `EhOsContract.Auth.verify/2` reads), are named here, and
-  raised here when one breaks. `eh_os_contract.graph`, the `graph.v1` document
-  `mix eh_os_contract.graph` writes, names its version in its own `schema`, and EHOS takes a
+  specification, the manifest's versions from `EhosContract.Auth.Manifest.schemas/0`. The two
+  interfaces with no version on the wire, `ehos_contract.api` (the routes `EhosContract.Plug`
+  serves) and `ehos.credential` (what `EhosContract.Auth.verify/2` reads), are named here, and
+  raised here when one breaks. `ehos_contract.graph`, the `graph.v1` document
+  `mix ehos_contract.graph` writes, names its version in its own `schema`, and EHOS takes a
   domain's with a deployment; its version here follows that `schema`.
 
   ## Options
@@ -27,20 +27,20 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
   """
 
   use Mix.Task
-  use Boundary, classify_to: EhOsContractHost.Application
+  use Boundary, classify_to: EhosContractHost.Application
 
   @switches [commit: :string, output: :string]
 
-  @packages [:eh_os_contract, :eh_os_contract_auth, :eh_os_contract_web, :eh_os_contract_graph]
+  @packages [:ehos_contract, :ehos_contract_auth, :ehos_contract_web, :ehos_contract_graph]
 
   # Raised by hand, beside a `**Breaking:**` line, when a change breaks one: neither carries its
   # version on the wire.
-  @api "eh_os_contract.api/v1"
+  @api "ehos_contract.api/v1"
   @credential "ehos.credential/v1"
 
-  # The graph document names its own version, `eh_os_contract.graph.v1`
-  # (`EhOsContract.Graph.Document`), which the release names in its own form, `<name>/v<n>`.
-  @graph "eh_os_contract.graph/v1"
+  # The graph document names its own version, `ehos_contract.graph.v1`
+  # (`EhosContract.Graph.Document`), which the release names in its own form, `<name>/v<n>`.
+  @graph "ehos_contract.graph/v1"
 
   @impl Mix.Task
   def run(args) do
@@ -65,10 +65,10 @@ defmodule Mix.Tasks.Contract.ReleaseFile do
 
     %{
       "schema" => "ehos.release/v1",
-      "component" => "eh_os_contract",
-      "version" => packages["eh_os_contract"],
+      "component" => "ehos_contract",
+      "version" => packages["ehos_contract"],
       "commit" => commit,
-      "produces" => EhOsContract.Auth.Manifest.schemas() ++ [@api, @graph],
+      "produces" => EhosContract.Auth.Manifest.schemas() ++ [@api, @graph],
       "accepts" => [@credential],
       "requires" => %{},
       "packages" => packages

@@ -1,0 +1,65 @@
+defmodule EhosContract.DurationTest do
+  @moduledoc """
+  The units, and the prose made out of them.
+
+  `humanize/1` moved here from `EhosContract.Report`, where the plurals were listed by hand
+  for `:month` and `:day` and every other unit fell through to a branch that
+  produced **"within 24 hour"**. It survived four contracts because none of them
+  used hours until the fourth — the same shape of miss as `within: {1, :month}`,
+  which also compiled until somebody wrote it.
+  """
+
+  use ExUnit.Case, async: true
+
+  test "a declared duration keeps its numeral and says when it is unconfirmed" do
+    assert EhosContract.Duration.declared(%{amount: 1, unit: :day}) == "1 day"
+    assert EhosContract.Duration.declared({2, :hour}) == "2 hours"
+
+    assert EhosContract.Duration.declared(%{amount: 30, unit: :day, unverified: true}) ==
+             "30 days (unverified)"
+
+    assert EhosContract.Duration.declared(%{amount: 3, unit: :day, unverified: false}) ==
+             "3 days"
+  end
+
+  describe "units" do
+    test "only what converts to seconds without a calendar" do
+      assert Enum.sort(EhosContract.Duration.units()) == [:day, :hour, :minute, :second]
+    end
+
+    test "shifting a moment is plain seconds, because the log is UTC" do
+      at = ~U[2026-07-01 09:00:00Z]
+
+      assert EhosContract.Duration.shift(at, {24, :hour}) == ~U[2026-07-02 09:00:00Z]
+      assert EhosContract.Duration.shift(at, {2, :day}) == ~U[2026-07-03 09:00:00Z]
+    end
+
+    test "a calendar unit raises, with the reason rather than a type error" do
+      assert_raise ArgumentError, ~r/unsupported time unit :month/, fn ->
+        EhosContract.Duration.shift(~U[2026-07-01 09:00:00Z], {1, :month})
+      end
+    end
+  end
+
+  describe "humanize" do
+    test "hours are pluralised — the defect this function was extracted to fix" do
+      assert EhosContract.Duration.humanize({24, :hour}) == "24 hours"
+    end
+
+    test "every unit pluralises, none of them listed by hand" do
+      assert EhosContract.Duration.humanize({2, :day}) == "2 days"
+      assert EhosContract.Duration.humanize({30, :second}) == "30 seconds"
+      assert EhosContract.Duration.humanize({15, :minute}) == "15 minutes"
+    end
+
+    test "a count of one drops the numeral, because both callers put a word in front" do
+      # "within day", not "within 1 day".
+      assert EhosContract.Duration.humanize({1, :month}) == "month"
+      assert EhosContract.Duration.humanize({1, :day}) == "day"
+    end
+
+    test "months are readable although `within` refuses them, because a timer's wait takes them" do
+      assert EhosContract.Duration.humanize({3, :month}) == "3 months"
+    end
+  end
+end

@@ -9,4 +9,4 @@ dispatch or report does not let you. An example from your domain, made up if nee
 
 **What you would expect.** How you would write it in a contract, or what the report or dashboard would say.
 
-**What you tried.** Workarounds, and anything in `packages/eh_os_contract/docs/` that came close.
+**What you tried.** Workarounds, and anything in `packages/ehos_contract/docs/` that came close.

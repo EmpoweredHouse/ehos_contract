@@ -5,7 +5,7 @@ defmodule Billing.Periods do
   moment of the next month, and the month that ended just before a moment.
   """
 
-  use Boundary, deps: [EhOsContract, Billing.Domain], exports: [Name]
+  use Boundary, deps: [EhosContract, Billing.Domain], exports: [Name]
 
   @doc "Whether `name` is a month written `YYYY-MM`."
   @spec name?(term()) :: boolean()

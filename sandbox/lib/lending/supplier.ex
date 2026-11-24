@@ -9,7 +9,7 @@ defmodule Lending.Supplier do
   request of another contract is not this module's to answer.
   """
 
-  @behaviour EhOsContract.Supplier
+  @behaviour EhosContract.Supplier
 
   alias Lending.Contracts.Circulation
 

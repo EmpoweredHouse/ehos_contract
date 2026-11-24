@@ -3,7 +3,7 @@
 # the Markdown it is made from, and an index linking them. Run by
 # .github/workflows/docs.yml, and by hand from anywhere in the repository:
 #
-#   .github/scripts/build-docs.sh /tmp/eh-os-contract-docs "$(git rev-parse --abbrev-ref HEAD)"
+#   .github/scripts/build-docs.sh /tmp/ehos-contract-docs "$(git rev-parse --abbrev-ref HEAD)"
 #
 # Dependencies must be fetched first (`mix deps.get`; `--only test` for the
 # engine, the dashboard, the credential verifier and the graph renderer, whose `:dev` dependencies are private). The build runs under MIX_ENV=test,
@@ -19,7 +19,7 @@ out="${1:?$usage}"
 ref="${2:?$usage}"
 root="$(git rev-parse --show-toplevel)"
 sha="$(git -C "$root" rev-parse HEAD)"
-marker=".eh-os-contract-docs"
+marker=".ehos-contract-docs"
 
 # The ref is written into the index page: a branch's, tag's or commit's name only.
 if [[ ! "$ref" =~ ^[A-Za-z0-9._/][A-Za-z0-9._/-]*$ || "$ref" == *..* ]]; then
@@ -47,14 +47,14 @@ version() {
   echo "$v"
 }
 
-engine_version="$(version eh_os_contract)"
-web_version="$(version eh_os_contract_web)"
-auth_version="$(version eh_os_contract_auth)"
-graph_version="$(version eh_os_contract_graph)"
+engine_version="$(version ehos_contract)"
+web_version="$(version ehos_contract_web)"
+auth_version="$(version ehos_contract_auth)"
+graph_version="$(version ehos_contract_graph)"
 
 # Each package under the short name the archive uses.
 names=(engine web auth graph)
-packages=(eh_os_contract eh_os_contract_web eh_os_contract_auth eh_os_contract_graph)
+packages=(ehos_contract ehos_contract_web ehos_contract_auth ehos_contract_graph)
 
 for i in "${!names[@]}"; do
   name="${names[$i]}"
@@ -62,7 +62,7 @@ for i in "${!names[@]}"; do
 
   # "View source" links to the commit built, not to a version tag that may not exist.
   (cd "$root/$package" &&
-    EH_OS_CONTRACT_DOCS_SOURCE_REF="$sha" MIX_ENV=test \
+    EHOS_CONTRACT_DOCS_SOURCE_REF="$sha" MIX_ENV=test \
       mix docs -f html --warnings-as-errors --output "$out/html/$name")
 
   mkdir -p "$out/markdown/$name"
@@ -78,7 +78,7 @@ cat > "$out/index.html" <<HTML
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>eh_os_contract documentation</title>
+<title>ehos_contract documentation</title>
 <style>
   body { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; color: #222; background: #fff; }
   code { font-size: 0.9em; }
@@ -87,13 +87,13 @@ cat > "$out/index.html" <<HTML
 </style>
 </head>
 <body>
-<h1>eh_os_contract documentation</h1>
+<h1>ehos_contract documentation</h1>
 <p>Built from <code>${ref}</code> at <code>${sha:0:7}</code>.</p>
 <ul>
-  <li><a href="html/engine/index.html">eh_os_contract</a> ${engine_version}: the engine, its guides and the DSL reference</li>
-  <li><a href="html/web/index.html">eh_os_contract_web</a> ${web_version}: the dashboard</li>
-  <li><a href="html/auth/index.html">eh_os_contract_auth</a> ${auth_version}: EHOS credentials and sign-in</li>
-  <li><a href="html/graph/index.html">eh_os_contract_graph</a> ${graph_version}: the graph renderer</li>
+  <li><a href="html/engine/index.html">ehos_contract</a> ${engine_version}: the engine, its guides and the DSL reference</li>
+  <li><a href="html/web/index.html">ehos_contract_web</a> ${web_version}: the dashboard</li>
+  <li><a href="html/auth/index.html">ehos_contract_auth</a> ${auth_version}: EHOS credentials and sign-in</li>
+  <li><a href="html/graph/index.html">ehos_contract_graph</a> ${graph_version}: the graph renderer</li>
 </ul>
 <p>The Markdown the pages are made from, as committed, is in <code>markdown/</code>.</p>
 </body>

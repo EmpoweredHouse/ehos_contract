@@ -107,7 +107,7 @@ jobs:
           mix contract.release_file --commit "$COMMIT" --output "$RUNNER_TEMP/release/release.json"
           version=$(jq -r .version "$RUNNER_TEMP/release/release.json")
           if [ "$PUBLISH" = "true" ] && [ "v$version" != "$TAG" ]; then
-            echo "::error::packages/eh_os_contract/mix.exs says $version, the tag $TAG"
+            echo "::error::packages/ehos_contract/mix.exs says $version, the tag $TAG"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -151,7 +151,7 @@ jobs:
               exit 1
             fi
           fi
-          for package in eh_os_contract eh_os_contract_auth eh_os_contract_web eh_os_contract_graph; do
+          for package in ehos_contract ehos_contract_auth ehos_contract_web ehos_contract_graph; do
             version=$(jq -r --arg p "$package" '.packages[$p]' "$RUNNER_TEMP/release/release.json")
             if [[ "$version" == *-dev ]]; then
               if [ "$PUBLISH" = "true" ]; then
@@ -292,7 +292,7 @@ jobs:
             exit 1
           fi
           gh release create "$TAG" "$RUNNER_TEMP/release/release.json" "$RUNNER_TEMP/release/notes.md" \
-            --repo "$GITHUB_REPOSITORY" --verify-tag --title "eh-os-contract $VERSION" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "ehos-contract $VERSION" \
             --notes-file "$RUNNER_TEMP/release/body.md" --latest="$LATEST"
 
       # docs.yml attaches the documentation to a published release, but GitHub starts no workflow

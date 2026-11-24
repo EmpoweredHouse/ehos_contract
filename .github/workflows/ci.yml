@@ -101,9 +101,9 @@ jobs:
           key: sandbox-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('sandbox/mix.lock') }}
 
       # The engine is a path dependency, but package_test/1 in sandbox/mix.exs runs
-      # `mix check` with `cd: "packages/eh_os_contract"` as a fully separate Mix
+      # `mix check` with `cd: "packages/ehos_contract"` as a fully separate Mix
       # project — its own deps/ and mix.lock, fetched independently of the
-      # host's. Confirmed 21 August 2026: packages/eh_os_contract/deps is
+      # host's. Confirmed 21 August 2026: packages/ehos_contract/deps is
       # git-ignored, so a fresh checkout starts without it. The private ehos-tools'
       # packages are left out: anyone who can run a workflow here can restore a cache, and
       # whoever cannot read ehos-tools must not read its code from one (this job no longer
@@ -115,9 +115,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            packages/eh_os_contract/deps/*
-            !packages/eh_os_contract/deps/ehos_*
-          key: eh-os-contract-core-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract/mix.lock') }}
+            packages/ehos_contract/deps/*
+            !packages/ehos_contract/deps/ehos_*
+          key: ehos-contract-core-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/ehos_contract/mix.lock') }}
 
       # The dashboard package, same shape
       # as the engine above: a path dependency whose own gate runs as a
@@ -126,8 +126,8 @@ jobs:
       - name: Cache dashboard foundation deps
         uses: actions/cache@v4
         with:
-          path: packages/eh_os_contract_web/deps
-          key: eh-os-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_web/mix.lock') }}
+          path: packages/ehos_contract_web/deps
+          key: ehos-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_web/mix.lock') }}
 
       # The credential verifier (v2 stage EA): its gate runs as a separate Mix project via
       # package_test_auth/1 in sandbox/mix.exs. Its `:dev` dependencies come from the private
@@ -137,9 +137,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            packages/eh_os_contract_auth/deps/*
-            !packages/eh_os_contract_auth/deps/ehos_*
-          key: eh-os-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_auth/mix.lock') }}
+            packages/ehos_contract_auth/deps/*
+            !packages/ehos_contract_auth/deps/ehos_*
+          key: ehos-contract-auth-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_auth/mix.lock') }}
 
       # The graph renderer (plan E13b): its gate runs as a separate Mix project via
       # package_test_graph/1 in sandbox/mix.exs. Its `:dev` dependencies come from the private
@@ -149,9 +149,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            packages/eh_os_contract_graph/deps/*
-            !packages/eh_os_contract_graph/deps/ehos_*
-          key: eh-os-contract-graph-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/eh_os_contract_graph/mix.lock') }}
+            packages/ehos_contract_graph/deps/*
+            !packages/ehos_contract_graph/deps/ehos_*
+          key: ehos-contract-graph-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_graph/mix.lock') }}
 
       # Compiled dependencies, one cache per project. Without it every run
       # compiled ecto, postgrex, oban, plug and the rest from scratch four times
@@ -163,7 +163,7 @@ jobs:
       # but not the ones built against its macros, so a partial hit could pass
       # or fail where a clean build would not. A lock change compiles cold once.
       #
-      # The repository's own applications — everything named eh_os_contract*,
+      # The repository's own applications — everything named ehos_contract*,
       # which the sandbox and the packages also build as path dependencies — and
       # the consolidated protocols are left out of the cache, and deleted after
       # the restore in case an entry saved before that exclusion still holds
@@ -184,20 +184,20 @@ jobs:
         with:
           path: |
             sandbox/_build/*/lib/*
-            packages/eh_os_contract/_build/*/lib/*
-            packages/eh_os_contract_web/_build/*/lib/*
-            packages/eh_os_contract_auth/_build/*/lib/*
-            packages/eh_os_contract_graph/_build/*/lib/*
-            !sandbox/_build/*/lib/eh_os_contract*
-            !packages/*/_build/*/lib/eh_os_contract*
+            packages/ehos_contract/_build/*/lib/*
+            packages/ehos_contract_web/_build/*/lib/*
+            packages/ehos_contract_auth/_build/*/lib/*
+            packages/ehos_contract_graph/_build/*/lib/*
+            !sandbox/_build/*/lib/ehos_contract*
+            !packages/*/_build/*/lib/ehos_contract*
             !sandbox/_build/*/lib/ehos_*
             !packages/*/_build/*/lib/ehos_*
           key: build-${{ steps.image.outputs.os }}-otp${{ steps.beam.outputs.otp-version }}-ex${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('sandbox/mix.lock', 'packages/*/mix.lock', 'sandbox/config/**', 'packages/*/config/**') }}
 
       - name: Drop the repository's own compiled applications
         run: |
-          rm -rf sandbox/_build/*/lib/eh_os_contract* sandbox/_build/*/consolidated
-          rm -rf packages/*/_build/*/lib/eh_os_contract* packages/*/_build/*/consolidated
+          rm -rf sandbox/_build/*/lib/ehos_contract* sandbox/_build/*/consolidated
+          rm -rf packages/*/_build/*/lib/ehos_contract* packages/*/_build/*/consolidated
 
       - name: Install sandbox deps
         working-directory: sandbox
@@ -208,26 +208,26 @@ jobs:
       # no credentials for. Only `mix ehos_diagrams.gen` reads them, and the `diagrams` job
       # below runs it; the gate says it did not (#520).
       - name: Install engine deps
-        working-directory: packages/eh_os_contract
+        working-directory: packages/ehos_contract
         run: mix deps.get --only test
 
       # `--only test`: the dashboard's `:dev` dependency, ehos_design, lives in the
       # private ehos-tools, which this job has no credentials for. Only
       # `mix assets.build` reads it, and its output is committed, so the gate never needs it.
       - name: Install dashboard foundation deps
-        working-directory: packages/eh_os_contract_web
+        working-directory: packages/ehos_contract_web
         run: mix deps.get --only test
 
       # `--only test`, as for the engine: the verifier's `:dev` dependencies, which draw its
       # diagrams, live in the private ehos-tools.
       - name: Install credential verifier deps
-        working-directory: packages/eh_os_contract_auth
+        working-directory: packages/ehos_contract_auth
         run: mix deps.get --only test
 
       # `--only test`, as for the engine: the renderer's `:dev` dependencies, which draw its
       # diagrams, live in the private ehos-tools.
       - name: Install graph renderer deps
-        working-directory: packages/eh_os_contract_graph
+        working-directory: packages/ehos_contract_graph
         run: mix deps.get --only test
 
       # The newest pair only. The repository follows the oldest pair's formatter, so the
@@ -318,7 +318,7 @@ jobs:
       # plain URL. Each fetched dependency's mix.exs runs here, while the token is in reach;
       # `--only dev` keeps that to what the check needs.
       - name: Install engine deps
-        working-directory: packages/eh_os_contract
+        working-directory: packages/ehos_contract
         env:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
@@ -326,11 +326,11 @@ jobs:
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check
-        working-directory: packages/eh_os_contract
+        working-directory: packages/ehos_contract
         run: mix ehos_diagrams.gen --check
 
       - name: Install credential verifier deps
-        working-directory: packages/eh_os_contract_auth
+        working-directory: packages/ehos_contract_auth
         env:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
@@ -338,11 +338,11 @@ jobs:
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check, credential verifier
-        working-directory: packages/eh_os_contract_auth
+        working-directory: packages/ehos_contract_auth
         run: mix ehos_diagrams.gen --check
 
       - name: Install graph renderer deps
-        working-directory: packages/eh_os_contract_graph
+        working-directory: packages/ehos_contract_graph
         env:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
@@ -350,7 +350,7 @@ jobs:
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check, graph renderer
-        working-directory: packages/eh_os_contract_graph
+        working-directory: packages/ehos_contract_graph
         run: mix ehos_diagrams.gen --check
 
   # Each package as Hex would build it, and as an application would read it once
@@ -372,11 +372,11 @@ jobs:
 
       - name: Build and read each package
         env:
-          EH_OS_CONTRACT_HEX: "1"
+          EHOS_CONTRACT_HEX: "1"
         run: |
           out="$RUNNER_TEMP/hex"
           for package in packages/*/; do
             package=$(basename "$package")
             (cd "packages/$package" && mix hex.build --unpack --output "$out/$package")
-            (cd "$out" && env -u EH_OS_CONTRACT_HEX elixir "$GITHUB_WORKSPACE/.github/scripts/hex-package-deps.exs" "$out/$package")
+            (cd "$out" && env -u EHOS_CONTRACT_HEX elixir "$GITHUB_WORKSPACE/.github/scripts/hex-package-deps.exs" "$out/$package")
           done

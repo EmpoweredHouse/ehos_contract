@@ -1,13 +1,13 @@
-defmodule EhOsContract.GraphOverlayTest do
+defmodule EhosContract.GraphOverlayTest do
   @moduledoc """
   Plan E13a, batch 5: the overlay of every contract and every domain of the sandbox's
   case studies holds to the schema the engine ships and joins the document it names.
   """
 
-  use EhOsContractHost.DataCase, async: false
+  use EhosContractHost.DataCase, async: false
 
-  alias EhOsContract.Graph.{Document, Overlay}
-  alias EhOsContract.Registry
+  alias EhosContract.Graph.{Document, Overlay}
+  alias EhosContract.Registry
 
   # Built when a test first asks for it, never into a module attribute: on OTP 28 a
   # compiled regex is a reference, which Elixir 1.18 cannot put into the code of a

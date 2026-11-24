@@ -15,7 +15,7 @@ defmodule Fulfilment.Processes.Order do
   handed over.
   """
 
-  use EhOsContract.Process,
+  use EhosContract.Process,
     id: "fulfilment.order",
     domain: Fulfilment.Domain,
     label: "An order, from its placing to its delivery",

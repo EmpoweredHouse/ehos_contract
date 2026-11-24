@@ -8,16 +8,16 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## Where things stand (22 November 2026)
 
-- **Released:** v0.15.2, with `eh_os_contract_web` 0.11.0 and the graph renderer 0.10.0 (both require a
+- **Released:** v0.15.2, with `ehos_contract_web` 0.11.0 and the graph renderer 0.10.0 (both require a
   Phoenix LiveView that fixes EEF-CVE-2026-126334; the dashboard's script has the LiveView 1.2.14 client)
-  and the engine 0.15.2, with nothing changed in it; `eh_os_contract_auth` stays at 0.16.1. The
+  and the engine 0.15.2, with nothing changed in it; `ehos_contract_auth` stays at 0.16.1. The
   plugin's skills are at 0.14.3. Applications install them from git. The pull request after the tag
   moves each released package to its next patch's `-dev`.
 - **Now:** the publication programme, which makes this repository public and the packages installable from
   Hex. PB6 is in progress (#421).
 - **Open questions for the maintainers:**
   - the library's name before its first Hex release, since a name on Hex is permanent;
-  - whether `eh_os_contract_auth` is published under the library's name;
+  - whether `ehos_contract_auth` is published under the library's name;
   - whether the design record keeps the people it names and its links into private repositories (#379);
   - whether the graph's overlays, which read the whole log on each request, get a default window or a cache
     (raised in the review of #311).

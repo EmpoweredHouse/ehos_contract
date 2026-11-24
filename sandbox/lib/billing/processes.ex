@@ -3,5 +3,5 @@ defmodule Billing.Processes do
   **Invented.** Billing's run: one subscription's month, from its close to its payment.
   """
 
-  use Boundary, deps: [EhOsContract, Billing.Contracts], exports: []
+  use Boundary, deps: [EhosContract, Billing.Contracts], exports: []
 end

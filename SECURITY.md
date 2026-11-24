@@ -11,17 +11,17 @@ on it, and credit you in the release notes unless you would rather not be named.
 
 ## What is in scope
 
-The four packages under `packages/`: the engine (`eh_os_contract`), the dashboard (`eh_os_contract_web`), the
-credential verifier (`eh_os_contract_auth`) and the graph renderer (`eh_os_contract_graph`). For example:
+The four packages under `packages/`: the engine (`ehos_contract`), the dashboard (`ehos_contract_web`), the
+credential verifier (`ehos_contract_auth`) and the graph renderer (`ehos_contract_graph`). For example:
 
-- a command, recording or query that `EhOsContract.call/3` or `EhOsContract.Plug` lets through without the
+- a command, recording or query that `EhosContract.call/3` or `EhosContract.Plug` lets through without the
   capability or the scope it needs;
-- a credential `eh_os_contract_auth` accepts that it should refuse, or a key set it can be made to take from
+- a credential `ehos_contract_auth` accepts that it should refuse, or a key set it can be made to take from
   somewhere else;
 - personal data readable after its subject was erased, or written in the clear where it should be encrypted;
 - a dashboard or API route that shows more than its host's resolver allows.
 
-The `eh-os-contract` Claude Code plugin under `plugins/` is in scope too: applications enable it, and its
+The `ehos-contract` Claude Code plugin under `plugins/` is in scope too: applications enable it, and its
 skills steer their assistant. So are the workflows under `.github/workflows/`.
 
 Not a finding: the keys, salts and `secret_key_base` values in `sandbox/config/` and in each package's

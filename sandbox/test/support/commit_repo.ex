@@ -1,13 +1,13 @@
-defmodule EhOsContractHost.CommitRepo do
+defmodule EhosContractHost.CommitRepo do
   @moduledoc """
   The repo for the sandbox's tests that need real commits: concurrent dispatches
   over one consistency boundary (v2 plan, E9b).
 
-  `EhOsContractHost.Repo` runs every test inside a transaction that rolls back, with one
+  `EhosContractHost.Repo` runs every test inside a transaction that rolls back, with one
   connection per test, so no two decisions ever read the same boundary at once. A
   committed row in the log can never be deleted, since the log is append-only, so
   these tests get a database of their own, one per checkout, created afresh before each run and
-  migrated with the host's own migrations — the engine's `EhOsContract.CommitRepo`,
+  migrated with the host's own migrations — the engine's `EhosContract.CommitRepo`,
   on the host's side of the seam.
 
   Tests using it are `async: false`, and each writes under a payer of its own,
@@ -15,11 +15,11 @@ defmodule EhOsContractHost.CommitRepo do
   """
 
   use Boundary, top_level?: true, deps: [], exports: []
-  use Ecto.Repo, otp_app: :eh_os_contract_host, adapter: Ecto.Adapters.Postgres
+  use Ecto.Repo, otp_app: :ehos_contract_host, adapter: Ecto.Adapters.Postgres
 
   @doc """
   Drops the database, creates it again and starts the repo on it, migrated to the
-  newest of `EhOsContractHost.Repo`'s migrations: dropping is the only way the log empties.
+  newest of `EhosContractHost.Repo`'s migrations: dropping is the only way the log empties.
   """
   @spec reset!() :: :ok
   def reset! do
@@ -45,7 +45,7 @@ defmodule EhOsContractHost.CommitRepo do
     Code.put_compiler_option(:ignore_module_conflict, true)
 
     try do
-      path = Ecto.Migrator.migrations_path(EhOsContractHost.Repo)
+      path = Ecto.Migrator.migrations_path(EhosContractHost.Repo)
       Ecto.Migrator.run(__MODULE__, path, :up, all: true, log: false)
     after
       Code.put_compiler_option(:ignore_module_conflict, previous)

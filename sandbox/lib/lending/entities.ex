@@ -5,7 +5,7 @@ defmodule Lending.Entities do
   card is not in the system, `:not_found`, and the loan is refused.
   """
 
-  @behaviour EhOsContract.Entities
+  @behaviour EhosContract.Entities
 
   @cards %{
     "card-ada" => %{card_id: "card-ada", suspended: false},

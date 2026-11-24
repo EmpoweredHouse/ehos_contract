@@ -1,0 +1,642 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ehos-contract:schema:graph_overlay.v1",
+  "title": "ehos_contract graph overlay v1",
+  "description": "What the log says over a graph.v1 document, for a period: numbers keyed by the ids of the document's nodes and relations, never a copy of the facts. Only the numbers the conformance report computes; nothing a reader needs to recount.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/contract_overlay"
+    },
+    {
+      "$ref": "#/$defs/process_overlay"
+    },
+    {
+      "$ref": "#/$defs/domain_overlay"
+    }
+  ],
+  "$defs": {
+    "contract_overlay": {
+      "type": "object",
+      "description": "A contract's overlay.",
+      "required": [
+        "schema",
+        "kind",
+        "contract",
+        "module",
+        "version",
+        "document_digest",
+        "since",
+        "until",
+        "nodes",
+        "relations",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "ehos_contract.graph_overlay.v1"
+        },
+        "kind": {
+          "const": "contract"
+        },
+        "contract": {
+          "type": "string",
+          "description": "The id: of the contract it is of."
+        },
+        "module": {
+          "type": "string",
+          "description": "The contract's module, for a reader in the code."
+        },
+        "version": {
+          "type": "string",
+          "description": "The contract version the log was read against."
+        },
+        "document_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "description": "The digest of the graph.v1 document this overlay joins onto: a reader joins it only onto that one."
+        },
+        "since": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's start, inclusive; null when unbounded."
+        },
+        "until": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's end, inclusive; null when unbounded."
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Numbers by the id of a node of the document.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/event_numbers"
+              },
+              {
+                "$ref": "#/$defs/runs"
+              },
+              {
+                "$ref": "#/$defs/unit_numbers"
+              }
+            ]
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "Numbers by the id of a relation of the document, or of one defined under observed. A relation no step, transition or move ends at has no entry, and so have the two issues relations (phase start and run) of a process manager issuing one command on one event both as a run starts and during it: the report reads that as one step, and the log does not record which phase a command was issued in.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/step_numbers"
+              },
+              {
+                "$ref": "#/$defs/step_by_trigger"
+              },
+              {
+                "$ref": "#/$defs/transition_numbers"
+              },
+              {
+                "$ref": "#/$defs/undeclared_numbers"
+              }
+            ]
+          }
+        },
+        "observed": {
+          "type": "object",
+          "description": "Relations the log shows and the contract does not declare, in the document's shape, by type.",
+          "required": [
+            "relations"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "relations": {
+              "type": "object",
+              "description": "By type.",
+              "required": [
+                "undeclared"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "undeclared": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/undeclared"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "domain_overlay": {
+      "type": "object",
+      "description": "A domain's overlay.",
+      "required": [
+        "schema",
+        "kind",
+        "domain",
+        "version",
+        "document_digest",
+        "since",
+        "until",
+        "nodes",
+        "relations",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "ehos_contract.graph_overlay.v1"
+        },
+        "kind": {
+          "const": "domain"
+        },
+        "domain": {
+          "type": "string",
+          "description": "The module of the domain it is of."
+        },
+        "version": {
+          "type": "string",
+          "description": "The domain version the log was read against."
+        },
+        "document_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "description": "The digest of the graph.v1 document this overlay joins onto: a reader joins it only onto that one."
+        },
+        "since": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's start, inclusive; null when unbounded."
+        },
+        "until": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's end, inclusive; null when unbounded."
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Numbers by the id of a node of the document: each process module's runs.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/runs"
+              }
+            ]
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "Numbers by the id of a consumed_by relation of the document: what crosses between two contracts.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/traffic_numbers"
+              }
+            ]
+          }
+        },
+        "observed": {
+          "type": "object",
+          "description": "Relations the log shows that the documents do not declare, in the document's shape, by type: none between contracts.",
+          "required": [
+            "relations"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "relations": {
+              "type": "object",
+              "description": "By type.",
+              "required": [
+                "undeclared"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "undeclared": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/undeclared"
+                  },
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "event_numbers": {
+      "type": "object",
+      "description": "An event: how often the log holds it in the period, whatever run, if any, each falls in.",
+      "required": [
+        "occurrences"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "occurrences": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "period_bound": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "process_overlay": {
+      "type": "object",
+      "description": "A process module's overlay.",
+      "required": [
+        "schema",
+        "kind",
+        "process",
+        "module",
+        "version",
+        "document_digest",
+        "since",
+        "until",
+        "nodes",
+        "relations",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "ehos_contract.graph_overlay.v1"
+        },
+        "kind": {
+          "const": "process"
+        },
+        "process": {
+          "type": "string",
+          "description": "The id: of the process module it is of."
+        },
+        "module": {
+          "type": "string",
+          "description": "The process module, for a reader in the code."
+        },
+        "version": {
+          "type": "string",
+          "description": "The process module's version the log was read against."
+        },
+        "document_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]+$",
+          "description": "The digest of the graph.v1 document this overlay joins onto: a reader joins it only onto that one."
+        },
+        "since": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's start, inclusive; null when unbounded."
+        },
+        "until": {
+          "$ref": "#/$defs/period_bound",
+          "description": "The period's end, inclusive; null when unbounded."
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Numbers by the id of a node of the document: the process's runs, an event's occurrences, a promise's verdicts. Every event the process includes has an entry, 0 when it did not happen in the period; a promise the owner has yet to confirm has none.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/runs"
+              },
+              {
+                "$ref": "#/$defs/event_numbers"
+              },
+              {
+                "$ref": "#/$defs/promise_numbers"
+              }
+            ]
+          }
+        },
+        "relations": {
+          "type": "object",
+          "description": "None: a process's numbers are on its nodes.",
+          "maxProperties": 0
+        },
+        "observed": {
+          "type": "object",
+          "description": "Relations the log shows that the document does not declare: none for a process.",
+          "required": [
+            "relations"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "relations": {
+              "type": "object",
+              "description": "By type.",
+              "required": [
+                "undeclared"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "undeclared": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/undeclared"
+                  },
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "promise_numbers": {
+      "type": "object",
+      "description": "A promise: its verdicts over the runs it opened in the period, as the conformance report judges them under the promise's current declaration.",
+      "required": [
+        "satisfied",
+        "satisfied_via_eventually",
+        "satisfied_via_or_else",
+        "violated",
+        "pending",
+        "suspended",
+        "instances"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "satisfied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept: what it promised happened in time, one way or the other."
+        },
+        "satisfied_via_eventually": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it promised."
+        },
+        "satisfied_via_or_else": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept by the event it accepts otherwise."
+        },
+        "violated": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken: the window passed and neither came."
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Its window is still open."
+        },
+        "suspended": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Broken while an external it depends on was down: not counted as broken."
+        },
+        "instances": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The runs it was judged on."
+        }
+      }
+    },
+    "runs": {
+      "type": "object",
+      "description": "A process: its runs in the period.",
+      "required": [
+        "runs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "step_numbers": {
+      "type": "object",
+      "description": "A step of the contract, on the relation that ends it: how often it was taken in the period (null for an effect, which leaves nothing in the log when it acts), what waits there and what fails, by source, whether the report lists it as waiting or failing, and whether the report counts it as never taken or as not taken yet because what it starts from is still on its way.",
+      "required": [
+        "taken",
+        "waiting",
+        "failing",
+        "waits",
+        "fails",
+        "untraversed",
+        "pending"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "taken": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Occurrences: the events its command appended, or the commands its reaction issued, accepted or rejected."
+        },
+        "waiting": {
+          "type": "object",
+          "description": "Events an ordered consumer has not reached, timers not fired, effect jobs not run.",
+          "required": [
+            "lag",
+            "timers",
+            "effects"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "lag": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "timers": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "effects": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "failing": {
+          "type": "object",
+          "description": "Commands that failed where the step runs (each failed command once), effect jobs discarded, the consumer's subscription stopped.",
+          "required": [
+            "commands",
+            "effects",
+            "subscription"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "commands": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "effects": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "subscription": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "description": "Where the consumer stopped, and why.",
+                  "required": [
+                    "stopped_at",
+                    "failure"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "stopped_at": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "failure": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "waits": {
+          "type": "boolean",
+          "description": "Whether the report lists the step as waiting: anything in waiting is above zero."
+        },
+        "fails": {
+          "type": "boolean",
+          "description": "Whether the report lists the step as failing: a command or an effect job failed there, or its consumer's subscription stopped."
+        },
+        "untraversed": {
+          "type": "boolean",
+          "description": "The conformance report's reading of the step: true exactly when the report lists it as never traversed in the period."
+        },
+        "pending": {
+          "type": "boolean",
+          "description": "The report's not yet: the step was not taken because what it starts from is still on its way."
+        }
+      }
+    },
+    "step_by_trigger": {
+      "type": "object",
+      "description": "A relation several steps end at — a policy handling several events, held as one issues relation: each step's numbers under the id of the event it starts from. No total, as the report gives none. An entry is this or step_numbers, never both.",
+      "required": [
+        "by_trigger"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "by_trigger": {
+          "type": "object",
+          "description": "By the id of the triggering event, in the document.",
+          "minProperties": 2,
+          "additionalProperties": {
+            "$ref": "#/$defs/step_numbers"
+          }
+        }
+      }
+    },
+    "traffic_numbers": {
+      "type": "object",
+      "description": "Between two contracts: how many of the consumed events the log holds in the period, how many wait at the consumer's steps that start from them, and whether any fails.",
+      "required": [
+        "events",
+        "waiting",
+        "failing"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "waiting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "transition_numbers": {
+      "type": "object",
+      "description": "A lifecycle's transition: how often it was taken in the period, and whether the report counts it as not yet (an aggregate still stands where it can be taken) or never.",
+      "required": [
+        "count",
+        "pending",
+        "untraversed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending": {
+          "type": "boolean"
+        },
+        "untraversed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "undeclared": {
+      "type": "object",
+      "description": "A move a lifecycle does not allow that happened anyway, in the shape of the document's relations: from the status the aggregate stood in to the one it stayed in — the unit's id where it stood in none yet — by the event.",
+      "required": [
+        "id",
+        "from",
+        "to",
+        "event"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        }
+      }
+    },
+    "undeclared_numbers": {
+      "type": "object",
+      "description": "A move the lifecycle does not allow: how often it happened in the period.",
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "unit_numbers": {
+      "type": "object",
+      "description": "An aggregate with a lifecycle: how many of them had an event in the period.",
+      "required": [
+        "aggregates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "aggregates": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

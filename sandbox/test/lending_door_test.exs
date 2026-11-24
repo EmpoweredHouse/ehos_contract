@@ -1,25 +1,25 @@
 defmodule Lending.DoorTest do
   @moduledoc """
   The library's contracts behind the host's door: a bearer credential verified by
-  `EhOsContract.Auth.Plug`, every command and query served by `EhOsContract.Plug` over
-  HTTP, every decision recorded by `EhOsContract.Auth`, and the host answering for what
+  `EhosContract.Auth.Plug`, every command and query served by `EhosContract.Plug` over
+  HTTP, every decision recorded by `EhosContract.Auth`, and the host answering for what
   is not the caller's to say. A late fee comes from the desk's tariff, and whether a
   card is suspended from the card system.
   """
 
-  use EhOsContractHost.DataCase, async: false
-  use EhOsContract.Auth.Testing
+  use EhosContractHost.DataCase, async: false
+  use EhosContract.Auth.Testing
 
   import Phoenix.ConnTest
   import Plug.Conn
 
-  alias EhOsContract.{Actor, Event}
+  alias EhosContract.{Actor, Event}
   alias Lending.Contracts.{Circulation, Membership}
   alias Lending.Contracts.Circulation.Commands.LendCopy
 
   @contracts [Membership, Circulation]
 
-  @endpoint EhOsContractHostWeb.Endpoint
+  @endpoint EhosContractHostWeb.Endpoint
 
   defp command(token, capability, body) do
     build_conn()
@@ -77,7 +77,7 @@ defmodule Lending.DoorTest do
 
   defp decisions(subject) do
     Repo.query!(
-      "SELECT capability, outcome, reason FROM eh_os_contract_auth_decisions WHERE subject = $1",
+      "SELECT capability, outcome, reason FROM ehos_contract_auth_decisions WHERE subject = $1",
       [subject]
     ).rows
   end
@@ -89,7 +89,7 @@ defmodule Lending.DoorTest do
   # A copy lent the way the desk lends it, so that the door has a loan to take back.
   defp lent(loan) do
     {:ok, _} =
-      EhOsContract.dispatch(
+      EhosContract.dispatch(
         Circulation,
         %LendCopy{
           loan_id: loan,
@@ -113,7 +113,7 @@ defmodule Lending.DoorTest do
       |> post("/api/lending/commands/lending.withdraw_copy", "{}")
 
     assert answer(conn) == {401, %{"error" => "no_credential"}}
-    assert Repo.query!("SELECT count(*) FROM eh_os_contract_auth_decisions").rows == [[0]]
+    assert Repo.query!("SELECT count(*) FROM ehos_contract_auth_decisions").rows == [[0]]
   end
 
   test "fields that do not fit are refused first to a credential without the capability" do

@@ -2,18 +2,18 @@ defmodule Lending.DomainTest do
   @moduledoc """
   **A domain module compiles in a consumer, under that consumer's strict `boundary` and
   `--warnings-as-errors`**, and what it compiles to is reachable through
-  `EhOsContract.Model`.
+  `EhosContract.Model`.
 
   The engine's own tests compile domains from strings. This one is a real `.ex` file,
   compiled by `mix compile` like any other, so it also shows the consumer's side of the
   formatter export: `mix format --check-formatted` in the gate reads it through
-  `import_deps: [:eh_os_contract]`.
+  `import_deps: [:ehos_contract]`.
   """
 
   use ExUnit.Case, async: true
 
   test "the model names the contexts, the relation, the actors and the values" do
-    model = EhOsContract.Model.fetch(Lending.Domain)
+    model = EhosContract.Model.fetch(Lending.Domain)
 
     assert %{kind: :domain, name: :lending, language: :en} = model
     assert Enum.map(model.contexts, & &1.name) == [:circulation, :membership]
@@ -24,7 +24,7 @@ defmodule Lending.DomainTest do
 
   test "every term carries its German translation" do
     translations =
-      for context <- EhOsContract.Model.fetch(Lending.Domain).contexts,
+      for context <- EhosContract.Model.fetch(Lending.Domain).contexts,
           %{text: text, translations: translations} <- context.terms,
           %{language: :de, text: german} <- translations,
           do: {text, german}

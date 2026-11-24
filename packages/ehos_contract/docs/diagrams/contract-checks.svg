@@ -1,0 +1,62 @@
+<!-- title: What is checked at which time? -->
+<!-- desc: While Elixir compiles, the engine checks the schema, one module and the implementation; then the compiler ehos_contract checks between modules; the check task reports. -->
+<!-- words: implementation -->
+<!-- technical: Schema, One module, Between modules, The check -->
+<!-- parts: schema = -, module = -, implementation = -, between = -, check = - -->
+<svg viewBox="0 0 1000 600" xmlns="http://www.w3.org/2000/svg">
+  <rect class="bg" width="100%" height="100%"/>
+
+  <!-- When each layer runs -->
+  <rect class="zone" x="40" y="48" width="920" height="236" rx="8"/>
+  <rect class="mask" x="56" y="42" width="236" height="12" rx="2"/>
+  <text class="zlabel" x="60" y="51">WHEN ELIXIR COMPILES A MODULE</text>
+
+  <rect class="zone" x="40" y="316" width="920" height="96" rx="8"/>
+  <rect class="mask" x="56" y="310" width="276" height="12" rx="2"/>
+  <text class="zlabel" x="60" y="319">AFTER ELIXIR COMPILES THE PROJECT</text>
+
+  <rect class="zone" x="40" y="444" width="920" height="96" rx="8"/>
+  <rect class="mask" x="56" y="438" width="212" height="12" rx="2"/>
+  <text class="zlabel" x="60" y="447">WHEN YOU RUN THE CHECK</text>
+
+  <!-- 1. Schema -->
+  <rect id="contract-checks-schema" class="n-back" x="80" y="72" width="840" height="56" rx="6"/>
+  <text class="eyes" x="104" y="104">1</text>
+  <text class="name" x="128" y="105">Schema</text>
+  <text class="sub" x="896" y="104" text-anchor="end">Spark: unknown keys, missing keys, wrong types</text>
+
+  <!-- 2. One module -->
+  <rect id="contract-checks-module" class="n-back" x="80" y="140" width="840" height="56" rx="6"/>
+  <text class="eyes" x="104" y="172">2</text>
+  <text class="name" x="128" y="173">One module</text>
+  <text class="sub" x="896" y="172" text-anchor="end">the rules of one domain, contract or process module</text>
+
+  <!-- 3. Implementation -->
+  <rect id="contract-checks-implementation" class="n-back" x="80" y="208" width="840" height="56" rx="6"/>
+  <text class="eyes" x="104" y="240">3</text>
+  <text class="name" x="128" y="241">Implementation</text>
+  <text class="sub" x="896" y="240" text-anchor="end">use, emit/1, reject/1, issue/1 at their line</text>
+
+  <!-- 4. Between modules: the layer a host must register -->
+  <rect id="contract-checks-between" class="n-focal" x="80" y="340" width="840" height="56" rx="6"/>
+  <text class="eyes" x="104" y="372">4</text>
+  <text class="name" x="128" y="373">Between modules</text>
+  <text class="sub" x="896" y="372" text-anchor="end">compilers: Mix.compilers() ++ [:ehos_contract]</text>
+
+  <!-- 5. The check -->
+  <rect id="contract-checks-check" class="n-shared" x="80" y="468" width="840" height="56" rx="6"/>
+  <text class="eyes" x="104" y="500">5</text>
+  <text class="name" x="128" y="501">The check</text>
+  <text class="sub" x="896" y="500" text-anchor="end">mix ehos_contract.check: errors, warnings, notices</text>
+
+  <!-- Legend strip -->
+  <g class="legend">
+  <line class="rule" x1="40" y1="560" x2="960" y2="560"/>
+  <rect class="n-back" x="40" y="576" width="14" height="10" rx="2"/>
+  <text class="legt" x="60" y="585">Refuses at compile time</text>
+  <rect class="n-focal" x="200" y="576" width="14" height="10" rx="2"/>
+  <text class="legt" x="220" y="585">Refuses at compile time, when mix.exs adds the compiler</text>
+  <rect class="n-shared" x="540" y="576" width="14" height="10" rx="2"/>
+  <text class="legt" x="560" y="585">A task that you run, which fails on an error</text>
+  </g>
+</svg>
