@@ -461,9 +461,8 @@ defmodule EhosContract.Auth.RenewalTest do
 
       assert renew(context) == {:error, :ehos_unavailable}
 
-      assert CommitRepo.query!(
-               "SELECT refused_until FROM ehos_contract_auth_session_credentials"
-             ).rows == [[nil]]
+      assert CommitRepo.query!("SELECT refused_until FROM ehos_contract_auth_session_credentials").rows ==
+               [[nil]]
 
       {:ok, session} = Sessions.fetch(context.name, context.token)
       assert session.refresh_token == context.session.refresh_token
