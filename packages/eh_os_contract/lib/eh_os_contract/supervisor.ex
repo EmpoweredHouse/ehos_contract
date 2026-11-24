@@ -62,7 +62,8 @@ defmodule EhOsContract.Supervisor do
   # jobs in the queue :events, which a host's Oban may not run: then they wait in the
   # table, and nothing says so (#671). A warning, not a refusal: the application
   # still serves its commands, and another node may run the queue. Read from the
-  # index dispatch enqueues from, so a contract left out by `exclude:` counts too.
+  # index of the configured applications, which `exclude:` does not narrow, so a
+  # contract it leaves out and dispatch still reaches counts too.
   defp waiting_jobs(index) do
     timers? =
       Enum.any?(index.consumers, fn consumer ->

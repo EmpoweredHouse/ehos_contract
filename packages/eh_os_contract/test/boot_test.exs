@@ -201,6 +201,10 @@ defmodule EhOsContract.BootTest do
         end)
 
       assert log =~ "the jobs of EhOsContract.EffectJob and EhOsContract.TimerJob wait"
+      # The exclusion took effect: no contract whose jobs wait is left in the scan.
+      refute waiting == []
+      scanned = Enum.map(EhOsContract.Registry.contracts(), &hd(Module.split(&1)))
+      assert MapSet.disjoint?(MapSet.new(waiting), MapSet.new(scanned))
     end
 
     test "control: a host whose Oban runs :events is not warned" do
