@@ -2,12 +2,12 @@
 
 This package is a dashboard that shows if an application does what its contracts say. This page is
 for a developer who adds the dashboard to an application built on
-[`ehos_contract`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract).
+[`ehos_contract`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract).
 It says what the dashboard shows, and links to the pages that tell you how to add it.
 
 The dashboard reads the *conformance* of the application: the comparison of the log with what the
 contracts and the process modules declare. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that these pages use.
 
 ## What does the dashboard show?
@@ -22,7 +22,7 @@ The dashboard has 2 screens, and no more:
   - for a process module: its stages, events and promises, with the numbers of the log over them.
 
 The package
-[`ehos_contract_graph`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract_graph)
+[`ehos_contract_graph`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract_graph)
 draws the graphs. A click on a card, an arrow or a label opens a panel that says what it is.
 
 The package also has a read-only JSON API, for a client that does not use the dashboard, such as a

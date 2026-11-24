@@ -33,6 +33,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   `EhosContract.Auth.Migrations.up(version: 4)`. The manifest names its engine `ehos_contract`.
   People signed in to the application's pages sign in once more: the session's key and the salt
   its tokens are encrypted with carry the package's name.
+  The repository is `EmpoweredHouse/ehos_contract`, so a dependency from git names
+  `github: "EmpoweredHouse/ehos_contract"`; GitHub forwards the old address.
 - The development mode (`EhosContract.Auth.Development`) writes the address of `/dev/sign-in`, with
   its token, to `_build/dev/ehos_contract_auth/dev_sign_in` while it runs, in a directory that only
   the user can open (mode 0700). After a sign-out or in a new browser, `cat` shows the address

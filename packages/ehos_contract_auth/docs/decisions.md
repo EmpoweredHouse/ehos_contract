@@ -4,7 +4,7 @@ This page tells how `EhosContract.Auth` decides about the actor of a credential,
 writes for each decision. It also tells what the row costs, and how long the application keeps it. It is for a developer
 who configures the package, and for a person who must answer who tried to do what. The *Authorizer*
 is the module that the engine asks if the actor of a credential can make a call. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines it, and the words *capability* and *scope*.
 
 ## What does the package decide?
@@ -19,7 +19,7 @@ The package has no rule of its own. It decides with `EhosContract.Authorizer.che
 - for a scoped call, the value that the call asks for must be among the values in `scp`.
 
 So the package narrows nothing that the credential grants. [How is a call
-authorized?](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/authorization.md)
+authorized?](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/authorization.md)
 tells how the engine asks, and each refusal of `check/2`.
 
 ## What does a row hold?
@@ -130,9 +130,9 @@ of the repo, and then it deletes nothing.
 ## Next steps
 
 - [The credential](credential.md): what the package verifies before it decides.
-- [What does each answer write?](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/authorization.md#what-does-each-answer-write):
+- [What does each answer write?](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/authorization.md#what-does-each-answer-write):
   each answer of a call, and the rows that it writes in each table.
-- [Write an Authorizer](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/authorizer.md):
+- [Write an Authorizer](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/authorizer.md):
   add a rule of your own, and keep the rows of this package.
 
 <!-- Decisions behind this page:

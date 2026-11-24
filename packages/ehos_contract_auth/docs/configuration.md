@@ -2,7 +2,7 @@
 
 This page lists what `ehos_contract_auth` reads: its configuration, the options of its child, and
 the environment variables that EHOS gives the workload. It is for a developer who deploys an
-application on EHOS. The [glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+application on EHOS. The [glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that this page uses. [Get started](getting-started.md) shows the configuration one time, step by
 step.
 

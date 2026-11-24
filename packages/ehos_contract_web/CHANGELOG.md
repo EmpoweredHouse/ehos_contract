@@ -31,6 +31,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   application, the modules `EhosContract.Web.*`, the router macros `ehos_contract_dashboard/2` and
   `ehos_contract_api/2`, the stylesheet's variables `--ehos-contract-*` and the API's format
   identifiers (`ehos_contract.graph_index.v1`, `ehos_contract.model-index.v2`).
+  The repository is `EmpoweredHouse/ehos_contract`, so a dependency from git names
+  `github: "EmpoweredHouse/ehos_contract"`; GitHub forwards the old address.
 
 ## [0.11.0] - 2026-11-22
 

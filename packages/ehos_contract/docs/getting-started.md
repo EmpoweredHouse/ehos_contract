@@ -25,7 +25,7 @@ The package is not on Hex. Add it from git to `deps/0` in `mix.exs`:
 <!-- not compiled: a dependency in the host's mix.exs -->
 ```elixir
 {:ehos_contract,
- git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+ git: "https://github.com/EmpoweredHouse/ehos_contract.git",
  sparse: "packages/ehos_contract"}
 ```
 
@@ -389,5 +389,5 @@ says. [The command-line tasks](cli.md) list each task and its options.
   [process modules](process.md), [an outage to record](outages.md), [the conformance report](conformance.md),
   [scenarios](scenarios.md), [authorization](authorization.md), [a scope](scope.md),
   [an Authorizer of your own](authorizer.md) and [calls with a credential](calls.md).
-- [The Claude Code plugin](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/plugins/ehos-contract/README.md):
+- [The Claude Code plugin](https://github.com/EmpoweredHouse/ehos_contract/blob/main/plugins/ehos-contract/README.md):
   skills that write contracts by the rules of this engine.

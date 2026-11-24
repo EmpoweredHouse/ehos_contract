@@ -49,7 +49,8 @@ Everything in the code has today's name; the old ones remain in `docs/adr/`, in 
 and in the archived working plan, where `PNS.X` and `EhOsContract.X` mean today's `EhosContract.X`. Three strings
 keep `eh_os_contract` on purpose, because databases hold them: the SQL of migrations V01–V06 (engine) and V01–V03
 (credentials), which databases ran and V07 and V04 rename after; the append lock's class; and what a subject's
-data key is bound to when wrapped. The repository's GitHub address keeps `eh-os-contract` until it is renamed.
+data key is bound to when wrapped. The repository was `EmpoweredHouse/eh-os-contract` before it was renamed to
+`EmpoweredHouse/ehos_contract`, and GitHub forwards the old address.
 
 ## Before you change anything
 

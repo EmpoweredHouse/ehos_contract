@@ -18,7 +18,7 @@ that write contracts by the rules of the engine.
 ## Before you start
 
 - Claude Code, and git.
-- Read access to the GitHub repository `EmpoweredHouse/eh-os-contract`. The repository is private.
+- Read access to the GitHub repository `EmpoweredHouse/ehos_contract`. The repository is private.
 
 ## Steps
 
@@ -31,7 +31,7 @@ that write contracts by the rules of the engine.
        "ehos-contract": {
          "source": {
            "source": "github",
-           "repo": "EmpoweredHouse/eh-os-contract",
+           "repo": "EmpoweredHouse/ehos_contract",
            "ref": "ehos-contract-plugin-vX.Y.Z"
          }
        }
@@ -54,5 +54,5 @@ To take a new version of the plugin, change the tag in `ref`.
 
 ## Next steps
 
-- [Getting started](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/getting-started.md): install the engine.
-- [Write a domain, a contract and a process module](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/contract.md).
+- [Getting started](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/getting-started.md): install the engine.
+- [Write a domain, a contract and a process module](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/contract.md).

@@ -4,7 +4,7 @@ The application must know that a credential comes from EHOS. It checks the signa
 credential against the public keys of EHOS. This page tells where those keys come from, why the
 application can trust them, and how the key process keeps them. It is for a developer who connects
 an application to EHOS, and for a reviewer of its security. The [glossary of the
-engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that this page uses.
 
 Nothing about the keys is configured in the application, except the address of EHOS and, sometimes,

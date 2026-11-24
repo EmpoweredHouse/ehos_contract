@@ -4,7 +4,7 @@ This page tells what a credential of EHOS holds, what `EhosContract.Auth.verify/
 what each refusal means, in a function call and over HTTP. It is for a developer who accepts calls
 with a credential, and for a reviewer who must know what the package trusts. A *credential* is a
 signed token that EHOS issues to a person or a system, for one application. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines the words *actor*, *capability* and *scope*.
 
 ## What does a credential hold?
@@ -116,7 +116,7 @@ can have any case. The plug gives the token to `verify/2`:
 ## Next steps
 
 - [How is each decision recorded?](decisions.md): what the package writes for each verified actor.
-- [How is a call authorized?](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/authorization.md):
+- [How is a call authorized?](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/authorization.md):
   how the engine checks the capabilities and the scopes of the actor, and the limits of the check.
 - [Where do the keys come from?](keys.md): how the key process fetches, keeps and rotates the
   keys.

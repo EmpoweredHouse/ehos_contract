@@ -73,7 +73,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   set; and add a migration calling `EhosContract.Migrations.up(version: 7)`. Oban's jobs are
   rewritten in the `oban_jobs` the `search_path` finds; with Oban in another prefix, rename their
   `worker` from `EhOsContract.` to `EhosContract.` there. The engine's moduledoc names version 7, and
-  `docs/getting-started.md` the new dependency.
+  `docs/getting-started.md` the new dependency. The repository is `EmpoweredHouse/ehos_contract`, so a
+  dependency from git names `github: "EmpoweredHouse/ehos_contract"`; GitHub forwards the old address.
 
 ## [0.15.2] - 2026-11-22
 

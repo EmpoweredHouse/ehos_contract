@@ -2,9 +2,9 @@
 
 This page tells you how to connect an application to EHOS one time. You install the package,
 configure it, and accept a call with a credential that EHOS issued. It is for a developer who builds an
-application on [`ehos_contract`](https://github.com/EmpoweredHouse/eh-os-contract/tree/main/packages/ehos_contract).
+application on [`ehos_contract`](https://github.com/EmpoweredHouse/ehos_contract/tree/main/packages/ehos_contract).
 A *credential* is a signed token that EHOS issues to a person or a system. The
-[glossary of the engine](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/glossary.md)
+[glossary of the engine](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/glossary.md)
 defines each word of the contract language that this page uses.
 
 ## Before you start
@@ -28,10 +28,10 @@ Add the package beside the engine, with the same `git:` and `sparse:` form:
 def deps do
   [
     {:ehos_contract,
-     git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+     git: "https://github.com/EmpoweredHouse/ehos_contract.git",
      sparse: "packages/ehos_contract"},
     {:ehos_contract_auth,
-     git: "https://github.com/EmpoweredHouse/eh-os-contract.git",
+     git: "https://github.com/EmpoweredHouse/ehos_contract.git",
      sparse: "packages/ehos_contract_auth"}
   ]
 end
@@ -177,7 +177,7 @@ recorded?](decisions.md)
   long to keep it.
 - [Sign people in through EHOS](sign-in.md): give the pages of the application a session for each
   person. The [overview](../README.md) lists the other tasks.
-- [Accept calls with a credential](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/packages/ehos_contract/docs/calls.md):
+- [Accept calls with a credential](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/calls.md):
   the routes of `EhosContract.Plug` and their answers.
 - [The application manifest](manifest.md): tell EHOS what the workload needs and what its contracts
   offer.

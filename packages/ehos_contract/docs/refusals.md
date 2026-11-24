@@ -234,5 +234,5 @@ fields with the fields that `ehos_contract.lock` recorded for each version.
 ## Background
 
 The reason for each rule is in section 6 of
-[the design record of the contract language](https://github.com/EmpoweredHouse/eh-os-contract/blob/main/docs/adr/contract-v2.md),
+[the design record of the contract language](https://github.com/EmpoweredHouse/ehos_contract/blob/main/docs/adr/contract-v2.md),
 in the repository.
