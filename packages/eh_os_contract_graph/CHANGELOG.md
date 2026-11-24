@@ -37,6 +37,10 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ### Changed
 
+- **The `graph.v1` schema the package carries knows a domain service's functions and rules as
+  nodes** (#594): `domain_service_function` and `domain_service_rule`, both optional, as the engine
+  now writes them. A host that checks documents against `schema_path/0` takes a contract's document
+  from an engine before or after the change.
 - **The README is split into pages by what a reader asks** (#517). The README says what the
   package draws. Three how-tos take the rest, and hexdocs shows them: `docs/explore-a-domain.md`,
   with a diagram of the path that the explorer follows, `docs/draw-a-document.md` and

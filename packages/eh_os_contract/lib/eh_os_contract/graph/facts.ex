@@ -33,6 +33,12 @@ defmodule EhOsContract.Graph.Facts do
   # `EhOsContract.Model.to_data/1` redacts it, so no personal value leaves in a
   # document.
   #
+  # **A domain service's examples are split by rule** (#594): EHOS refuses a document
+  # with a node of more than 2,000 values. A service's functions and rules are nodes of
+  # their own, each owned through `of`, so a service with many examples is not one node
+  # holding them all. One rule's examples are still one node, and a value's invariant
+  # examples sit in the value's: nothing here keeps either under the bound (#598).
+  #
   # **Scenarios** are neither nodes nor relations: a contract's are grouped by the
   # kind of their target (`unit`, `policy`, `process_manager`, `query`), each naming
   # its `target` and the ids of the relations it exercises (`covers`), which the
@@ -46,8 +52,9 @@ defmodule EhOsContract.Graph.Facts do
   # A contract declares no process (plan DD, P2h, #221): a process's stages, promises and
   # who answers for it are a process module's document's (plan DD, P2e, #220).
   @contract_kinds ~w(unit status invariant constraint command event policy process_manager timer
-                     effect read_model query domain_service publication actor external value
-                     entity subject context)a
+                     effect read_model query domain_service domain_service_function
+                     domain_service_rule publication actor external value entity subject
+                     context)a
 
   @contract_types ~w(emits handled_by starts ends issues sets cancels fires may_issue may_record
                      may_ask builds consulted_by projected_into reads refused_on enters transition
@@ -129,10 +136,19 @@ defmodule EhOsContract.Graph.Facts do
             capability: ctx.grants[{:query, q.name}]
           )
         end,
+      # `functions` stays, empty, because graph.v1 requires it: the functions are
+      # `domain_service_function` nodes (#594). The next version of the format drops it.
       domain_service:
-        for s <- model.domain_services do
-          node(:domain_service, c, s, functions: Enum.map(s.functions, &function(&1, ctx)))
-        end
+        for(s <- model.domain_services, do: node(:domain_service, c, s, functions: [])),
+      domain_service_function:
+        for(s <- model.domain_services, f <- s.functions, do: function(c, s, f, ctx)),
+      domain_service_rule:
+        for(
+          s <- model.domain_services,
+          f <- s.functions,
+          r <- f.rules,
+          do: service_rule(c, s, f, r)
+        )
     }
 
     nodes = own |> Map.merge(unit_nodes) |> Map.merge(reaction_nodes)
@@ -1476,26 +1492,34 @@ defmodule EhOsContract.Graph.Facts do
 
   defp value_of(_type, _ctx), do: nil
 
-  # A domain service's function: its arguments, its result and its rules with their
-  # examples, which `redacted/1` has already redacted.
-  defp function(f, ctx) do
+  # A function of domain service `s`: its arguments and its result. Its rules are nodes
+  # of their own (`service_rule/4`).
+  defp function(c, s, f, ctx) do
     returns = field(returned(f), ctx)
 
     %{
+      id: Document.id([:domain_service_function, c, s.name, f.name]),
       name: f.name,
       label: f.label,
+      source: Map.get(f, :source),
+      of: id(:domain_service, c, s.name),
       arguments: fields(f.arguments, ctx),
-      returns: Map.drop(returns, [:name, :label]),
-      rules:
-        for r <- f.rules do
-          %{
-            name: r.name,
-            label: r.label,
-            source: r[:source],
-            examples:
-              for({arguments, result} <- r.examples, do: %{arguments: arguments, result: result})
-          }
-        end
+      returns: Map.drop(returns, [:name, :label])
+    }
+  end
+
+  # A rule of function `f` of domain service `s`, with its examples, which `redacted/1`
+  # has already redacted. Its examples are what makes a service large, so each rule is
+  # a node: the largest node is then one rule's, not the whole service's (#594).
+  defp service_rule(c, s, f, r) do
+    %{
+      id: Document.id([:domain_service_rule, c, s.name, f.name, r.name]),
+      name: r.name,
+      label: r.label,
+      source: r[:source],
+      of: Document.id([:domain_service_function, c, s.name, f.name]),
+      examples:
+        for({arguments, result} <- r.examples, do: %{arguments: arguments, result: result})
     }
   end
 
