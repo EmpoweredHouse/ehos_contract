@@ -562,8 +562,7 @@ defmodule EhosContract.Auth.RenewalTest do
   defp refreshes(context), do: length(refresh_requests(context))
 
   defp rows,
-    do:
-      CommitRepo.query!("SELECT count(*) FROM ehos_contract_auth_sessions").rows |> hd() |> hd()
+    do: CommitRepo.query!("SELECT count(*) FROM ehos_contract_auth_sessions").rows |> hd() |> hd()
 
   defp lease(_context) do
     CommitRepo.query!("SELECT lease_holder, lease_until FROM ehos_contract_auth_sessions").rows

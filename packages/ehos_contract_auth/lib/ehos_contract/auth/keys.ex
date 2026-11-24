@@ -531,9 +531,7 @@ defmodule EhosContract.Auth.Keys do
     :ets.insert(state.name, for([kid, jwk] <- rows, do: {kid, signer(jwk)}))
   rescue
     exception ->
-      Logger.error(
-        "ehos_contract_auth could not read #{@table}: #{Exception.message(exception)}"
-      )
+      Logger.error("ehos_contract_auth could not read #{@table}: #{Exception.message(exception)}")
   end
 
   # The interval runs from when a fetch ends, its table written, not from when it
