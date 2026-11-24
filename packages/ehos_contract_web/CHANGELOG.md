@@ -25,8 +25,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-24
+
 ### Changed
 
+- **Breaking:** the engine is required at `~> 0.16.0` and the graph renderer at `~> 0.11.0`, the
+  releases that rename them, so a host moves the three packages together.
 - **Breaking:** The package is called `ehos_contract_web`, no longer `eh_os_contract_web`: the
   application, the modules `EhosContract.Web.*`, the router macros `ehos_contract_dashboard/2` and
   `ehos_contract_api/2`, the stylesheet's variables `--ehos-contract-*` and the API's format

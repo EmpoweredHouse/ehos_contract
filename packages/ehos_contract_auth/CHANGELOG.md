@@ -24,8 +24,12 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-24
+
 ### Changed
 
+- **Breaking:** the engine is required at `~> 0.16.0`, the release that renames it, so a host moves the
+  two packages together.
 - **Breaking:** The package is called `ehos_contract_auth`, no longer `eh_os_contract_auth`: the
   application, the modules `EhosContract.Auth.*`, the tasks `mix ehos_contract.*` and
   `config :ehos_contract_auth`. Its storage follows in version 4, which renames its tables from
