@@ -239,9 +239,9 @@ Some data of a person must stay longer than other data of the same person. Examp
 the medical record of a patient for a period that the law sets. It erases the phone and the e-mail
 when the patient asks.
 
-The engine does not check that two subjects are two different people. So a domain can declare two
-subjects for one kind of person, one for each kind of data. The engine keeps a data key for each
-subject type and id, so each subject gets its own key:
+The engine does not check that two subjects are two different kinds of person. So a domain can
+declare a second subject for the same people, for the data that it erases at another time. The
+engine keeps a data key for each subject type and id, so each subject gets its own key:
 
 ```elixir
 defmodule Concepts.PersonalData.Clinic.Domain do
@@ -310,20 +310,28 @@ When the patient asks, the application erases only the contact details:
 EhosContract.erase(:contact, contact_id, actor: actor)
 ```
 
-**Result:** in each `visit_booked` with that `contact_id`, `phone` and `email` read back as
-`%EhosContract.Erased{subject: :contact, id: contact_id}`. The `national_id` and the `diagnosis`
-stay readable.
+**Result:** in each `visit_booked` with that `contact_id`, a `phone` or an `email` that had a value
+reads back as `%EhosContract.Erased{subject: :contact, id: contact_id}`. A field that had no value
+reads back as `nil`. The `national_id` and the `diagnosis` stay readable.
 
-When the period of the medical record ends, erase the two subjects. Erase the `:patient`, and each
-`:contact` of that patient. If a `:contact` is erased already, `erase/3` returns
-`{:ok, :already_erased}`. So the application can erase each `:contact` again without a check.
+When the period of the medical record ends, erase the two subjects:
+
+1. Find each `contact_id` of the patient. Keep this link in a read model with the key `patient_id`.
+2. Erase each `:contact` of the patient. If a `:contact` is erased already, `erase/3` returns
+   `{:ok, :already_erased}`. So the application can erase each `:contact` again without a check.
+3. Erase the `:patient`. The read model of step 1 deletes its rows of the patient in its
+   `forget/2`.
+
+Erase the `:patient` last. If you erase it first, the read model forgets the link before the
+application reads it.
 
 Before you split a person into two subjects, read these rules:
 
 - The id of each subject stays in clear text in the log. Use a random id. Do not use a national id
   number or an e-mail as the id.
 - An event that holds the two ids links them in the log. An erasure does not remove this link.
-  If the link must not stay, keep the `contact_id` out of the events of the patient.
+  If the link must not stay in the log, keep the `contact_id` out of the events of the patient.
+  Keep the link only in the read model of step 1.
 - Give each subject its own id, so that the id alone does not tell which contact belongs to which
   patient.
 - After an erasure, dispatch refuses new personal data for the erased id. If the person later
@@ -332,9 +340,10 @@ Before you split a person into two subjects, read these rules:
   `erase/3`.
 - Each read model that projects personal data of the two subjects must forget each subject type in
   its `forget/2`. If `forget/2` has no clause for a subject type, it raises on the erasure of that
-  type.
-- Each subject has one more data key. Each data key costs one more call to the vault when the
-  engine writes or reads the data of the subject.
+  type. If the read model is delivered `:in_transaction`, `erase/3` then raises and erases nothing.
+  A read model delivered `:at_least_once` stops at the erasure.
+- Two subjects give one person two data keys. Each data key costs one call to the vault when the
+  engine writes or reads the data of its subject.
 - The organization that answers for the data decides which field belongs to which subject. Example:
   a clinic can keep the phone of a patient as a part of the medical record.
 
