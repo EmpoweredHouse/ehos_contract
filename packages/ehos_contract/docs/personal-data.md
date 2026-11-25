@@ -230,6 +230,101 @@ end
 After `EhosContract.erase(:customer, "c-17", actor: actor)`, each `bike_accepted` of that customer
 still gives the customer id and the quote. Its `customer_phone` is `%EhosContract.Erased{}`.
 
+<a id="erase-part-of-the-data-of-a-person"></a>
+
+## How do I erase part of the data of a person?
+
+An erasure destroys one data key, so it erases each personal field of one subject. Some data of a
+person must stay longer than other data of the same person. Example: a clinic keeps the medical
+record of a patient for a period that the law sets. It erases the phone and the e-mail when the
+patient asks.
+
+To erase two kinds of data at different times, declare two subjects for the same person. The
+engine keeps a data key for each subject type and id, so each subject gets its own key:
+
+```elixir
+defmodule Concepts.PersonalData.Clinic.Domain do
+  use EhosContract.Domain, name: :personal_data_clinic, language: :en
+
+  subdomain :care, "Care", type: :core
+  context :visits, "Visits", subdomain: :care
+
+  actor :receptionist, :human, "Receptionist"
+  actor :doctor, :human, "Doctor"
+
+  subject :patient, "Patient (medical record)"
+  subject :contact, "Patient (contact details)"
+end
+
+defmodule Concepts.PersonalData.Clinic.Contracts.Visits do
+  use EhosContract.Contract,
+    domain: Concepts.PersonalData.Clinic.Domain,
+    context: :visits,
+    id: "personal_data_clinic.visits"
+
+  aggregate :visit, "Visit" do
+    identity :visit_id
+
+    command :book_visit, "Book a visit", by: :receptionist, emits: :visit_booked do
+      field :patient_id, :id, subject: :patient
+      field :contact_id, :id, subject: :contact
+      field :national_id, :string, personal: :patient_id
+      field :phone, :string, personal: :contact_id
+      field :email, :string, personal: :contact_id
+    end
+
+    event :visit_booked, "Visit booked" do
+      field :patient_id, :id, subject: :patient
+      field :contact_id, :id, subject: :contact
+      field :national_id, :string, personal: :patient_id
+      field :phone, :string, personal: :contact_id
+      field :email, :string, personal: :contact_id
+    end
+
+    command :record_diagnosis, "Record a diagnosis", by: :doctor, emits: :diagnosis_recorded do
+      field :patient_id, :id, subject: :patient
+      field :diagnosis, :string, personal: :patient_id
+    end
+
+    event :diagnosis_recorded, "Diagnosis recorded" do
+      field :patient_id, :id, subject: :patient
+      field :diagnosis, :string, personal: :patient_id
+    end
+  end
+end
+```
+
+- Each personal field names the identifier of the subject that it belongs to.
+- One event can hold personal fields of the two subjects.
+- The `diagnosis` is text that a person typed, so it is personal. If it is not personal, the
+  check gives the notice `free-text-not-personal`.
+
+When the patient asks, the application erases only the contact details:
+
+<!-- not compiled: a call in the host's code -->
+```elixir
+EhosContract.erase(:contact, contact_id, actor: actor)
+```
+
+**Result:** in each `visit_booked` of that patient, `phone` and `email` read back as
+`%EhosContract.Erased{subject: :contact}`. The `national_id` and the `diagnosis` stay readable.
+When the period of the medical record ends, the application erases the `:patient` subject too.
+
+Before you split a person into two subjects, read these rules:
+
+- The id of each subject stays in clear text in the log. Use a random id. Do not use a national id
+  number or an e-mail as the id.
+- Give each subject its own id. If the application must link the two ids, keep the link in a read
+  model, and delete it in `forget/2`.
+- After an erasure, dispatch refuses new personal data for the erased id. If the person later
+  agrees to give contact details again, give the new `:contact` subject a new id.
+- The engine does not erase a subject when a period ends. The application decides when, and calls
+  `erase/3`.
+- Each read model that projects personal data of the two subjects must forget each subject type in
+  its `forget/2`.
+- The organisation that answers for the data decides which field belongs to which subject. Example:
+  a clinic can keep the phone of a patient as a part of the medical record.
+
 ## Next steps
 
 - [Manage the keys and the backups of personal data](master-keys.md): rotate a master key, or keep the keys in a key
