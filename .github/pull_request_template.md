@@ -3,8 +3,9 @@ The first line says what this belongs to; keep one of them:
   Closes #N      the pull request that finishes an issue's work
   Part of #N     an earlier pull request of the same issue
   No issue: …    a change that needs none, and why (a typo, a dependency bump)
-The sections go from what anyone needs to what a reviewer needs. The pull-request skill says how to
-fill each one, in Simplified Technical English. Remove these comments as you fill the sections.
+The sections go from what anyone needs to what a reviewer needs. Fill what applies to your change,
+in short, plain sentences, and remove these comments as you fill the sections. A small fix needs
+a few lines, not every section.
 -->
 Closes #
 
@@ -57,6 +58,6 @@ short" has the problem; do not repeat it. -->
 
 ## Review
 
-<!-- What each of the two reviews of the pre-pr-review skill found, with the skills each invoked,
-and what became of each finding: fixed, no change needed (why), or a follow-up issue. Or that the
-change is documentation alone. CI's `review section` check fails while this section is empty. -->
+<!-- What a review before this pull request found, by you or an assistant, and what became of each
+finding: fixed, no change needed (why), or a follow-up issue. `.claude/review.md` lists what a
+reviewer here looks at. Or write that the change is documentation alone. -->

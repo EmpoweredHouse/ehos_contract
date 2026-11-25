@@ -1,6 +1,6 @@
 ---
-name: Programme stage
-about: One stage of a planned programme (see ROADMAP.md and CONTRIBUTING.md)
+name: Programme stage (maintainers)
+about: For the maintainers. One stage of a planned programme (ROADMAP.md). To ask for something, use Feature
 labels: []
 ---
 

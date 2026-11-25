@@ -8,6 +8,9 @@ modules, and the engine checks if what occurred agrees with them. This page is f
 meets the repository for the first time. [The glossary](packages/ehos_contract/docs/glossary.md)
 defines each word of the engine.
 
+> **Status:** before version 1.0. A minor version can break an application, and the changelog of
+> each package tells how to upgrade. The packages install from git, not yet from Hex.
+
 ## Which problem does it solve?
 
 The engine finds where the running system does not do what the business agreed, also when no error
@@ -33,6 +36,28 @@ PROCESS: Invoice filing
 
 The report does not show a stack trace or the contents of the invoice. It shows that the system did
 not do what the business agreed, one time in 40.
+
+## What does a contract look like?
+
+A contract declares what a unit of the business decides: its commands, its events, and who issues
+each command. This is a part of one:
+
+<!-- not compiled: an excerpt; the full example is in the engine's README -->
+```elixir
+aggregate :application, "Application" do
+  identity :application_id
+
+  command :approve_application, "Approve an application",
+    by: :reviewer,
+    emits: :application_approved
+
+  event :application_approved, "Application approved"
+end
+```
+
+The compiler refuses an implementation that emits an event that its command does not declare. The
+[README of the engine](packages/ehos_contract/README.md) shows the domain, the contract and the
+implementation together.
 
 ## Which packages does it hold?
 
@@ -61,6 +86,7 @@ Until 1.0, a minor version can break an application, and its changelog tells how
 
 ## Next steps
 
+- [Vision](VISION.md): why the model lives beside the code, and what it is for.
 - [What is ehos_contract?](packages/ehos_contract/docs/introduction.md): what the engine does,
   and what it does not do.
 - [Getting started](packages/ehos_contract/docs/getting-started.md): install the engine and

@@ -1,0 +1,4 @@
+# Who is asked to review a pull request, by path. The last matching line wins.
+# `main` needs one approving review before a merge.
+
+* @emilwojtaszek

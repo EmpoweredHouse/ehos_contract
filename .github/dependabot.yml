@@ -1,0 +1,36 @@
+# Dependency updates, once a week, one pull request per ecosystem.
+#
+# Mix: each package and the sandbox are their own Mix project, with their own mix.lock.
+# A bump inside a package's requirement changes only its mix.lock, which ships to no host,
+# so it needs no changelog line (changelog.yml). The ehos-tools dependencies are pinned
+# by commit on purpose (CONTRIBUTING.md) and are moved by hand, with
+# .github/private-references.allow in the same pull request.
+#
+# GitHub Actions: the workflows' actions. Once the publication pins them by commit (PB7),
+# Dependabot moves a pinned commit and its version comment together.
+version: 2
+updates:
+  - package-ecosystem: mix
+    directories:
+      - /packages/ehos_contract
+      - /packages/ehos_contract_web
+      - /packages/ehos_contract_auth
+      - /packages/ehos_contract_graph
+      - /sandbox
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: ehos_diagrams
+      - dependency-name: ehos_design
+    groups:
+      mix:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
