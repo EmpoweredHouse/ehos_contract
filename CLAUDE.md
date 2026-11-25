@@ -1,5 +1,9 @@
 # ehos_contract — the library's repository
 
+This file is for Claude Code, which reads it in every session opened here: for a maintainer, and
+for anyone who contributes with an assistant. A person starts from `CONTRIBUTING.md`, "Your first
+contribution".
+
 This is the repository of the `ehos_contract` library: a contract of a business process, and two things built
 on it — dispatching events for an event-driven application, and checking whether what happened matches what the
 contract says. Other repositories install its packages from git (`sparse:`), later from Hex.
@@ -199,8 +203,8 @@ environment on each command, since an assignment in front of one applies to that
 ## Language
 
 **Everything in this repository and on GitHub is in English**: code, comments, docs, `ROADMAP.md`,
-commit messages, issues, pull requests. We may talk in Polish; what we leave behind is English, because the
-project will be international.
+commit messages, issues, pull requests. A conversation with an assistant may be in another language (the
+maintainers' is often Polish); what we leave behind is English, because the project is international.
 
 The one exception is **text the client reads in sentences, inside strings**: the `label` and `source` of
 declarations in a domain and a contract, a term, its `definition`, `avoid` and `translation`, the `where` prose

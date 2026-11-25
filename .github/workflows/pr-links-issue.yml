@@ -14,6 +14,9 @@ permissions: {}
 
 jobs:
   links-issue:
+    # Dependabot writes its own description and cannot be told to open it with
+    # `No issue:`; a dependency bump needs no issue (dependabot.yml).
+    if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

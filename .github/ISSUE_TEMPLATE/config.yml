@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Ask a question
+    url: https://github.com/EmpoweredHouse/ehos_contract/discussions
+    about: How to write a contract, how to use a package, or an idea not yet ready for an issue.
   - name: Report a security vulnerability
     url: https://github.com/EmpoweredHouse/ehos_contract/security/advisories/new
     about: Privately, through GitHub's private vulnerability reporting. See SECURITY.md.

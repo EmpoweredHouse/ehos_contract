@@ -4,6 +4,23 @@ How work is planned, recorded and reviewed in this repository, for a person join
 here follows the same scheme; `CLAUDE.md` and the skills in `.claude/skills/` give it the details, and the
 maintainers' own setup is an opt-in step ("Working with Claude Code", below).
 
+## Your first contribution
+
+You do not need the maintainers' tools or their planning process for a fix or a small feature:
+
+1. **Say what you want to change.** For a bug, open an issue from the "Bug" template. For a question
+   or an idea, start a [discussion](https://github.com/EmpoweredHouse/ehos_contract/discussions). For a
+   larger change, open an issue from the "Feature" template before you write code, so that a maintainer
+   can say whether it fits ("What we do not build", in `CLAUDE.md`).
+2. **Fork the repository and make a branch.** Any branch name works for a contribution from a fork.
+3. **Run the gate** ("Run the gate", below). It needs Elixir, Erlang/OTP and Docker. It has to pass.
+4. **Add a changelog line** if a user of a package can see the change ("Changelogs and releases", below).
+5. **Open a pull request from the template.** Its first line is `Closes #N` for the issue it fixes, or
+   `No issue: <why>`. Fill the sections that apply to your change; a small fix needs a few lines.
+
+A maintainer reviews it. The rest of this page is how the maintainers plan and record their own work:
+read it when a pull request of yours needs it.
+
 ## What does each directory hold?
 
 | Directory | What it holds |
@@ -242,6 +259,9 @@ without it — a rule of the contract, the shape of an identifier other stages b
 stage was carried out stays in its issue.
 
 ## From an idea to `main`
+
+This is how the maintainers carry out a planned stage of the roadmap. A contribution from outside
+follows "Your first contribution", above.
 
 1. **The stage's paragraph in `ROADMAP.md`** says, in a few lines, what it changes and what it depends on. A stage
    not yet started may be rewritten; one already done is not.

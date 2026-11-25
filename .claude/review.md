@@ -106,8 +106,7 @@ before a commit in the same command runs. Do not use these flags or their short 
   exit code.
 - **No sections of its own** beyond the template's.
 
-The template says that CI's `review section` check reads "Review". This repository has no such
-check. Fill "Review" all the same.
+This repository has no CI check that reads "Review". Fill it all the same.
 
 ## Before a fix
 
