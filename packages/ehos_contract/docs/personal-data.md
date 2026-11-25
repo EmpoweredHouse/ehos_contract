@@ -230,17 +230,18 @@ end
 After `EhosContract.erase(:customer, "c-17", actor: actor)`, each `bike_accepted` of that customer
 still gives the customer id and the quote. Its `customer_phone` is `%EhosContract.Erased{}`.
 
-<a id="erase-part-of-the-data-of-a-person"></a>
+<a id="one-person-two-subjects"></a>
 
-## How do I erase part of the data of a person?
+## Can one person have two subjects?
 
-An erasure destroys one data key, so it erases each personal field of one subject. Some data of a
-person must stay longer than other data of the same person. Example: a clinic keeps the medical
-record of a patient for a period that the law sets. It erases the phone and the e-mail when the
-patient asks.
+An erasure destroys the data key of one subject, so it erases each personal field of that subject.
+Some data of a person must stay longer than other data of the same person. Example: a clinic keeps
+the medical record of a patient for a period that the law sets. It erases the phone and the e-mail
+when the patient asks.
 
-To erase two kinds of data at different times, declare two subjects for the same person. The
-engine keeps a data key for each subject type and id, so each subject gets its own key:
+The engine does not check that two subjects are two different people. So a domain can declare two
+subjects for one kind of person, one for each kind of data. The engine keeps a data key for each
+subject type and id, so each subject gets its own key:
 
 ```elixir
 defmodule Concepts.PersonalData.Clinic.Domain do
@@ -269,16 +270,16 @@ defmodule Concepts.PersonalData.Clinic.Contracts.Visits do
       field :patient_id, :id, subject: :patient
       field :contact_id, :id, subject: :contact
       field :national_id, :string, personal: :patient_id
-      field :phone, :string, personal: :contact_id
-      field :email, :string, personal: :contact_id
+      field :phone, :string, optional: true, personal: :contact_id
+      field :email, :string, optional: true, personal: :contact_id
     end
 
     event :visit_booked, "Visit booked" do
       field :patient_id, :id, subject: :patient
       field :contact_id, :id, subject: :contact
       field :national_id, :string, personal: :patient_id
-      field :phone, :string, personal: :contact_id
-      field :email, :string, personal: :contact_id
+      field :phone, :string, optional: true, personal: :contact_id
+      field :email, :string, optional: true, personal: :contact_id
     end
 
     command :record_diagnosis, "Record a diagnosis", by: :doctor, emits: :diagnosis_recorded do
@@ -296,8 +297,11 @@ end
 
 - Each personal field names the identifier of the subject that it belongs to.
 - One event can hold personal fields of the two subjects.
-- The `diagnosis` is text that a person typed, so it is personal. If it is not personal, the
-  check gives the notice `free-text-not-personal`.
+- The `diagnosis` is text that a person typed, so it is personal. If you do not mark it
+  `personal:`, the check gives the notice `free-text-not-personal`.
+- The `phone` and the `email` are optional. Dispatch refuses only a personal field with a value
+  for an erased subject. So the application can book a visit with the erased `contact_id`, and
+  no phone and no e-mail.
 
 When the patient asks, the application erases only the contact details:
 
@@ -306,23 +310,32 @@ When the patient asks, the application erases only the contact details:
 EhosContract.erase(:contact, contact_id, actor: actor)
 ```
 
-**Result:** in each `visit_booked` of that patient, `phone` and `email` read back as
-`%EhosContract.Erased{subject: :contact}`. The `national_id` and the `diagnosis` stay readable.
-When the period of the medical record ends, the application erases the `:patient` subject too.
+**Result:** in each `visit_booked` with that `contact_id`, `phone` and `email` read back as
+`%EhosContract.Erased{subject: :contact, id: contact_id}`. The `national_id` and the `diagnosis`
+stay readable.
+
+When the period of the medical record ends, erase the two subjects. Erase the `:patient`, and each
+`:contact` of that patient. If a `:contact` is erased already, `erase/3` returns
+`{:ok, :already_erased}`. So the application can erase each `:contact` again without a check.
 
 Before you split a person into two subjects, read these rules:
 
 - The id of each subject stays in clear text in the log. Use a random id. Do not use a national id
   number or an e-mail as the id.
-- Give each subject its own id. If the application must link the two ids, keep the link in a read
-  model, and delete it in `forget/2`.
+- An event that holds the two ids links them in the log. An erasure does not remove this link.
+  If the link must not stay, keep the `contact_id` out of the events of the patient.
+- Give each subject its own id, so that the id alone does not tell which contact belongs to which
+  patient.
 - After an erasure, dispatch refuses new personal data for the erased id. If the person later
   agrees to give contact details again, give the new `:contact` subject a new id.
 - The engine does not erase a subject when a period ends. The application decides when, and calls
   `erase/3`.
 - Each read model that projects personal data of the two subjects must forget each subject type in
-  its `forget/2`.
-- The organisation that answers for the data decides which field belongs to which subject. Example:
+  its `forget/2`. If `forget/2` has no clause for a subject type, it raises on the erasure of that
+  type.
+- Each subject has one more data key. Each data key costs one more call to the vault when the
+  engine writes or reads the data of the subject.
+- The organization that answers for the data decides which field belongs to which subject. Example:
   a clinic can keep the phone of a patient as a part of the medical record.
 
 ## Next steps
