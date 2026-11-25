@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # `-P`: the pattern needs a lookahead, so that this repository's own name,
       # ehos-contract, is not a reference to EHOS's.
