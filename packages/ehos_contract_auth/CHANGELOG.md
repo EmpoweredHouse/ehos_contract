@@ -24,6 +24,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-27
+
+### Changed
+
+- **Breaking:** the engine is required at `~> 0.17.0`, the release that adds the domain's seed actor,
+  so a host moves the two packages together. Nothing else in this package changed.
+
 ## [0.17.0] - 2026-11-24
 
 ### Changed

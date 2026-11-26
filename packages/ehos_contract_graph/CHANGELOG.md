@@ -21,6 +21,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-27
+
 ### Added
 
 - The renderer knows the seed actor, `actor_kind: "seed"`. Its panel lists what it may not issue,

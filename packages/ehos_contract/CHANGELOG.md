@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-27
+
 ### Added
 
 - A domain can declare a third kind of actor, `:seed`: the application's own code that loads sample
