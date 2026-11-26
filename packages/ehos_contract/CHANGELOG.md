@@ -76,7 +76,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 - The graph document gives the seed `actor_kind: "seed"` and its `not_seeded` list with the reasons,
   and each command of a domain with a seed says whether the seed may issue it (`seed`, and
   `not_seeded_because` where the list names it). No `may_issue`, `may_record` or `may_ask` relation
-  leaves the seed (#683).
+  leaves the seed. A reader that checks documents against an older `graph.v1.json` refuses a
+  document of a domain with a seed: it needs `ehos_contract_graph` 0.12.0 (#683).
 
 ## [0.16.0] - 2026-11-24
 

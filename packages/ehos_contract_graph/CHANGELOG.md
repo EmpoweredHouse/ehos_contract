@@ -29,7 +29,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   with why, and says that a reaction to an event it wrote is not held to that list. A command's
   panel says whether the seed may issue it. The domain's table of actors shows the seed among the
   systems, not the people. The schema `graph.v1.json` gains the value and the keys `not_seeded`,
-  `seed` and `not_seeded_because` (#683).
+  `seed` and `not_seeded_because`. A reader that checks documents against an older copy of the
+  schema refuses a document of a domain with a seed (#683).
 
 ## [0.11.0] - 2026-11-24
 
