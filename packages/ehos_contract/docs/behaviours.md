@@ -249,14 +249,19 @@ implementation for the row:
 ### Which actor it gets
 
 The actor is the actor that dispatch authorized. It is the credential of a person,
-or a `:system` actor that the command names in `by:`. It is never a
-reaction, because a policy or a process manager cannot issue a command that reads.
-The contract does not compile otherwise.
+a `:system` actor that the command names in `by:`, or the domain's `:seed` actor
+(`EhosContract.Actor.seed/1`), which loads sample data and which no `by:` names. It
+is never a reaction, because a policy or a process manager cannot issue a command
+that reads. The contract does not compile otherwise.
 
 If the host keeps the rows of more than one tenant, answer a credential only with
 the rows of its tenant. Answer `:not_found` for the rows of another tenant. If you
 do not, a caller can make a decision read the row of another tenant, and the record
 of the command keeps it. The host decides what a `:system` actor can read.
+
+The host also decides what the seed can read. The seed acts in every scope, so match
+it in its own clause. A clause that answers it as a `:system` actor reads the rows of
+every tenant for it. If no clause matches it, `c:EhosContract.Entities.fetch/4` raises, and the seed fails.
 
 ### What the engine does with the answer
 
@@ -497,6 +502,15 @@ with no supplied field reads its entities before the transaction
 
 The engine does not ask for a retry of a request that it accepted under its
 idempotency key. That retry gets its receipt.
+
+### Which actor it gets
+
+The actor is the actor that dispatch authorized: the credential of a person, a
+`:system` actor that the declaration names, a reaction, or the domain's `:seed`
+actor (`EhosContract.Actor.seed/1`). The seed acts in every scope, and no
+credential narrows what it may do. So match it in its own clause, and decide what
+to supply for sample data. A clause that answers it as a `:system` actor reads
+for every tenant. If no clause matches it, `c:EhosContract.Supplier.supply/2` raises, and the seed fails.
 
 ### What the transaction asks of `c:EhosContract.Supplier.supply/2`
 

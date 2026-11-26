@@ -927,7 +927,22 @@ defmodule EhosContract.Domain.Rules do
         ],
         else: []
 
-    name ++ backed_by ++ context
+    name ++ backed_by ++ context ++ not_seeded_violations(actor, where)
+  end
+
+  # #683: only the seed has things it may not issue, and it names each once.
+  defp not_seeded_violations(%Actor{not_seeded: []}, _where), do: []
+
+  defp not_seeded_violations(%Actor{kind: kind} = actor, where) when kind != :seed,
+    do: [
+      {"#{where} is not the seed and cannot have not_seeded; only the :seed actor is held " <>
+         "to it", actor}
+    ]
+
+  defp not_seeded_violations(actor, where) do
+    for {name, count} <- Enum.frequencies(Keyword.keys(actor.not_seeded)),
+        count > 1,
+        do: {"#{where}'s not_seeded names #{inspect(name)} twice", actor}
   end
 
   # --- D5: a relation's roles fit its type, and its ends exist --------------------

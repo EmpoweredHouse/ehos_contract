@@ -1,6 +1,6 @@
 # What are actors, values, entities and external systems?
 
-<!-- covers: entities domain.actor, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, scoped-actor-with-unscoped-command, scoped-actor-with-unscoped-query -->
+<!-- covers: entities domain.actor, domain.value, domain.entity, domain.external; rules orphan-actor, orphan-external-system, operation-never-called, external-direction-contradicted, value-without-implementation, scoped-actor-with-unscoped-command, scoped-actor-with-unscoped-query, seed-actor-in-by, second-seed-actor, not-seeded-unknown -->
 
 This page tells what a domain declares besides its contexts. It covers who acts, the types of the
 data, the things that the application points to, and the systems that it uses. It is for a developer who
@@ -12,8 +12,8 @@ the subjects. [The domain reference](dsl/domain-dsl.md) lists each key of this p
 
 ## What is an actor?
 
-An *actor* issues commands, asks queries or records events. It is a kind of person (`:human`) or a
-system (`:system`). A contract names its actors in the `by:` of a command or a query, and in the
+An *actor* issues commands, asks queries or records events. It is a kind of person (`:human`), a
+system (`:system`), or the seed that loads sample data (`:seed`). A contract names its actors in the `by:` of a command or a query, and in the
 `recorded_by:` of an event. Dispatch first refuses an actor that the declaration does not name.
 
 <!-- in: Concepts.DomainData.Domain -->
@@ -41,6 +41,34 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
 If no `by:`, no `recorded_by:` and no `accountable` of a process module names an actor, the check
 warns `orphan-actor`. The actor of a scenario does not count. Remove the actor, or write the
 contract that gives it work.
+
+### What may the seed do?
+
+An application can load sample data into an environment for previews. Its code does this as the
+*seed*, an actor of kind `:seed`. A domain declares at most one seed:
+
+<!-- in: Concepts.DomainData.Domain -->
+```elixir
+actor :sample_data, :seed, "Sample data",
+  not_seeded: [refund_order: "A refund moves the money of a client"]
+```
+
+- **No `by:` and no `recorded_by:` names the seed.** It can issue each command and record each
+  event that a `:human` actor of the domain can, in each scope. The graph shows no arrow from it.
+- **`not_seeded:`** names the commands and the recorded events that the seed must not issue, each
+  with its reason. The graph shows the list on the panel of the seed.
+- **The seed never asks a query.** It cannot issue a command that only a `:system` actor issues, or
+  a command with `actor_is`: the seed is no person. Such a command is not seeded, and the list does
+  not have to name it.
+- **The code acts as the seed with `EhosContract.Actor.seed(:sample_data)`.** Dispatch does not ask
+  the `EhosContract.Authorizer`. It refuses a declaration that the seed cannot use with
+  `{:error, :not_declared}`, and writes nothing. The log labels the seed `system:sample_data`.
+- **The list does not hold reactions.** A policy that takes an event of the seed issues what it
+  declares, also a command that `not_seeded:` names.
+
+The check refuses the seed in a `by:` or a `recorded_by:` (`seed-actor-in-by`), a second seed
+(`second-seed-actor`), and a name in `not_seeded:` that is no command and no recorded event of the
+domain (`not-seeded-unknown`). It does not warn `orphan-actor` for the seed.
 
 ### How does a scope narrow a grant?
 

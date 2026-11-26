@@ -26,14 +26,19 @@ defmodule EhosContract.Entities do
   ## Which actor it gets
 
   The actor is the actor that dispatch authorized. It is the credential of a person,
-  or a `:system` actor that the command names in `by:`. It is never a
-  reaction, because a policy or a process manager cannot issue a command that reads.
-  The contract does not compile otherwise.
+  a `:system` actor that the command names in `by:`, or the domain's `:seed` actor
+  (`EhosContract.Actor.seed/1`), which loads sample data and which no `by:` names. It
+  is never a reaction, because a policy or a process manager cannot issue a command
+  that reads. The contract does not compile otherwise.
 
   If the host keeps the rows of more than one tenant, answer a credential only with
   the rows of its tenant. Answer `:not_found` for the rows of another tenant. If you
   do not, a caller can make a decision read the row of another tenant, and the record
   of the command keeps it. The host decides what a `:system` actor can read.
+
+  The host also decides what the seed can read. The seed acts in every scope, so match
+  it in its own clause. A clause that answers it as a `:system` actor reads the rows of
+  every tenant for it. If no clause matches it, `fetch/4` raises, and the seed fails.
 
   ## What the engine does with the answer
 

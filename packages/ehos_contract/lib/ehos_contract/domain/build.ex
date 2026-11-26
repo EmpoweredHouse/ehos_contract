@@ -398,6 +398,10 @@ defmodule EhosContract.Domain.Build do
   defp digest_form(%{may_grant: []} = actor),
     do: actor |> Map.delete(:may_grant) |> digest_form()
 
+  # And one that is not the seed, or a seed that names nothing it may not issue (#683).
+  defp digest_form(%{not_seeded: []} = actor),
+    do: actor |> Map.delete(:not_seeded) |> digest_form()
+
   # A symmetric relation's ends are a set, so its pairs are read in the sorted ends'
   # order: `between: [b, a]` with `{"y", "x"}` is `between: [a, b]` with `{"x", "y"}`.
   defp digest_form(%{between: [a, b], terms: [_ | _] = terms} = relation) when a > b,
@@ -428,6 +432,10 @@ defmodule EhosContract.Domain.Build do
       # A grant rule names a set of actors.
       {:may_grant, list} ->
         {:may_grant, Enum.sort(list)}
+
+      # What the seed may not issue is a set of names, each with why.
+      {:not_seeded, list} ->
+        {:not_seeded, Enum.sort(list)}
 
       other ->
         other

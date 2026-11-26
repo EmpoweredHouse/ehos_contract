@@ -10,14 +10,14 @@ In [EhosContract.Domain](domain-dsl.md), section `domain`.
 actor name, kind, label
 ```
 
-Who issues commands: a kind of person, or a system.
+Who issues commands: a kind of person, a system, or the seed that loads sample data.
 
 **Arguments**
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
 | `name` | `atom` | yes |  | The actor's name. |
-| `kind` | `:human \| :system` | yes |  | A person or a system. |
+| `kind` | `:human \| :system \| :seed` | yes |  | A person, a system, or the seed: the application's own code that loads sample data, which no `by:` names and which may do what a person may, except what `not_seeded:` names. A domain declares at most one seed. |
 | `label` | `String.t` | yes |  | What the business calls it. |
 
 **Options**
@@ -28,6 +28,7 @@ Who issues commands: a kind of person, or a system.
 | `context` | `atom` |  |  | The context the actor belongs to. |
 | `scope` | `atom \| list(atom)` |  | `[]` | The fields a grant to this actor narrows query answers by. |
 | `may_grant` | `atom \| list(atom)` |  | `[]` | The other person actors of this domain whose role a person in this one may grant through the application. |
+| `not_seeded` | `list({atom, String.t})` |  | `[]` | For the seed: the commands and recorded events it may not issue, each with why, as `[approve_payment: "a payment needs a person"]`. |
 | `source` | `String.t` |  |  | Where the actor comes from in the material. |
 
 Inside it: [`responsibility`](#domain-actor-responsibility).

@@ -207,6 +207,10 @@ defmodule EhosContract.GraphRenderer.Panel do
       <p :if={@node["actor_is"]} class={@ctx.code? && "ehg-plain"}>
         Only the person its unit names; anyone else is refused.
       </p>
+      <p :if={@node["seed"] == "seeded"}>The seed may issue it when it loads sample data.</p>
+      <p :if={@node["seed"] == "not_seeded"}>
+        The seed may not issue it{if @node["not_seeded_because"], do: ": #{@node["not_seeded_because"]}", else: "."}
+      </p>
       <%!-- A grant with no one in the contract to issue it: whoever EHOS grants it to. --%>
       <p
         :if={@people == [] and @reactions == [] and @timers == [] and @node["capability"]}
@@ -616,6 +620,21 @@ defmodule EhosContract.GraphRenderer.Panel do
       A grant to this role narrows answers by <code>{Enum.join(@node["scope"], ", ")}</code>.
     </p>
     <.part :if={@backed != []} title="Stands for"><.refs relations={@backed} side="to" ctx={@ctx} /></.part>
+    <.part :if={@node["actor_kind"] == "seed"} title="What it may issue">
+      <p>
+        Every command and recorded event a person of the domain may issue, in every scope, except
+        those below and a command only the person its unit names may issue.
+      </p>
+      <ul :if={@node["not_seeded"] not in [nil, []]} class="ehg-list">
+        <li :for={n <- @node["not_seeded"]}>
+          <code>{n["name"]}</code><span class="ehg-quiet"> · {n["reason"]}</span>
+        </li>
+      </ul>
+      <p class="ehg-plain">
+        A reaction to an event the seed wrote still issues what it declares, a command listed
+        here included: the list holds what the seed issues, not what follows it.
+      </p>
+    </.part>
     <.part :if={@node["responsibilities"] not in [nil, []]} title="Responsible for">
       <ul class="ehg-list">
         <li :for={r <- @node["responsibilities"]}>
@@ -2003,6 +2022,7 @@ defmodule EhosContract.GraphRenderer.Panel do
   end
 
   defp actor_kind(%{"actor_kind" => "system"}), do: "A system"
+  defp actor_kind(%{"actor_kind" => "seed"}), do: "The seed, which loads sample data"
   defp actor_kind(_actor), do: "A person"
 
   defp grant_kind("command"), do: "issues"

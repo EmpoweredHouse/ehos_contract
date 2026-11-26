@@ -28,7 +28,7 @@ defmodule EhosContract.GraphRenderer.Actors do
     lookup = Lookup.new(assigns.document)
 
     {systems, people} =
-      Enum.split_with(Lookup.nodes(lookup, "actor"), &(&1["actor_kind"] == "system"))
+      Enum.split_with(Lookup.nodes(lookup, "actor"), &(&1["actor_kind"] in ["system", "seed"]))
 
     assigns =
       assign(assigns,

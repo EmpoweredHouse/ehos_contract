@@ -395,6 +395,38 @@ defmodule EhosContract.Check.Catalog do
       """
     },
     %{
+      id: "seed-actor-in-by",
+      level: :error,
+      esdm: nil,
+      summary: "The domain's `:seed` actor is named in a `by:` or a `recorded_by:`.",
+      text: """
+      The seed may issue every command and record every event a person of the domain may, except
+      what the domain's `not_seeded:` names, so no declaration names it. Named in `by:`, it shows on
+      the graph as a participant of the business. Remove it from the `by:` or `recorded_by:`.
+      """
+    },
+    %{
+      id: "second-seed-actor",
+      level: :error,
+      esdm: nil,
+      summary: "A domain declares more than one `:seed` actor.",
+      text: """
+      A domain has one seed, with one `not_seeded:` list that dispatch and the seed's own tests read.
+      Keep one seed actor, and merge the lists.
+      """
+    },
+    %{
+      id: "not-seeded-unknown",
+      level: :error,
+      esdm: nil,
+      summary: "The seed's `not_seeded:` names no command or recorded event of the domain.",
+      text: """
+      A name that is no command and no event with `recorded_by:` in the domain's contracts holds
+      nothing back from the seed. It is most often a typo, or a declaration that was renamed: the
+      command it meant to keep from the seed is then seeded. Correct the name, or remove it.
+      """
+    },
+    %{
       id: "orphan-external-system",
       level: :warn,
       esdm: "esdm/modeling/orphan-external-system",

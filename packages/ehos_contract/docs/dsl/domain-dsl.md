@@ -23,7 +23,7 @@ The vocabulary contracts share.
 |--------|------------------|
 | [`subdomain`](domain-subdomain.md) | A part of the business the domain covers, named, with its kind. |
 | [`context`](domain-context.md) | A bounded context: a part of the domain with its own language. |
-| [`actor`](domain-actor.md) | Who issues commands: a kind of person, or a system. |
+| [`actor`](domain-actor.md) | Who issues commands: a kind of person, a system, or the seed that loads sample data. |
 | [`subject`](domain-subject.md) | A kind of person whose personal data may be erased. |
 | [`value`](domain-value.md) | A value type: one built-in type with an optional unit, or a set of fields. |
 | [`entity`](domain-entity.md) | A thing with an identity whose lifecycle the application's code or another system keeps, outside this log: a period, an item of a catalogue. |

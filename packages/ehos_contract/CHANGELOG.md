@@ -48,6 +48,32 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- A domain can declare a third kind of actor, `:seed`: the application's own code that loads sample
+  data into an environment made for previews. `actor :sample_data, :seed, "Sample data",
+  not_seeded: [approve_payment: "a payment needs a person"]`. No `by:` and no `recorded_by:` names
+  it, so the graph no longer draws it as a participant with an edge to each command. Build it with
+  `EhosContract.Actor.seed/1`. `dispatch/3` permits it each command, and `record/3` each event, that
+  a `:human` actor of the domain may use and `not_seeded:` does not name, in every scope, and asks no
+  `Authorizer`. It refuses `:not_declared`, before the transaction and with no row, for a query, for a
+  declaration only `:system` actors use, for one `not_seeded:` names, and for a command with
+  `actor_is:`, since the seed is no person. The log labels it `system:<name>`, so a seed that ran as
+  a `:system` actor of the same name replays to the same commands and adds nothing. A reaction to an
+  event the seed wrote still issues what it declares, a command in `not_seeded:` included (#683).
+- `EhosContract.Supplier.supply/2` and `EhosContract.Entities.fetch/4` can receive the `:seed`
+  actor. It acts in every scope: give it a clause of its own. A catch-all that answers it as a
+  `:system` actor reads every tenant's rows for it, and with no clause that matches, the call raises
+  (#683).
+- `mix ehos_contract.check` reports three errors: the seed actor named in a command's or a query's
+  `by:` or an event's `recorded_by:` (`seed-actor-in-by`), a second seed actor in a domain
+  (`second-seed-actor`), and a name in `not_seeded:` that is no command or recorded event of the
+  domain's contracts (`not-seeded-unknown`). `orphan-actor` does not report the seed (#683).
+- The graph document gives the seed `actor_kind: "seed"` and its `not_seeded` list with the reasons,
+  and each command of a domain with a seed says whether the seed may issue it (`seed`, and
+  `not_seeded_because` where the list names it). No `may_issue`, `may_record` or `may_ask` relation
+  leaves the seed (#683).
+
 ## [0.16.0] - 2026-11-24
 
 ### Added

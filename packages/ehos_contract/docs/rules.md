@@ -343,6 +343,35 @@ names it, so no contract or process gives it anything to do. A scenario's `actor
 count: it has to be in the command's `by:` already (S7). Either the actor is left over, or the
 contract that gives it work is not written yet.
 
+## `seed-actor-in-by`
+
+**error**
+
+The domain's `:seed` actor is named in a `by:` or a `recorded_by:`.
+
+The seed may issue every command and record every event a person of the domain may, except
+what the domain's `not_seeded:` names, so no declaration names it. Named in `by:`, it shows on
+the graph as a participant of the business. Remove it from the `by:` or `recorded_by:`.
+
+## `second-seed-actor`
+
+**error**
+
+A domain declares more than one `:seed` actor.
+
+A domain has one seed, with one `not_seeded:` list that dispatch and the seed's own tests read.
+Keep one seed actor, and merge the lists.
+
+## `not-seeded-unknown`
+
+**error**
+
+The seed's `not_seeded:` names no command or recorded event of the domain.
+
+A name that is no command and no event with `recorded_by:` in the domain's contracts holds
+nothing back from the seed. It is most often a typo, or a declaration that was renamed: the
+command it meant to keep from the seed is then seeded. Correct the name, or remove it.
+
 ## `orphan-external-system`
 
 **warning** · ESDM: `esdm/modeling/orphan-external-system`

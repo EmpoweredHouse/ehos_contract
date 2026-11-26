@@ -156,6 +156,8 @@ a `:system` actor or a reaction.
 6. The reaction issues a command that its declaration names.
 7. As a `:system` actor, the code of the application issues or records what `by:` or `recorded_by:`
    names.
+8. As the domain's seed, the code of the application loads sample data: what a person may issue,
+   except what the domain's `not_seeded:` names.
 
 | Origin of the call | Actor | What checks it |
 | --- | --- | --- |
@@ -163,6 +165,7 @@ a `:system` actor or a reaction.
 | An external system, with its own credential | `Actor.credential/3` | the same, when the platform issues credentials to systems |
 | A policy or a process manager that takes an event | the engine builds it | the contract: the reaction names the command that it issues |
 | The code of the application: a job, an import | `Actor.system(:name)` | the contract: the domain declares the actor `:system`, and `by:` or `recorded_by:` names it |
+| The code of the application that loads sample data | `Actor.seed(:name)` | the contract: the domain declares the actor `:seed`, a `:human` actor may use the declaration, `not_seeded:` does not name it, and it is not a query or a command with `actor_is` |
 
 The engine does not ask the Authorizer about the code of the application, for 3 reasons:
 

@@ -465,6 +465,9 @@ defmodule EhosContract.Check.Completeness do
       directions(model, declared, contracts),
       scoped_actors_with_unscoped_commands(model, contracts),
       scoped_actors_with_unscoped_queries(model, contracts),
+      seed_actors_named(model, contracts),
+      second_seed_actors(model, declared),
+      unknown_not_seeded(model, declared, contracts),
       unchecked_values(model, declared, contracts),
       unlabelled_values(model, declared)
     ])
@@ -554,6 +557,85 @@ defmodule EhosContract.Check.Completeness do
         do: {actor.name, actor.scope}
   end
 
+  # #683: the seed may issue what a person may, so no `by:` and no `recorded_by:` names
+  # it. Named there, it would draw as a participant of the business, and the domain's
+  # `not_seeded` would no longer be the one place that says what it may not do.
+  defp seed_actors_named(model, contracts) do
+    seeds = for %{kind: :seed, name: name} <- model.actors, into: MapSet.new(), do: name
+
+    for %{model: contract} = c <- contracts,
+        {what, declaration, names, at} <- named_actors(c),
+        name <- names,
+        MapSet.member?(seeds, name) do
+      Finding.new(
+        "seed-actor-in-by",
+        "#{what} #{inspect(declaration.name)} of #{inspect(contract.module)} names " <>
+          "#{inspect(name)}, the domain's seed actor, in its " <>
+          "`#{if what == "event", do: "recorded_by:", else: "by:"}`; the seed may issue " <>
+          "what a person may without it, so remove it",
+        at
+      )
+    end
+  end
+
+  defp named_actors(%{model: model} = c) do
+    for(
+      command <- model.commands,
+      do: {"command", command, command.by, declared_command(c, command.unit, command.name)}
+    ) ++
+      for(
+        query <- model.queries,
+        do: {"query", query, query.by, at(c.declarations.queries, query.name)}
+      ) ++
+      for event <- model.events,
+          do:
+            {"event", event, event.recorded_by,
+             at(Rules.local_events(c.declarations), event.name)}
+  end
+
+  # #683: one seed per domain, so dispatch and the seed's own test read one `not_seeded`.
+  defp second_seed_actors(model, declared) do
+    case for(%{kind: :seed} = actor <- model.actors, do: actor) do
+      [first | others] ->
+        for actor <- others do
+          Finding.new(
+            "second-seed-actor",
+            "actor #{inspect(actor.name)} of #{inspect(model.module)} is a second seed actor, " <>
+              "beside #{inspect(first.name)}; a domain declares at most one",
+            at(declared.actors, actor.name)
+          )
+        end
+
+      [] ->
+        []
+    end
+  end
+
+  # #683: `not_seeded` names a command or a recorded event of the domain's contracts; any
+  # other name holds nothing back, and is most likely a typo of one that should.
+  defp unknown_not_seeded(model, declared, contracts) do
+    known =
+      MapSet.new(
+        for %{model: m} <- contracts,
+            name <-
+              Enum.map(m.commands, & &1.name) ++
+                for(%{recorded_by: [_ | _], name: name} <- m.events, do: name),
+            do: name
+      )
+
+    for %{kind: :seed, not_seeded: not_seeded} = actor <- model.actors,
+        {name, _why} <- not_seeded,
+        not MapSet.member?(known, name) do
+      Finding.new(
+        "not-seeded-unknown",
+        "actor #{inspect(actor.name)} of #{inspect(model.module)} lists #{inspect(name)} in " <>
+          "not_seeded, and no contract of the domain declares a command or a recorded event " <>
+          "by that name",
+        at(declared.actors, actor.name)
+      )
+    end
+  end
+
   # A value whose invariants no module checks, in a domain whose contracts have code:
   # dispatch raises on the first value of it (plan EL2b).
   defp unchecked_values(model, declared, contracts) do
@@ -624,7 +706,8 @@ defmodule EhosContract.Check.Completeness do
           )
       )
 
-    for actor <- model.actors, not MapSet.member?(named, actor.name) do
+    # The seed is named by nothing on purpose (#683): what a person may issue is its work.
+    for actor <- model.actors, actor.kind != :seed, not MapSet.member?(named, actor.name) do
       Finding.new(
         "orphan-actor",
         "actor #{inspect(actor.name)} of #{inspect(model.module)} is in no command's or query's " <>

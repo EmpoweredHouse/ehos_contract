@@ -651,6 +651,56 @@ defmodule EhosContract.DomainRulesTest do
     end
   end
 
+  describe "D4: only the seed has what it may not issue (#683)" do
+    test "the control: a seed with a list, and a seed without one" do
+      compiles("Seeds", """
+        actor :clerk, :human, "Clerk"
+        actor :sample_data, :seed, "Sample data", not_seeded: [refund: "Moves money"]
+      """)
+
+      compiles("BareSeed", """
+        actor :sample_data, :seed, "Sample data"
+      """)
+    end
+
+    test "not_seeded on another actor, or naming a declaration twice, is refused" do
+      message =
+        refused("BrokenSeed", """
+          actor :clerk, :human, "Clerk", not_seeded: [refund: "Moves money"]
+          actor :sample_data, :seed, "Sample data",
+            not_seeded: [refund: "Moves money", refund: "Again", approve: "Needs a person"]
+        """)
+
+      assert message =~
+               "D4: actor :clerk is not the seed and cannot have not_seeded; only the :seed " <>
+                 "actor is held to it"
+
+      assert message =~ "D4: actor :sample_data's not_seeded names :refund twice"
+      refute message =~ ":approve"
+    end
+  end
+
+  describe "the seed's list and the domain's version (#683)" do
+    test "its order moves no version, its names and reasons do" do
+      compiles("SeedAB", """
+        actor :sample_data, :seed, "Sample data", not_seeded: [a: "One", b: "Two"]
+      """)
+
+      compiles("SeedBA", """
+        actor :sample_data, :seed, "Sample data", not_seeded: [b: "Two", a: "One"]
+      """)
+
+      compiles("SeedAWhy", """
+        actor :sample_data, :seed, "Sample data", not_seeded: [a: "Other", b: "Two"]
+      """)
+
+      version = &Module.concat(__MODULE__, &1).__ehos_contract_model__().version
+
+      assert version.(SeedAB) == version.(SeedBA)
+      refute version.(SeedAB) == version.(SeedAWhy)
+    end
+  end
+
   describe "D4's grant rule and the domain's version" do
     test "an actor without a rule hashes as it did before actors could have one" do
       compiles("NoGrantRule", """
@@ -675,7 +725,7 @@ defmodule EhosContract.DomainRulesTest do
               {key,
                model
                |> Map.fetch!(key)
-               |> Enum.map(&Map.delete(&1, :may_grant))
+               |> Enum.map(&Map.drop(&1, [:may_grant, :not_seeded]))
                |> Enum.map(&digest_form/1)
                |> Enum.map(&EhosContract.Digest.agreement/1)}
             end

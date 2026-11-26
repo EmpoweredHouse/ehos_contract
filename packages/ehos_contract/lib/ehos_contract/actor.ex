@@ -12,8 +12,14 @@ defmodule EhosContract.Actor do
       import. It is held to the contract and may do what the declarations whose
       `by:` or `recorded_by:` name it allow. It carries no capabilities, since no
       credential was issued to it.
+    * **The domain's `:seed` actor** is the application's own code loading sample
+      data, in an environment made for previews. No declaration names it: it may
+      issue every command and record every event some person of the domain may, in
+      every scope, except what the domain lists in its `not_seeded:`. It may not ask
+      a query, and may not issue a command kept for the person its unit names
+      (`actor_is:`).
 
-  A third kind, a reaction's, is made by the engine when a policy dispatches, and is
+  One more kind, a reaction's, is made by the engine when a policy dispatches, and is
   held to what the reaction's `issues:` names. Nothing outside the engine builds one.
 
   An actor never carries personal data beyond the credential's subject, an opaque
@@ -31,9 +37,9 @@ defmodule EhosContract.Actor do
   """
   @type scopes :: %{String.t() => %{String.t() => [String.t()]}}
 
-  @typedoc "An actor. Build one with `credential/3` or `system/1`."
+  @typedoc "An actor. Build one with `credential/3`, `system/1` or `seed/1`."
   @type t :: %__MODULE__{
-          kind: :credential | :system | :reaction,
+          kind: :credential | :system | :seed | :reaction,
           subject: String.t() | nil,
           name: atom() | {atom(), atom()} | nil,
           capabilities: MapSet.t(String.t()),
@@ -82,18 +88,43 @@ defmodule EhosContract.Actor do
   def system(name) when is_atom(name) and name not in [nil, true, false],
     do: %__MODULE__{kind: :system, name: name}
 
+  @doc """
+  The domain's `:seed` actor, by its name: the application's own code loading sample
+  data as it.
+
+      EhosContract.Actor.seed(:sample_data)
+
+  `EhosContract.dispatch/3` checks that the domain declares it `:seed`, and permits
+  it a command, and `EhosContract.record/3` an event, that a `:human` actor of the
+  domain may use and the domain's `not_seeded:` does not name. It refuses
+  `:not_declared` for a query, for a declaration only `:system` actors use, and for
+  a command with `actor_is:`, since the seed is no person. No `EhosContract.Authorizer`
+  is asked.
+
+  The log labels it `system:<name>`, as a `:system` actor of the same name, so a seed
+  that ran as a `:system` actor replays to the same idempotency key and label.
+  """
+  @spec seed(atom()) :: t()
+  def seed(name) when is_atom(name) and name not in [nil, true, false],
+    do: %__MODULE__{kind: :seed, name: name}
+
   @doc false
   @spec reaction(atom(), atom()) :: t()
   def reaction(kind, name) when is_atom(kind) and is_atom(name),
     do: %__MODULE__{kind: :reaction, name: {kind, name}}
 
   # How the actor is written to the log and to `_commands` (v2 §10.3): `"actor:<subject>"`
-  # for a credential's, `"system:<name>"`, or `"<reaction kind>:<name>"`.
+  # for a credential's, `"system:<name>"`, or `"<reaction kind>:<name>"`. The seed's is a
+  # system's, so a seed that ran as a `:system` actor of the same name replays to the
+  # same commands (#683).
   # Called by dispatcher.ex, personal.ex, v01.ex.
   @doc false
   @spec label(t()) :: String.t()
   def label(%__MODULE__{kind: :credential, subject: subject}), do: "actor:#{subject}"
-  def label(%__MODULE__{kind: :system, name: name}), do: "system:#{name}"
+
+  def label(%__MODULE__{kind: kind, name: name}) when kind in [:system, :seed],
+    do: "system:#{name}"
+
   def label(%__MODULE__{kind: :reaction, name: {kind, name}}), do: "#{kind}:#{name}"
 
   defp scopes?(scopes) when is_map(scopes) do
