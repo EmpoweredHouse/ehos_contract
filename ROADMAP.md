@@ -36,6 +36,7 @@ Issues labelled [`publication`](https://github.com/EmpoweredHouse/ehos_contract/
 | PB4b | The sandbox fills its development log with drift on the invented case studies | #389 | ☑ #390 |
 | PB5 | The repository reads for someone outside the team | #393 | ☑ #394, #395, #396 |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | #421 | ◐ |
+| PB6b | The library is named `ehos_contract`, like the rest of the EHOS family: packages, modules, tasks, storage and repository | #428 | ☑ #673, #674, #675 |
 | PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
 
 **PB6.** The packages' `mix.exs` stop depending on each other by `path:` or `git:` when published, the
