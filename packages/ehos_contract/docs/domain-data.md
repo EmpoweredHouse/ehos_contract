@@ -32,7 +32,7 @@ actor :payment_terminal, :system, "Payment terminal", backed_by: :card_terminal
   declarations that name it permit. The engine does not ask the `EhosContract.Authorizer` about a
   system actor. So do not build one for a request that comes from a person.
 - **`backed_by:`** names the external system that a system actor stands for. The compiler refuses
-  `backed_by:` on a human actor ([`D4`](refusals.md#refusals-d)).
+  `backed_by:` on a human actor and on the seed ([`D4`](refusals.md#refusals-d)).
 - **`context:`** puts the actor in one context. The compiler refuses the actor in a contract of
   another context ([`X2`](refusals.md#refusals-x)). An actor without `context:` can act in each
   context.

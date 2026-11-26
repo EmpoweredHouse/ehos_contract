@@ -669,6 +669,7 @@ defmodule EhosContract.DomainRulesTest do
           external :fixtures, "Fixtures", direction: :outbound
           actor :clerk, :human, "Clerk", not_seeded: [refund: "Moves money"]
           actor :demo, :seed, "Demo", backed_by: :fixtures, may_grant: [:clerk]
+          actor :boss, :human, "Boss", may_grant: [:demo]
           actor :sample_data, :seed, "Sample data",
             not_seeded: [refund: "Moves money", refund: "Again", approve: "Needs a person"]
         """)
@@ -686,6 +687,9 @@ defmodule EhosContract.DomainRulesTest do
       assert message =~
                "D4: actor :demo is the seed and cannot have may_grant; only a person brings " <>
                  "people in"
+
+      assert message =~
+               "D4: actor :boss's may_grant names :demo, the seed; only a person is granted a role"
 
       refute message =~ ":approve"
     end

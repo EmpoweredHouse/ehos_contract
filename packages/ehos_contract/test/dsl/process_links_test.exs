@@ -204,6 +204,14 @@ defmodule EhosContract.ProcessLinksTest do
                  "seed, which answers for no process; name the role that does"
     end
 
+    test "a typo near the seed's name is not pointed at the seed (#683)" do
+      violations = pair("ProcSeedTypo", @visit_fields, accountable: :sample_dat)
+
+      message = assert_linked(violations, "X2:", "proc_seed_typo_visit.ex", 2)
+      assert message =~ "accountable :sample_dat is not an actor of #{inspect(@domain)}"
+      refute message =~ "did you mean :sample_data"
+    end
+
     test "control: an actor of any context, since a process module crosses them" do
       assert pair("ProcDoctor", @visit_fields, accountable: :doctor) == []
     end

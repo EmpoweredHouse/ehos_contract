@@ -88,12 +88,14 @@ defmodule EhosContract.Contract.Links.Processes do
 
   defp accountable(%{model: %{accountable: name}, domain: domain} = p) do
     names = Enum.map(domain.actors, & &1.name)
+    # A typo is never pointed at the seed, which X2 refuses as accountable below.
+    suggestable = for %{kind: kind, name: n} <- domain.actors, kind != :seed, do: n
 
     cond do
       name not in names ->
         [
           {"X2: #{where(p)}: accountable #{inspect(name)} is not an actor of " <>
-             "#{inspect(domain.module)}; #{suggest(name, names)}", p.at}
+             "#{inspect(domain.module)}; #{suggest(name, suggestable)}", p.at}
         ]
 
       # #683: the seed loads sample data; it answers for no process of the business.

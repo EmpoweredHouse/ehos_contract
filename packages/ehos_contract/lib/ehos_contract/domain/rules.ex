@@ -836,6 +836,7 @@ defmodule EhosContract.Domain.Rules do
   defp granted_refusal(name, _actor, kinds) do
     case Map.fetch(kinds, name) do
       {:ok, :human} -> nil
+      {:ok, :seed} -> "names #{inspect(name)}, the seed; only a person is granted a role"
       {:ok, _system} -> "names #{inspect(name)}, a system; only a person is granted a role"
       :error -> "names #{inspect(name)}, which this domain does not declare as an actor"
     end
