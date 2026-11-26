@@ -802,8 +802,8 @@ defmodule EhosContract.Domain.Rules do
 
   defp grant_violations(%Actor{kind: kind} = actor, _kinds, _cycles) when kind != :human,
     do: [
-      {"D4: actor #{inspect(actor.name)} is a system and cannot have may_grant; only a person " <>
-         "brings people in", actor}
+      {"D4: actor #{inspect(actor.name)} is #{if kind == :seed, do: "the seed", else: "a system"} " <>
+         "and cannot have may_grant; only a person brings people in", actor}
     ]
 
   defp grant_violations(actor, kinds, cycles) do
@@ -836,6 +836,7 @@ defmodule EhosContract.Domain.Rules do
   defp granted_refusal(name, _actor, kinds) do
     case Map.fetch(kinds, name) do
       {:ok, :human} -> nil
+      {:ok, :seed} -> "names #{inspect(name)}, the seed; only a person is granted a role"
       {:ok, _system} -> "names #{inspect(name)}, a system; only a person is granted a role"
       :error -> "names #{inspect(name)}, which this domain does not declare as an actor"
     end
@@ -909,6 +910,13 @@ defmodule EhosContract.Domain.Rules do
                "only a system actor stands for an external system", actor}
           ]
 
+        # #683: the seed is the application's own code loading sample data, no system's.
+        actor.kind == :seed ->
+          [
+            {"#{where} is the seed and cannot be backed_by #{inspect(actor.backed_by)}; " <>
+               "only a system actor stands for an external system", actor}
+          ]
+
         not MapSet.member?(externals, actor.backed_by) ->
           [
             {"#{where} is backed_by #{inspect(actor.backed_by)}, which this domain does not " <>
@@ -927,7 +935,22 @@ defmodule EhosContract.Domain.Rules do
         ],
         else: []
 
-    name ++ backed_by ++ context
+    name ++ backed_by ++ context ++ not_seeded_violations(actor, where)
+  end
+
+  # #683: only the seed has things it may not issue, and it names each once.
+  defp not_seeded_violations(%Actor{not_seeded: []}, _where), do: []
+
+  defp not_seeded_violations(%Actor{kind: kind} = actor, where) when kind != :seed,
+    do: [
+      {"#{where} is not the seed and cannot have not_seeded; only the :seed actor is held " <>
+         "to it", actor}
+    ]
+
+  defp not_seeded_violations(actor, where) do
+    for {name, count} <- Enum.frequencies(Keyword.keys(actor.not_seeded)),
+        count > 1,
+        do: {"#{where}'s not_seeded names #{inspect(name)} twice", actor}
   end
 
   # --- D5: a relation's roles fit its type, and its ends exist --------------------

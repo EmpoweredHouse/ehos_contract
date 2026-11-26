@@ -109,7 +109,9 @@ defmodule EhosContract.Graph.Facts do
             creates: cmd[:creates],
             reads: reads(cmd, ctx),
             actor_is: cmd[:actor_is] && cmd.actor_is.field,
-            capability: ctx.grants[{:command, cmd.name}]
+            capability: ctx.grants[{:command, cmd.name}],
+            seed: seed(cmd, ctx),
+            not_seeded_because: ctx.seed && Keyword.get(ctx.seed.not_seeded, cmd.name)
           )
         end,
       event: Enum.map(events, & &1.node),
@@ -140,7 +142,7 @@ defmodule EhosContract.Graph.Facts do
     relations =
       [
         commands(model),
-        access(model),
+        access(model, ctx),
         read_side(model),
         outside(model, events),
         wire(model),
@@ -395,8 +397,10 @@ defmodule EhosContract.Graph.Facts do
       else: Document.id([:constraint, c, :command, command, rule])
   end
 
-  # Who may issue, record and ask what.
-  defp access(model) do
+  # Who may issue, record and ask what. Never the domain's seed (#683): it acts in no
+  # business, and `check` refuses it in a `by:`, so an edge from it would draw a mistake
+  # as a participant.
+  defp access(model, ctx) do
     c = model.id
     d = model.domain
 
@@ -405,7 +409,26 @@ defmodule EhosContract.Graph.Facts do
         for(e <- model.events, a <- e.recorded_by, do: {:may_record, a, id(:event, c, e.name)}) ++
         for q <- model.queries, a <- List.wrap(q.by), do: {:may_ask, a, id(:query, c, q.name)}
 
-    typed(for {type, actor, to} <- pairs, do: {type, relation(id(:actor, d, actor), to)})
+    typed(
+      for {type, actor, to} <- pairs,
+          not seed?(actor, ctx),
+          do: {type, relation(id(:actor, d, actor), to)}
+    )
+  end
+
+  defp seed?(name, ctx), do: ctx.seed != nil and ctx.seed.name == name
+
+  # Whether the domain's seed may issue a command, as dispatch decides it (#683): one a
+  # person may issue (it has a capability), not kept for the person its unit names, and
+  # not in the seed's `not_seeded`. Absent where the domain declares no seed.
+  defp seed(_cmd, %{seed: nil}), do: nil
+
+  defp seed(cmd, ctx) do
+    seeded? =
+      ctx.grants[{:command, cmd.name}] != nil and cmd[:actor_is] == nil and
+        not Keyword.has_key?(ctx.seed.not_seeded, cmd.name)
+
+    if seeded?, do: "seeded", else: "not_seeded"
   end
 
   # Read models with the events they project, and the queries over them.
@@ -828,7 +851,7 @@ defmodule EhosContract.Graph.Facts do
         Enum.flat_map(model.events, & &1.recorded_by) ++
         Enum.flat_map(model.queries, &List.wrap(&1.by))
 
-    actors = declared(domain.actors, acting)
+    actors = declared(domain.actors, Enum.reject(acting, &seed?(&1, ctx)))
 
     # A system actor's backing is a fact of the domain, but on this contract's graph
     # only for an actor already on it.
@@ -1369,7 +1392,8 @@ defmodule EhosContract.Graph.Facts do
       values: MapSet.new(domain.values, & &1.name),
       entities: Map.new(domain.entities, &{&1.name, &1}),
       units: %{},
-      grants: grants
+      grants: grants,
+      seed: Enum.find(Map.get(domain, :actors, []), &(Map.get(&1, :kind) == :seed))
     }
   end
 
@@ -1526,9 +1550,13 @@ defmodule EhosContract.Graph.Facts do
       actor_kind: Map.get(a, :kind),
       role: Map.get(a, :kind) == :human && ctx.name && "#{ctx.name}.#{a.name}",
       scope: Map.get(a, :scope),
-      responsibilities: described(Map.get(a, :responsibilities))
+      responsibilities: described(Map.get(a, :responsibilities)),
+      not_seeded: not_seeded(Map.get(a, :not_seeded, []))
     )
   end
+
+  defp not_seeded([]), do: nil
+  defp not_seeded(listed), do: for({name, reason} <- listed, do: %{name: name, reason: reason})
 
   defp external(x, ctx) do
     node(:external, ctx.d, x,

@@ -54,6 +54,15 @@ defmodule EhosContract.Supplier do
   The engine does not ask for a retry of a request that it accepted under its
   idempotency key. That retry gets its receipt.
 
+  ## Which actor it gets
+
+  The actor is the actor that dispatch authorized: the credential of a person, a
+  `:system` actor that the declaration names, a reaction, or the domain's `:seed`
+  actor (`EhosContract.Actor.seed/1`). The seed acts in every scope, and no
+  credential narrows what it may do. So match it in its own clause, and decide what
+  to supply for sample data. A clause that answers it as a `:system` actor reads
+  for every tenant. If no clause matches it, `supply/2` raises, and the seed fails.
+
   ## What the transaction asks of `supply/2`
 
   - **Make it fast.** The transaction holds a connection of the pool of the repository

@@ -114,6 +114,7 @@ spark_locals_without_parens = [
   lifecycle: 1,
   match: 1,
   may_grant: 1,
+  not_seeded: 1,
   on: 1,
   on: 2,
   on: 3,

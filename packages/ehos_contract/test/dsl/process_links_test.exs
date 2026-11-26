@@ -23,6 +23,7 @@ defmodule EhosContract.ProcessLinksTest do
         context :documentation, "Documentation", subdomain: :core
         actor :reception, :human, "Reception", context: :scheduling
         actor :doctor, :human, "Doctor", context: :documentation
+        actor :sample_data, :seed, "Sample data"
         subject :patient, "Patient"
 
         value :visit_code, :id
@@ -193,6 +194,22 @@ defmodule EhosContract.ProcessLinksTest do
       assert assert_linked(violations, "X2:", "proc_nobody_visit.ex", 2) =~
                ~s|process "clinic.proc_nobody_visit": accountable :recepton is not an actor | <>
                  ~s|of #{inspect(@domain)}; did you mean :reception?|
+    end
+
+    test "the domain's seed, which answers for no process (#683)" do
+      violations = pair("ProcSeed", @visit_fields, accountable: :sample_data)
+
+      assert assert_linked(violations, "X2:", "proc_seed_visit.ex", 2) =~
+               ~s|process "clinic.proc_seed_visit": accountable :sample_data is the domain's | <>
+                 "seed, which answers for no process; name the role that does"
+    end
+
+    test "a typo near the seed's name is not pointed at the seed (#683)" do
+      violations = pair("ProcSeedTypo", @visit_fields, accountable: :sample_dat)
+
+      message = assert_linked(violations, "X2:", "proc_seed_typo_visit.ex", 2)
+      assert message =~ "accountable :sample_dat is not an actor of #{inspect(@domain)}"
+      refute message =~ "did you mean :sample_data"
     end
 
     test "control: an actor of any context, since a process module crosses them" do

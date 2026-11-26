@@ -40,7 +40,7 @@ defmodule EhosContract.Domain.Dsl do
   defmodule Actor do
     @moduledoc false
     defstruct [:name, :kind, :label, :backed_by, :context, :source, scope: [], may_grant: []] ++
-                [responsibilities: [], __spark_metadata__: nil]
+                [not_seeded: [], responsibilities: [], __spark_metadata__: nil]
   end
 
   defmodule Responsibility do
@@ -232,13 +232,21 @@ defmodule EhosContract.Domain.Dsl do
 
   @actor %Spark.Dsl.Entity{
     name: :actor,
-    describe: "Who issues commands: a kind of person, or a system.",
+    describe:
+      "Who issues commands: a kind of person, a system, or the seed that loads sample data.",
     target: Actor,
     args: [:name, :kind, :label],
     entities: [responsibilities: [@responsibility]],
     schema: [
       name: [type: :atom, required: true, doc: "The actor's name."],
-      kind: [type: {:one_of, [:human, :system]}, required: true, doc: "A person or a system."],
+      kind: [
+        type: {:one_of, [:human, :system, :seed]},
+        required: true,
+        doc:
+          "A person, a system, or the seed: the application's own code that loads sample " <>
+            "data, which no `by:` names and which may do what a person may, except what " <>
+            "`not_seeded:` names. A domain declares at most one seed."
+      ],
       label: [type: :string, required: true, doc: "What the business calls it."],
       backed_by: [type: :atom, doc: "The external system a system actor stands for."],
       context: [type: :atom, doc: "The context the actor belongs to."],
@@ -253,6 +261,13 @@ defmodule EhosContract.Domain.Dsl do
         doc:
           "The other person actors of this domain whose role a person in this one may grant " <>
             "through the application."
+      ],
+      not_seeded: [
+        type: {:list, {:tuple, [:atom, :string]}},
+        default: [],
+        doc:
+          "For the seed: the commands and recorded events it may not issue, each with why, " <>
+            "as `[approve_payment: \"a payment needs a person\"]`."
       ],
       source: [type: :string, doc: "Where the actor comes from in the material."]
     ]

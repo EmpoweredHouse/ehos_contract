@@ -985,8 +985,10 @@
         "actor_kind": {
           "enum": [
             "human",
-            "system"
-          ]
+            "system",
+            "seed"
+          ],
+          "description": "A person, a system, or the seed: the application's own code loading sample data, which no by: names."
         },
         "role": {
           "type": "string",
@@ -1002,6 +1004,28 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/described"
+          }
+        },
+        "not_seeded": {
+          "type": "array",
+          "description": "The seed's: the commands and recorded events it may not issue, each with why. A reaction to a seeded event still issues what it declares, a command listed here included.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The command's or the recorded event's name."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the seed may not issue it."
+              }
+            }
           }
         }
       }
@@ -1087,6 +1111,17 @@
         "capability": {
           "type": "string",
           "description": "The name EHOS grants it by; absent where no person may issue it."
+        },
+        "seed": {
+          "enum": [
+            "seeded",
+            "not_seeded"
+          ],
+          "description": "Whether the domain's seed actor may issue it: only a command a person may issue, kept for no one person (actor_is), and not in the seed's not_seeded. Absent where the domain declares no seed."
+        },
+        "not_seeded_because": {
+          "type": "string",
+          "description": "Why the seed may not issue it, where the seed's not_seeded names it."
         }
       }
     },
@@ -1231,8 +1266,10 @@
         "actor_kind": {
           "enum": [
             "human",
-            "system"
-          ]
+            "system",
+            "seed"
+          ],
+          "description": "A person, a system, or the seed: the application's own code loading sample data, which no by: names."
         },
         "role": {
           "type": "string",
@@ -1280,6 +1317,28 @@
               "declaration": {
                 "type": "string",
                 "description": "The declaration's id in the contract's document: a reference into another document."
+              }
+            }
+          }
+        },
+        "not_seeded": {
+          "type": "array",
+          "description": "The seed's: the commands and recorded events it may not issue, each with why. A reaction to a seeded event still issues what it declares, a command listed here included.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The command's or the recorded event's name."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why the seed may not issue it."
               }
             }
           }

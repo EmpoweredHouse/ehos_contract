@@ -483,6 +483,76 @@ defmodule EhosContract.GraphRenderer.PanelTest do
                "records lending.late_fee_paid"
     end
 
+    # No case study declares a seed. In this variant of the lending domain, sample data is
+    # its seed actor, as the engine writes one.
+    test "the domain's seed: what it may not issue, with why, and that reactions are not held to it" do
+      seed = %{
+        "id" => "actor:Lending.Domain:sample_data",
+        "name" => "sample_data",
+        "label" => "Sample data",
+        "source" => nil,
+        "actor_kind" => "seed",
+        "capabilities" => [],
+        "not_seeded" => [%{"name" => "waive_fee", "reason" => "A waiver needs a librarian"}]
+      }
+
+      document =
+        update_in(Fixtures.document("domain.lending"), ["nodes", "actor"], &(&1 ++ [seed]))
+
+      text = open(document, seed["id"], :context_map)
+
+      assert text =~ "The seed, which loads sample data."
+
+      assert text =~
+               "Every command and recorded event a person of the domain may issue, in every " <>
+                 "scope, except those below"
+
+      assert text =~ "waive_fee · A waiver needs a librarian"
+      assert text =~ "A reaction to an event the seed wrote still issues what it declares"
+      refute text =~ "Their role in EHOS"
+
+      # The owner reads the reason, not the command's name in code.
+      owner = open(document, seed["id"], :context_map, nil, :owner)
+      assert owner =~ "A waiver needs a librarian"
+      refute owner =~ "waive_fee"
+
+      # An engineer reads the name in the technical details only.
+      html =
+        panel(document, {:node, %{kind: "actor", id: seed["id"], facts: seed}})
+        |> LazyHTML.from_fragment()
+
+      assert html |> LazyHTML.query("code.ehg-code") |> LazyHTML.text() =~ "waive_fee"
+
+      table =
+        render_component(&Actors.table/1, document: document, canvas: "map")
+        |> LazyHTML.from_fragment()
+
+      [people, systems] = table |> LazyHTML.query("table") |> Enum.to_list()
+      refute text(LazyHTML.to_html(people)) =~ "Sample data"
+      assert text(LazyHTML.to_html(systems)) =~ "Sample data"
+    end
+
+    test "a command says whether the seed may issue it, and why not where the domain lists it" do
+      lend = "command:lending.circulation:lend_copy"
+
+      with_seed = fn seed ->
+        update_in(Fixtures.document("lending.circulation"), ["nodes", "command"], fn commands ->
+          for c <- commands, do: if(c["id"] == lend, do: Map.merge(c, seed), else: c)
+        end)
+      end
+
+      assert open(with_seed.(%{"seed" => "seeded"}), lend) =~
+               "The seed may issue it when it loads sample data."
+
+      assert open(
+               with_seed.(%{"seed" => "not_seeded", "not_seeded_because" => "Needs a person"}),
+               lend
+             ) =~
+               "The seed may not issue it: Needs a person"
+
+      refute open("lending.circulation", lend) =~ "The seed"
+    end
+
     # No actor of the case studies has a responsibility. In this variant of the warehouse's
     # document the lead has one, as the engine writes it.
     test "an actor of a contract: what it may issue, with each grant" do

@@ -21,6 +21,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- The renderer knows the seed actor, `actor_kind: "seed"`. Its panel lists what it may not issue,
+  with why, and says that a reaction to an event it wrote is not held to that list. A command's
+  panel says whether the seed may issue it. The domain's table of actors shows the seed among the
+  systems, not the people. The schema `graph.v1.json` gains the value and the keys `not_seeded`,
+  `seed` and `not_seeded_because` (#683).
+
 ## [0.11.0] - 2026-11-24
 
 ### Changed

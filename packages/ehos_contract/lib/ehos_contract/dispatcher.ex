@@ -449,6 +449,9 @@ defmodule EhosContract.Dispatcher do
   defp permit_code(model, declaration, %Actor{kind: :system, name: name}),
     do: named(model, declaration.by, name)
 
+  defp permit_code(model, declaration, %Actor{kind: :seed, name: name}),
+    do: seeded(model, :command, declaration, name)
+
   defp permit_code(model, declaration, %Actor{kind: :reaction, name: {:policy, name}}) do
     policy = Enum.find(model.policies, &(&1.name == name))
 
@@ -472,8 +475,8 @@ defmodule EhosContract.Dispatcher do
 
   defp permit_code(_model, _declaration, actor) do
     raise ArgumentError,
-          "dispatch takes `actor:`, an EhosContract.Actor — a credential's or a :system actor " <>
-            "of the domain — and got #{inspect(actor)}"
+          "dispatch takes `actor:`, an EhosContract.Actor — a credential's, or a :system or " <>
+            ":seed actor of the domain — and got #{inspect(actor)}"
   end
 
   defp permit_record(model, declaration, %Actor{kind: :credential} = actor) do
@@ -488,6 +491,9 @@ defmodule EhosContract.Dispatcher do
 
   defp permit_record(model, declaration, %Actor{kind: :system, name: name}),
     do: named(model, declaration.recorded_by, name)
+
+  defp permit_record(model, declaration, %Actor{kind: :seed, name: name}),
+    do: seeded(model, :record, declaration, name)
 
   defp permit_record(_model, _declaration, %Actor{kind: :reaction}), do: {:error, :not_declared}
   defp permit_record(model, declaration, actor), do: permit(model, declaration, actor)
@@ -506,8 +512,9 @@ defmodule EhosContract.Dispatcher do
   defp permit_query(model, declaration, %Actor{kind: :system, name: name}, _scope),
     do: named(model, declaration.by, name)
 
-  defp permit_query(_model, _declaration, %Actor{kind: :reaction}, _scope),
-    do: {:error, :not_declared}
+  defp permit_query(_model, _declaration, %Actor{kind: kind}, _scope)
+       when kind in [:reaction, :seed],
+       do: {:error, :not_declared}
 
   defp permit_query(model, declaration, actor, _scope), do: permit(model, declaration, actor)
 
@@ -586,13 +593,28 @@ defmodule EhosContract.Dispatcher do
     if name in names and system_actor?(model, name), do: :ok, else: {:error, :not_declared}
   end
 
-  defp system_actor?(model, name) do
-    Code.ensure_loaded?(model.domain) and
-      function_exported?(model.domain, :__ehos_contract_model__, 0) and
-      Enum.any?(
-        model.domain.__ehos_contract_model__().actors,
-        &(&1.name == name and &1.kind == :system)
-      )
+  defp system_actor?(model, name), do: match?(%{kind: :system}, domain_actor(model, name))
+
+  # The application's own code loading sample data as the domain's `:seed` actor (#683):
+  # allowed what a person of the domain may do — a command or a recording with a
+  # capability — that the domain's `not_seeded` does not name, in every scope and with
+  # no `Authorizer`. Never a command kept for the person its unit names (`actor_is`):
+  # the seed is nobody, so such a command counts as not seeded with no entry in the list.
+  defp seeded(model, kind, declaration, name) do
+    with %{kind: :seed, not_seeded: not_seeded} <- domain_actor(model, name),
+         false <- Keyword.has_key?(not_seeded, declaration.name),
+         false <- Map.has_key?(declaration, :actor_is),
+         capability when capability != nil <- capability(model, kind, declaration.name) do
+      :ok
+    else
+      _refused -> {:error, :not_declared}
+    end
+  end
+
+  defp domain_actor(model, name) do
+    if Code.ensure_loaded?(model.domain) and
+         function_exported?(model.domain, :__ehos_contract_model__, 0),
+       do: Enum.find(model.domain.__ehos_contract_model__().actors, &(&1.name == name))
   end
 
   # A declaration no person may use has no capability (`Model.capabilities/1`), so
@@ -878,7 +900,8 @@ defmodule EhosContract.Dispatcher do
   # Plan DD, A1 (#247): a command whose `actor_is` names a field of the state is issued
   # only by the person that field holds, compared with the credential's subject, and is
   # refused on its invariant before the decision otherwise, as a lifecycle's
-  # precondition is. A `:system` actor and a reaction act for the application, and pass.
+  # precondition is. A `:system` actor and a reaction act for the application, and pass;
+  # the `:seed` actor never gets here, refused before the transaction (#683).
   # A field still empty names nobody, so every person is refused.
   defp person_named(declaration, state, %Actor{kind: :credential, subject: subject}) do
     case Decision.not_the_person(declaration, state, subject) do
