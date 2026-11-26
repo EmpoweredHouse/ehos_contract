@@ -7,7 +7,8 @@ defmodule EhosContract.Authorizer do
 
   The engine asks the Authorizer about each call that arrives with a credential,
   before anything else runs. It does not ask about the code of the application: a
-  `:system` actor or a reaction. The contract holds that code to its declarations.
+  `:system` actor, the domain's `:seed` actor or a reaction. The contract holds that
+  code to its declarations.
 
   A declaration that no person can use has no capability. The engine refuses a call
   to it with `:missing_capability`, and does not ask the Authorizer.

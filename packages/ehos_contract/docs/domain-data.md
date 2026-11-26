@@ -14,7 +14,8 @@ the subjects. [The domain reference](dsl/domain-dsl.md) lists each key of this p
 
 An *actor* issues commands, asks queries or records events. It is a kind of person (`:human`), a
 system (`:system`), or the seed that loads sample data (`:seed`). A contract names its actors in the `by:` of a command or a query, and in the
-`recorded_by:` of an event. Dispatch first refuses an actor that the declaration does not name.
+`recorded_by:` of an event. Dispatch first refuses an actor that the declaration does not name,
+except the seed, which no declaration names.
 
 <!-- in: Concepts.DomainData.Domain -->
 ```elixir
@@ -57,8 +58,8 @@ actor :sample_data, :seed, "Sample data",
   event that a `:human` actor of the domain can, in each scope. The graph shows no arrow from it.
 - **`not_seeded:`** names the commands and the recorded events that the seed must not issue, each
   with its reason. The graph shows the list on the panel of the seed.
-- **The seed never asks a query.** It cannot issue a command that only a `:system` actor issues, or
-  a command with `actor_is`: the seed is no person. Such a command is not seeded, and the list does
+- **The seed never asks a query.** It cannot issue a command or record an event that no person may
+  use, or a command with `actor_is`: the seed is no person. Such a command is not seeded, and the list does
   not have to name it.
 - **The code acts as the seed with `EhosContract.Actor.seed(:sample_data)`.** Dispatch does not ask
   the `EhosContract.Authorizer`. It refuses a declaration that the seed cannot use with

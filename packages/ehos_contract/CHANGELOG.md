@@ -56,11 +56,13 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   it, so the graph no longer draws it as a participant with an edge to each command. Build it with
   `EhosContract.Actor.seed/1`. `dispatch/3` permits it each command, and `record/3` each event, that
   a `:human` actor of the domain may use and `not_seeded:` does not name, in every scope, and asks no
-  `Authorizer`. It refuses `:not_declared`, before the transaction and with no row, for a query, for a
-  declaration only `:system` actors use, for one `not_seeded:` names, and for a command with
+  `Authorizer`. It refuses `:not_declared`, before the transaction and with no row, for a
+  declaration no person may use, for one `not_seeded:` names, and for a command with
   `actor_is:`, since the seed is no person. The log labels it `system:<name>`, so a seed that ran as
   a `:system` actor of the same name replays to the same commands and adds nothing. A reaction to an
-  event the seed wrote still issues what it declares, a command in `not_seeded:` included (#683).
+  event the seed wrote still issues what it declares, a command in `not_seeded:` included. `query/3`
+  refuses the seed every query with `:not_declared`. The compiler refuses the seed with `backed_by:`
+  and as a process module's `accountable` (#683).
 - `EhosContract.Supplier.supply/2` and `EhosContract.Entities.fetch/4` can receive the `:seed`
   actor. It acts in every scope: give it a clause of its own. A catch-all that answers it as a
   `:system` actor reads every tenant's rows for it, and with no clause that matches, the call raises

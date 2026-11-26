@@ -222,7 +222,10 @@ defmodule EhosContract do
 
   1. **Who.** A credential's actor is asked of the `EhosContract.Authorizer`. A
      `:system` actor has to be one the domain declares `:system` and the command
-     names in `by:`; a reaction's, one whose `issues:` names the command. A refusal
+     names in `by:`; a reaction's, one whose `issues:` names the command. The
+     domain's `:seed` actor (`EhosContract.Actor.seed/1`) may issue a command a
+     `:human` actor may, in every scope and with no `Authorizer`, unless the domain's
+     `not_seeded:` names it or it has `actor_is`. A refusal
      is `{:error, reason}` and writes nothing, neither to the log nor to
      `_commands`.
   2. **What.** The command's fields against their declared types, and each value
@@ -312,7 +315,8 @@ defmodule EhosContract do
   empty. An event only `:system` actors record has no capability, and a
   credential is refused `:missing_capability`. A `:system` actor records it when the
   event's `recorded_by:` names it: an integration writing down what a system
-  answered. Otherwise it goes as a command
+  answered. The domain's `:seed` actor records an event a `:human` actor may record
+  and the domain's `not_seeded:` does not name, with no `Authorizer`. Otherwise it goes as a command
   does — the fields checked, the
   idempotency key honoured, the unit's stream version as the append's condition,
   the consumers in the transaction run, the `accepted` row written with the type
@@ -402,6 +406,7 @@ defmodule EhosContract do
   capability, and for a scoped query with the value of the scope parameter, so a
   value outside the grant is refused before the implementation runs. A `:system`
   actor the query's `by:` names is the application's own code, and is not narrowed.
+  The domain's `:seed` actor is refused every query with `{:error, :not_declared}`.
 
   **Every row is checked again**: for a credential's actor, a row whose scope field
   is not among the values the credential grants raises

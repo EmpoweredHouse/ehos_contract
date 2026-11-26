@@ -663,10 +663,12 @@ defmodule EhosContract.DomainRulesTest do
       """)
     end
 
-    test "not_seeded on another actor, or naming a declaration twice, is refused" do
+    test "not_seeded on another actor or naming one twice, and a seed backed or granting, are refused" do
       message =
         refused("BrokenSeed", """
+          external :fixtures, "Fixtures", direction: :outbound
           actor :clerk, :human, "Clerk", not_seeded: [refund: "Moves money"]
+          actor :demo, :seed, "Demo", backed_by: :fixtures, may_grant: [:clerk]
           actor :sample_data, :seed, "Sample data",
             not_seeded: [refund: "Moves money", refund: "Again", approve: "Needs a person"]
         """)
@@ -676,6 +678,15 @@ defmodule EhosContract.DomainRulesTest do
                  "actor is held to it"
 
       assert message =~ "D4: actor :sample_data's not_seeded names :refund twice"
+
+      assert message =~
+               "D4: actor :demo is the seed and cannot be backed_by :fixtures; only a system " <>
+                 "actor stands for an external system"
+
+      assert message =~
+               "D4: actor :demo is the seed and cannot have may_grant; only a person brings " <>
+                 "people in"
+
       refute message =~ ":approve"
     end
   end

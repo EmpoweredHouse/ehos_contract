@@ -89,12 +89,23 @@ defmodule EhosContract.Contract.Links.Processes do
   defp accountable(%{model: %{accountable: name}, domain: domain} = p) do
     names = Enum.map(domain.actors, & &1.name)
 
-    if name in names,
-      do: [],
-      else: [
-        {"X2: #{where(p)}: accountable #{inspect(name)} is not an actor of " <>
-           "#{inspect(domain.module)}; #{suggest(name, names)}", p.at}
-      ]
+    cond do
+      name not in names ->
+        [
+          {"X2: #{where(p)}: accountable #{inspect(name)} is not an actor of " <>
+             "#{inspect(domain.module)}; #{suggest(name, names)}", p.at}
+        ]
+
+      # #683: the seed loads sample data; it answers for no process of the business.
+      Enum.any?(domain.actors, &(&1.name == name and &1.kind == :seed)) ->
+        [
+          {"X2: #{where(p)}: accountable #{inspect(name)} is the domain's seed, which " <>
+             "answers for no process; name the role that does", p.at}
+        ]
+
+      true ->
+        []
+    end
   end
 
   # --- X5 ---------------------------------------------------------------------------

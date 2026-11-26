@@ -97,7 +97,7 @@ defmodule EhosContract.Actor do
   `EhosContract.dispatch/3` checks that the domain declares it `:seed`, and permits
   it a command, and `EhosContract.record/3` an event, that a `:human` actor of the
   domain may use and the domain's `not_seeded:` does not name. It refuses
-  `:not_declared` for a query, for a declaration only `:system` actors use, and for
+  `:not_declared` for a query, for a declaration no person may use, and for
   a command with `actor_is:`, since the seed is no person. No `EhosContract.Authorizer`
   is asked.
 

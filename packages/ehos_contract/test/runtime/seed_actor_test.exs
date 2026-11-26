@@ -36,7 +36,7 @@ defmodule EhosContract.SeedActorTest do
     place!("order-2", "shop-9")
 
     assert {:ok, %Receipt{events: [_]}} =
-             EhosContract.dispatch(Shop, %HandOver{order_id: "order-1", keeper_id: "clerk-ada"},
+             EhosContract.dispatch(Shop, %HandOver{order_id: "order-1", keeper_id: "manager-ada"},
                actor: seed()
              )
 
@@ -57,7 +57,7 @@ defmodule EhosContract.SeedActorTest do
       place!("order-1", "shop-1")
 
       {:ok, _} =
-        EhosContract.dispatch(Shop, %HandOver{order_id: "order-1", keeper_id: "clerk-ada"},
+        EhosContract.dispatch(Shop, %HandOver{order_id: "order-1", keeper_id: "manager-ada"},
           actor: seed()
         )
 
@@ -105,12 +105,12 @@ defmodule EhosContract.SeedActorTest do
     end
   end
 
-  test "the seed is labelled system:<name>, so a step seeded as a :system actor replays" do
+  test "the seed is labelled as a :system actor of its name, and replays a step by its key" do
     assert Actor.label(seed()) == "system:sample_data"
     assert Actor.label(seed()) == Actor.label(Actor.system(:sample_data))
 
-    # The row a :system actor of the same name wrote carries the same key and label as
-    # this one, so the step is not issued again: the replay finds it and appends nothing.
+    # The replay matches a row on its key and label alone, so a row a :system actor of the
+    # same name wrote before the kind changed is found as this one is: no second append.
     first = place!("order-1", "shop-1", idempotency_key: "seed:order-1")
     assert [%{issued_by: "system:sample_data", outcome: "accepted"}] = rows()
 

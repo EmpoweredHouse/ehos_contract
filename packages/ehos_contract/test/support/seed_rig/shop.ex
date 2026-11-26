@@ -2,9 +2,9 @@ defmodule SeedRig.Shop do
   @moduledoc """
   # THIS CONTRACT IS INVENTED. IT IS NOT CLIENT MATERIAL.
 
-  A clerk places an order in their shop, hands it to a keeper, and refunds it; only the
-  keeper releases it. The nightly job archives orders and counts stock; a clerk notes
-  what a client said. Sample data may place, hand over and note, and nothing else.
+  A clerk places an order in their shop; a manager hands it to a keeper, and refunds it;
+  only the keeper releases it. The nightly job archives orders and counts stock; a manager
+  notes what a client said. Sample data may place, hand over and note, and nothing else.
   """
 
   use EhosContract.Contract, domain: SeedRig.Domain, context: :shop, id: "seed_rig.shop"
@@ -16,24 +16,24 @@ defmodule SeedRig.Shop do
       field :keeper_id, :id, optional: true
     end
 
-    invariant :only_its_keeper_releases, "An order is released by the clerk who keeps it"
+    invariant :only_its_keeper_releases, "An order is released by the manager who keeps it"
 
     command :place_order, "Place the order", by: :clerk, scope: :shop_id, emits: :placed do
       field :shop_id, :id
     end
 
-    command :hand_over, "Hand the order to a keeper", by: :clerk, emits: :handed_over do
+    command :hand_over, "Hand the order to a keeper", by: :manager, emits: :handed_over do
       field :keeper_id, :id
     end
 
     command :release_order, "Release the order",
-      by: :clerk,
+      by: :manager,
       emits: :released,
       rejects: :only_its_keeper_releases do
       actor_is :keeper_id, or_rejects: :only_its_keeper_releases
     end
 
-    command :refund_order, "Refund the order", by: :clerk, emits: :refunded
+    command :refund_order, "Refund the order", by: :manager, emits: :refunded
     command :archive_order, "Archive the order", by: :nightly_job, emits: :archived
 
     event :placed, "Order placed" do
@@ -47,7 +47,7 @@ defmodule SeedRig.Shop do
     event :released, "Order released"
     event :refunded, "Order refunded"
     event :archived, "Order archived"
-    event :note_taken, "Client's note taken", recorded_by: :clerk
+    event :note_taken, "Client's note taken", recorded_by: :manager
     event :stock_counted, "Stock counted", recorded_by: :nightly_job
   end
 
@@ -64,35 +64,35 @@ defmodule SeedRig.Shop do
     field :order_id, :id
   end
 
-  query :orders_of_shop, "Orders of the shop", reads: :orders, by: :clerk
+  query :orders_of_shop, "Orders of the shop", reads: :orders, by: :manager
 
   scenario "a clerk places an order" do
     command :place_order, %{shop_id: "shop-1"}
     expect :placed, %{shop_id: "shop-1"}
   end
 
-  scenario "a clerk hands the order over" do
-    command :hand_over, %{keeper_id: "clerk-ada"}
-    expect :handed_over, %{keeper_id: "clerk-ada"}
+  scenario "a manager hands the order over" do
+    command :hand_over, %{keeper_id: "manager-ada"}
+    expect :handed_over, %{keeper_id: "manager-ada"}
   end
 
   scenario "the keeper releases it" do
-    actor :clerk
-    as "clerk-ada"
-    given :handed_over, %{keeper_id: "clerk-ada"}
+    actor :manager
+    as "manager-ada"
+    given :handed_over, %{keeper_id: "manager-ada"}
     command :release_order
     expect :released
   end
 
-  scenario "another clerk does not" do
-    actor :clerk
-    as "clerk-bo"
-    given :handed_over, %{keeper_id: "clerk-ada"}
+  scenario "another manager does not" do
+    actor :manager
+    as "manager-bo"
+    given :handed_over, %{keeper_id: "manager-ada"}
     command :release_order
     rejected :only_its_keeper_releases
   end
 
-  scenario "a clerk refunds it" do
+  scenario "a manager refunds it" do
     command :refund_order
     expect :refunded
   end
@@ -103,8 +103,8 @@ defmodule SeedRig.Shop do
     expect :archived
   end
 
-  scenario "a clerk notes what the client said" do
-    actor :clerk
+  scenario "a manager notes what the client said" do
+    actor :manager
     record :note_taken
     expect :note_taken
   end

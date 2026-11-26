@@ -802,8 +802,8 @@ defmodule EhosContract.Domain.Rules do
 
   defp grant_violations(%Actor{kind: kind} = actor, _kinds, _cycles) when kind != :human,
     do: [
-      {"D4: actor #{inspect(actor.name)} is a system and cannot have may_grant; only a person " <>
-         "brings people in", actor}
+      {"D4: actor #{inspect(actor.name)} is #{if kind == :seed, do: "the seed", else: "a system"} " <>
+         "and cannot have may_grant; only a person brings people in", actor}
     ]
 
   defp grant_violations(actor, kinds, cycles) do
@@ -906,6 +906,13 @@ defmodule EhosContract.Domain.Rules do
         actor.kind == :human ->
           [
             {"#{where} is a person and cannot be backed_by #{inspect(actor.backed_by)}; " <>
+               "only a system actor stands for an external system", actor}
+          ]
+
+        # #683: the seed is the application's own code loading sample data, no system's.
+        actor.kind == :seed ->
+          [
+            {"#{where} is the seed and cannot be backed_by #{inspect(actor.backed_by)}; " <>
                "only a system actor stands for an external system", actor}
           ]
 
