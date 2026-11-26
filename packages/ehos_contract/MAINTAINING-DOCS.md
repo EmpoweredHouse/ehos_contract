@@ -128,4 +128,5 @@ Markdown it is made from, and an `index.html` linking them.
 each package's `source_ref`, `main` otherwise. Not a version tag: the repository's tag follows the engine's
 version, each package keeps its own, and a `-dev` version has no tag.
 
-Nothing is published to a site: a GitHub Pages site of this private repository would be public (#201).
+Nothing is published to a site (#201). That was decided while the repository was private, when a GitHub
+Pages site would have been public. The packages' documentation goes to HexDocs when they go to Hex.

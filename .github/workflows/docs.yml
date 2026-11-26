@@ -2,8 +2,8 @@ name: docs
 
 # The documentation of the four packages, as a file to download: ExDoc's HTML, the
 # Markdown it is made from, and an index (.github/scripts/build-docs.sh). Nothing is
-# published: a GitHub Pages site of this private repository would be public on its
-# plan, so the docs stay where the code is (#201, #237).
+# published to a site (#201, #237): that was decided while the repository was private,
+# when a GitHub Pages site would have been public; HexDocs takes over with the packages.
 #
 # By hand, for any branch, tag or full commit SHA: Actions → docs → Run workflow; or
 # `gh workflow run docs.yml -f ref=<ref>`. The archive is the run's artifact, kept

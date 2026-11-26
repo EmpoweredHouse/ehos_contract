@@ -18,7 +18,6 @@ that write contracts by the rules of the engine.
 ## Before you start
 
 - Claude Code, and git.
-- Read access to the GitHub repository `EmpoweredHouse/ehos_contract`. The repository is private.
 
 ## Steps
 
@@ -42,9 +41,8 @@ that write contracts by the rules of the engine.
    }
    ```
 
-3. If your machine has no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. Then give git
-   a credential for GitHub. `gh auth setup-git` gives the token of `gh` to each git command for
-   GitHub on the machine. A fine-grained token that can only read this repository gives less.
+3. If your machine has no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. The repository
+   is public, so git needs no credential over HTTPS.
 4. Start Claude Code in the application, or run `/reload-plugins`. If Claude Code does not offer to
    install the plugin, run `/plugin install ehos-contract@ehos-contract`.
 

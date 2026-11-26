@@ -6,7 +6,7 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (24 November 2026)
+## Where things stand (26 November 2026)
 
 - **Released:** v0.16.0, the library under its new name, `ehos_contract` (#428): the engine 0.16.0,
   `ehos_contract_auth` 0.17.0, `ehos_contract_web` 0.12.0 and the graph renderer 0.11.0, all four with
@@ -14,8 +14,11 @@ with the options they beat, its review and its pull requests; this file holds on
   migration version 7 and the credentials' version 4. The plugin `ehos-contract` is at 0.15.0.
   Applications install them from git, at `EmpoweredHouse/ehos_contract`. The pull request after the tag
   moves each released package to its next patch's `-dev`.
-- **Now:** the publication programme, which makes this repository public and the packages installable from
-  Hex. PB6 is in progress (#421).
+- **Public since 26 November 2026.** Its GitHub settings are made: private vulnerability reporting, secret
+  scanning with push protection, Dependabot, Discussions, and a protected `main` (#678).
+- **Now:** the rest of the publication programme, which makes the packages installable from Hex. PB6 is in
+  progress (#421). Of PB7 are left: reported content sent to the maintainers, actions pinned by SHA, and
+  the packages on Hex.
 - **Open questions for the maintainers:**
   - the library's name before its first Hex release, since a name on Hex is permanent;
   - whether `ehos_contract_auth` is published under the library's name;
@@ -37,7 +40,7 @@ Issues labelled [`publication`](https://github.com/EmpoweredHouse/ehos_contract/
 | PB5 | The repository reads for someone outside the team | #393 | ☑ #394, #395, #396 |
 | PB6 | Hex readiness: dependencies by version, `esbuild` dev-only, Spark's range, `hex.build` and an Elixir/OTP matrix in CI | #421 | ◐ |
 | PB6b | The library is named `ehos_contract`, like the rest of the EHOS family: packages, modules, tasks, storage and repository | #428 | ☑ #673, #674, #675 |
-| PB7 | Publication: the scan, GitHub settings, Hex | — | ☐ |
+| PB7 | Publication: the scan, GitHub settings, Hex | — | ◐ #678 |
 
 **PB6.** The packages' `mix.exs` stop depending on each other by `path:` or `git:` when published, the
 dashboard's asset build stops needing a private dependency, and CI builds each package as Hex would and runs the
