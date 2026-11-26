@@ -1,6 +1,6 @@
 name: private-references
 
-# The repository is to become public, and the private repositories it grew beside
+# The repository is public, and the private repositories it grew beside
 # (EHOS, its tools, the clients' material) are not. A link into one of them, a
 # decision code of theirs (D-135, T-07, FM-3), the archived working plan or a path
 # on a maintainer's machine leads a reader nowhere, and some of them say more than
