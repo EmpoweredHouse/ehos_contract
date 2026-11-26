@@ -508,6 +508,11 @@ defmodule EhosContract.GraphRenderer.PanelTest do
                  "scope, except those below"
 
       assert text =~ "waive_fee · A waiver needs a librarian"
+
+      # The owner reads the reason, not the command's name in code.
+      owner = open(document, seed["id"], :context_map, nil, :owner)
+      assert owner =~ "A waiver needs a librarian"
+      refute owner =~ "waive_fee"
       assert text =~ "A reaction to an event the seed wrote still issues what it declares"
       refute text =~ "Their role in EHOS"
 

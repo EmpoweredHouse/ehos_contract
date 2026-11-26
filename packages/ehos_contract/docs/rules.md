@@ -350,7 +350,7 @@ contract that gives it work is not written yet.
 The domain's `:seed` actor is named in a `by:` or a `recorded_by:`.
 
 The seed may issue every command and record every event a person of the domain may, except
-what the domain's `not_seeded:` names, so no declaration names it. Named in `by:`, it shows on
+what the domain's `not_seeded:` names and a command with `actor_is`, so no declaration names it. Named in `by:`, it shows on
 the graph as a participant of the business. Remove it from the `by:` or `recorded_by:`.
 
 ## `second-seed-actor`

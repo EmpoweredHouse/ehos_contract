@@ -627,7 +627,8 @@ defmodule EhosContract.GraphRenderer.Panel do
       </p>
       <ul :if={@node["not_seeded"] not in [nil, []]} class="ehg-list">
         <li :for={n <- @node["not_seeded"]}>
-          <code>{n["name"]}</code><span class="ehg-quiet"> · {n["reason"]}</span>
+          <%!-- The owner reads the reason; the name is the code's. --%>
+          <code :if={@ctx.code?}>{n["name"]}</code><span :if={@ctx.code?} class="ehg-quiet"> · </span>{n["reason"]}
         </li>
       </ul>
       <p class="ehg-plain">
