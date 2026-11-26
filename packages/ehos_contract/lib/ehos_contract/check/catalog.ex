@@ -401,7 +401,8 @@ defmodule EhosContract.Check.Catalog do
       summary: "The domain's `:seed` actor is named in a `by:` or a `recorded_by:`.",
       text: """
       The seed may issue every command and record every event a person of the domain may, except
-      what the domain's `not_seeded:` names and a command with `actor_is`, so no declaration names it. Named in `by:`, it shows on
+      what the domain's `not_seeded:` names, so no declaration names it. It may not issue a command
+      only the person its unit names may issue (`actor_is`) either. Named in `by:`, it shows on
       the graph as a participant of the business. Remove it from the `by:` or `recorded_by:`.
       """
     },

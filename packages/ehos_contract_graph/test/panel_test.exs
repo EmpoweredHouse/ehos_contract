@@ -508,13 +508,20 @@ defmodule EhosContract.GraphRenderer.PanelTest do
                  "scope, except those below"
 
       assert text =~ "waive_fee · A waiver needs a librarian"
+      assert text =~ "A reaction to an event the seed wrote still issues what it declares"
+      refute text =~ "Their role in EHOS"
 
       # The owner reads the reason, not the command's name in code.
       owner = open(document, seed["id"], :context_map, nil, :owner)
       assert owner =~ "A waiver needs a librarian"
       refute owner =~ "waive_fee"
-      assert text =~ "A reaction to an event the seed wrote still issues what it declares"
-      refute text =~ "Their role in EHOS"
+
+      # An engineer reads the name in the technical details only.
+      html =
+        panel(document, {:node, %{kind: "actor", id: seed["id"], facts: seed}})
+        |> LazyHTML.from_fragment()
+
+      assert html |> LazyHTML.query("code.ehg-code") |> LazyHTML.text() =~ "waive_fee"
 
       table =
         render_component(&Actors.table/1, document: document, canvas: "map")
