@@ -28,7 +28,13 @@ defmodule EhosContract.Clock do
 
   @doc "The time to stamp an event with: the one set by `at/2`, or now."
   @spec now() :: DateTime.t()
-  def now, do: Process.get(@key) || DateTime.utc_now()
+  def now, do: scoped() || DateTime.utc_now()
+
+  # The time `at/2` set in this process, or nil: `EhosContract.Testing.drain/1` lets
+  # it win over the host's clock.
+  @doc false
+  @spec scoped() :: DateTime.t() | nil
+  def scoped, do: Process.get(@key)
 
   @doc """
   Runs `fun` with every event it appends in this process stamped `at`. Restores

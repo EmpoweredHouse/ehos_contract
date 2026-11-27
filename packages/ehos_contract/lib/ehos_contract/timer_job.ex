@@ -14,7 +14,7 @@ defmodule EhosContract.TimerJob do
   **Due by `EhosContract.Clock.now/0`.** Oban runs the job at its `scheduled_at`; a
   job run earlier than the timer's time — a test draining the queue, or a clock
   behind another node's — snoozes until then. A test moves time with
-  `EhosContract.Clock.at/2` around `EhosContract.Testing.drain/1`.
+  `EhosContract.Testing.drain/1`'s `at:`.
 
   Its arguments are the process manager's key, the run's correlation, the timer's
   name, its token and its time: nothing of the run's data.
