@@ -1110,6 +1110,25 @@ applications belongs to EHOS.
 > (C-3, C-4 in `eh-os`) compares that with the publisher's registered model. Removing or retyping a field of a
 > `publish` is a new versioned name, not an edit.
 
+> *Changed 27 November 2026, the user's choice ([#697](https://github.com/EmpoweredHouse/ehos_contract/issues/697)).*
+> **The library builds the published name, and the lock holds a publication to its version.** The assumption
+> above was that a person writes the versioned name, `as: "clinic.visit.closed.v1"`, and keeps the rule "a
+> changed field is a new name" by discipline. Neither held: the first segment had to equal the domain's `name:`,
+> which the library already knew; the rest could differ from the publication's own name; nothing tied the version
+> to the fields; and a subscriber's hand-typed copy of the string compiled when it was wrong. Now the name is
+> `<namespace>.<publication>.v<version>`, the namespace the first segment of the contract's `id:` (already held
+> to the domain's `name:`), so a publication's name is unique in the application (X7). `version:` is written,
+> 1 by default. A subscriber writes the same parts, `subscribe {:clinic, :visit_closed, 1}`, since it has no
+> publisher code to compile against, and the library builds the same string. `ehos_contract.lock` records each
+> publication's fields at its version: a field removed, retyped or made optional is refused at the same version,
+> a field added is not, a lower version is refused, and a publication no longer declared — renamed, removed, or
+> its domain renamed — is refused until `--forget`. `as:` on `publish` and a string on `subscribe` are refused
+> with the line to write, in one release, with no period of both: nothing ran in production. Rejected: a warning
+> for a renamed publication rather than a refusal, since a subscriber that receives nothing is the failure this
+> exists for; keeping `as:` for a release; a version with no default, which adds a word to the common case; a
+> version the lock raises by itself, since a version is the team's promise to readers, not a count; and a name
+> with the contract in it, which would tie the public name to how an application splits its contracts.
+
 ## 8. Compile-time dependencies
 
 ```

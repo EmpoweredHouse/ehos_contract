@@ -125,7 +125,7 @@ defmodule EhosContract.ContractLinksDomainTest do
       scope :clinic_id
     end
 
-    publish :payment_recorded, as: "clinic.payment.recorded.v1",
+    publish :payment_recorded,
       from: :payment_recorded, fields: [:visit_id, :amount]
 
     scenario "a payment accepted" do
@@ -964,41 +964,12 @@ defmodule EhosContract.ContractLinksDomainTest do
     end
   end
 
+  # #697: a publication's name is built under the contract's id, which is held to the
+  # namespace, so no publication is named outside it.
   describe "D11: a publication is named under the application's namespace" do
-    test "a name under another application's" do
-      violations =
-        links(
-          "LinksNamespace",
-          String.replace(
-            @body,
-            ~s|"clinic.payment.recorded.v1"|,
-            ~s|"billing.payment.recorded.v1"|
-          )
-        )
-
-      assert assert_linked(violations, "D11:", "links_namespace.ex", 42) =~
-               ~s|publish :payment_recorded is named "billing.payment.recorded.v1", outside the | <>
-                 ~s|application's namespace "clinic."|
-    end
-
     test "control: a namespace with a dash, the domain's name: (#50)" do
-      body = dashed(@body, "my-shop.payment.recorded.v1")
-      assert links("LinksDashedRight", body, domain: inspect(@dashed), namespace: "my-shop") == []
-    end
-
-    test "the same name with an underscore is outside it" do
-      violations =
-        links("LinksDashedWrong", dashed(@body, "my_shop.payment.recorded.v1"),
-          domain: inspect(@dashed),
-          namespace: "my-shop"
-        )
-
-      assert assert_linked(violations, "D11:", "links_dashed_wrong.ex", 42) =~
-               ~s|publish :payment_recorded is named "my_shop.payment.recorded.v1", outside the | <>
-                 ~s|application's namespace "my-shop."|
-
-      # The publication is the only thing outside it: the contract's own id is not.
-      assert length(violations) == 1
+      assert links("LinksDashedRight", @body, domain: inspect(@dashed), namespace: "my-shop") ==
+               []
     end
   end
 
@@ -1139,7 +1110,4 @@ defmodule EhosContract.ContractLinksDomainTest do
       assert assert_linked(violations, "P7:", "links_query_params.ex", 39) =~ ":contacts"
     end
   end
-
-  defp dashed(body, name),
-    do: String.replace(body, ~s|"clinic.payment.recorded.v1"|, inspect(name))
 end

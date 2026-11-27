@@ -18,7 +18,7 @@ defmodule Billing.Contracts.Subscriptions do
     has no `ends_on`, which `mix ehos_contract.check` warns of.
   - **An invoice** is drafted in the transaction that closes the period: a policy adds
     the monthly fee and one line per usage record, then issues it. The invoice is
-    published to other applications as `billing.invoice.issued.v1`.
+    published to other applications as `billing.invoice_issued.v1`.
   """
 
   use EhosContract.Contract,
@@ -167,8 +167,7 @@ defmodule Billing.Contracts.Subscriptions do
     handles: :billing_period_closed,
     issues: [:add_invoice_line, :issue_invoice]
 
-  publish :issued,
-    as: "billing.invoice.issued.v1",
+  publish :invoice_issued,
     from: :issued,
     fields: [:subscription_id, :period_id, :total],
     idempotent_on: [:subscription_id, :period_id]

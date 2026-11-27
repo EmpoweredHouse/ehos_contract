@@ -13,7 +13,7 @@ The way depends on where the other contract is:
 | Where the other contract is | It takes the event with | Where the event is | What can take it |
 | --- | --- | --- | --- |
 | in the same application and the same domain | `consumes Sibling, [:event]` | in the log of this application | a reaction, a read model, a boundary that consults it, a stage of a process |
-| in another application | `subscribe "<name>.vN"`, with the fields that it reads | in the inbox of the subscriber, never in its log | a policy only |
+| in another application | `subscribe {namespace, publication, version}`, with the fields that it reads | in the inbox of the subscriber, never in its log | a policy only |
 
 The contracts of one application share one log. So the event of a sibling contract is a row that
 the consumer can read. Another application has its own log. Its events leave it only through a
@@ -100,21 +100,26 @@ A reference carries no event. It tells what a number means:
 ## How does an event leave the application?
 
 An event leaves the application only through `publish`. The publication names a local event, the
-name with a version that the event goes out under, and the fields that it carries. The event that
-goes out is an *integration event*:
+fields that it carries, and the version of these fields. The event that goes out is an
+*integration event*:
 
 <!-- in: Concepts.Between.Contracts.Loans -->
 ```elixir
 publish :loan_opened,
-  as: "between_example.loan.opened.v1",
+  version: 1,
   from: :loan_opened,
   fields: [:loan_id, :copy_id],
   idempotent_on: [:loan_id]
 ```
 
-- **The name is a promise to other applications.** It starts with the `name:` of the domain. Then
-  it has segments in snake_case, separated by dots. It ends with a version, such as `.v1`. Two
-  publications of one contract cannot have the same name.
+- **The library builds the published name.** The name is the `name:` of the domain, the name of
+  the publication and the version: `between_example.loan_opened.v1`. The name of a publication is
+  in snake_case. Two publications of one application cannot have the same name.
+- **The name and its fields are a promise to other applications.** `version:` is 1 if you leave
+  it out. To remove a field or to change its type, raise the version. The new version is a new
+  name, and each subscriber moves to it. To add a field, keep the version.
+  [`mix ehos_contract.schema`](event-versions.md#what-does-a-publication-promise) records the
+  fields of each publication and refuses a change that breaks this promise.
 - **`fields:` lists fields of the event, and none is personal.** An erasure cannot reach a copy
   on a broker. The identity of a unit, or an `:id` that names a
   person, goes out in clear text, as the log keeps it.
@@ -123,7 +128,7 @@ publish :loan_opened,
   with a new id. Name all the fields that make one event. A key that is too narrow makes two real
   events into one.
 - If you leave out `idempotent_on:`, or one of its values is `nil`, the key is the id of the
-  message: `<event id>/<as>`.
+  message: `<event id>/<published name>`.
 
 [The compile refusals](refusals.md#refusals-d) list what the compiler refuses in a publication
 ([`D11`](refusals.md#refusals-d)). The reference is [`publish`](dsl/contract-publish.md).
@@ -161,8 +166,8 @@ is no outbox table.
   attempt, and it tries again later.
 - **Without a bus**, the relay waits. When a bus is configured, it publishes all events since its
   position.
-- **The relay has the name of the `publish`, not its `as:`.** A new name of the declaration starts
-  a new relay at the head. What the old relay did not publish never
+- **The relay has the name of the `publish`, not its version.** A new name of the declaration
+  starts a new relay at the head. What the old relay did not publish never
   leaves.
 - The relay sends each field as the log keeps it. A field that was personal in an older version
   of the event leaves encrypted. An identity leaves in clear text, also after its subject is
@@ -181,12 +186,13 @@ transport between nodes as an adapter. The library depends on no broker.
 
 ## How does an application subscribe?
 
-The subscriber names the event by its published name, gives it a name in this contract, and lists
-the fields that it reads. Only a policy takes it:
+The subscriber names the event by the parts of its published name: the namespace of the
+publisher, the name of the publication and the version. It gives the event a name in this
+contract, and lists the fields that it reads. Only a policy takes it:
 
 <!-- in: Concepts.Between.Holds.Contracts.Holds -->
 ```elixir
-subscribe "between_example.loan.opened.v1", as: :copy_lent do
+subscribe {:between_example, :loan_opened, 1}, as: :copy_lent do
   field :loan_id, :id
   field :copy_id, :id
 end
@@ -220,7 +226,7 @@ never is. So the contract does not compile if one of them takes a subscribed eve
 - **If no bus is configured, no inbox starts**, and no subscribed event arrives.
 
 A contract that subscribes asks for a capability: the published name without its version, and
-`.subscribe`. Example: `between_example.loan.opened.subscribe`. The platform grants this
+`.subscribe`. Example: `between_example.loan_opened.subscribe`. The platform grants this
 capability, and the transport delivers the event by it. The engine makes an inbox, and asks for
 the capability, only when a policy handles the event. The reference is
 [`subscribe`](dsl/contract-subscribe.md).
@@ -262,7 +268,7 @@ defmodule Concepts.Between.Contracts.Loans do
   end
 
   publish :loan_opened,
-    as: "between_example.loan.opened.v1",
+    version: 1,
     from: :loan_opened,
     fields: [:loan_id, :copy_id],
     idempotent_on: [:loan_id]
@@ -319,7 +325,7 @@ defmodule Concepts.Between.Holds.Contracts.Holds do
     context: :holds,
     id: "between_holds.holds"
 
-  subscribe "between_example.loan.opened.v1", as: :copy_lent do
+  subscribe {:between_example, :loan_opened, 1}, as: :copy_lent do
     field :loan_id, :id
     field :copy_id, :id
   end

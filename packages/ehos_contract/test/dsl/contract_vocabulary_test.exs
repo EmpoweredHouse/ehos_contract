@@ -104,7 +104,7 @@ defmodule EhosContract.ContractVocabularyTest do
         [:consumes, :field] => @field,
         [:subscribe] => [:from, :as],
         [:subscribe, :field] => @field,
-        [:publish] => [:name, :as, :from, :fields, :idempotent_on],
+        [:publish] => [:name, :version, :as, :from, :fields, :idempotent_on],
         [:scenario] => [:description, :target, :actor, :as, :rejected, :illustrates, :ended],
         [:scenario, :given] => [:event, :data, :at],
         [:scenario, :given_entity] => [:entity, :data],

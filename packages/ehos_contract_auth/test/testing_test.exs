@@ -21,7 +21,7 @@ defmodule EhosContract.Auth.TestingTest do
     @moduledoc false
     use EhosContract.Contract, domain: Domain, context: :stock, id: "testing_rig.stock"
 
-    subscribe "other_shop.order.placed.v1", as: :order_placed do
+    subscribe {:other_shop, :order_placed, 1}, as: :order_placed do
       field(:order_id, :id)
     end
 
@@ -36,7 +36,7 @@ defmodule EhosContract.Auth.TestingTest do
 
   test "a contract that consumes another application's event needs no door for it" do
     assert Map.keys(EhosContract.Model.capabilities(Stock)) == [
-             "other_shop.order.placed.subscribe"
+             "other_shop.order_placed.subscribe"
            ]
 
     assert EhosContract.Auth.Testing.assert_every_entry_refuses(Stock, %{}) == :ok
@@ -46,11 +46,11 @@ defmodule EhosContract.Auth.TestingTest do
     error =
       assert_raise ExUnit.AssertionError, fn ->
         EhosContract.Auth.Testing.assert_every_entry_refuses(Stock, %{
-          "other_shop.order.placed.subscribe" => fn _token -> :ok end
+          "other_shop.order_placed.subscribe" => fn _token -> :ok end
         })
       end
 
-    assert error.message =~ "not declared: other_shop.order.placed.subscribe"
+    assert error.message =~ "not declared: other_shop.order_placed.subscribe"
   end
 end
 

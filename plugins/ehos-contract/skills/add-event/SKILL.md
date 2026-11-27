@@ -129,9 +129,11 @@ Each field names a shape, never a thing (`packages/ehos_contract/docs/dsl/contra
   unit's scenarios, or as the `on` trigger of a reaction's scenario. `S3` refuses data of undeclared
   fields either way, and `check` warns of a recorded event no scenario records
   (`recording-without-scenario`).
-- **Leaving the application** is a separate declaration, `publish :name, as: "<domain>.<name>.v1",
-  from: :event, fields: [...]` — a versioned name with the fields that cross, and no personal ones
-  (`D11`), as `Billing.Contracts.Subscriptions` publishes the issued invoice. Not every event.
+- **Leaving the application** is a separate declaration, `publish :name, from: :event, fields:
+  [...]` — the library builds the published name `<domain>.<name>.v<version>` (`version:`, 1 if
+  left out), with the fields that cross, and no personal ones (`D11`), as
+  `Billing.Contracts.Subscriptions` publishes the issued invoice as `billing.invoice_issued.v1`. The
+  publication's name is unique in the application. Not every event.
 
 ## Procedure
 

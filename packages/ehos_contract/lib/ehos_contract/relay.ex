@@ -43,8 +43,9 @@ defmodule EhosContract.Relay do
   - **It holds a pooled connection while it publishes**, one per relay per node, for
     as long as `c:EhosContract.Bus.publish/2` takes, which is why that callback has to
     return within seconds.
-  - **Its row is keyed by the `publish`'s name, not its `as:`.** Renaming the
-    declaration makes a new relay at the head of the log, and what the old one had
+  - **Its row is keyed by the `publish`'s name, not its `version:`.** A raised version
+    keeps the relay where it stands, and the events after it go out under the new name.
+    Renaming the declaration makes a new relay at the head of the log, and what the old one had
     not yet published — behind an outage, or with no bus configured — never leaves;
     the old row stays. Removing a `publish` and adding it back later finds the old row,
     and the relay resumes from where it stood, publishing everything since.

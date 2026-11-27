@@ -18,6 +18,7 @@ defmodule EhosContract.Contract.Rules do
 
   alias EhosContract.DslRules
   alias EhosContract.Contract.Dsl
+  alias EhosContract.Contract.Published
   alias EhosContract.Contract.Rules
   alias Spark.Dsl.Transformer
 
@@ -54,6 +55,7 @@ defmodule EhosContract.Contract.Rules do
   def declarations(dsl) do
     entities = Transformer.get_entities(dsl, [:contract])
     of = fn struct -> for %{__struct__: ^struct} = e <- entities, do: e end
+    id = Map.get(Transformer.get_persisted(dsl, :ehos_contract_contract) || %{}, :id)
 
     %{
       module: Transformer.get_persisted(dsl, :module),
@@ -65,7 +67,8 @@ defmodule EhosContract.Contract.Rules do
       queries: of.(Dsl.Query),
       domain_services: of.(Dsl.DomainService),
       consumes: of.(Dsl.Consumes),
-      publishes: of.(Dsl.Publish),
+      publishes:
+        for(p <- of.(Dsl.Publish), do: %{p | published_as: Published.name(id, p.name, p.version)}),
       scenarios: of.(Dsl.Scenario)
     }
   end

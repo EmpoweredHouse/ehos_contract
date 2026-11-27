@@ -226,12 +226,26 @@ defmodule EhosContract.Contract.Dsl do
 
   defmodule Consumes do
     @moduledoc false
-    defstruct [:from, :as, via: :consumes, events: [], fields: [], __spark_metadata__: nil]
+    defstruct [:from, :as, :key, via: :consumes, events: [], fields: [], __spark_metadata__: nil]
+
+    # #697: a subscriber names a published event by its parts, `{namespace, publication,
+    # version}`, and the rules read the name they stand for, as a publisher's library
+    # builds it. A string, the form before, is kept as written for D11 to refuse with
+    # the key to write.
+    @doc false
+    @spec published_key(%__MODULE__{}) :: {:ok, %__MODULE__{}}
+    def published_key(%__MODULE__{from: {_, _, _} = key} = subscribe),
+      do: {:ok, %{subscribe | from: EhosContract.Contract.Published.of_key(key), key: key}}
+
+    def published_key(%__MODULE__{} = subscribe), do: {:ok, subscribe}
   end
 
   defmodule Publish do
     @moduledoc false
-    defstruct [:name, :as, :from, fields: [], idempotent_on: [], __spark_metadata__: nil]
+    # `as` is what a contract wrote, which D11 refuses (#697); `published_as` the name
+    # the library builds, set where the rules read the declarations.
+    defstruct [:name, :as, :from, :published_as, version: 1, fields: [], idempotent_on: []] ++
+                [__spark_metadata__: nil]
   end
 
   defmodule Promise do
@@ -1001,14 +1015,17 @@ defmodule EhosContract.Contract.Dsl do
     target: Consumes,
     args: [:from],
     auto_set_fields: [via: :subscribe],
+    transform: {Consumes, :published_key, []},
     entities: [fields: [@field]],
     schema: [
+      # A string is let through for D11 to refuse with the key to write (#697).
       from: [
-        type: :string,
+        type: {:or, [{:tuple, [:atom, :atom, :pos_integer]}, :string]},
         required: true,
         doc:
-          "The published name, versioned as `publish as:` is, like " <>
-            "`\"my-shop.entry.recorded.v1\"`."
+          "The published event, by the publisher's namespace, its publication and its " <>
+            "version, like `{:\"my-shop\", :entry_recorded, 1}`, for " <>
+            "`\"my-shop.entry_recorded.v1\"`."
       ],
       as: [type: :atom, doc: "The event's name in this contract."]
     ]
@@ -1020,13 +1037,25 @@ defmodule EhosContract.Contract.Dsl do
     target: Publish,
     args: [:name],
     schema: [
-      name: [type: :atom, required: true, doc: "The publication's name."],
-      as: [
-        type: :string,
+      name: [
+        type: :atom,
         required: true,
         doc:
-          "The versioned name, under the domain's `name:`, like `\"my-shop.entry.recorded.v1\"`; " <>
-            "only that first segment may hold a dash."
+          "The publication's name, unique in the application. The published name is the " <>
+            "domain's `name:`, this name and the version, like `\"my-shop.entry_recorded.v1\"`."
+      ],
+      version: [
+        type: :pos_integer,
+        default: 1,
+        doc:
+          "The version of what it carries. Raise it to remove a field or change its type; " <>
+            "`mix ehos_contract.schema` refuses either at the same version."
+      ],
+      # Removed (#697): the library builds the name. Kept in the schema so that D11 can
+      # refuse it with the line to write, rather than Spark with an unknown option.
+      as: [
+        type: :any,
+        doc: "Removed: the library builds the name. A contract that names it does not compile."
       ],
       from: [type: :atom, required: true, doc: "The local event it is built from."],
       fields: [

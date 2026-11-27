@@ -67,17 +67,20 @@ defmodule EhosContractHost.E10OutputsTest do
   test "billing's invoice is the only AsyncAPI message boundary" do
     document = EhosContract.AsyncAPI.document(Billing.Contracts.Subscriptions)
 
-    assert %{"issued" => %{"address" => "billing.invoice.issued.v1"}} = document["channels"]
+    assert %{"invoice_issued" => %{"address" => "billing.invoice_issued.v1"}} =
+             document["channels"]
 
     assert %{
-             "publish_issued" => %{
+             "publish_invoice_issued" => %{
                "action" => "send",
-               "channel" => %{"$ref" => "#/channels/issued"},
-               "messages" => [%{"$ref" => "#/channels/issued/messages/billing.invoice.issued.v1"}]
+               "channel" => %{"$ref" => "#/channels/invoice_issued"},
+               "messages" => [
+                 %{"$ref" => "#/channels/invoice_issued/messages/billing.invoice_issued.v1"}
+               ]
              }
            } = document["operations"]
 
-    assert %{"billing.invoice.issued.v1" => message} = document["components"]["messages"]
+    assert %{"billing.invoice_issued.v1" => message} = document["components"]["messages"]
 
     assert message["x-ehos-contract-source-event"] == "issued"
     assert message["x-ehos-contract-idempotent-on"] == ["subscription_id", "period_id"]
@@ -203,7 +206,7 @@ defmodule EhosContractHost.E10OutputsTest do
 
     assert Enum.map(between["events"], & &1["event"]) == ["event:billing.subscriptions:issued"]
 
-    publication = Document.id([:publication, Billing.Domain, "billing.invoice.issued.v1"])
+    publication = Document.id([:publication, Billing.Domain, "billing.invoice_issued.v1"])
 
     assert Enum.any?(
              graph["relations"]["publishes"],

@@ -28,7 +28,6 @@ defmodule BusRig.Orders do
   end
 
   publish :order_placed,
-    as: "bus_rig_shop.order.placed.v1",
     from: :placed,
     fields: [:order_id, :total],
     idempotent_on: [:order_id]

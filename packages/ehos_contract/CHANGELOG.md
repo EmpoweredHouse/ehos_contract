@@ -48,6 +48,24 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** **Moves a verdict:** the library builds the name of a published event:
+  `<domain name:>.<publication name>.v<version>`. Write `publish :invoice_issued, version: 1, from:
+  …, fields: …` (`version:` is 1 if you leave it out), and `subscribe {:billing, :invoice_issued,
+  1}, as: …` for `billing.invoice_issued.v1`. A `publish` that names itself with `as:`, and a
+  `subscribe` named by a string, do not compile, and the message gives the line to write. A name of
+  more than three segments, such as `billing.invoice.issued.v1`, changes: rename the publication
+  (`:invoice_issued`) and move the publisher and its subscribers together. The changed name moves
+  the version of each contract that publishes it. Two contracts of one application cannot publish
+  one publication name (X7).
+- **Breaking:** `ehos_contract.lock` records the fields of each publication at its version, beside
+  the events, in sections `events:` and `publications:`. Run `mix ehos_contract.schema` once and
+  commit the file; the task reads a file of events alone. `mix ehos_contract.schema --check` then
+  refuses a field that a publication removes, retypes or makes optional at the same `version:`, a
+  lower version, and a publication that no contract declares any more, until
+  `mix ehos_contract.schema --forget <name>`. An added field needs no new version.
+
 ## [0.18.0] - 2026-11-27
 
 ### Added

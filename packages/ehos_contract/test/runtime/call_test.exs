@@ -60,7 +60,7 @@ defmodule EhosContract.CallTest do
     assert EhosContract.call({:record, "dispatch_rig.deposit"}, %{}, actor: @clerk) ==
              {:error, :not_found}
 
-    assert EhosContract.call({:command, "bus_rig_shop.order.placed.subscribe"}, %{},
+    assert EhosContract.call({:command, "bus_rig_shop.order_placed.subscribe"}, %{},
              actor: @clerk
            ) ==
              {:error, :not_found}

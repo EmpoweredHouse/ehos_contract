@@ -201,7 +201,7 @@ defmodule EhosContract.CheckCompletenessContractTest do
           ends_on :withdrawn
         end
 
-        publish :forwarded, as: "clinic.referral.forwarded.v1", from: :forwarded, fields: [:visit_id]
+        publish :forwarded, from: :forwarded, fields: [:visit_id]
       end
 
       defmodule EhosContract.CheckCompletenessContractTest.Referral do

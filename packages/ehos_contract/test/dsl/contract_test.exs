@@ -288,11 +288,11 @@ defmodule EhosContract.ContractTest do
           domain: EhosContract.ContractTest.ClinicDomain,
           context: :settlement, id: "clinic.named"
 
-        subscribe "scheduling.visit.closed.v1", as: :closed_elsewhere do
+        subscribe {:scheduling, :visit_closed, 1}, as: :closed_elsewhere do
           field :visit_id, :id
         end
 
-        subscribe "scheduling.visit.opened.v1", as: :opened_elsewhere do
+        subscribe {:scheduling, :visit_opened, 1}, as: :opened_elsewhere do
           field :visit_id, :id
         end
 
@@ -327,7 +327,7 @@ defmodule EhosContract.ContractTest do
       # `<name>.subscribe`, without its version, for an event a policy handles, and none
       # for :opened_elsewhere, which nothing handles and no inbox would take (E12c).
       assert Model.capabilities(EhosContract.ContractTest.Named) == %{
-               "scheduling.visit.closed.subscribe" => %{
+               "scheduling.visit_closed.subscribe" => %{
                  kind: :subscribe,
                  name: :closed_elsewhere,
                  roles: [],

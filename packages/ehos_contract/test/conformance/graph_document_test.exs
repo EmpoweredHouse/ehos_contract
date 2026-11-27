@@ -491,7 +491,7 @@ defmodule EhosContract.GraphDocumentTest do
       d = Document.contract(BusRig.Stock)
       model = Model.fetch(BusRig.Stock)
       event = Document.id([:event, scope(BusRig.Stock), :order_placed])
-      publication = Document.id([:publication, model.domain, "bus_rig_shop.order.placed.v1"])
+      publication = Document.id([:publication, model.domain, "bus_rig_shop.order_placed.v1"])
 
       assert relation(d, "received_as", publication, event)
 
@@ -512,11 +512,11 @@ defmodule EhosContract.GraphDocumentTest do
           context: :stock,
           id: "bus_rig_warehouse.twice"
 
-        subscribe "bus_rig_shop.order.placed.v1", as: :placed do
+        subscribe {:bus_rig_shop, :order_placed, 1}, as: :placed do
           field :order_id, :id
         end
 
-        subscribe "bus_rig_shop.order.placed.v1", as: :placed_again do
+        subscribe {:bus_rig_shop, :order_placed, 1}, as: :placed_again do
           field :order_id, :id
           field :total, :integer
         end

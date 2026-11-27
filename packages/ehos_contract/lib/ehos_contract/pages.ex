@@ -42,6 +42,7 @@ defmodule EhosContract.Pages do
 
   alias EhosContract.Model
   alias EhosContract.Contract.Doc
+  alias EhosContract.Contract.Published
 
   # A contract's declarations with a page of their own: the model's key, the
   # directory, and the word for one.
@@ -950,7 +951,8 @@ defmodule EhosContract.Pages do
         site,
         section("Published", model.publishes, fn p ->
           bullet([
-            "#{code(p.name)}, published as #{code(p.as)}, from ",
+            "#{code(p.name)}, published as #{code(p.as)}, which a subscriber names " <>
+              "#{code(Published.key_source(p.as))}, from ",
             event_link(site, model, p.from)
           ])
         end)
