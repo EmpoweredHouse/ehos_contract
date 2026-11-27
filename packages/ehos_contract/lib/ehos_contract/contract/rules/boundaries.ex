@@ -245,23 +245,31 @@ defmodule EhosContract.Contract.Rules.Boundaries do
     [
       {"D11: publish #{inspect(publish.name)} names itself with as: #{inspect(publish.as)}; the " <>
          "library builds the name from the domain's name:, the publication's name and its " <>
-         "version: (#{inspect(publish.published_as)} now). Remove as:" <> rename(publish.as),
+         "version: (#{inspect(publish.published_as)} now). Remove as:" <> rename(publish),
        publish}
     ]
   end
 
-  defp rename(as) do
-    case parts(as) do
+  defp rename(publish) do
+    case parts(publish.as) do
       {namespace, publication, version} ->
         ", and write `publish #{inspect(String.to_atom(publication))}, version: #{version}` " <>
           "for the name nearest the one written, " <>
-          "#{inspect("#{namespace}.#{publication}.v#{version}")}; its subscribers move to it. A " <>
-          "renamed publication's relay starts at the head of the log, so let the old relay " <>
-          "publish what it holds before you deploy the rename"
+          "#{inspect("#{namespace}.#{publication}.v#{version}")}; its subscribers move to it" <>
+          relay(publish.name, publication)
 
       nil ->
         ""
     end
+  end
+
+  # A relay is keyed by the declaration's name, so only a new one starts at the head.
+  defp relay(name, publication) do
+    if Atom.to_string(name) == publication,
+      do: "",
+      else:
+        ". A renamed publication's relay starts at the head of the log, so let the old " <>
+          "relay publish what it holds before you deploy the rename"
   end
 
   @doc false

@@ -241,6 +241,7 @@ defmodule EhosContract.ContractBoundariesTest do
         #{@unit}
           publish :visit_closed, as: "clinic.visit.closed.v2", from: :visit_closed, fields: [:visit_id]
           publish :visit_ended, as: "Clinic/VisitClosed", from: :visit_closed, fields: [:visit_id]
+          publish :closing, as: "clinic.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
         """)
 
       assert message =~
@@ -248,14 +249,18 @@ defmodule EhosContract.ContractBoundariesTest do
                  "library builds the name from the domain's name:, the publication's name and its " <>
                  ~s|version: ("clinic.visit_closed.v1" now). Remove as:, and write `publish | <>
                  ":visit_closed, version: 2` for the name nearest the one written, " <>
-                 ~s|"clinic.visit_closed.v2"; its subscribers move to it. A renamed publication's | <>
-                 "relay starts at the head of the log, so let the old relay publish what it holds " <>
-                 "before you deploy the rename (publish_named.ex:21)"
+                 ~s|"clinic.visit_closed.v2"; its subscribers move to it (publish_named.ex:21)|
 
       assert message =~
                ~s|D11: publish :visit_ended names itself with as: "Clinic/VisitClosed"; the | <>
                  "library builds the name from the domain's name:, the publication's name and its " <>
                  ~s|version: ("clinic.visit_ended.v1" now). Remove as: (publish_named.ex:22)|
+
+      assert message =~
+               ~s|write `publish :visit_closed, version: 1` for the name nearest the one written, | <>
+                 ~s|"clinic.visit_closed.v1"; its subscribers move to it. A renamed | <>
+                 "publication's relay starts at the head of the log, so let the old relay " <>
+                 "publish what it holds before you deploy the rename (publish_named.ex:23)"
     end
 
     test "a publication whose name is not snake_case builds no published name" do

@@ -517,7 +517,7 @@ publication carries at its version:
     }
 
 A file written before it recorded publications holds the events alone. The task reads
-it, and writes it again with both.
+it, and writes both sections the next time it writes the file.
 
 For each field, the entry gives:
 

@@ -275,7 +275,8 @@ The lock records the fields of each publication at its version, beside the event
 
 - **Add a field.** Keep the version. A subscriber does not read a field that it does not declare.
   The lock records the new field in place.
-- **Remove a field, or change its type, or change whether it can be absent.** Raise `version:`.
+- **Remove a field, or change its type, whether it can be absent, or the subject that it
+  identifies.** Raise `version:`.
   The publication then goes out under a new name, such as `billing.invoice_issued.v2`. Each
   subscriber moves to the new name. The lock refuses the change at the same version.
 - **Lower the version.** The lock refuses it, because the subscribers of the recorded version
