@@ -73,7 +73,7 @@ jobs:
     steps:
       # No token is left in .git/config: the dependencies' code runs while they compile,
       # and nothing after the checkout needs git to authenticate.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -95,7 +95,7 @@ jobs:
       # studies and a Phoenix endpoint — and its `mix check` is the gate: it runs its
       # own suite and then each package's `mix check` as a separate project.
       - name: Cache sandbox deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: sandbox/deps
           key: sandbox-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('sandbox/mix.lock') }}
@@ -112,7 +112,7 @@ jobs:
       # drops by a `!` pattern only what the list itself holds. docs.yml restores the four
       # packages' entries with these keys and `path` texts copied: change them there too.
       - name: Cache engine deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             packages/ehos_contract/deps/*
@@ -124,7 +124,7 @@ jobs:
       # fully separate Mix project via package_test_web/1 in sandbox/mix.exs.
       # docs.yml copies this key and path.
       - name: Cache dashboard foundation deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: packages/ehos_contract_web/deps
           key: ehos-contract-web-deps-${{ matrix.name }}-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_web/mix.lock') }}
@@ -134,7 +134,7 @@ jobs:
       # ehos-tools, so its children are listed and those left out, as the engine's above.
       # docs.yml copies this key and path.
       - name: Cache credential verifier deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             packages/ehos_contract_auth/deps/*
@@ -146,7 +146,7 @@ jobs:
       # ehos-tools, so its children are listed and those left out, as the engine's above.
       # docs.yml copies this key and path.
       - name: Cache graph renderer deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             packages/ehos_contract_graph/deps/*
@@ -180,7 +180,7 @@ jobs:
         run: echo "os=$ImageOS" >> "$GITHUB_OUTPUT"
 
       - name: Cache compiled deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             sandbox/_build/*/lib/*
@@ -289,7 +289,7 @@ jobs:
     steps:
       # No token is left in .git/config: the dependencies' code runs while they are fetched
       # and compiled.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -334,7 +334,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: erlef/setup-beam@v1
         with:
