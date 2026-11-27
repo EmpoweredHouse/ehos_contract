@@ -208,6 +208,7 @@ spark_locals_without_parens = [
   value: 2,
   value: 3,
   verdict: 1,
+  version: 1,
   via: 1,
   violated_by: 1,
   wait: 1,
