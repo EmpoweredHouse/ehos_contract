@@ -102,7 +102,7 @@ defmodule EhosContract.Testing do
     end
   end
 
-  defp time!(%DateTime{} = at, _source), do: at
+  defp time!(%DateTime{time_zone: "Etc/UTC"} = at, _source), do: at
 
   defp time!(_other, source) do
     raise ArgumentError,

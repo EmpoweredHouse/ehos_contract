@@ -353,6 +353,17 @@ defmodule EhosContract.ProcessManagerTest do
                  "host's clock String.upcase/1 did not give one"
     end
 
+    test "control: a host's clock in another time zone is refused, naming the clock" do
+      warsaw = %{DateTime.add(@opened, 3600) | time_zone: "Europe/Warsaw", zone_abbr: "CET"}
+      Application.put_env(:ehos_contract, Testing, now: {Function, :identity, [warsaw]})
+
+      error = assert_raise ArgumentError, fn -> Testing.drain() end
+
+      assert error.message ==
+               "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and the " <>
+                 "host's clock Function.identity/1 did not give one"
+    end
+
     test "control: an at: that is no DateTime is refused" do
       error = assert_raise ArgumentError, fn -> Testing.drain(at: "2026-09-02") end
 
