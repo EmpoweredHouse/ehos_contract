@@ -279,17 +279,11 @@ jobs:
 
   # The diagrams of the engine, the credential verifier and the graph renderer in `docs/img/` against their sources in
   # `docs/diagrams/`, by `mix ehos_diagrams.gen --check` in `:dev`. The generator and the design system it reads
-  # live in the private ehos-tools, so this is the only job that gets a token for it, from
-  # the "ehos-tools CI" GitHub App: it may only read that repository and expires within the
-  # hour, as in eh-os. A pull request from a fork or from Dependabot gets no Actions
-  # secrets, so this job is skipped for it, and the `check` job above runs without them
-  # (#520). Nothing is cached: an entry would hold ehos-tools' code, which anyone who can
-  # run a workflow here could restore.
+  # live in ehos-tools, which is public, so the job fetches them without a token and runs for a pull request
+  # from a fork or from Dependabot too (#527). No workflow here holds a GitHub App's key: one in a repository
+  # secret could be printed by any branch that edits a workflow (#688).
   diagrams:
-    if: >-
-      ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' ||
-      (github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]')) }}
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -305,24 +299,9 @@ jobs:
           otp-version: "27.2"
           elixir-version: "1.18.4"
 
-      - id: ehos-tools
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ secrets.EHOS_CI_APP_ID }}
-          private-key: ${{ secrets.EHOS_CI_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ehos-tools
-          permission-contents: read
-
-      # Git reads the token from this step's environment alone, so mix.lock keeps the
-      # plain URL. Each fetched dependency's mix.exs runs here, while the token is in reach;
-      # `--only dev` keeps that to what the check needs.
+      # `--only dev` fetches only what the check needs.
       - name: Install engine deps
         working-directory: packages/ehos_contract
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
-          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check
@@ -331,10 +310,6 @@ jobs:
 
       - name: Install credential verifier deps
         working-directory: packages/ehos_contract_auth
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
-          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check, credential verifier
@@ -343,10 +318,6 @@ jobs:
 
       - name: Install graph renderer deps
         working-directory: packages/ehos_contract_graph
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ steps.ehos-tools.outputs.token }}@github.com/EmpoweredHouse/ehos-tools.insteadOf
-          GIT_CONFIG_VALUE_0: https://github.com/EmpoweredHouse/ehos-tools
         run: mix deps.get --only dev
 
       - name: mix ehos_diagrams.gen --check, graph renderer

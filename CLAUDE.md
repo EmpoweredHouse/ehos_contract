@@ -166,8 +166,7 @@ hidden module, a module outside `lib/`, or a missing page (not to a module that 
 `packages/ehos_contract_graph` under `:dev`, which
 holds the diagrams in `docs/img/` to their sources in `docs/diagrams/` (only where `mix deps.get` fetched the
 private ehos-tools; without it the gate
-says it did not check them, and CI's `diagrams` job does, except for a pull request from a fork or Dependabot,
-#527), then
+says it did not check them, and CI's `diagrams` job does), then
 `packages/ehos_contract_web`,
 `packages/ehos_contract_auth` and `packages/ehos_contract_graph` (each with its own `docs --warnings-as-errors`
 and `test/doc_coverage_test.exs`). **It has to pass.** Separate invocations, not an umbrella, so that each package
