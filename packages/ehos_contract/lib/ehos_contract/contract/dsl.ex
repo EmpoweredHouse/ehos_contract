@@ -1025,7 +1025,8 @@ defmodule EhosContract.Contract.Dsl do
         doc:
           "The published event, by the publisher's namespace, its publication and its " <>
             "version, like `{:\"my-shop\", :entry_recorded, 1}`, for " <>
-            "`\"my-shop.entry_recorded.v1\"`."
+            "`\"my-shop.entry_recorded.v1\"`. A name written as a string does not compile, " <>
+            "and the message gives the key to write."
       ],
       as: [type: :atom, doc: "The event's name in this contract."]
     ]
