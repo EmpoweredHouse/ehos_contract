@@ -307,9 +307,10 @@ defmodule EhosContract.Config do
 
   # A module key is left alone, but one that is nearly a block of settings the library
   # reads, or one of its modules, is where a host meant to configure that block. Compared
-  # without `Elixir.`, a prefix every module shares. 0.9 refuses a slip of a letter or two,
-  # such as `Ehoscontract.Vault` (0.904), and accepts the package's own
-  # `EhosContract.TestRepo`, which scores 0.887 against `EhosContract.Testing`.
+  # without `Elixir.`, a prefix every module shares. 0.9 refuses nearly every slip of one
+  # letter, such as `Ehoscontract.Vault` (0.904), but not all: `EhosConract.Vault` scores
+  # 0.890. It cannot go lower, since the package's own `EhosContract.TestRepo` scores
+  # 0.887 against `EhosContract.Testing`.
   @blocks [
     {"EhosContract.Vault",
      "The vault's settings go under EhosContract.Vault: " <>
@@ -318,7 +319,7 @@ defmodule EhosContract.Config do
      "The settings for tests go under EhosContract.Testing: " <>
        "`config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}`."}
   ]
-  @block_names [EhosContract.Vault, EhosContract.Testing]
+  @block_names for {name, _where} <- @blocks, do: Module.concat([name])
 
   defp misplaced!({key, _}) when is_atom(key) and key not in @block_names do
     with "Elixir." <> name <- Atom.to_string(key),
