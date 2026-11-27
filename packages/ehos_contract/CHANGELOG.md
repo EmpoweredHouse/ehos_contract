@@ -61,10 +61,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   not stamp the events a test dispatches: dispatch a story in the past in `Clock.at/2`. Stub the
   host's clock rather than `expect` it, since the drain gets the stub once the expectation is used
   up (#691).
-- The engine refuses at start a module key that looks like a misspelling of `EhosContract.Testing`,
-  such as `EhosContract.Testng`, or names one of its modules, and says where the settings for tests
-  go. Before, the engine ignored such a key, and a drain ran at the real time. A host whose
-  configuration has such a key does not start until it moves the settings (#692).
+- **Breaking:** the engine refuses at start a module key that looks like a misspelling of
+  `EhosContract.Testing`, such as `EhosContract.Testng`, or a name under `EhosContract.Testing.`,
+  and says where the settings for tests go. Before, the engine ignored such a key, and a drain ran
+  at the real time. A host with such a key does not start until it removes the key or moves its
+  settings under `EhosContract.Testing` (#692).
 
 ### Changed
 

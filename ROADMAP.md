@@ -12,11 +12,11 @@ with the options they beat, its review and its pull requests; this file holds on
   tests (#691), a misspelt name of that setting refused at start (#692), and a query's param that a
   query string cannot carry refused at compile (#618): the engine 0.18.0; `ehos_contract_auth`
   0.19.0 and `ehos_contract_web` 0.14.0 only require it, so a host moves the three packages
-  together. A host acts on nothing else, unless a query has such a param or its configuration has
-  a key near `EhosContract.Testing`, which now stops the start. The graph renderer stays at 0.12.0.
-  The plugin `ehos-contract` is at 0.16.1. Applications install them from git, at
-  `EmpoweredHouse/ehos_contract`. The pull request after the tag moves each released package to its
-  next patch's `-dev`.
+  together. A host acts on nothing else, unless a query has such a param. The engine also does not
+  start if its configuration has a key that looks like a misspelling of `EhosContract.Testing`.
+  The graph renderer stays at 0.12.0. The plugin `ehos-contract` is at 0.16.1. Applications
+  install them from git, at `EmpoweredHouse/ehos_contract`. The pull request after the tag moves
+  each released package to its next patch's `-dev`.
 - **Public since 26 November 2026.** Its GitHub settings are made: private vulnerability reporting, secret
   scanning with push protection, Dependabot, Discussions, and a protected `main` (#678).
 - **Now:** the rest of the publication programme, which makes the packages installable from Hex. PB6 is in
