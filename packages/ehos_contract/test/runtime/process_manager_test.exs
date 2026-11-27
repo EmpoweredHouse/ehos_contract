@@ -336,7 +336,11 @@ defmodule EhosContract.ProcessManagerTest do
       drain_at(0)
 
       Testing.drain()
-      assert [_flag] = flags()
+      assert [flag] = flags()
+
+      # Each append reads the real time, so the flag comes after the firing it caused.
+      assert [firing] = firings()
+      assert DateTime.after?(flag.occurred_at, firing.occurred_at)
     end
 
     test "control: a host's clock that gives no DateTime is refused, naming the clock" do

@@ -81,8 +81,11 @@ defmodule EhosContract.Testing do
   """
   @spec drain(keyword()) :: drained()
   def drain(opts \\ []) do
-    {at, opts} = Keyword.pop_lazy(opts, :at, &now/0)
-    Clock.at(time!(at, "at:"), fn -> run(opts) end)
+    case Keyword.pop_lazy(opts, :at, &now/0) do
+      # The real time, read at each append as outside a drain.
+      {nil, opts} -> run(opts)
+      {at, opts} -> Clock.at(time!(at, "at:"), fn -> run(opts) end)
+    end
   end
 
   defp now do
@@ -94,7 +97,7 @@ defmodule EhosContract.Testing do
 
   defp host_now do
     case Config.get(__MODULE__)[:now] do
-      nil -> DateTime.utc_now()
+      nil -> nil
       {module, function, args} = mfa -> time!(apply(module, function, args), describe(mfa))
     end
   end
