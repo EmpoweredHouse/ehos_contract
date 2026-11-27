@@ -20,13 +20,12 @@ name: private-references
 # hit, once for each time the line may occur. It holds the lines that fetch
 # ehos_diagrams and ehos_design for the engine, the credential verifier and the graph
 # renderer, which draw their
-# pages' diagrams: their `github:` in mix.exs, their entries in mix.lock, and the token in
-# ci.yml's `diagrams` job. Any
+# pages' diagrams: their `github:` in mix.exs and their entries in mix.lock. Any
 # other line that names a private repository fails, and so do a changed line, one more
 # copy of an allowed line, and an allowed line that no longer occurs: a new pin of either
 # dependency replaces its mix.lock line in the allowlist in the same pull request. The
 # check holds a line's text and count, not where it sits in its file: that an allowed
-# line stays where it is, the token in the `diagrams` job above all, is a reviewer's.
+# line stays where it is is a reviewer's.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
