@@ -655,42 +655,34 @@ defmodule EhosContract.Contract.Links.Domain do
     end
   end
 
-  defp query_string_shape(type, values) do
-    case shape(type, values) do
-      :one ->
-        :carried
+  defp query_string_shape(type, values), do: carried(shape(type, values), values)
 
-      {:list, inner} ->
-        case shape(inner, values) do
-          :one -> :carried
-          {:list, _} -> "which is a list of lists"
-          {:fields, _} -> "which is a list of values made of fields"
-        end
+  defp carried(:one, _values), do: :carried
+  defp carried({:list, inner}, values), do: list_of(shape(inner, values))
 
-      {:fields, fields} ->
-        case Enum.find(fields, &(shape(&1.type, values) != :one)) do
-          nil ->
-            :carried
-
-          field ->
-            what =
-              if match?({:list, _}, shape(field.type, values)),
-                do: "a list",
-                else: "made of fields"
-
-            "whose field #{inspect(field.name)} is #{what}"
-        end
+  defp carried({:fields, fields}, values) do
+    case Enum.find(fields, &(shape(&1.type, values) != :one)) do
+      nil -> :carried
+      field -> "whose field #{inspect(field.name)} is #{field_of(shape(field.type, values))}"
     end
   end
 
-  # A type through its domain value's aliases: one value, a list, or made of fields. An
-  # undeclared value is X3's to refuse.
+  defp list_of(:one), do: :carried
+  defp list_of({:list, _inner}), do: "which is a list of lists"
+  defp list_of({:fields, _fields}), do: "which is a list of values made of fields"
+
+  defp field_of({:list, _inner}), do: "a list"
+  defp field_of({:fields, _fields}), do: "made of fields"
+
+  # A type through its domain value's aliases (`EhosContract.Key.base_type/2`, as
+  # `one_value/2` follows them): one value, a list, or made of fields. An undeclared
+  # value is X3's to refuse.
   defp shape({:list, inner}, _values), do: {:list, inner}
 
   defp shape(type, values) when is_atom(type) do
-    case Map.get(values, type) do
+    case Map.get(values, Key.base_type(type, values)) do
       %{type: nil, fields: fields} -> {:fields, fields}
-      %{type: inner} when inner != type -> shape(inner, Map.delete(values, type))
+      %{type: {:list, inner}} -> {:list, inner}
       _built_in_or_undeclared -> :one
     end
   end
