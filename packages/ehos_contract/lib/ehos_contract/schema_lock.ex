@@ -604,8 +604,21 @@ defmodule EhosContract.SchemaLock do
   defp publications?(publications) do
     lock?(publications) and
       Enum.all?(publications, fn {name, versions} ->
-        name =~ ~r/\A[a-z][a-z0-9_-]*[a-z0-9_]\.[a-z][a-z0-9_]*\z/ and map_size(versions) == 1
+        published_name?(name) and map_size(versions) == 1
       end)
+  end
+
+  # The namespace and the publication, as the rules hold a domain's name and a
+  # publication's.
+  defp published_name?(name) do
+    case String.split(name, ".") do
+      [namespace, publication] ->
+        EhosContract.DslRules.namespace?(namespace) and
+          EhosContract.DslRules.snake_case?(publication)
+
+      _other ->
+        false
+    end
   end
 
   # A map written with a `__struct__` key is a struct to `Enum`, and a lock is none.

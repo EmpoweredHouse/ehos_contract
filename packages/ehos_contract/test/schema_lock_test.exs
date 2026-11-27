@@ -664,6 +664,11 @@ defmodule EhosContract.SchemaLockTest do
         assert SchemaLock.decode("%{events: %{}, publications: #{publications}}") ==
                  {:error, "its publications are not a map of names to one version each"}
       end
+
+      for name <- ["x.order_placed", "my-shop.order_placed"] do
+        assert {:ok, %{publications: %{^name => %{1 => []}}}} =
+                 SchemaLock.decode(~s|%{events: %{}, publications: %{"#{name}" => %{1 => []}}}|)
+      end
     end
 
     # #697: a file written before publications were recorded holds the events alone.
