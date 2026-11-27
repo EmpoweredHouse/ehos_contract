@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-27
+
 ### Added
 
 - `EhosContract.Testing.drain/1` takes `at:`, the time at which it runs the timers, so a test needs

@@ -24,6 +24,14 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-27
+
+### Changed
+
+- **Breaking:** the engine is required at `~> 0.18.0`, the release that lets a test's drain take its
+  time from `at:` or the host's clock, so a host moves the two packages together. Nothing else in
+  this package changed.
+
 ## [0.18.0] - 2026-11-27
 
 ### Changed

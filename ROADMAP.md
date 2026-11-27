@@ -8,12 +8,14 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## Where things stand (27 November 2026)
 
-- **Released:** v0.17.0, the domain's seed actor, which loads sample data and which no `by:` names
-  (#683): the engine 0.17.0 and the graph renderer 0.12.0; `ehos_contract_auth` 0.18.0 and
-  `ehos_contract_web` 0.13.0 only require them, so a host moves the four packages together. It acts
-  on nothing else unless it declares a seed. The plugin `ehos-contract` is at 0.16.0. Applications
-  install them from git, at `EmpoweredHouse/ehos_contract`. The pull request after the tag moves
-  each released package to its next patch's `-dev`.
+- **Released:** v0.18.0, the time of a test's drain, given with `at:` or by the host's clock for
+  tests (#691), a misspelt name of that setting refused at start (#692), and a query's param that a
+  query string cannot carry refused at compile (#618): the engine 0.18.0; `ehos_contract_auth`
+  0.19.0 and `ehos_contract_web` 0.14.0 only require it, so a host moves the three packages
+  together. A host acts on nothing else unless a query has such a param. The graph renderer stays
+  at 0.12.0. The plugin `ehos-contract` is at 0.16.1. Applications install them from git, at
+  `EmpoweredHouse/ehos_contract`. The pull request after the tag moves each released package to its
+  next patch's `-dev`.
 - **Public since 26 November 2026.** Its GitHub settings are made: private vulnerability reporting, secret
   scanning with push protection, Dependabot, Discussions, and a protected `main` (#678).
 - **Now:** the rest of the publication programme, which makes the packages installable from Hex. PB6 is in
