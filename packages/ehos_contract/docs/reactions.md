@@ -337,6 +337,35 @@ waits: `wait:` or `at:` says that. A label that repeats the time is wrong after 
 The state of a process manager holds no personal data ([`F7`](refusals.md#refusals-f)). It is kept
 outside the log, where an erasure does not reach it.
 
+### How do I test a timer?
+
+In a test, `EhosContract.Testing.drain/1` runs the timer jobs. A timer fires when the time of
+the drain is after the time of the timer. A test that tells a story in the past sets two times:
+
+1. Dispatch the events of the story in `EhosContract.Clock.at/2`. The engine stamps each event
+   with that time, and a `wait:` counts from it.
+2. Give the time of the drain with its `at:` option:
+
+   <!-- not compiled: a line of the host's test -->
+   ```elixir
+   EhosContract.Testing.drain(at: ~U[2026-11-26 10:00:00Z])
+   ```
+
+If the application has a clock for tests, name it in `config/test.exs`. A drain without `at:` then
+runs at the time of that clock, not at the real time:
+
+<!-- not compiled: the host's configuration -->
+```elixir
+config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}
+```
+
+> **Stub the clock of the application. Do not `expect` it.**
+> The first call uses up an expectation. A later call, such as the one of the drain, gets the
+> stub, which is often the real clock. The timers then fire on the real date.
+
+The clock of the application does not stamp events. If a test dispatches outside
+`EhosContract.Clock.at/2`, the events have the real time.
+
 ## What does the check say about a reaction?
 
 `mix ehos_contract.check` gives these warnings. [The rules](rules.md) list all of them.

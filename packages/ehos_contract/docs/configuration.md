@@ -43,6 +43,15 @@ message naming the key.
     data key; the others only unwrap, until `mix ehos_contract.rewrap` has moved
     every data key off them. Read them from the runtime environment. The default value is `[]`.
 
+* `EhosContract.Testing` (`t:keyword/0`) - The settings of a host's tests, written
+  `config :ehos_contract, EhosContract.Testing, now: {MyApp.Clock, :now, []}` in
+  `config/test.exs`. The default value is `[]`.
+
+  * `:now` (`{module, function, args}`) - The host's clock for tests: a function that returns the time as a `DateTime`
+    in UTC. `EhosContract.Testing.drain/1` runs timers at this time when the test
+    gives no `at:` and no `EhosContract.Clock.at/2` is around the drain. It does
+    not stamp events. Without it, the drain takes the real time.
+
 * `:bus` (a module or `{module, opts}`) - The `EhosContract.Bus` adapter, as a module or `{module, opts}`. Without one,
   nothing a contract publishes leaves the application.
 

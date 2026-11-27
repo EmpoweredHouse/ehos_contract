@@ -217,7 +217,10 @@ it. What was published before is asked of its owner, the application that publis
    `EhosContract.Testing.drain/1`. The first `drain/1` is the deploy. For a policy or a process
    manager, drain once before dispatching what it takes, or it treats that event as history and does
    nothing. An ordered read model starts at position 0, so its first `drain/1` projects what the log
-   already holds.
+   already holds. A timer fires when the drain's time passes it: dispatch a story in the past in
+   `EhosContract.Clock.at/2`, and move time with `drain(at: ...)`. With the application's clock
+   named in `config :ehos_contract, EhosContract.Testing, now: {...}`, stub that clock, never
+   `expect` it: the drain reads it after the expectation is used up.
 7. Run the gate from `sandbox/` and read any new `check` line naming the reaction.
 
 ## Not this skill

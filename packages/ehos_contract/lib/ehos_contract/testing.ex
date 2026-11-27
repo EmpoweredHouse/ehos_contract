@@ -16,9 +16,32 @@ defmodule EhosContract.Testing do
   reacts to none of it, a new process manager replays it without reacting, and a new
   read model takes all of it. A test of a policy's reaction drains once before it
   dispatches what the policy reacts to.
+
+  ## Fixing the time
+
+  A timer is due at a time counted from the `occurred_at` of the event that set it,
+  and `drain/1` fires it when the drain's time has passed that. A test that tells a
+  story in the past therefore fixes two times:
+
+    * **The events' time.** Dispatch in `EhosContract.Clock.at/2`. The host's clock
+      does not stamp events: a dispatch outside `Clock.at/2` stamps the real time.
+    * **The drain's time.** Give it with `at:`, or name the host's clock for tests,
+      so that a drain without `at:` takes the host's time:
+
+          # config/test.exs
+          config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}
+
+  **Stub the host's clock, do not `expect` it.** An expectation is used up by the
+  first call, and the stub behind it, often the real clock, then answers the drain:
+
+      stub(MyApp.ClockMock, :now, fn -> ~U[2026-11-25 09:00:00Z] end)
+
+  To move time forward, drain with `at:`:
+
+      EhosContract.Testing.drain(at: ~U[2026-11-26 10:00:00Z])
   """
 
-  alias EhosContract.{Implementations, Subscription, SubscriptionRecord}
+  alias EhosContract.{Clock, Config, Implementations, Subscription, SubscriptionRecord}
 
   @rounds 100
 
@@ -35,13 +58,18 @@ defmodule EhosContract.Testing do
   runs, retries included, since either can append what the other then takes.
   Registers the subscription rows it needs first, inside the caller's transaction.
 
-  **A timer fires only when it is due by `EhosContract.Clock.now/0`**; an earlier
-  one snoozes and stays queued. To see a process manager's 24 hours pass, drain at
-  the time the test chooses:
+  **A timer fires only when it is due by the time the drain runs at**; an earlier
+  one snoozes and stays queued. The drain runs at the first of these that is given:
 
-      EhosContract.Clock.at(DateTime.add(opened, 25 * 3600), fn ->
-        EhosContract.Testing.drain()
-      end)
+    1. `at:`, a `DateTime` in UTC;
+    2. the time of an `EhosContract.Clock.at/2` around the drain;
+    3. the host's clock for tests,
+       `config :ehos_contract, EhosContract.Testing, now: {module, function, args}`;
+    4. the real time.
+
+  To see a process manager's 24 hours pass, drain at the time the test chooses:
+
+      EhosContract.Testing.drain(at: DateTime.add(opened, 25 * 3600))
 
   `only:` narrows it to the consumers with those keys (`"<contract id>:<kind>:<name>"`).
   Effect jobs are Oban's and run queue-wide, so with `only:` they run only when it
@@ -53,6 +81,36 @@ defmodule EhosContract.Testing do
   """
   @spec drain(keyword()) :: drained()
   def drain(opts \\ []) do
+    {at, opts} = Keyword.pop_lazy(opts, :at, &now/0)
+    Clock.at(time!(at, "at:"), fn -> run(opts) end)
+  end
+
+  defp now do
+    case Clock.scoped() do
+      nil -> host_now()
+      scoped -> scoped
+    end
+  end
+
+  defp host_now do
+    case Config.get(__MODULE__)[:now] do
+      nil -> DateTime.utc_now()
+      {module, function, args} = mfa -> time!(apply(module, function, args), describe(mfa))
+    end
+  end
+
+  defp time!(%DateTime{} = at, _source), do: at
+
+  defp time!(_other, source) do
+    raise ArgumentError,
+          "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and #{source} " <>
+            "did not give one"
+  end
+
+  defp describe({module, function, args}),
+    do: "the host's clock #{inspect(module)}.#{function}/#{length(args)}"
+
+  defp run(opts) do
     repo = EhosContract.Config.fetch!(:repo)
     only = Keyword.get(opts, :only)
     wanted = fn key -> only == nil or key in List.wrap(only) end

@@ -5,8 +5,10 @@ defmodule EhosContract.ProcessManagerTest do
   timer; a deposit cancels it; the day passing, or interest before any deposit, flags
   the account, which ends the run.
 
-  Time moves the way a host's test moves it: `EhosContract.Clock.at/2` around
-  `EhosContract.Testing.drain/1`, which fires only the timers due by then.
+  Time moves the way a host's test moves it: events are stamped in
+  `EhosContract.Clock.at/2`, and `EhosContract.Testing.drain/1` fires only the timers
+  due by its own time, which `at:`, an enclosing `Clock.at/2` or the host's clock for
+  tests gives.
   """
 
   use EhosContract.DataCase, async: false
@@ -30,6 +32,13 @@ defmodule EhosContract.ProcessManagerTest do
     do: at(0, fn -> dispatch(%OpenAccount{account_id: account, branch_id: "b-7"}) end)
 
   defp drain_at(hours), do: at(hours, fn -> Testing.drain() end)
+
+  # The host's clock for tests, as an MFA that gives `hours` after the opening.
+  defp clock(hours) do
+    Application.put_env(:ehos_contract, Testing,
+      now: {DateTime, :add, [@opened, hours * 3600, :second]}
+    )
+  end
 
   defp run(account \\ "a-1"),
     do: Repo.get_by(ProcessManagerRecord, name: @chase, correlation: account)
@@ -276,6 +285,76 @@ defmodule EhosContract.ProcessManagerTest do
       at(23, fn -> assert TimerJob.perform(job) == {:snooze, 3600} end)
 
       assert firings() == []
+    end
+  end
+
+  describe "the drain's time" do
+    setup do
+      on_exit(fn -> Application.delete_env(:ehos_contract, Testing) end)
+    end
+
+    test "is at: when the test gives it, with no Clock.at/2 around the drain" do
+      open()
+      Testing.drain(at: @opened)
+
+      Testing.drain(at: DateTime.add(@opened, 23 * 3600))
+      assert flags() == []
+
+      Testing.drain(at: DateTime.add(@opened, 25 * 3600))
+      assert [_flag] = flags()
+    end
+
+    test "is the host's clock when the test gives no at:" do
+      open()
+      drain_at(0)
+      clock(23)
+
+      Testing.drain()
+      assert flags() == []
+
+      clock(25)
+      Testing.drain()
+      assert [_flag] = flags()
+    end
+
+    test "is at:, or a Clock.at/2 around the drain, before the host's clock" do
+      open()
+      drain_at(0)
+      clock(25)
+
+      Testing.drain(at: DateTime.add(@opened, 23 * 3600))
+      drain_at(23)
+      assert flags() == []
+
+      Testing.drain()
+      assert [_flag] = flags()
+    end
+
+    test "is the real time without the host's clock" do
+      # The account opened on 1 September 2026, so its day has passed in real time.
+      open()
+      drain_at(0)
+
+      Testing.drain()
+      assert [_flag] = flags()
+    end
+
+    test "control: a host's clock that gives no DateTime is refused, naming the clock" do
+      Application.put_env(:ehos_contract, Testing, now: {String, :upcase, ["noon"]})
+
+      error = assert_raise ArgumentError, fn -> Testing.drain() end
+
+      assert error.message ==
+               "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and the " <>
+                 "host's clock String.upcase/1 did not give one"
+    end
+
+    test "control: an at: that is no DateTime is refused" do
+      error = assert_raise ArgumentError, fn -> Testing.drain(at: "2026-09-02") end
+
+      assert error.message ==
+               "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and at: " <>
+                 "did not give one"
     end
   end
 
