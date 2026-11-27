@@ -72,7 +72,7 @@ jobs:
 
       # No token is left in .git/config: the dependencies' code runs while they compile,
       # and nothing after the checkout needs git to authenticate.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.ref.outputs.checkout }}
           persist-credentials: false
@@ -102,7 +102,7 @@ jobs:
       # branch or tag it runs on, which only workflows running that ref's own files save:
       # whoever could save one there could change this file there too.
       - name: Restore engine deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             packages/ehos_contract/deps/*
@@ -110,13 +110,13 @@ jobs:
           key: ehos-contract-core-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract/mix.lock') }}
 
       - name: Restore dashboard foundation deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: packages/ehos_contract_web/deps
           key: ehos-contract-web-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_web/mix.lock') }}
 
       - name: Restore credential verifier deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             packages/ehos_contract_auth/deps/*
@@ -124,7 +124,7 @@ jobs:
           key: ehos-contract-auth-deps-oldest-${{ runner.os }}-${{ hashFiles('packages/ehos_contract_auth/mix.lock') }}
 
       - name: Restore graph renderer deps
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             packages/ehos_contract_graph/deps/*
@@ -159,7 +159,7 @@ jobs:
           REF: ${{ steps.ref.outputs.ref }}
         run: .github/scripts/build-docs.sh "$RUNNER_TEMP/docs" "$REF"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.name.outputs.name }}
           path: ${{ runner.temp }}/docs
@@ -175,7 +175,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.name }}
           path: docs
