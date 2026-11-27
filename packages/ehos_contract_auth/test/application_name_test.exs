@@ -192,7 +192,7 @@ defmodule EhosContract.Auth.ApplicationNameTest do
 
     assert error.message =~
              "the domain my_shop (#{inspect(ShopDomain)}): " <>
-               "#{inspect(ShopPayments)} publishes my-shop.payment_taken.v1"
+               "#{inspect(ShopPayments)} publishes my_shop.payment_taken.v1"
 
     refute error.message =~ inspect(ShopOrders)
   end
