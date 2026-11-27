@@ -75,7 +75,7 @@ defmodule EhosContract.Relay do
   def batch, do: 100
 
   # The message a relay publishes for `event`: its id is `<event id>/<name>`, where
-  # `name` is the versioned name the publication declares, its correlation the
+  # `name` is the published name the library builds, its correlation the
   # event's, and its payload the declared `fields` of the event, as stored, and nothing
   # else. A field the event does not carry is `nil`.
   #

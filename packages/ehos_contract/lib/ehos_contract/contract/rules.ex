@@ -124,7 +124,7 @@ defmodule EhosContract.Contract.Rules do
   end
 
   @doc """
-  The local names of events received from another application, `subscribe "<name>"`.
+  The local names of events received from another application, `subscribe {…}`.
   They go to an inbox, not into this log (D12), so nothing that reads the log — a
   run, a boundary's append condition — can take them in.
   """

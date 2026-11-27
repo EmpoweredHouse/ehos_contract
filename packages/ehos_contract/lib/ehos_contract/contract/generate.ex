@@ -8,7 +8,7 @@ defmodule EhosContract.Contract.Generate do
   # | --- | --- |
   # | `C.Commands.PayLateFee` | a command |
   # | `C.Events.LateFeePaid` | an event of a unit |
-  # | `C.Received.InvoiceIssued` | `subscribe "<name>", as: :invoice_issued`, with the fields declared there |
+  # | `C.Received.InvoiceIssued` | `subscribe {…}, as: :invoice_issued`, with the fields declared there |
   # | `C.Aggregates.Loan.State`, `C.Dcbs.*.State`, `C.ProcessManagers.*.State` | a state |
   # | `C.ReadModels.MemberDirectory.Row` | a read model's fields, an Ecto schema |
   # | `C.Queries.MemberContact` | a query's parameters |

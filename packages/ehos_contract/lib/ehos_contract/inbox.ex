@@ -4,7 +4,8 @@ defmodule EhosContract.Inbox do
   # `<name>.subscribe` capability are EHOS's.
   @moduledoc """
   Where another application's published event arrives: one durable consumer on
-  `EhosContract.Bus` per `subscribe "<name>"` that a policy handles. The event never
+  `EhosContract.Bus` per `subscribe {namespace, publication, version}` that a policy
+  handles. The event never
   enters this application's log; what its policies decide does.
 
   **One transaction, then the acknowledgement.** A message is decoded into the

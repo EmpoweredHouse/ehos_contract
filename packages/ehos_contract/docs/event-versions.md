@@ -281,7 +281,9 @@ The lock records the fields of each publication at its version, beside the event
 - **Lower the version.** The lock refuses it, because the subscribers of the recorded version
   would receive nothing.
 - **Rename or remove the publication, or rename the domain.** The published name changes. The lock
-  refuses it, because the subscribers of the old name would receive nothing. When no application
+  refuses it, because the subscribers of the old name would receive nothing. The relay of a
+  renamed publication starts at the head of the log. Let the old relay publish what it holds
+  before you deploy the rename. When no application
   subscribes to the old name, run `mix ehos_contract.schema --forget <name>`, with the name
   without its version:
 

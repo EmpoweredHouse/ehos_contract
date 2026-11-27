@@ -133,7 +133,7 @@ Each field names a shape, never a thing (`packages/ehos_contract/docs/dsl/contra
   [...]` — the library builds the published name `<domain>.<name>.v<version>` (`version:`, 1 if
   left out), with the fields that cross, and no personal ones (`D11`), as
   `Billing.Contracts.Subscriptions` publishes the issued invoice as `billing.invoice_issued.v1`. The
-  publication's name is unique in the application. Not every event.
+  publication's name is unique in the application. Not every event. On an engine of 0.18.0 or older, a `publish` names itself, `as: "<domain>.<words>.v1"`, and a `subscribe` takes that string.
 
 ## Procedure
 
