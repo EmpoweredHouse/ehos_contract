@@ -91,6 +91,28 @@ defmodule EhosContract.Config do
         ]
       ]
     ],
+    "Elixir.EhosContract.Testing": [
+      type: :keyword_list,
+      default: [],
+      doc: """
+      The settings of a host's tests, written
+      `config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}`
+      in `config/test.exs`.
+      """,
+      keys: [
+        now: [
+          type: {:custom, __MODULE__, :shape, [:mfa]},
+          type_doc: "`{module, function, args}`",
+          doc: """
+          The host's clock for tests: a loaded function that returns the time as a
+          `DateTime` in UTC. `EhosContract.Testing.drain/1` runs at this time when the
+          test gives no `at:` and no `EhosContract.Clock.at/2` is around the drain. It
+          does not stamp the events a test dispatches. Without it, the drain takes the
+          real time.
+          """
+        ]
+      ]
+    ],
     bus: [
       type: {:custom, __MODULE__, :shape, [:bus]},
       type_doc: "a module or `{module, opts}`",
@@ -220,7 +242,13 @@ defmodule EhosContract.Config do
   @doc false
   @spec shape(
           term(),
-          :applications | :module | :module_or_nil | :subscriptions | :master_keys | :bus
+          :applications
+          | :module
+          | :module_or_nil
+          | :subscriptions
+          | :master_keys
+          | :bus
+          | :mfa
         ) ::
           {:ok, term()} | {:error, String.t()}
   def shape(mode, :subscriptions) when mode in [:run, :manual], do: {:ok, mode}
@@ -258,6 +286,17 @@ defmodule EhosContract.Config do
     end
   end
 
+  def shape({module, function, args} = mfa, :mfa)
+      when is_atom(module) and is_atom(function) and is_list(args) do
+    if Code.ensure_loaded?(module) and function_exported?(module, function, length(args)),
+      do: {:ok, mfa},
+      else:
+        {:error,
+         "#{inspect(module)}.#{function}/#{length(args)} is not a function that is loaded"}
+  end
+
+  def shape(_mfa, :mfa), do: {:error, "expected {module, function, args}"}
+
   # Walked by hand: `Enum` raises on an improper list, and the stacktrace shows its tail.
   defp master_keys?([]), do: true
 
@@ -288,6 +327,7 @@ defmodule EhosContract.Config do
 
   defp checked?({:ecto_repos, _}), do: false
   defp checked?({EhosContract.Vault, _}), do: true
+  defp checked?({EhosContract.Testing, _}), do: true
   defp checked?({key, _}), do: not String.starts_with?(Atom.to_string(key), "Elixir.")
 
   defp hint(key, message) do

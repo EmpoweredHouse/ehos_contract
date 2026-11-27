@@ -74,6 +74,23 @@ defmodule EhosContract.ConfigTest do
     assert Config.validate!(@valid ++ [bus: EhosContract.Bus.Local]) == :ok
   end
 
+  test "the host's clock for tests is a function that is loaded" do
+    assert Config.validate!(@valid ++ [{EhosContract.Testing, now: {DateTime, :utc_now, []}}]) ==
+             :ok
+
+    assert refused(@valid ++ [{EhosContract.Testing, now: {DateTime, :utc_now, [:x, :y, :z]}}]) =~
+             "DateTime.utc_now/3 is not a function that is loaded"
+
+    assert refused(@valid ++ [{EhosContract.Testing, now: {MyApp.Clockk, :now, []}}]) =~
+             "MyApp.Clockk.now/0 is not a function that is loaded"
+
+    assert refused(@valid ++ [{EhosContract.Testing, now: &DateTime.utc_now/0}]) =~
+             "expected {module, function, args}"
+
+    assert refused(@valid ++ [{EhosContract.Testing, clock: {DateTime, :utc_now, []}}]) =~
+             "clock"
+  end
+
   test "a module's own configuration and Ecto's :ecto_repos are left alone" do
     env =
       @valid ++

@@ -48,6 +48,18 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+### Added
+
+- `EhosContract.Testing.drain/1` takes `at:`, the time at which it runs the timers, so a test needs
+  no `EhosContract.Clock.at/2` around the drain. A host can name its clock for tests,
+  `config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}`, and a drain
+  without `at:` or `Clock.at/2` around it then runs at that time, not the real time. The engine
+  checks at start that the function is loaded, so a mock goes in compiled code such as
+  `test/support/`. The events the drain appends take the drain's time, but the host's clock does
+  not stamp the events a test dispatches: dispatch a story in the past in `Clock.at/2`. Stub the
+  host's clock rather than `expect` it, since the drain gets the stub once the expectation is used
+  up (#691).
+
 ## [0.17.0] - 2026-11-27
 
 ### Added
