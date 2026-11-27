@@ -47,6 +47,14 @@ defmodule EhosContract.ContractLinksDomainTest do
       value :clinic_ids, {:list, :id}
       value :period_id, :id
       value :clinic_ref, {:id, :clinic}
+
+      value :visit_need do
+        field :clinic_ids, {:list, :id}
+      end
+
+      value :referral do
+        field :contact, :contact_ref
+      end
       external :payer_registry, "Payer registry", direction: :outbound
 
       entity :clinic, "Clinic", context: :settlement, identity: :clinic_id do
@@ -1080,6 +1088,55 @@ defmodule EhosContract.ContractLinksDomainTest do
 
       # The first to name the table is not refused: one message, about the second.
       assert length(messages) == 1, inspect(messages)
+    end
+  end
+
+  describe "P7: a query's param is of a shape a query string carries" do
+    # #618: OpenAPI describes a param as `form` or `deepObject`, and the Plug reads it so;
+    # neither has a form for a list of values made of fields, a list of lists, or a value
+    # with a field that is not one value, through an alias as well.
+    test "a list of values made of fields, a list of lists, a value with a list or a value in it" do
+      params = """
+          param :clinic_id, :id
+          param :contacts, {:list, :contact}
+          param :aliases, {:list, :contact_ref}
+          param :lists, {:list, :clinic_ids}
+          param :grid, {:list, {:list, :id}}
+          param :need, :visit_need
+          param :referral, :referral
+          param :contact, :contact, optional: true
+          param :clinics, :clinic_ids
+          param :periods, {:list, :period_id}
+          scope :clinic_id
+      """
+
+      body = String.replace(@body, "    param :clinic_id, :id\n    scope :clinic_id\n", params)
+      assert body != @body
+
+      violations = links("LinksQueryParams", body)
+      messages = Enum.map(violations, & &1.message)
+
+      for {name, type, shape} <- [
+            {:contacts, {:list, :contact}, "which is a list of values made of fields"},
+            {:aliases, {:list, :contact_ref}, "which is a list of values made of fields"},
+            {:lists, {:list, :clinic_ids}, "which is a list of lists"},
+            {:grid, {:list, {:list, :id}}, "which is a list of lists"},
+            {:need, :visit_need, "whose field :clinic_ids is a list"},
+            {:referral, :referral, "whose field :contact is made of fields"}
+          ] do
+        assert Enum.any?(
+                 messages,
+                 &(&1 =~
+                     "P7: query :payments_in_clinic has param #{inspect(name)}, a " <>
+                       "#{inspect(type)}, #{shape}; a query string carries one value")
+               ),
+               inspect(messages)
+      end
+
+      # One value, a value made of fields of one value each, and a list of one value
+      # each, through an alias as well: the controls.
+      assert length(violations) == 6, inspect(messages)
+      assert assert_linked(violations, "P7:", "links_query_params.ex", 39) =~ ":contacts"
     end
   end
 

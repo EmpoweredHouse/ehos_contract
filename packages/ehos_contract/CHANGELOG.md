@@ -60,6 +60,16 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   host's clock rather than `expect` it, since the drain gets the stub once the expectation is used
   up (#691).
 
+### Changed
+
+- **Breaking:** The compiler refuses a query's param that a query string cannot carry: a list of
+  values made of fields (`param :services, {:list, :service_need}`), a list of lists, or a value
+  with a field that is a list or is made of fields, through a domain value's alias as well (`P7`).
+  The OpenAPI document described such a param as `form` or `deepObject`, which define no form for
+  it, and `EhosContract.Plug` could not read it from a query string, though `call/3` read it from a
+  JSON map. A query with such a param does not compile: make it one value, a list of one value each,
+  or a value made of fields of one value each (#618).
+
 ## [0.17.0] - 2026-11-27
 
 ### Added
