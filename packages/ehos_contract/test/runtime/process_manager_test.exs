@@ -365,12 +365,16 @@ defmodule EhosContract.ProcessManagerTest do
                  "host's clock Function.identity/1 did not give one"
     end
 
-    test "control: an at: that is no DateTime is refused" do
-      error = assert_raise ArgumentError, fn -> Testing.drain(at: "2026-09-02") end
+    test "control: an at: that is no DateTime in UTC is refused, nil included" do
+      warsaw = %{@opened | time_zone: "Europe/Warsaw", zone_abbr: "CET"}
 
-      assert error.message ==
-               "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and at: " <>
-                 "did not give one"
+      for at <- ["2026-09-02", nil, warsaw] do
+        error = assert_raise ArgumentError, fn -> Testing.drain(at: at) end
+
+        assert error.message ==
+                 "EhosContract.Testing.drain/1 runs timers at a DateTime in UTC, and at: " <>
+                   "did not give one"
+      end
     end
   end
 

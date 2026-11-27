@@ -20,7 +20,7 @@ defmodule EhosContract.Testing do
   ## Fixing the time
 
   A timer is due at a time counted from the `occurred_at` of the event that set it,
-  and `drain/1` fires it when the drain's time has passed that. A test that tells a
+  and `drain/1` fires it when the drain's time is at or after that. A test that tells a
   story in the past therefore fixes two times:
 
     * **The events' time.** Dispatch in `EhosContract.Clock.at/2`. The host's clock
@@ -66,7 +66,8 @@ defmodule EhosContract.Testing do
   Registers the subscription rows it needs first, inside the caller's transaction.
 
   **A timer fires only when it is due by the time the drain runs at**, and every
-  event the drain appends is stamped with that time; an earlier timer snoozes and stays queued. The drain runs at the first of these that is given:
+  event the drain appends is stamped with that time; an earlier timer snoozes and
+  stays queued. The drain runs at the first of these that is given:
 
     1. `at:`, a `DateTime` in UTC;
     2. the time of an `EhosContract.Clock.at/2` around the drain;
@@ -88,12 +89,17 @@ defmodule EhosContract.Testing do
   """
   @spec drain(keyword()) :: drained()
   def drain(opts \\ []) do
-    case Keyword.pop_lazy(opts, :at, &now/0) do
+    {given, opts} = Keyword.pop(opts, :at, :unset)
+
+    case time(given) do
       # The real time, read at each append as outside a drain.
-      {nil, opts} -> run(opts)
-      {at, opts} -> Clock.at(time!(at, "at:"), fn -> run(opts) end)
+      nil -> run(opts)
+      at -> Clock.at(at, fn -> run(opts) end)
     end
   end
+
+  defp time(:unset), do: now()
+  defp time(at), do: time!(at, "at:")
 
   defp now do
     case Clock.scoped() do
