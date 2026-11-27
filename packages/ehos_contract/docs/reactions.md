@@ -340,7 +340,7 @@ outside the log, where an erasure does not reach it.
 ### How do I test a timer?
 
 In a test, `EhosContract.Testing.drain/1` runs the timer jobs. A timer fires when the time of
-the drain is after the time of the timer. A test that tells a story in the past sets two times:
+the drain is at or after the time of the timer. A test that tells a story in the past sets two times:
 
 1. Dispatch the events of the story in `EhosContract.Clock.at/2`. The engine stamps each event
    with that time, and a `wait:` counts from it.
@@ -352,7 +352,8 @@ the drain is after the time of the timer. A test that tells a story in the past 
    ```
 
 If the application has a clock for tests, name it in `config/test.exs`. A drain without `at:` then
-runs at the time of that clock, not at the real time:
+runs at the time of that clock, not at the real time. The engine checks at start that the function
+is loaded, so define the mock in compiled code, such as `test/support/`:
 
 <!-- not compiled: the host's configuration -->
 ```elixir
@@ -363,8 +364,9 @@ config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}
 > The first call uses up an expectation. A later call, such as the one of the drain, gets the
 > stub, which is often the real clock. The timers then fire on the real date.
 
-The clock of the application does not stamp events. If a test dispatches outside
-`EhosContract.Clock.at/2`, the events have the real time.
+The clock of the application does not stamp the events that a test dispatches. If a test
+dispatches outside `EhosContract.Clock.at/2`, the events have the real time. The events that the
+drain appends, such as the firing of a timer, have the time of the drain.
 
 ## What does the check say about a reaction?
 

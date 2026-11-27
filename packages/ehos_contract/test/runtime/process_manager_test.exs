@@ -324,6 +324,7 @@ defmodule EhosContract.ProcessManagerTest do
 
       Testing.drain(at: DateTime.add(@opened, 23 * 3600))
       drain_at(23)
+      at(25, fn -> Testing.drain(at: DateTime.add(@opened, 23 * 3600)) end)
       assert flags() == []
 
       Testing.drain()

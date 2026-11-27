@@ -24,12 +24,19 @@ defmodule EhosContract.Testing do
   story in the past therefore fixes two times:
 
     * **The events' time.** Dispatch in `EhosContract.Clock.at/2`. The host's clock
-      does not stamp events: a dispatch outside `Clock.at/2` stamps the real time.
+      does not stamp the events a test dispatches: a dispatch outside `Clock.at/2`
+      stamps the real time.
     * **The drain's time.** Give it with `at:`, or name the host's clock for tests,
       so that a drain without `at:` takes the host's time:
 
           # config/test.exs
           config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}
+
+      The engine checks at start that the function is loaded, so define the mock in
+      compiled code, such as `test/support/`, not in `test/test_helper.exs`.
+
+  The events the drain itself appends, such as a timer's firing and what reactions
+  dispatch, take the drain's time.
 
   **Stub the host's clock, do not `expect` it.** An expectation is used up by the
   first call, and the stub behind it, often the real clock, then answers the drain:
@@ -58,14 +65,14 @@ defmodule EhosContract.Testing do
   runs, retries included, since either can append what the other then takes.
   Registers the subscription rows it needs first, inside the caller's transaction.
 
-  **A timer fires only when it is due by the time the drain runs at**; an earlier
-  one snoozes and stays queued. The drain runs at the first of these that is given:
+  **A timer fires only when it is due by the time the drain runs at**, and every
+  event the drain appends is stamped with that time; an earlier timer snoozes and stays queued. The drain runs at the first of these that is given:
 
     1. `at:`, a `DateTime` in UTC;
     2. the time of an `EhosContract.Clock.at/2` around the drain;
     3. the host's clock for tests,
        `config :ehos_contract, EhosContract.Testing, now: {module, function, args}`;
-    4. the real time.
+    4. the real time, read at each append.
 
   To see a process manager's 24 hours pass, drain at the time the test chooses:
 

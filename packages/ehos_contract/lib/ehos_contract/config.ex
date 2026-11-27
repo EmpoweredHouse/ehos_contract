@@ -96,18 +96,19 @@ defmodule EhosContract.Config do
       default: [],
       doc: """
       The settings of a host's tests, written
-      `config :ehos_contract, EhosContract.Testing, now: {MyApp.Clock, :now, []}` in
-      `config/test.exs`.
+      `config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}`
+      in `config/test.exs`.
       """,
       keys: [
         now: [
           type: {:custom, __MODULE__, :shape, [:mfa]},
           type_doc: "`{module, function, args}`",
           doc: """
-          The host's clock for tests: a function that returns the time as a `DateTime`
-          in UTC. `EhosContract.Testing.drain/1` runs timers at this time when the test
-          gives no `at:` and no `EhosContract.Clock.at/2` is around the drain. It does
-          not stamp events. Without it, the drain takes the real time.
+          The host's clock for tests: a loaded function that returns the time as a
+          `DateTime` in UTC. `EhosContract.Testing.drain/1` runs at this time when the
+          test gives no `at:` and no `EhosContract.Clock.at/2` is around the drain. It
+          does not stamp the events a test dispatches. Without it, the drain takes the
+          real time.
           """
         ]
       ]
