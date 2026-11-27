@@ -368,7 +368,7 @@ defmodule EhosContract.ProcessManagerTest do
     test "control: an at: that is no DateTime in UTC is refused, nil included" do
       warsaw = %{@opened | time_zone: "Europe/Warsaw", zone_abbr: "CET"}
 
-      for at <- ["2026-09-02", nil, warsaw] do
+      for at <- ["2026-09-02", nil, :unset, warsaw] do
         error = assert_raise ArgumentError, fn -> Testing.drain(at: at) end
 
         assert error.message ==

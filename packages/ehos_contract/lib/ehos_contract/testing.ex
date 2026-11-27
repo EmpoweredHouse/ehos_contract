@@ -89,17 +89,15 @@ defmodule EhosContract.Testing do
   """
   @spec drain(keyword()) :: drained()
   def drain(opts \\ []) do
-    {given, opts} = Keyword.pop(opts, :at, :unset)
-
-    case time(given) do
+    case time(Keyword.fetch(opts, :at)) do
       # The real time, read at each append as outside a drain.
-      nil -> run(opts)
-      at -> Clock.at(at, fn -> run(opts) end)
+      nil -> run(Keyword.delete(opts, :at))
+      at -> Clock.at(at, fn -> run(Keyword.delete(opts, :at)) end)
     end
   end
 
-  defp time(:unset), do: now()
-  defp time(at), do: time!(at, "at:")
+  defp time(:error), do: now()
+  defp time({:ok, at}), do: time!(at, "at:")
 
   defp now do
     case Clock.scoped() do
