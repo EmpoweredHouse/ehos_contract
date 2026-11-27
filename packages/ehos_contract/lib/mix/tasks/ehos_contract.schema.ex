@@ -297,9 +297,11 @@ defmodule Mix.Tasks.EhosContract.Schema do
   defp summary(kept, merged) do
     recorded = recorded(kept, merged)
 
+    present = index(merged)
+
     dropped =
       for {type, version, _fields} <- entries(kept),
-          not has?(merged, type, version),
+          not Map.has_key?(present, {type, version}),
           do: {type, version}
 
     Enum.reject(
@@ -310,9 +312,11 @@ defmodule Mix.Tasks.EhosContract.Schema do
 
   # The versions `merged` holds and `kept` does not hold alike, as the person reads them.
   defp recorded(kept, merged) do
+    kept = index(kept)
+
     listed(
       for {type, version, fields} <- entries(merged),
-          entry(kept, type, version) != fields,
+          Map.get(kept, {type, version}) != fields,
           do: {type, version}
     )
   end
@@ -332,14 +336,7 @@ defmodule Mix.Tasks.EhosContract.Schema do
           do: {Publications.published(name, version), :published, fields}
         )
 
-  defp entry(file, type, version) do
-    Enum.find_value(entries(file), fn
-      {^type, ^version, fields} -> fields
-      _other -> nil
-    end)
-  end
-
-  defp has?(file, type, version), do: entry(file, type, version) != nil
+  defp index(file), do: Map.new(entries(file), fn {type, v, fields} -> {{type, v}, fields} end)
 
   defp listed([]), do: nil
   defp listed(versions) when length(versions) > 5, do: "#{length(versions)} event versions"

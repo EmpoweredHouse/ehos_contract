@@ -538,7 +538,8 @@ defmodule EhosContract.SchemaLock do
          {:ok, events, publications} = sections(literal),
          true <- lock?(events) || {:error, "it is not a map of event types to versions"},
          true <-
-           lock?(publications) || {:error, "its publications are not a map of names to versions"} do
+           publications?(publications) ||
+             {:error, "its publications are not a map of names to one version each"} do
       {:ok, %{events: normal_lock(events), publications: normal_lock(publications)}}
     end
   end
@@ -597,6 +598,15 @@ defmodule EhosContract.SchemaLock do
 
   defp format_error({prefix, suffix}), do: "#{prefix}#{suffix}"
   defp format_error(message), do: message
+
+  # A publication is recorded at the one version declared, under a name the library builds
+  # (#697): a merge resolved by hand can leave two versions, which no merge reads.
+  defp publications?(publications) do
+    lock?(publications) and
+      Enum.all?(publications, fn {name, versions} ->
+        name =~ ~r/\A[a-z][a-z0-9_-]*[a-z0-9_]\.[a-z][a-z0-9_]*\z/ and map_size(versions) == 1
+      end)
+  end
 
   # A map written with a `__struct__` key is a struct to `Enum`, and a lock is none.
   defp lock?(lock) do

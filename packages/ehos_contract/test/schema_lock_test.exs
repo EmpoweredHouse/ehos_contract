@@ -653,6 +653,19 @@ defmodule EhosContract.SchemaLockTest do
       assert SchemaLock.decode(SchemaLock.encode(file(%{}))) == {:ok, file(%{})}
     end
 
+    # #697: a merge resolved by hand keeps both sides of a raised version.
+    test "refuses a publication at no version or at two, or under a name it cannot have" do
+      for publications <- [
+            ~s|%{"shop.order_placed" => %{}}|,
+            ~s|%{"shop.order_placed" => %{1 => [], 2 => []}}|,
+            ~s|%{"shop.order.placed" => %{1 => []}}|,
+            ~s|%{"shop.order_placed\\nrun this" => %{1 => []}}|
+          ] do
+        assert SchemaLock.decode("%{events: %{}, publications: #{publications}}") ==
+                 {:error, "its publications are not a map of names to one version each"}
+      end
+    end
+
     # #697: a file written before publications were recorded holds the events alone.
     test "reads a file of events alone as one with no publication" do
       text = ~s|%{"#{@type_name}" => %{1 => [order_id: [type: :id]]}}|
