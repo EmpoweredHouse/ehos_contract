@@ -35,9 +35,16 @@ defmodule QueryRig.Desk do
     param :kinds, {:list, {:enum, [:walk_in, :booked]}}
     param :rooms, {:list, :room_id}
     param :tags, :tags
+    param :flags, {:list, :boolean}
+    param :prices, {:list, :decimal}
+    param :days, {:list, :date}
+    param :ats, {:list, :timestamp}
+    param :desks, {:list, {:id, :desk}}
+    param :kind_values, {:list, :kind}
     param :window, :window
     param :need, :need
     param :need_ref, :need_ref
+    param :slot, :slot
     param :missing, :string, optional: true
     param :missing_need, :need, optional: true
   end

@@ -28,6 +28,19 @@ defmodule QueryRig.Domain do
   end
 
   value :need_ref, :need
+  value :kind, {:enum, [:walk_in, :booked]}
+
+  value :slot do
+    field :kind, :kind
+    field :room_id, {:id, :room}
+    field :at, :timestamp
+    field :fee, :decimal
+    field :day, :date
+  end
+
+  entity :room, "Room", context: :desk, identity: :room_id do
+    field :name, :string
+  end
 
   subdomain :core, "Core", type: :core
 end

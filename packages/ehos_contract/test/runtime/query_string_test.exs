@@ -3,8 +3,12 @@ defmodule EhosContract.QueryStringTest do
   #618: a query's params reach its implementation the same whether a client sends the
   query string the OpenAPI document describes, through `EhosContract.Plug`, or code sends
   the equivalent JSON map to `EhosContract.call/3`. `QueryRig.Desk`'s query takes a param
-  of every shape the compiler accepts; a shape it does not carry is refused at compile
-  time (P7, `EhosContract.ContractLinksDomainTest`).
+  of each shape the compiler accepts: one value, a list of one value each, and a value made
+  of fields of one value each, of the built-in types and through domain values. A shape a
+  query string does not carry is refused at compile time (P7,
+  `EhosContract.ContractLinksDomainTest`). An empty list, and a value made of fields whose
+  fields are all left out, have no pair in a query string, and are not compared here
+  (#694).
   """
 
   use EhosContract.DataCase, async: false
@@ -36,9 +40,22 @@ defmodule EhosContract.QueryStringTest do
     "kinds" => ["walk_in", "booked"],
     "rooms" => ["r-1", "r-2"],
     "tags" => ["x", "y z"],
+    "flags" => [true, false],
+    "prices" => ["0.5", "-3"],
+    "days" => ["2026-01-01", "2026-12-31"],
+    "ats" => ["2026-11-27T10:15:00Z", "2026-11-28T00:00:00Z"],
+    "desks" => ["desk-1", "desk-2"],
+    "kind_values" => ["booked", "walk_in"],
     "window" => %{"from" => "2026-11-01", "to" => "2026-11-30"},
     "need" => %{"service_id" => "s-1", "minutes" => 45, "urgent" => false, "note" => "n"},
     "need_ref" => %{"service_id" => "s-2", "minutes" => 15, "urgent" => true},
+    "slot" => %{
+      "kind" => "walk_in",
+      "room_id" => "room-3",
+      "at" => "2026-11-27T12:00:00Z",
+      "fee" => "9.99",
+      "day" => "2026-11-27"
+    },
     "missing_need" => %{"service_id" => "s-3", "minutes" => 5, "urgent" => true}
   }
 
@@ -49,7 +66,13 @@ defmodule EhosContract.QueryStringTest do
            "counts" => [7],
            "kinds" => ["walk_in"],
            "rooms" => ["r-9"],
-           "tags" => ["only"]
+           "tags" => ["only"],
+           "flags" => [false],
+           "prices" => ["1"],
+           "days" => ["2026-02-28"],
+           "ats" => ["2026-02-28T23:59:59Z"],
+           "desks" => ["desk-9"],
+           "kind_values" => ["booked"]
          })
          |> Map.update!("need", &Map.delete(&1, "note"))
          |> Map.delete("missing_need")
