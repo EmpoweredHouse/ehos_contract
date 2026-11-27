@@ -248,7 +248,9 @@ defmodule EhosContract.ContractBoundariesTest do
                  "library builds the name from the domain's name:, the publication's name and its " <>
                  ~s|version: ("clinic.visit_closed.v1" now). Remove as:, and write `publish | <>
                  ":visit_closed, version: 2` for the name nearest the one written, " <>
-                 ~s|"clinic.visit_closed.v2"; its subscribers move to it (publish_named.ex:21)|
+                 ~s|"clinic.visit_closed.v2"; its subscribers move to it. A renamed publication's | <>
+                 "relay starts at the head of the log, so let the old relay publish what it holds " <>
+                 "before you deploy the rename (publish_named.ex:21)"
 
       assert message =~
                ~s|D11: publish :visit_ended names itself with as: "Clinic/VisitClosed"; the | <>
@@ -312,6 +314,7 @@ defmodule EhosContract.ContractBoundariesTest do
           subscribe {:clinic, :visit_opened, 1}, as: :visit_opened
           subscribe {:"shop-", :visit_moved, 1}, as: :visit_moved
           subscribe {:clinic, :visitMoved, 1}, as: :visit_moved_again
+          subscribe {nil, :visit_held, 1}, as: :visit_held
 
         #{@unit}
         """)
@@ -324,7 +327,11 @@ defmodule EhosContract.ContractBoundariesTest do
                "D11: subscribe {:clinic, :visit_opened, 1} lists no fields; declare the ones this " <>
                  "contract reads (consumes_by_name_wrong.ex:8)"
 
-      for key <- [~s|{:"shop-", :visit_moved, 1}|, "{:clinic, :visitMoved, 1}"] do
+      for key <- [
+            ~s|{:"shop-", :visit_moved, 1}|,
+            "{:clinic, :visitMoved, 1}",
+            "{nil, :visit_held, 1}"
+          ] do
         assert message =~
                  "D11: subscribe #{key} is not a published event's key: the publisher's " <>
                    "namespace, which may hold a dash but not at either end, its publication's " <>

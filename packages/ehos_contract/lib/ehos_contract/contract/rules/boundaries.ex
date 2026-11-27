@@ -255,7 +255,9 @@ defmodule EhosContract.Contract.Rules.Boundaries do
       {namespace, publication, version} ->
         ", and write `publish #{inspect(String.to_atom(publication))}, version: #{version}` " <>
           "for the name nearest the one written, " <>
-          "#{inspect("#{namespace}.#{publication}.v#{version}")}; its subscribers move to it"
+          "#{inspect("#{namespace}.#{publication}.v#{version}")}; its subscribers move to it. A " <>
+          "renamed publication's relay starts at the head of the log, so let the old relay " <>
+          "publish what it holds before you deploy the rename"
 
       nil ->
         ""
@@ -363,13 +365,14 @@ defmodule EhosContract.Contract.Rules.Boundaries do
   end
 
   defp key(where, %{key: {namespace, publication, _version}} = consumes) do
-    if DslRules.namespace?(Atom.to_string(namespace)) and DslRules.name?(publication),
-      do: [],
-      else: [
-        {"#{where} is not a published event's key: the publisher's namespace, which may hold " <>
-           "a dash but not at either end, its publication's snake_case name and a version, " <>
-           "like {:\"my-shop\", :order_placed, 1}", consumes}
-      ]
+    if namespace not in [nil, true, false] and DslRules.namespace?(Atom.to_string(namespace)) and
+         DslRules.name?(publication),
+       do: [],
+       else: [
+         {"#{where} is not a published event's key: the publisher's namespace, which may hold " <>
+            "a dash but not at either end, its publication's snake_case name and a version, " <>
+            "like {:\"my-shop\", :order_placed, 1}", consumes}
+       ]
   end
 
   defp name(where, name, declaration) do
