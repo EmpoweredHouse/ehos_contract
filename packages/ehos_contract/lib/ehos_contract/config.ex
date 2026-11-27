@@ -154,12 +154,12 @@ defmodule EhosContract.Config do
 
   **What is not checked.** A key named after a module configures that module (an
   Ecto repo, Oban), and `:ecto_repos` is Ecto's; both are left alone, except a module
-  key that looks like a misspelling of `EhosContract.Vault` or `EhosContract.Testing`,
-  or names one of their modules (`EhosContract.Vault.Local`), which is refused. Whether a configured module
-  implements its behaviour is checked at boot, where it is used: the supplier when a
-  contract declares a field `supplied_by: :host`, the entities when a command
-  `reads:` one, the vault when one declares a
-  personal field.
+  key that looks like a misspelling of `EhosContract.Vault` or `EhosContract.Testing`
+  (`EhosContract.Testng`), or names one of their modules (`EhosContract.Vault.Local`),
+  which is refused. Whether a configured module implements its behaviour is checked
+  at boot, where it is used: the supplier when a contract declares a field
+  `supplied_by: :host`, the entities when a command `reads:` one, the vault when one
+  declares a personal field.
 
   **No error repeats a value.** The vault's keys and the bus's options may hold
   secrets, so a message names the key and what was expected, never what was given.
@@ -307,18 +307,18 @@ defmodule EhosContract.Config do
 
   # A module key is left alone, but one that is nearly a block of settings the library
   # reads, or one of its modules, is where a host meant to configure that block. Compared
-  # without `Elixir.`, a prefix every module shares. A misspelling scores 0.94 or more;
-  # the package's own `EhosContract.TestRepo` scores 0.887 against `EhosContract.Testing`
-  # and `EhosContract.CommitRepo` 0.811, so they stay accepted.
+  # without `Elixir.`, a prefix every module shares. 0.9 refuses a slip of a letter or two,
+  # such as `Ehoscontract.Vault` (0.904), and accepts the package's own
+  # `EhosContract.TestRepo`, which scores 0.887 against `EhosContract.Testing`.
   @blocks [
-    {EhosContract.Vault,
+    {"EhosContract.Vault",
      "The vault's settings go under EhosContract.Vault: " <>
        "`config :ehos_contract, EhosContract.Vault, keys: [...]`."},
-    {EhosContract.Testing,
+    {"EhosContract.Testing",
      "The settings for tests go under EhosContract.Testing: " <>
        "`config :ehos_contract, EhosContract.Testing, now: {MyApp.ClockMock, :now, []}`."}
   ]
-  @block_names Enum.map(@blocks, &elem(&1, 0))
+  @block_names [EhosContract.Vault, EhosContract.Testing]
 
   defp misplaced!({key, _}) when is_atom(key) and key not in @block_names do
     with "Elixir." <> name <- Atom.to_string(key),
@@ -332,10 +332,8 @@ defmodule EhosContract.Config do
 
   defp misplaced!(_entry), do: :ok
 
-  defp meant?(name, {block, _where}) do
-    "Elixir." <> block = Atom.to_string(block)
-    String.starts_with?(name, block <> ".") or String.jaro_distance(name, block) >= 0.93
-  end
+  defp meant?(name, {block, _where}),
+    do: String.starts_with?(name, block <> ".") or String.jaro_distance(name, block) >= 0.9
 
   defp checked?({:ecto_repos, _}), do: false
   defp checked?({key, _}) when key in @block_names, do: true

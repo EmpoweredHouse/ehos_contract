@@ -42,13 +42,17 @@ defmodule EhosContract.ConfigTest do
   test "a module key meant for the vault is refused; another module's is left alone" do
     assert refused(@valid ++ [{EhosContract.Vault.Local, keys: []}]) =~ "EhosContract.Vault.Local"
     assert refused(@valid ++ [{:"Elixir.EhosContract.Vualt", keys: []}]) =~ "EhosContract.Vualt"
+
+    assert refused(@valid ++ [{:"Elixir.Ehoscontract.Vault", keys: []}]) =~
+             "go under EhosContract.Vault"
+
     assert Config.validate!(@valid ++ [{EhosContract.TestRepo, pool_size: 10}]) == :ok
   end
 
   test "a module key meant for the settings for tests is refused and names where they go" do
     for key <- [
           :"Elixir.EhosContract.Testng",
-          :"Elixir.EhoContract.Testing",
+          :"Elixir.EhosConract.Testing",
           EhosContract.Testing.Clock
         ] do
       message = refused(@valid ++ [{key, now: {DateTime, :utc_now, []}}])
