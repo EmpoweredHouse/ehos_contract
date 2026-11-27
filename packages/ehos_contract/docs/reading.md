@@ -213,6 +213,9 @@ of rows (`returns: :many`, the default), or one row or `nil` (`returns: :one`).
   model, in the number that `returns:` declares, the engine raises.
 - A query, a command and an event that an actor records share one set of names, because each one
   is a capability ([`N1`](refusals.md#refusals-n)).
+- Over HTTP, a client sends the parameters in the query string. A parameter is one value, a list of
+  one value each, or a domain value made of fields of one value each. The compiler refuses another
+  shape, for example a list of values made of fields ([`P7`](refusals.md#refusals-p)).
 
 **A query can narrow by a grant.** A query declared `scope: :branch_id` answers only the rows whose
 `branch_id` the credential grants.

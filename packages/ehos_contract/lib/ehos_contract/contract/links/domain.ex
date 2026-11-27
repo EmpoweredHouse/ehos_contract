@@ -45,6 +45,11 @@ defmodule EhosContract.Contract.Links.Domain do
   # - **P6**, the part that needs the domain (#472): a read model's key field typed by a
   #   domain value is of one that is one value, not made of fields or a list; and no two
   #   contracts keep read models in one table.
+  # - **P7** (#618): a query's param is of a shape a query string carries as the
+  #   OpenAPI document describes it and the Plug reads it: one value (`form`), a list
+  #   of one value each (`form`, repeated), or a value made of fields of one value each
+  #   (`deepObject`). A list of values made of fields, a list of lists, or a value with a
+  #   field that is a list or made of fields has no such form.
   # - **A8**, the part that needs the domain (plan DD, L3 (#286)): what a command
   #   `reads:` is an entity the application keeps, never a unit, whose state is its
   #   events.
@@ -110,6 +115,7 @@ defmodule EhosContract.Contract.Links.Domain do
       externals(c),
       scopes(c),
       table_keys(c),
+      query_params(c),
       namespaces(c)
     ])
   end
@@ -629,6 +635,67 @@ defmodule EhosContract.Contract.Links.Domain do
          "#{inspect(field.type)} #{shape}; a key field is one value", Links.at(field)}
     end
   end
+
+  # --- P7 -------------------------------------------------------------------------
+
+  # What a query string carries, as OpenAPI's `form` and `deepObject` describe it and
+  # `EhosContract.Plug` reads it (#618): one value, a list of one value each, or a value
+  # made of fields of one value each. Through aliases, which L2 cannot see without the
+  # domain.
+  defp query_params(%{declarations: d, domain: domain}) do
+    values = Map.new(domain.values, &{&1.name, &1})
+
+    for query <- d.queries,
+        param <- query.params,
+        shape = query_string_shape(param.type, values),
+        shape != :carried do
+      {"P7: query #{inspect(query.name)} has param #{inspect(param.name)}, a " <>
+         "#{inspect(param.type)}, #{shape}; a query string carries one value, a list of one " <>
+         "value each, or a value made of fields of one value each", Links.at(param)}
+    end
+  end
+
+  defp query_string_shape(type, values) do
+    case shape(type, values) do
+      :one ->
+        :carried
+
+      {:list, inner} ->
+        case shape(inner, values) do
+          :one -> :carried
+          {:list, _} -> "which is a list of lists"
+          {:fields, _} -> "which is a list of values made of fields"
+        end
+
+      {:fields, fields} ->
+        case Enum.find(fields, &(shape(&1.type, values) != :one)) do
+          nil ->
+            :carried
+
+          field ->
+            what =
+              if match?({:list, _}, shape(field.type, values)),
+                do: "a list",
+                else: "made of fields"
+
+            "whose field #{inspect(field.name)} is #{what}"
+        end
+    end
+  end
+
+  # A type through its domain value's aliases: one value, a list, or made of fields. An
+  # undeclared value is X3's to refuse.
+  defp shape({:list, inner}, _values), do: {:list, inner}
+
+  defp shape(type, values) when is_atom(type) do
+    case Map.get(values, type) do
+      %{type: nil, fields: fields} -> {:fields, fields}
+      %{type: inner} when inner != type -> shape(inner, Map.delete(values, type))
+      _built_in_or_undeclared -> :one
+    end
+  end
+
+  defp shape(_type, _values), do: :one
 
   defp granted("query"), do: "which rows it may read"
   defp granted("command"), do: "what it may be issued for"
