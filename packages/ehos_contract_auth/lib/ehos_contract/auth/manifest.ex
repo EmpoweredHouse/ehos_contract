@@ -629,6 +629,7 @@ defmodule EhosContract.Auth.Manifest do
   @max_events 100
   @max_fields 100
   @max_consumers 20
+  @max_consumer 255
   @max_event_name 255
   @max_field_name 63
   @max_type 255
@@ -736,7 +737,10 @@ defmodule EhosContract.Auth.Manifest do
 
     long_name(name) ++
       own ++
-      platform ++ publisher ++ too_many("inboxes that take #{name}", consumers, @max_consumers)
+      platform ++
+      publisher ++
+      too_many("inboxes that take #{name}", consumers, @max_consumers) ++
+      Enum.flat_map(consumers, &too_long("inbox #{&1}", &1, @max_consumer))
   end
 
   defp long_name(name), do: too_long("event #{name}", name, @max_event_name)

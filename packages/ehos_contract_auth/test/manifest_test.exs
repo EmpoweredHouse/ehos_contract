@@ -739,6 +739,29 @@ defmodule EhosContract.Auth.ManifestTest do
                """
     end
 
+    # An `as:` is any snake_case atom, so `<contract id>:inbox:<as>` can pass EHOS's 255.
+    test "refuses an inbox whose name is longer than EHOS takes" do
+      books = Model.fetch(EventBooks)
+      as = String.to_atom(String.duplicate("a", 250))
+
+      books = %{
+        books
+        | consumes:
+            books.consumes ++
+              [%{kind: :published, from: "billing.invoice_paid.v1", as: as, fields: []}],
+          policies: books.policies ++ [%{hd(books.policies) | name: :take, handles: [as]}]
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 inbox ledger.books:inbox:#{as} is 269 characters; EHOS takes at most 255\
+               """
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)
