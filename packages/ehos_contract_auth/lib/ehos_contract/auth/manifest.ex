@@ -664,7 +664,9 @@ defmodule EhosContract.Auth.Manifest do
   defp member(name), do: name
 
   defp type_text(type) when is_atom(type), do: Atom.to_string(type)
-  defp type_text(type), do: inspect(type)
+  # Written whole: `inspect/1` alone cuts a list past 50 entries short, so an enum's later members
+  # would change no manifest.
+  defp type_text(type), do: inspect(type, limit: :infinity, printable_limit: :infinity)
 
   # Each published event of another application a policy handles, with every inbox that takes it.
   # One no policy handles has no inbox (`EhosContract.Implementations`), and the contract no

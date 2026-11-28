@@ -658,6 +658,32 @@ defmodule EhosContract.Auth.ManifestTest do
              ]
     end
 
+    # 51 members are more than `inspect/1`'s default 50 entries, and short enough for EHOS's 255
+    # characters: each is written, so a member added at the end moves the manifest too.
+    test "writes every member of a long enum" do
+      members = for(c <- ?a..?z, do: :"#{[c]}") ++ for(c <- ?a..?y, do: :"#{[c, c]}")
+
+      books =
+        Map.update!(Model.fetch(EventBooks), :events, fn events ->
+          Enum.map(events, &retype(&1, :recorded, %{tags: {:enum, members}}))
+        end)
+
+      %{"offers" => %{"publishes" => publishes}} =
+        Manifest.build(@file_v1, [EventLedger], [books])
+
+      tags =
+        publishes
+        |> Enum.find(&(&1["name"] == "ledger.entry_recorded.v1"))
+        |> Map.fetch!("fields")
+        |> Enum.find(&(&1["name"] == "tags"))
+
+      assert tags == %{
+               "name" => "tags",
+               "type" =>
+                 "{:enum, [" <> Enum.map_join(Enum.sort(members), ", ", &inspect/1) <> "]}"
+             }
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)
