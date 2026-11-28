@@ -689,11 +689,18 @@ defmodule EhosContract.Auth.ManifestTest do
              }
     end
 
-    # The engine takes `idempotent_on: [:entry_id, :entry_id]`; EHOS takes each field once.
+    # The engine takes `idempotent_on: [:entry_id, :entry_id]`, and a model given as a map may name
+    # a field as an atom and as a string; EHOS takes each field once.
     test "writes a field of idempotent_on once" do
       books =
         Map.update!(Model.fetch(EventBooks), :publishes, fn publishes ->
-          Enum.map(publishes, &%{&1 | idempotent_on: &1.idempotent_on ++ &1.idempotent_on})
+          Enum.map(
+            publishes,
+            &%{
+              &1
+              | idempotent_on: &1.idempotent_on ++ Enum.map(&1.idempotent_on, fn f -> "#{f}" end)
+            }
+          )
         end)
 
       %{"offers" => %{"publishes" => publishes}} =
@@ -786,6 +793,22 @@ defmodule EhosContract.Auth.ManifestTest do
     end
 
     # The image runs every configured contract's relay and inboxes, the other domain's too.
+    # Only whether it publishes is read: a model given as a map whose publish names no event is
+    # refused for its domain, and does not crash on the event.
+    test "refuses another domain's contract that publishes, whatever its publish names" do
+      books = Model.fetch(EventBooks)
+      books = %{books | publishes: Enum.map(books.publishes, &%{&1 | from: :no_such_event})}
+      file = %{"schema" => "ehos.yaml/v1", "health" => @health, "application" => "manifest-rig"}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(file, [Domain, EventLedger], [Work, drop_subscriptions(books)])
+        end
+
+      assert error.message =~
+               "publish or subscribe to an event: EhosContract.Auth.ManifestTest.EventBooks."
+    end
+
     test "refuses events of a contract of another domain in the image" do
       file = %{"schema" => "ehos.yaml/v1", "health" => @health, "application" => "manifest-rig"}
 
@@ -795,11 +818,12 @@ defmodule EhosContract.Auth.ManifestTest do
         end
 
       assert error.message ==
-               "EhosContract.Auth.ManifestTest.EventAudit, " <>
-                 "EhosContract.Auth.ManifestTest.EventBooks publish or subscribe to an event, " <>
-                 "and their domain is not manifest-rig, the application this manifest is of. " <>
-                 "The image runs their relays and inboxes too: build them into the image of " <>
-                 "their own application, or take their publish and subscribe out"
+               "contracts of a domain other than manifest-rig, the application this manifest " <>
+                 "is of, publish or subscribe to an event: " <>
+                 "EhosContract.Auth.ManifestTest.EventAudit, " <>
+                 "EhosContract.Auth.ManifestTest.EventBooks. The image runs their relays and " <>
+                 "inboxes too: build them into the image of their own application, or take " <>
+                 "their publish and subscribe out"
     end
 
     test "refuses what EHOS would refuse, each named, rather than at deploy" do

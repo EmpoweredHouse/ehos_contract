@@ -239,7 +239,8 @@ The task raises, and tells what to change, in these cases:
   application;
 - an event is published two times, or the type of a field has a character that is not printable
   ASCII;
-- a contract of another domain in the project publishes or subscribes to an event. The image runs
+- a contract of another domain in the project publishes an event, or subscribes to one that a
+  policy handles. The image runs
   the events of each contract that it configures, and the manifest names the events of one
   application.
 

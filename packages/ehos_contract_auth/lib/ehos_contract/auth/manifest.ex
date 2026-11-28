@@ -634,7 +634,8 @@ defmodule EhosContract.Auth.Manifest do
   @max_event_name 255
   @max_field_name 63
   @max_type 255
-  # EHOS's rule for a type: printable ASCII, no space at either end. An enum member may be any atom.
+  # EHOS's rule for a type: printable ASCII, no space at either end. The engine takes any atom as an
+  # enum's member, so a type can break it.
   @type_text ~r/\A[!-~](?:[ -~]*[!-~])?\z/
 
   # Each `publish` of the domain's contracts, by the name the library builds (#701), with the
@@ -652,7 +653,7 @@ defmodule EhosContract.Auth.Manifest do
         %{"name" => publication.as, "fields" => Enum.sort_by(fields, & &1["name"])},
         "idempotent_on",
         # D11 holds each to the fields, not to once; EHOS takes each once.
-        publication.idempotent_on |> Enum.uniq() |> Enum.map(&to_string/1) |> Enum.sort()
+        publication.idempotent_on |> Enum.map(&to_string/1) |> Enum.uniq() |> Enum.sort()
       )
     end
     |> Enum.sort_by(& &1["name"])
@@ -696,15 +697,15 @@ defmodule EhosContract.Auth.Manifest do
     others =
       for model <- contracts,
           model.domain != domain.module,
-          publications([model]) != [] or subscriptions([model]) != [],
+          model.publishes != [] or subscriptions([model]) != [],
           do: inspect(model.module)
 
     if others != [] do
       raise ArgumentError,
-            "#{others |> Enum.sort() |> Enum.join(", ")} publish or subscribe to an event, and " <>
-              "their domain is not #{application}, the application this manifest is of. The " <>
-              "image runs their relays and inboxes too: build them into the image of their own " <>
-              "application, or take their publish and subscribe out"
+            "contracts of a domain other than #{application}, the application this manifest " <>
+              "is of, publish or subscribe to an event: #{others |> Enum.sort() |> Enum.join(", ")}. " <>
+              "The image runs their relays and inboxes too: build them into the image of their " <>
+              "own application, or take their publish and subscribe out"
     end
   end
 
