@@ -590,14 +590,17 @@ defmodule EhosContract.Auth.ManifestTest do
       assert manifest == Map.put(expected, "engine", @engine)
     end
 
-    # EHOS's v10 takes every ehos.yaml its v9 takes.
+    # EHOS's v10 takes every ehos.yaml its v9 takes. `Ledger` offers what `EventBooks` offers.
     test "make a v10 whatever the version of ehos.yaml" do
       for version <- EhosYaml.versions() do
         file = %{"schema" => version, "health" => @health}
-        manifest = Manifest.build(file, [EventLedger], [EventBooks])
 
-        assert manifest["schema"] == "ehos.manifest/v10"
-        assert manifest["needs"] == %{"subscribes" => [subscription(["ledger.books"])]}
+        assert Manifest.build(file, [EventLedger], [EventBooks]) ==
+                 file
+                 |> Manifest.build([Ledger], [Entries])
+                 |> Map.put("schema", "ehos.manifest/v10")
+                 |> put_in(["offers", "publishes"], events_fixture()["offers"]["publishes"])
+                 |> Map.put("needs", %{"subscribes" => [subscription(["ledger.books"])]})
       end
     end
 
@@ -608,21 +611,23 @@ defmodule EhosContract.Auth.ManifestTest do
       manifest =
         Manifest.build(ehos_yaml!("ehos_yaml/accepted/services.yaml"), [EventLedger], [books])
 
-      assert manifest["schema"] == "ehos.manifest/v10"
-      refute Map.has_key?(manifest["needs"], "subscribes")
-      assert length(manifest["offers"]["publishes"]) == 2
+      assert manifest ==
+               events_fixture()
+               |> Map.put("engine", @engine)
+               |> update_in(["needs"], &Map.delete(&1, "subscribes"))
     end
 
     test "a subscription alone makes a v10, with no publishes" do
       manifest =
         Manifest.build(@file_v1, [EventLedger], [EventAudit, drop_publications(EventBooks)])
 
-      assert manifest["schema"] == "ehos.manifest/v10"
-      refute Map.has_key?(manifest["offers"], "publishes")
-
-      assert manifest["needs"] == %{
-               "subscribes" => [subscription(["ledger.audit", "ledger.books"])]
-             }
+      assert manifest ==
+               @file_v1
+               |> Manifest.build([Ledger], [Entries])
+               |> Map.put("schema", "ehos.manifest/v10")
+               |> Map.put("needs", %{
+                 "subscribes" => [subscription(["ledger.audit", "ledger.books"])]
+               })
     end
 
     test "a domain with neither keeps the version it had, with neither key" do
@@ -892,6 +897,13 @@ defmodule EhosContract.Auth.ManifestTest do
           "ledger.books" -> "ledger.books:inbox:invoice_issued"
         end)
     }
+  end
+
+  defp events_fixture do
+    @fixtures
+    |> Path.join("manifests/ledger_events.v10.json")
+    |> File.read!()
+    |> Jason.decode!()
   end
 
   defp drop_publications(contract), do: %{Model.fetch(contract) | publishes: []}
