@@ -41,6 +41,7 @@ defmodule Mix.Tasks.Contract.ReleaseFileTest do
                "ehos.manifest/v7",
                "ehos.manifest/v8",
                "ehos.manifest/v9",
+               "ehos.manifest/v10",
                "ehos_contract.api/v1",
                "ehos_contract.graph/v1"
              ],

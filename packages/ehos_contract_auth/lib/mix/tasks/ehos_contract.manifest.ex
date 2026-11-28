@@ -5,8 +5,9 @@ defmodule Mix.Tasks.EhosContract.Manifest do
   @moduledoc """
   Writes `ehos.manifest/v2`, `v3` for an `ehos.yaml/v3`, `v4` for an `ehos.yaml/v4`, `v5` when a
   role may grant another, `v6` for an `ehos.yaml/v5`, `v7` for an `ehos.yaml/v6`, `v8` for an
-  `ehos.yaml/v7`, or `v9` for an `ehos.yaml/v8`, the application's `ehos.yaml` extended with what
-  its contracts offer, for EHOS to deploy with the image. A file with `kind: service`, a utility
+  `ehos.yaml/v7`, or `v9` for an `ehos.yaml/v8`, and `v10` for any `ehos.yaml` when the contracts
+  publish or subscribe to an event: the application's `ehos.yaml` extended with what its contracts
+  offer, publish and subscribe to, for EHOS to deploy with the image. A file with `kind: service`, a utility
   service's, is refused: a utility service has no contract.
 
       mix ehos_contract.manifest --output ehos.manifest.json

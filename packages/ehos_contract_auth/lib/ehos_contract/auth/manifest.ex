@@ -4,14 +4,16 @@ defmodule EhosContract.Auth.Manifest do
   # `ehos.manifest/v4`; a role's `may_grant` with `ehos.manifest/v5`; `needs.egress` with
   # `ehos.manifest/v6`; `needs.mail` with `ehos.manifest/v7`; `needs.compute` with
   # `ehos.manifest/v8`; `kind` and `needs.services` with `ehos.manifest/v9`, whose `kind: service`
-  # is a utility service's, which this generator never writes; a capability naming its
+  # is a utility service's, which this generator never writes; `offers.publishes` and
+  # `needs.subscribes` with `ehos.manifest/v10` (#702); a capability naming its
   # declaration's kind; and `contracts` left out, so
   # that an edit to a contract does not change EHOS's authority digest. Scope values on a role
   # binding are a decision of EHOS it has not built: its grants carry none, and no credential it
   # issues has `scp` (#561).
   @moduledoc """
   Extends an application's `ehos.yaml` with what its contracts offer, into EHOS's
-  `ehos.manifest/v9` for an `ehos.yaml/v8`, `ehos.manifest/v8` for an `ehos.yaml/v7`,
+  `ehos.manifest/v10` for any `ehos.yaml` when the contracts publish or subscribe to an event,
+  and otherwise `ehos.manifest/v9` for an `ehos.yaml/v8`, `ehos.manifest/v8` for an `ehos.yaml/v7`,
   `ehos.manifest/v7` for an `ehos.yaml/v6`,
   `ehos.manifest/v6` for an `ehos.yaml/v5`, `ehos.manifest/v5` for an older file when a role may
   grant another, and otherwise
@@ -20,8 +22,8 @@ defmodule EhosContract.Auth.Manifest do
   whose `ehos_yaml` may be `ehos.yaml/v4`, v5 is v4 whose roles may carry `may_grant`, v6 is v5
   whose `ehos_yaml` may be `ehos.yaml/v5`, v7 is v6 whose `ehos_yaml` may be `ehos.yaml/v6`, v8
   is v7 whose `ehos_yaml` may be `ehos.yaml/v7`, v9 is v8 whose `ehos_yaml` may be `ehos.yaml/v8`
-  and which may carry `kind`, and EHOS refuses a manifest that names a file newer than its own
-  version.
+  and which may carry `kind`, v10 is v9 that may carry `offers.publishes` and
+  `needs.subscribes`, and EHOS refuses a manifest that names a file newer than its own version.
 
   Every key of `ehos.yaml` but `schema` is in the manifest at the same path with the
   same value, and nothing is added to them: no default is filled in. `schema`
@@ -51,10 +53,20 @@ defmodule EhosContract.Auth.Manifest do
       `may_grant`, the roles of the actors its actor's `may_grant:` names, when it names any. A
       capability names its declaration as `command`, `query` or `record`, which only
       an EHOS recent enough to know these kinds accepts; an earlier EHOS refuses a
-      manifest that offers a query or a recording. Scopes and publications are absent:
+      manifest that offers a query or a recording. Scopes are absent:
       EHOS's manifest has no field for them yet, so a scoped command or query is offered,
       and every call to it through EHOS is refused `:unscoped_grant` until a role binding
       in EHOS can carry scope values, which none does yet.
+    * `offers.publishes`, only when a contract publishes: each `publish` of the domain's
+      contracts, by the name the library builds, with the fields it carries, each with its
+      type as the contract declares it, and its `idempotent_on:`, when it names any. EHOS
+      compares and shows a type and does not read it: an atom is written as its name, such as
+      `id`, and any other type as the Elixir term, such as `{:list, :id}`, a reference to an
+      entity as `id` and an enum's members by name, sorted.
+    * `needs.subscribes`, only when a contract subscribes: each published event of another
+      application that a policy handles, by its name, with the inboxes that take it,
+      `<contract id>:inbox:<name>`. A `subscribe` no policy handles has no inbox, so it is
+      left out, as it is from the contract's capabilities.
     * `engine`, the `ehos_contract` version that wrote it.
 
   `contracts` is not written. EHOS counts it in the manifest's authority digest, and
@@ -75,7 +87,7 @@ defmodule EhosContract.Auth.Manifest do
   @max_application 63
 
   @doc """
-  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5`, `v6`, `v7`, `v8` or `v9` document from an
+  Builds an `ehos.manifest/v2`, `v3`, `v4`, `v5`, `v6`, `v7`, `v8`, `v9` or `v10` document from an
   `ehos.yaml` already read by `EhosContract.Auth.EhosYaml.read/1`, the registered domains and the
   registered contracts.
 
@@ -85,8 +97,10 @@ defmodule EhosContract.Auth.Manifest do
   read `ehos.yaml`, when it says `kind: service`, a utility service's file, when
   `needs.services` names the application itself, when no domain or more than one fits, when the domain's name is not one EHOS takes for an application, when a
   command, query, recording or role's actor is past 63 characters or has an empty label,
-  when no human holds any capability, or when an actor's `may_grant:` names an actor that holds
-  none and so is no role.
+  when no human holds any capability, when an actor's `may_grant:` names an actor that holds
+  none and so is no role, when the events the contracts publish and subscribe to are past
+  what EHOS takes or not under the application's name, or when a contract of another domain
+  publishes or subscribes to one.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
@@ -101,17 +115,27 @@ defmodule EhosContract.Auth.Manifest do
     not_a_service_of_its_own!(file, application)
     models = Enum.filter(contracts, &(&1.domain == domain.module))
     if models == [], do: raise(ArgumentError, "#{inspect(domain.module)} has no contracts")
+    no_events_of_another_domain!(contracts, domain, application)
 
     offers = offers(application, domain, models)
+    publishes = publications(models)
+    subscribes = subscriptions(models)
+    ensure_events!(application, publishes, subscribes)
+
+    schema =
+      if publishes == [] and subscribes == [],
+        do: manifest_schema(ehos_yaml, offers),
+        else: "ehos.manifest/v10"
 
     file
     |> Map.merge(%{
-      "schema" => manifest_schema(ehos_yaml, offers),
+      "schema" => schema,
       "ehos_yaml" => ehos_yaml,
       "application" => application,
-      "offers" => offers,
+      "offers" => put_present(offers, "publishes", publishes),
       "engine" => %{"name" => "ehos_contract", "version" => EhosContract.version()}
     })
+    |> put_subscribes(subscribes)
   end
 
   def build(_file, _domains, _contracts) do
@@ -124,11 +148,11 @@ defmodule EhosContract.Auth.Manifest do
   produces, and what an EHOS has to accept for every manifest it writes to be deployed.
 
       iex> EhosContract.Auth.Manifest.schemas()
-      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6", "ehos.manifest/v7", "ehos.manifest/v8", "ehos.manifest/v9"]
+      ["ehos.manifest/v2", "ehos.manifest/v3", "ehos.manifest/v4", "ehos.manifest/v5", "ehos.manifest/v6", "ehos.manifest/v7", "ehos.manifest/v8", "ehos.manifest/v9", "ehos.manifest/v10"]
 
-  `build/3` writes `ehos.manifest/v9` for an `ehos.yaml/v8`, `ehos.manifest/v8` for an
-  `ehos.yaml/v7`, `ehos.manifest/v7` for an
-  `ehos.yaml/v6` and `ehos.manifest/v6` for an `ehos.yaml/v5`, whether or not a role may grant
+  `build/3` writes `ehos.manifest/v10` for any `ehos.yaml` when the contracts publish or
+  subscribe to an event. Otherwise it writes `ehos.manifest/v9` for an `ehos.yaml/v8`,
+  `ehos.manifest/v8` for an `ehos.yaml/v7`, `ehos.manifest/v7` for an `ehos.yaml/v6` and `ehos.manifest/v6` for an `ehos.yaml/v5`, whether or not a role may grant
   another; for an older file `ehos.manifest/v5` when a role may grant another, and otherwise
   `ehos.manifest/v4` for an `ehos.yaml/v4`, `ehos.manifest/v3` for an `ehos.yaml/v3` and
   `ehos.manifest/v2` for an older one.
@@ -143,7 +167,8 @@ defmodule EhosContract.Auth.Manifest do
       "ehos.manifest/v6",
       "ehos.manifest/v7",
       "ehos.manifest/v8",
-      "ehos.manifest/v9"
+      "ehos.manifest/v9",
+      "ehos.manifest/v10"
     ]
 
   # EHOS's rule: a manifest keeps the meaning it had when EHOS accepted it, so the version that
@@ -601,4 +626,204 @@ defmodule EhosContract.Auth.Manifest do
     where = where || "actor #{Enum.map_join(names, ", ", &inspect/1)}"
     raise ArgumentError, "#{inspect(domain.module)}: #{where} #{reason}"
   end
+
+  # EHOS's limits on a manifest's events, which the engine's own do not keep.
+  @max_events 100
+  @max_fields 100
+  @max_consumers 20
+  @max_consumer 255
+  @max_event_name 255
+  @max_field_name 63
+  @max_type 255
+  @event_tail ~r/\A(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*\z/
+  # EHOS's rule for a type: printable ASCII, no space at either end. The engine takes any atom as an
+  # enum's member, so a type can break it.
+  @type_text ~r/\A[!-~](?:[ -~]*[!-~])?\z/
+
+  # Each `publish` of the domain's contracts, by the name the library builds (#701), with the
+  # fields of its source event it carries, as `ehos_contract.lock` reads them.
+  defp publications(models) do
+    for model <- models, publication <- model.publishes do
+      event = Enum.find(model.events, &(&1.name == publication.from))
+
+      fields =
+        for field <- event.fields, field.name in publication.fields do
+          %{"name" => to_string(field.name), "type" => type_text(declared(field.type))}
+        end
+
+      put_present(
+        %{"name" => publication.as, "fields" => Enum.sort_by(fields, & &1["name"])},
+        "idempotent_on",
+        # D11 holds each to the fields, not to once; EHOS takes each once.
+        publication.idempotent_on |> Enum.map(&to_string/1) |> Enum.uniq() |> Enum.sort()
+      )
+    end
+    |> Enum.sort_by(& &1["name"])
+  end
+
+  # A type as a subscriber reads it, as the lock records it, but with a domain value by its name:
+  # which entity an id refers to is the publisher's, and an enum's labels are words, not values.
+  defp declared({:id, _referent}), do: :id
+  defp declared({:list, inner}), do: {:list, declared(inner)}
+  defp declared({:enum, members}), do: {:enum, members |> Enum.map(&member/1) |> Enum.sort()}
+  defp declared(type), do: type
+
+  defp member({name, _label}), do: name
+  defp member(name), do: name
+
+  defp type_text(type) when is_atom(type), do: Atom.to_string(type)
+  # Written whole: `inspect/1` alone cuts a list past 50 entries short, so an enum's later members
+  # would change no manifest.
+  defp type_text(type), do: inspect(type, limit: :infinity, printable_limit: :infinity)
+
+  # Each published event of another application a policy handles, with every inbox that takes it.
+  # One no policy handles has no inbox (`EhosContract.Implementations`), and the contract no
+  # subscribe grant for it.
+  defp subscriptions(models) do
+    for model <- models,
+        %{kind: :published, from: from, as: as} <- model.consumes,
+        Enum.any?(model.policies, &(as in &1.handles)) do
+      {from, "#{model.id}:inbox:#{as}"}
+    end
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.map(fn {name, consumers} ->
+      %{"name" => name, "consumers" => consumers |> Enum.uniq() |> Enum.sort()}
+    end)
+    |> Enum.sort_by(& &1["name"])
+  end
+
+  # A relay and an inbox run for every contract the image configures, whatever its domain, and the
+  # manifest names only the selected domain's events: another domain's would leave or arrive
+  # under no name an approver saw, and EHOS takes no publication outside the application's name.
+  defp no_events_of_another_domain!(contracts, domain, application) do
+    others =
+      for model <- contracts,
+          model.domain != domain.module,
+          model.publishes != [] or subscriptions([model]) != [],
+          do: inspect(model.module)
+
+    if others != [] do
+      raise ArgumentError,
+            "contracts of a domain other than #{application}, the application this manifest " <>
+              "is of, publish or subscribe to an event: #{others |> Enum.sort() |> Enum.join(", ")}. " <>
+              "The image runs their relays and inboxes too: build them into the image of their " <>
+              "own application, or take their publish and subscribe out"
+    end
+  end
+
+  # What EHOS would refuse of the events, each named here rather than at deploy.
+  defp ensure_events!(application, publishes, subscribes) do
+    reasons =
+      too_many("publications", publishes, @max_events) ++
+        too_many("subscriptions", subscribes, @max_events) ++
+        published_twice(publishes) ++
+        Enum.flat_map(publishes, &publication_reasons(&1, application)) ++
+        Enum.flat_map(subscribes, &subscription_reasons(&1, application))
+
+    if reasons != [] do
+      raise ArgumentError,
+            "EHOS would refuse the events the contracts publish and subscribe to:\n" <>
+              Enum.map_join(reasons, "\n", &"  #{&1}")
+    end
+  end
+
+  # X7 refuses a name two contracts publish, in a compiled project; a model given as a map has not
+  # been through it, and EHOS takes each name once.
+  defp published_twice(publishes) do
+    for {name, count} <- Enum.frequencies_by(publishes, & &1["name"]),
+        count > 1,
+        do: "event #{name} is published #{count} times; EHOS takes each name once"
+  end
+
+  defp publication_reasons(%{"name" => name, "fields" => fields}, application) do
+    # D11 builds a compiled publication's name under the domain's name; a model given as a map
+    # has not been through it, and EHOS takes a publication under the application's name only.
+    foreign =
+      if published_name?(name, application),
+        do: [],
+        else: [
+          "event #{name} is not #{application}.<name>.v<n>: EHOS takes a publication under " <>
+            "its application's name, in lowercase segments, the last a version"
+        ]
+
+    foreign ++
+      long_name(name) ++
+      too_many("fields of #{name}", fields, @max_fields) ++
+      Enum.flat_map(fields, fn %{"name" => field, "type" => type} ->
+        too_long("field #{field} of #{name}", field, @max_field_name) ++
+          too_long("the type of field #{field} of #{name}", type, @max_type) ++
+          printable("the type of field #{field} of #{name}", type)
+      end)
+  end
+
+  defp subscription_reasons(%{"name" => name, "consumers" => consumers}, application) do
+    namespace = name |> String.split(".", parts: 2) |> hd()
+
+    own =
+      if namespace == application,
+        do: ["subscription #{name} is to an event of #{application} itself; EHOS refuses it"],
+        else: []
+
+    platform =
+      if namespace == "ehos",
+        do: ["subscription #{name} is under ehos, which publishes no event"],
+        else: []
+
+    # The engine's namespace takes `_`; a publisher is an application, whose name EHOS's rule holds.
+    publisher =
+      if namespace == "ehos" or application?(namespace),
+        do: [],
+        else: [
+          "subscription #{name} is under #{namespace}, which is not a name EHOS takes for an " <>
+            "application"
+        ]
+
+    long_name(name) ++
+      own ++
+      platform ++
+      publisher ++
+      too_many("inboxes that take #{name}", consumers, @max_consumers) ++
+      Enum.flat_map(consumers, &too_long("inbox #{&1}", &1, @max_consumer))
+  end
+
+  # EHOS's rule for a publication's name: the application, dotted snake_case segments, a version.
+  defp published_name?(name, application) do
+    case String.split(name, application <> ".", parts: 2) do
+      ["", tail] -> "." <> tail =~ @event_tail
+      _other -> false
+    end
+  end
+
+  defp long_name(name), do: too_long("event #{name}", name, @max_event_name)
+
+  defp too_long(what, text, max) do
+    length = String.length(text)
+    if length > max, do: ["#{what} is #{length} characters; EHOS takes at most #{max}"], else: []
+  end
+
+  defp printable(what, text) do
+    if text =~ @type_text,
+      do: [],
+      else: ["#{what} is #{inspect(text)}; EHOS takes printable ASCII characters only"]
+  end
+
+  defp too_many(what, list, max) do
+    count = length(list)
+    if count > max, do: ["#{count} #{what}; EHOS takes at most #{max}"], else: []
+  end
+
+  defp put_present(map, _key, []), do: map
+  defp put_present(map, key, list), do: Map.put(map, key, list)
+
+  # `needs` is `ehos.yaml`'s, which has no `subscribes`: the generator adds it beside the file's.
+  defp put_subscribes(manifest, []), do: manifest
+
+  defp put_subscribes(manifest, subscribes),
+    do:
+      Map.update(
+        manifest,
+        "needs",
+        %{"subscribes" => subscribes},
+        &Map.put(&1, "subscribes", subscribes)
+      )
 end

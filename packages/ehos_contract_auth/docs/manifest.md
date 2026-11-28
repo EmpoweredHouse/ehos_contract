@@ -65,6 +65,9 @@ The `schema` of `ehos.yaml` gives the version of the manifest:
 | `ehos.yaml/v7` | `needs.compute` | `ehos.manifest/v8` |
 | `ehos.yaml/v8` | `kind`, `needs.services` | `ehos.manifest/v9` |
 
+If the contracts publish an event or subscribe to one, the task writes `ehos.manifest/v10`, for
+each version of `ehos.yaml`. [Events](#events) tells what v10 adds.
+
 If a role may grant another role, an `ehos.yaml` before v5 makes an `ehos.manifest/v5`. From
 `ehos.yaml/v5`, the version is the one in the table, with a grant rule or without one. A domain
 without a grant rule keeps the version and the digests of its manifest.
@@ -115,7 +118,8 @@ task fills in no default value. The task adds these keys:
 | `schema` | the version of the manifest, from the table above |
 | `ehos_yaml` | the `schema` of `ehos.yaml`, such as `ehos.yaml/v4` |
 | `application` | the `name:` of the domain with contracts |
-| `offers` | the capabilities and the roles of the contracts |
+| `offers` | the capabilities and the roles of the contracts, and the events that they publish |
+| `needs.subscribes` | the events of other applications that the contracts subscribe to, beside the `needs` of `ehos.yaml` |
 | `engine` | `{"name": "ehos_contract", "version": …}`, the version of the engine that wrote the manifest |
 
 `ehos.yaml` must not have `ehos_yaml`, `engine`, `contracts` or `offers`. The task refuses to
@@ -137,7 +141,7 @@ task finds the domain, refuses its name, and tells you to use `name: :"my-shop"`
 
 ### `offers`
 
-`offers` has two lists:
+`offers` has two lists, and a third when the contracts publish an event:
 
 - **`capabilities`**: each capability of a command, a query or a recorded event that a human actor
   can use. Each one has its `name`, its `label`, its `principals`, and its kind with its
@@ -145,6 +149,7 @@ task finds the domain, refuses its name, and tells you to use `name: :"my-shop"`
 - **`roles`**: each human actor that holds one capability or more, as `<application>.<actor>`, with
   its `label` and its `capabilities`. A role whose actor has `may_grant:` also has `may_grant`: the
   roles that a person with this role can grant through the application.
+- **`publishes`**: each event that the contracts publish. [Events](#events) tells what it holds.
 
 An EHOS that does not know the kinds `query` and `record` refuses a manifest that offers them.
 
@@ -152,14 +157,55 @@ These things are not in `offers`, because the manifest has no field for them, an
 field that it does not know:
 
 - a system actor, and a human actor without a capability;
-- the scopes of a capability;
-- publications.
+- the scopes of a capability.
 
 **A scoped capability gets no scope values from EHOS.** The task offers a scoped command or query
 as a capability without its scope. A role binding of EHOS has no scope values. So each call through
 EHOS to a scoped capability gets `{:error, :unscoped_grant}`. [Narrow a call to the values of a
 grant](https://github.com/EmpoweredHouse/ehos_contract/blob/main/packages/ehos_contract/docs/scope.md)
 tells what the engine does with scope values.
+
+### Events
+
+The contracts publish events to other applications with `publish`, and take the events of other
+applications with `subscribe`. In the manifest, EHOS gets both, and a person who approves the
+authority of the application sees both. Each list is in the manifest only when it has an entry:
+
+- **`offers.publishes`** has one entry for each `publish`. The entry has the `name` that the
+  library builds, such as `ledger.entry_recorded.v1`, and the `fields` that the event carries.
+  Each field has its `name` and its `type`. If the `publish` has `idempotent_on:`, the entry has
+  `idempotent_on` too.
+- **`needs.subscribes`** has one entry for each event of another application that a policy
+  handles. The entry has the `name` of the event, and the `consumers`: the inbox of each contract
+  that takes the event, as `<contract id>:inbox:<name>`.
+
+A `subscribe` that no policy handles has no inbox. So the task leaves it out.
+
+The type of a field is the type that the contract declares, as text. EHOS compares the type and
+shows it, but does not read it:
+
+| Declared type | `type` in the manifest |
+| --- | --- |
+| `:decimal` | `decimal` |
+| `{:id, :invoice}` | `id` |
+| `{:list, :string}` | `{:list, :string}` |
+| `{:enum, [debit: "Debit", credit: "Credit"]}` | `{:enum, [:credit, :debit]}` |
+
+For a ledger that publishes an entry recorded, and takes the invoices that billing issues in two
+contracts:
+
+```json
+{"offers": {"publishes": [
+  {"name": "ledger.entry_recorded.v1",
+   "fields": [{"name": "amount", "type": "decimal"}, {"name": "entry_id", "type": "id"}],
+   "idempotent_on": ["entry_id"]}]},
+ "needs": {"subscribes": [
+  {"name": "billing.invoice_issued.v1",
+   "consumers": ["ledger.audit:inbox:issued_invoice", "ledger.books:inbox:invoice_issued"]}]}}
+```
+
+The manifest does not say if a field can be absent. `ehos_contract.lock` holds each publication to
+its fields at its version, so a subscriber keeps what it reads.
 
 ### What the manifest does not hold
 
@@ -183,7 +229,20 @@ The task raises, and tells what to change, in these cases:
 - no human actor holds a capability;
 - `ehos.yaml` says `kind: service`. A utility service has no contract, so a project with contracts
   is an application. Remove `kind: service`, or write `kind: application`;
-- `needs.services` names the application of the manifest. An application is not a utility service.
+- `needs.services` names the application of the manifest. An application is not a utility service;
+- more than 100 events are published, or more than 100 are subscribed to;
+- a published event carries more than 100 fields, or more than 20 inboxes take one event;
+- the name of an event has more than 255 characters, the name of a field more than 63, or the
+  type of a field more than 255;
+- a contract subscribes to an event of its own application, or to an event under `ehos`;
+- a contract subscribes to an event of a publisher whose name is not a name that EHOS takes for an
+  application;
+- an event is published two times, or its name is not `<application>.<name>.v<n>`;
+- the type of a field has a character that is not printable ASCII;
+- a contract of another domain in the project publishes an event, or subscribes to one that a
+  policy handles. The image runs
+  the events of each contract that it configures, and the manifest names the events of one
+  application.
 
 A grant rule, `may_grant:` on an actor of the domain, has its own refusals:
 

@@ -103,6 +103,8 @@ defmodule EhosContractHost.E10OutputsTest do
   # capabilities are the commands a person issues; what only the monthly billing and the
   # policies issue has none.
   @tag :tmp_dir
+  # Billing publishes an invoice issued, so its manifest is an `ehos.manifest/v10` that names it,
+  # with its fields' types as the contract declares them, a domain value by its name (#702).
   test "the manifest task extends ehos.yaml with billing's command authority", %{tmp_dir: dir} do
     path = Path.join(dir, "billing.json")
     Mix.Task.reenable("ehos_contract.manifest")
@@ -121,7 +123,7 @@ defmodule EhosContractHost.E10OutputsTest do
     end
 
     assert Jason.decode!(File.read!(path)) == %{
-             "schema" => "ehos.manifest/v2",
+             "schema" => "ehos.manifest/v10",
              "ehos_yaml" => "ehos.yaml/v1",
              "application" => "billing",
              "engine" => %{"name" => "ehos_contract", "version" => EhosContract.version()},
@@ -134,6 +136,17 @@ defmodule EhosContractHost.E10OutputsTest do
                  capability.("record_usage", "Record usage"),
                  capability.("start_subscription", "Start a subscription"),
                  capability.("write_off_payment", "Write a payment off")
+               ],
+               "publishes" => [
+                 %{
+                   "name" => "billing.invoice_issued.v1",
+                   "fields" => [
+                     %{"name" => "period_id", "type" => "billing_period"},
+                     %{"name" => "subscription_id", "type" => "id"},
+                     %{"name" => "total", "type" => "money"}
+                   ],
+                   "idempotent_on" => ["period_id", "subscription_id"]
+                 }
                ],
                "roles" => [
                  %{

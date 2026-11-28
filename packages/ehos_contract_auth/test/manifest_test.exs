@@ -35,6 +35,9 @@ defmodule EhosContract.Auth.ManifestTest do
   `test/fixtures/manifests/ledger_services.v9.json` is that ledger written by hand from
   `ehos_yaml/accepted/services.yaml`, an `ehos.yaml/v8` of an application that calls two utility
   services (issue #634).
+
+  `test/fixtures/manifests/ledger_events.v10.json` is that ledger written by hand again, with the
+  events its contracts publish and subscribe to (issue #702).
   """
 
   use ExUnit.Case, async: true
@@ -304,6 +307,89 @@ defmodule EhosContract.Auth.ManifestTest do
     end
   end
 
+  # The ledger again, with events: its books publish an entry recorded and an entry flagged, and
+  # both contracts take an invoice issued in billing, each through a policy. An invoice voided is
+  # subscribed to and handled by no policy, so nothing takes it.
+  defmodule EventLedger do
+    @moduledoc false
+    use EhosContract.Domain, name: :ledger, language: :en
+
+    subdomain(:books, "Books", type: :core)
+    context(:books, "Books", subdomain: :books)
+    context(:audit, "Audit", subdomain: :books)
+
+    actor(:clerk, :human, "Clerk")
+    actor(:auditor, :human, "Auditor")
+  end
+
+  defmodule EventBooks do
+    @moduledoc false
+    use EhosContract.Contract, domain: EventLedger, context: :books, id: "ledger.books"
+
+    subscribe {:billing, :invoice_issued, 1}, as: :invoice_issued do
+      field(:invoice_id, :id)
+    end
+
+    subscribe {:billing, :invoice_voided, 1}, as: :invoice_voided do
+      field(:invoice_id, :id)
+    end
+
+    aggregate :entry, "Entry" do
+      identity(:entry_id)
+
+      command :record_entry, "Record an entry", by: :clerk, emits: :recorded do
+        field(:amount, :decimal)
+        field(:tags, {:list, :string})
+        field(:note, :string)
+      end
+
+      command(:flag_entry, "Flag an entry", by: :auditor, emits: :flagged)
+      command(:note_invoice, "Note an invoice", emits: :invoice_noted)
+
+      event :recorded, "Entry recorded" do
+        field(:amount, :decimal)
+        field(:tags, {:list, :string})
+        field(:note, :string)
+      end
+
+      event(:flagged, "Entry flagged")
+      event(:invoice_noted, "Invoice noted")
+    end
+
+    publish(:entry_recorded,
+      from: :recorded,
+      fields: [:tags, :entry_id, :amount],
+      idempotent_on: [:entry_id]
+    )
+
+    publish(:entry_flagged, version: 2, from: :flagged, fields: [:entry_id])
+
+    policy(:note_issued, "Note an issued invoice",
+      handles: :invoice_issued,
+      issues: :note_invoice
+    )
+  end
+
+  defmodule EventAudit do
+    @moduledoc false
+    use EhosContract.Contract, domain: EventLedger, context: :audit, id: "ledger.audit"
+
+    subscribe {:billing, :invoice_issued, 1}, as: :issued_invoice do
+      field(:invoice_id, :id)
+    end
+
+    aggregate :check, "Check" do
+      identity(:check_id)
+      command(:open_check, "Open a check", emits: :check_opened)
+      event(:check_opened, "Check opened")
+    end
+
+    policy(:check_issued, "Check an issued invoice",
+      handles: :issued_invoice,
+      issues: :open_check
+    )
+  end
+
   @health %{"port" => 4001, "ready" => "/health/ready", "live" => "/health/live"}
   @file_v1 %{"schema" => "ehos.yaml/v1", "health" => @health}
   @engine %{"name" => "ehos_contract", "version" => EhosContract.version()}
@@ -487,6 +573,407 @@ defmodule EhosContract.Auth.ManifestTest do
     end
   end
 
+  describe "offers.publishes and needs.subscribes, from the contracts" do
+    test "make an ehos.manifest/v10, as the one written by hand" do
+      expected =
+        @fixtures
+        |> Path.join("manifests/ledger_events.v10.json")
+        |> File.read!()
+        |> Jason.decode!()
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/services.yaml"), [EventLedger], [
+          EventBooks,
+          EventAudit
+        ])
+
+      assert manifest == Map.put(expected, "engine", @engine)
+    end
+
+    # EHOS's v10 takes every ehos.yaml its v9 takes. `Ledger` offers what `EventBooks` offers.
+    test "make a v10 whatever the version of ehos.yaml" do
+      for version <- EhosYaml.versions() do
+        file = %{"schema" => version, "health" => @health}
+
+        assert Manifest.build(file, [EventLedger], [EventBooks]) ==
+                 file
+                 |> Manifest.build([Ledger], [Entries])
+                 |> Map.put("schema", "ehos.manifest/v10")
+                 |> put_in(["offers", "publishes"], events_fixture()["offers"]["publishes"])
+                 |> Map.put("needs", %{"subscribes" => [subscription(["ledger.books"])]})
+      end
+    end
+
+    # A publication alone makes a v10, and the needs of ehos.yaml stay as written.
+    test "a publication alone makes a v10, with no subscribes" do
+      books = drop_subscriptions(EventBooks)
+
+      manifest =
+        Manifest.build(ehos_yaml!("ehos_yaml/accepted/services.yaml"), [EventLedger], [books])
+
+      assert manifest ==
+               events_fixture()
+               |> Map.put("engine", @engine)
+               |> update_in(["needs"], &Map.delete(&1, "subscribes"))
+    end
+
+    test "a subscription alone makes a v10, with no publishes" do
+      manifest =
+        Manifest.build(@file_v1, [EventLedger], [EventAudit, drop_publications(EventBooks)])
+
+      assert manifest ==
+               @file_v1
+               |> Manifest.build([Ledger], [Entries])
+               |> Map.put("schema", "ehos.manifest/v10")
+               |> Map.put("needs", %{
+                 "subscribes" => [subscription(["ledger.audit", "ledger.books"])]
+               })
+    end
+
+    test "a domain with neither keeps the version it had, with neither key" do
+      books = EventBooks |> drop_publications() |> drop_subscriptions()
+
+      for version <- EhosYaml.versions() do
+        file = %{"schema" => version, "health" => @health}
+        manifest = Manifest.build(file, [EventLedger], [books])
+
+        assert manifest == Manifest.build(file, [Ledger], [Entries])
+      end
+    end
+
+    test "writes an entity's id as id and an enum's members by name" do
+      books =
+        Map.update!(Model.fetch(EventBooks), :events, fn events ->
+          Enum.map(
+            events,
+            &retype(&1, :recorded, %{
+              amount: {:id, :invoice},
+              tags: {:list, {:enum, [{:debit, "Debit"}, :credit]}}
+            })
+          )
+        end)
+
+      %{"offers" => %{"publishes" => publishes}} =
+        Manifest.build(@file_v1, [EventLedger], [books])
+
+      assert Enum.find(publishes, &(&1["name"] == "ledger.entry_recorded.v1"))["fields"] == [
+               %{"name" => "amount", "type" => "id"},
+               %{"name" => "entry_id", "type" => "id"},
+               %{"name" => "tags", "type" => "{:list, {:enum, [:credit, :debit]}}"}
+             ]
+    end
+
+    # 51 members are more than `inspect/1`'s default 50 entries, and short enough for EHOS's 255
+    # characters: each is written, so a member added at the end moves the manifest too.
+    test "writes every member of a long enum" do
+      members = for(c <- ?a..?z, do: :"#{[c]}") ++ for(c <- ?a..?y, do: :"#{[c, c]}")
+
+      books =
+        Map.update!(Model.fetch(EventBooks), :events, fn events ->
+          Enum.map(events, &retype(&1, :recorded, %{tags: {:enum, members}}))
+        end)
+
+      %{"offers" => %{"publishes" => publishes}} =
+        Manifest.build(@file_v1, [EventLedger], [books])
+
+      tags =
+        publishes
+        |> Enum.find(&(&1["name"] == "ledger.entry_recorded.v1"))
+        |> Map.fetch!("fields")
+        |> Enum.find(&(&1["name"] == "tags"))
+
+      assert tags == %{
+               "name" => "tags",
+               "type" =>
+                 "{:enum, [" <> Enum.map_join(Enum.sort(members), ", ", &inspect/1) <> "]}"
+             }
+    end
+
+    # The engine takes `idempotent_on: [:entry_id, :entry_id]`, and a model given as a map may name
+    # a field as an atom and as a string; EHOS takes each field once.
+    test "writes a field of idempotent_on once" do
+      books =
+        Map.update!(Model.fetch(EventBooks), :publishes, fn publishes ->
+          Enum.map(
+            publishes,
+            &%{
+              &1
+              | idempotent_on: &1.idempotent_on ++ Enum.map(&1.idempotent_on, fn f -> "#{f}" end)
+            }
+          )
+        end)
+
+      %{"offers" => %{"publishes" => publishes}} =
+        Manifest.build(@file_v1, [EventLedger], [books])
+
+      assert Enum.map(publishes, &{&1["name"], &1["idempotent_on"]}) == [
+               {"ledger.entry_flagged.v2", nil},
+               {"ledger.entry_recorded.v1", ["entry_id"]}
+             ]
+    end
+
+    # The engine takes any atom for an enum's member; EHOS takes a type in printable ASCII.
+    test "refuses a type that is not printable ASCII" do
+      books =
+        Map.update!(Model.fetch(EventBooks), :events, fn events ->
+          Enum.map(events, &retype(&1, :recorded, %{tags: {:enum, [:café, :bar]}}))
+        end)
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 the type of field tags of ledger.entry_recorded.v1 is "{:enum, [:bar, :café]}"; EHOS takes printable ASCII characters only\
+               """
+    end
+
+    # `subscribe {:dispatch_rig, :order_placed, 1}` compiles; no application has that name in EHOS.
+    test "refuses a subscription to a publisher whose name EHOS takes for no application" do
+      books = Model.fetch(EventBooks)
+
+      books = %{
+        books
+        | consumes:
+            books.consumes ++
+              [%{kind: :published, from: "dispatch_rig.order_placed.v1", as: :placed, fields: []}],
+          policies: books.policies ++ [%{hd(books.policies) | name: :take, handles: [:placed]}]
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 subscription dispatch_rig.order_placed.v1 is under dispatch_rig, which is not a name EHOS takes for an application\
+               """
+    end
+
+    # An `as:` is any snake_case atom, so `<contract id>:inbox:<as>` can pass EHOS's 255.
+    test "refuses an inbox whose name is longer than EHOS takes" do
+      books = Model.fetch(EventBooks)
+      as = String.to_atom(String.duplicate("a", 250))
+
+      books = %{
+        books
+        | consumes:
+            books.consumes ++
+              [%{kind: :published, from: "billing.invoice_paid.v1", as: as, fields: []}],
+          policies: books.policies ++ [%{hd(books.policies) | name: :take, handles: [as]}]
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 inbox ledger.books:inbox:#{as} is 269 characters; EHOS takes at most 255\
+               """
+    end
+
+    # A model given as a map has not been through D11, which builds the name under the domain's.
+    test "refuses a publication whose name is not the application's, in EHOS's form" do
+      books = Model.fetch(EventBooks)
+      names = ["billing.entry_flagged.v2", "ledgers.entry_flagged.v2", "ledger.entry_flagged"]
+
+      for name <- names do
+        books = %{
+          books
+          | publishes:
+              Enum.map(books.publishes, fn
+                %{name: :entry_flagged} = publication -> %{publication | as: name}
+                publication -> publication
+              end)
+        }
+
+        error =
+          assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+        assert error.message ==
+                 "EHOS would refuse the events the contracts publish and subscribe to:\n" <>
+                   "  event #{name} is not ledger.<name>.v<n>: EHOS takes a publication under " <>
+                   "its application's name, in lowercase segments, the last a version"
+      end
+    end
+
+    # Two contracts given as maps, not compiled together, can publish one name.
+    test "refuses an event published twice" do
+      books = Model.fetch(EventBooks)
+      [recorded] = Enum.filter(books.publishes, &(&1.name == :entry_recorded))
+      audit = %{Model.fetch(EventAudit) | publishes: [recorded], events: books.events}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [EventLedger], [books, audit])
+        end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 event ledger.entry_recorded.v1 is published 2 times; EHOS takes each name once\
+               """
+    end
+
+    # The image runs every configured contract's relay and inboxes, the other domain's too.
+    # Only whether it publishes is read: a model given as a map whose publish names no event is
+    # refused for its domain, and does not crash on the event.
+    test "refuses another domain's contract that publishes, whatever its publish names" do
+      books = Model.fetch(EventBooks)
+      books = %{books | publishes: Enum.map(books.publishes, &%{&1 | from: :no_such_event})}
+      file = %{"schema" => "ehos.yaml/v1", "health" => @health, "application" => "manifest-rig"}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(file, [Domain, EventLedger], [Work, drop_subscriptions(books)])
+        end
+
+      assert error.message =~
+               "publish or subscribe to an event: EhosContract.Auth.ManifestTest.EventBooks."
+    end
+
+    test "refuses events of a contract of another domain in the image" do
+      file = %{"schema" => "ehos.yaml/v1", "health" => @health, "application" => "manifest-rig"}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(file, [Domain, EventLedger], [Work, EventBooks, EventAudit])
+        end
+
+      assert error.message ==
+               "contracts of a domain other than manifest-rig, the application this manifest " <>
+                 "is of, publish or subscribe to an event: " <>
+                 "EhosContract.Auth.ManifestTest.EventAudit, " <>
+                 "EhosContract.Auth.ManifestTest.EventBooks. The image runs their relays and " <>
+                 "inboxes too: build them into the image of their own application, or take " <>
+                 "their publish and subscribe out"
+    end
+
+    test "refuses what EHOS would refuse, each named, rather than at deploy" do
+      long = String.duplicate("a", 250)
+      books = Model.fetch(EventBooks)
+
+      books = %{
+        books
+        | publishes:
+            Enum.map(books.publishes, fn
+              %{name: :entry_flagged} = publication -> %{publication | as: "ledger.#{long}.v2"}
+              publication -> publication
+            end),
+          consumes:
+            books.consumes ++
+              [
+                %{kind: :published, from: "ledger.entry_flagged.v2", as: :own, fields: []},
+                %{kind: :published, from: "ehos.person_left.v1", as: :left, fields: []}
+              ],
+          policies:
+            books.policies ++
+              [%{hd(books.policies) | name: :take_others, handles: [:own, :left]}],
+          events:
+            Enum.map(books.events, fn
+              %{name: :recorded} = event ->
+                %{event | fields: Enum.map(event.fields, &long_field/1)}
+
+              event ->
+                event
+            end)
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 event ledger.#{long}.v2 is 260 characters; EHOS takes at most 255
+                 the type of field tags of ledger.entry_recorded.v1 is 360 characters; EHOS takes at most 255
+                 subscription ehos.person_left.v1 is under ehos, which publishes no event
+                 subscription ledger.entry_flagged.v2 is to an event of ledger itself; EHOS refuses it\
+               """
+    end
+
+    test "refuses more publications, fields or inboxes than EHOS takes" do
+      books = Model.fetch(EventBooks)
+      [flagged] = Enum.filter(books.publishes, &(&1.name == :entry_flagged))
+      [recorded] = Enum.filter(books.publishes, &(&1.name == :entry_recorded))
+      wide = for n <- 1..101, do: :"field_#{n}"
+
+      copies =
+        for n <- 1..101, do: %{flagged | name: :"entry_#{n}", as: "ledger.entry_#{n}.v1"}
+
+      inboxes =
+        for n <- 1..21,
+            do: %{kind: :published, from: "billing.invoice_issued.v1", as: :"in_#{n}", fields: []}
+
+      books = %{
+        books
+        | publishes: [%{recorded | fields: wide} | copies],
+          events:
+            Enum.map(books.events, fn
+              %{name: :recorded} = event ->
+                %{event | fields: for(name <- wide, do: %{hd(event.fields) | name: name})}
+
+              event ->
+                event
+            end),
+          consumes: books.consumes ++ inboxes,
+          policies:
+            books.policies ++
+              [%{hd(books.policies) | name: :take_many, handles: Enum.map(inboxes, & &1.as)}]
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 102 publications; EHOS takes at most 100
+                 101 fields of ledger.entry_recorded.v1; EHOS takes at most 100
+                 22 inboxes that take billing.invoice_issued.v1; EHOS takes at most 20\
+               """
+    end
+  end
+
+  defp subscription(contracts) do
+    %{
+      "name" => "billing.invoice_issued.v1",
+      "consumers" =>
+        Enum.map(contracts, fn
+          "ledger.audit" -> "ledger.audit:inbox:issued_invoice"
+          "ledger.books" -> "ledger.books:inbox:invoice_issued"
+        end)
+    }
+  end
+
+  defp events_fixture do
+    @fixtures
+    |> Path.join("manifests/ledger_events.v10.json")
+    |> File.read!()
+    |> Jason.decode!()
+  end
+
+  defp drop_publications(contract), do: %{Model.fetch(contract) | publishes: []}
+
+  defp drop_subscriptions(contract) do
+    model = Model.fetch(contract)
+    %{model | consumes: Enum.reject(model.consumes, &(&1.kind == :published))}
+  end
+
+  defp retype(%{name: name} = event, name, types) do
+    %{event | fields: Enum.map(event.fields, &%{&1 | type: Map.get(types, &1.name, &1.type)})}
+  end
+
+  defp retype(event, _name, _types), do: event
+
+  # An enum of 30 members, each `:member_<n>`, writes past 255 characters.
+  defp long_field(%{name: :tags} = field),
+    do: %{field | type: {:enum, Enum.map(1..30, &:"member_#{&1}")}}
+
+  defp long_field(field), do: field
+
   describe "needs.compute, from ehos.yaml/v7" do
     test "makes an ehos.manifest/v8, carried as written, as the one written by hand" do
       expected =
@@ -655,7 +1142,11 @@ defmodule EhosContract.Auth.ManifestTest do
   test "schemas/0 lists exactly the versions build/3 writes" do
     written =
       for version <- EhosYaml.versions(),
-          {domain, contract} <- [{Ledger, Entries}, {GrantDomain, GrantWork}],
+          {domain, contract} <- [
+            {Ledger, Entries},
+            {GrantDomain, GrantWork},
+            {EventLedger, EventBooks}
+          ],
           uniq: true do
         file = %{"schema" => version, "health" => @health}
         Manifest.build(file, [domain], [contract])["schema"]
