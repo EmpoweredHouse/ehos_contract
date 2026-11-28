@@ -632,6 +632,8 @@ defmodule EhosContract.Auth.Manifest do
   @max_event_name 255
   @max_field_name 63
   @max_type 255
+  # EHOS's rule for a type: printable ASCII, no space at either end. An enum member may be any atom.
+  @type_text ~r/\A[!-~](?:[ -~]*[!-~])?\z/
 
   # Each `publish` of the domain's contracts, by the name the library builds (#701), with the
   # fields of its source event it carries, as `ehos_contract.lock` reads them.
@@ -705,7 +707,8 @@ defmodule EhosContract.Auth.Manifest do
       too_many("fields of #{name}", fields, @max_fields) ++
       Enum.flat_map(fields, fn %{"name" => field, "type" => type} ->
         too_long("field #{field} of #{name}", field, @max_field_name) ++
-          too_long("the type of field #{field} of #{name}", type, @max_type)
+          too_long("the type of field #{field} of #{name}", type, @max_type) ++
+          printable("the type of field #{field} of #{name}", type)
       end)
   end
 
@@ -731,6 +734,12 @@ defmodule EhosContract.Auth.Manifest do
   defp too_long(what, text, max) do
     length = String.length(text)
     if length > max, do: ["#{what} is #{length} characters; EHOS takes at most #{max}"], else: []
+  end
+
+  defp printable(what, text) do
+    if text =~ @type_text,
+      do: [],
+      else: ["#{what} is #{inspect(text)}; EHOS takes printable ASCII characters only"]
   end
 
   defp too_many(what, list, max) do

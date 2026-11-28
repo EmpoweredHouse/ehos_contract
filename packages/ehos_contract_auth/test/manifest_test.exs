@@ -700,6 +700,23 @@ defmodule EhosContract.Auth.ManifestTest do
              ]
     end
 
+    # The engine takes any atom for an enum's member; EHOS takes a type in printable ASCII.
+    test "refuses a type that is not printable ASCII" do
+      books =
+        Map.update!(Model.fetch(EventBooks), :events, fn events ->
+          Enum.map(events, &retype(&1, :recorded, %{tags: {:enum, [:café, :bar]}}))
+        end)
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 the type of field tags of ledger.entry_recorded.v1 is "{:enum, [:bar, :café]}"; EHOS takes printable ASCII characters only\
+               """
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)
