@@ -780,6 +780,23 @@ defmodule EhosContract.Auth.ManifestTest do
                """
     end
 
+    # The image runs every configured contract's relay and inboxes, the other domain's too.
+    test "refuses events of a contract of another domain in the image" do
+      file = %{"schema" => "ehos.yaml/v1", "health" => @health, "application" => "manifest-rig"}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(file, [Domain, EventLedger], [Work, EventBooks, EventAudit])
+        end
+
+      assert error.message ==
+               "EhosContract.Auth.ManifestTest.EventAudit, " <>
+                 "EhosContract.Auth.ManifestTest.EventBooks publish or subscribe to an event, " <>
+                 "and their domain is not manifest-rig, the application this manifest is of. " <>
+                 "The image runs their relays and inboxes too: build them into the image of " <>
+                 "their own application, or take their publish and subscribe out"
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)

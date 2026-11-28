@@ -98,8 +98,8 @@ defmodule EhosContract.Auth.Manifest do
   `needs.services` names the application itself, when no domain or more than one fits, when the domain's name is not one EHOS takes for an application, when a
   command, query, recording or role's actor is past 63 characters or has an empty label,
   when no human holds any capability, when an actor's `may_grant:` names an actor that holds
-  none and so is no role, or when the events the contracts publish and subscribe to are past
-  what EHOS takes.
+  none and so is no role, when the events the contracts publish and subscribe to are past
+  what EHOS takes, or when a contract of another domain publishes or subscribes to one.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
@@ -114,6 +114,7 @@ defmodule EhosContract.Auth.Manifest do
     not_a_service_of_its_own!(file, application)
     models = Enum.filter(contracts, &(&1.domain == domain.module))
     if models == [], do: raise(ArgumentError, "#{inspect(domain.module)} has no contracts")
+    no_events_of_another_domain!(contracts, domain, application)
 
     offers = offers(application, domain, models)
     publishes = publications(models)
@@ -686,6 +687,25 @@ defmodule EhosContract.Auth.Manifest do
       %{"name" => name, "consumers" => consumers |> Enum.uniq() |> Enum.sort()}
     end)
     |> Enum.sort_by(& &1["name"])
+  end
+
+  # A relay and an inbox run for every contract the image configures, whatever its domain, and the
+  # manifest names only the selected domain's events: another domain's would leave or arrive
+  # under no name an approver saw, and EHOS takes no publication outside the application's name.
+  defp no_events_of_another_domain!(contracts, domain, application) do
+    others =
+      for model <- contracts,
+          model.domain != domain.module,
+          publications([model]) != [] or subscriptions([model]) != [],
+          do: inspect(model.module)
+
+    if others != [] do
+      raise ArgumentError,
+            "#{others |> Enum.sort() |> Enum.join(", ")} publish or subscribe to an event, and " <>
+              "their domain is not #{application}, the application this manifest is of. The " <>
+              "image runs their relays and inboxes too: build them into the image of their own " <>
+              "application, or take their publish and subscribe out"
+    end
   end
 
   # What EHOS would refuse of the events, each named here rather than at deploy.

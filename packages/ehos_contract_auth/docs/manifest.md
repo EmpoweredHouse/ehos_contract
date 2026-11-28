@@ -234,7 +234,14 @@ The task raises, and tells what to change, in these cases:
 - a published event carries more than 100 fields, or more than 20 inboxes take one event;
 - the name of an event has more than 255 characters, the name of a field more than 63, or the
   type of a field more than 255;
-- a contract subscribes to an event of its own application, or to an event under `ehos`.
+- a contract subscribes to an event of its own application, or to an event under `ehos`;
+- a contract subscribes to an event of a publisher whose name is not a name that EHOS takes for an
+  application;
+- an event is published two times, or the type of a field has a character that is not printable
+  ASCII;
+- a contract of another domain in the project publishes or subscribes to an event. The image runs
+  the events of each contract that it configures, and the manifest names the events of one
+  application.
 
 A grant rule, `may_grant:` on an actor of the domain, has its own refusals:
 
