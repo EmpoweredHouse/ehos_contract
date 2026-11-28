@@ -1,0 +1,110 @@
+{
+  "schema": "ehos.manifest/v10",
+  "ehos_yaml": "ehos.yaml/v8",
+  "kind": "application",
+  "application": "ledger",
+  "needs": {
+    "database": {
+      "engine": "postgres",
+      "migrate": [
+        "/app/bin/migrate"
+      ]
+    },
+    "services": [
+      {
+        "name": "invoice-pdf"
+      },
+      {
+        "name": "address-check"
+      }
+    ],
+    "subscribes": [
+      {
+        "name": "billing.invoice_issued.v1",
+        "consumers": [
+          "ledger.audit:inbox:issued_invoice",
+          "ledger.books:inbox:invoice_issued"
+        ]
+      }
+    ]
+  },
+  "offers": {
+    "capabilities": [
+      {
+        "name": "ledger.flag_entry",
+        "command": "flag_entry",
+        "label": "Flag an entry",
+        "principals": [
+          "human"
+        ]
+      },
+      {
+        "name": "ledger.record_entry",
+        "command": "record_entry",
+        "label": "Record an entry",
+        "principals": [
+          "human"
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "name": "ledger.auditor",
+        "label": "Auditor",
+        "capabilities": [
+          "ledger.flag_entry"
+        ]
+      },
+      {
+        "name": "ledger.clerk",
+        "label": "Clerk",
+        "capabilities": [
+          "ledger.record_entry"
+        ]
+      }
+    ],
+    "publishes": [
+      {
+        "name": "ledger.entry_flagged.v2",
+        "fields": [
+          {
+            "name": "entry_id",
+            "type": "id"
+          }
+        ]
+      },
+      {
+        "name": "ledger.entry_recorded.v1",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "decimal"
+          },
+          {
+            "name": "entry_id",
+            "type": "id"
+          },
+          {
+            "name": "tags",
+            "type": "{:list, :string}"
+          }
+        ],
+        "idempotent_on": [
+          "entry_id"
+        ]
+      }
+    ]
+  },
+  "serves": [
+    {
+      "name": "web",
+      "port": 4000,
+      "public": true
+    }
+  ],
+  "health": {
+    "port": 4001,
+    "ready": "/health/ready",
+    "live": "/health/live"
+  }
+}
