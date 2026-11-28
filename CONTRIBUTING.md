@@ -271,6 +271,8 @@ follows "Your first contribution", above.
    waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
+   Its "Outcome", "Judge" and "Expected result" come from the maintainers' `ehos-core:plan` skill, which
+   plans the stage by them; `ehos-core:retro` checks the finished work against them (step 9).
 3. **A branch** named after the programme and the issue: `pb/393-community`, `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
@@ -290,12 +292,27 @@ follows "Your first contribution", above.
 8. **When it is merged**, `ROADMAP.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
    when it upgrades.
-9. **When a wave or a programme closes**, nothing more is written: the maintainers decide whether it is
+9. **When a wave closes**, nothing more is written. **When a programme closes**, the maintainers'
+   `ehos-core:retro` skill looks back on its stages first (below). Then the maintainers decide whether it is
    released ("Changelogs and releases"), and the next stages start from `ROADMAP.md`.
 
 The `ehos-dev:stage-issue` skill is the same procedure for an assistant, with how an issue is written. It comes
 from the maintainers' `ehos-dev` plugin ("Working with Claude Code"), which reads this section and the one
 before it for what is this repository's.
+
+`ehos-core:plan` and `ehos-core:retro` come from the `ehos-core` plugin and read the same two sections. What is
+this repository's part of a retro:
+
+- **It runs** when a programme closes, over the stages its label lists. It reads each stage's issue, with
+  its outcome, judge and expected result, the pull requests and the findings of their reviews, and the
+  follow-ups they filed: the issues that name those pull requests (`.claude/review.md`, "A finding skipped").
+- **Its record of lessons** is the issues it files. A lesson about the engine, its packages or the
+  `ehos-contract` plugin is an issue here; one about `ehos-core`, `ehos-dev` or another part of ehos-tools is an
+  issue in ehos-tools. A lesson about this repository's own rules (`CLAUDE.md`, this file,
+  `.claude/review.md`, `.claude/skills/`) is a pull request here.
+- **This repository is public.** A draft that waits stays in the report to the maintainer, never in a file here.
+  A defect that may be a security one goes through the private report `SECURITY.md` names, never an issue, and
+  is written nowhere in this repository until its fix is released.
 
 ## Changelogs and releases
 

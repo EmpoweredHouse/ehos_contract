@@ -25,9 +25,19 @@ Name files, never line numbers: they go stale before the issue closes.
 
 - … because …
 
+## Outcome
+
+What is true once it is done, for a host, a user of the library or this repository: a state of things, not a list
+of tasks.
+
+## Judge
+
+The check that shows the outcome, which anyone can start: a test, `mix check`, a task and its output, a page. If
+none exists yet, the first part of the work builds it.
+
 ## Expected result
 
-What anyone can see once it is done: a refusal, a warning, a page, a test that passes.
+What the judge shows once it is done: a refusal, a warning, a page, a test that passes.
 
 ## Decisions
 

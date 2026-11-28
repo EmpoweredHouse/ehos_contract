@@ -63,6 +63,7 @@ data key is bound to when wrapped. The repository was `EmpoweredHouse/eh-os-cont
 | How work is planned, recorded and reviewed, for a person and an assistant alike: where each thing lives, from an idea to `main`, how to follow a line of code back to its reason | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | The programmes, their stages and **their status** | [`ROADMAP.md`](ROADMAP.md) |
 | A stage's scope, decisions, review and pull requests | its GitHub issue (labels `publication`; `dd`, `wave-<n>` before it); how to run a stage through one: `CONTRIBUTING.md`, "From an idea to `main`", and the maintainers' `ehos-dev:stage-issue` skill |
+| How a stage starts and a programme closes | `ehos-core:plan` names a stage's outcome, its judge and what is expected, in its issue; `ehos-core:retro` looks back when a programme closes and sends each lesson to its owner (`CONTRIBUTING.md`, "From an idea to `main`") |
 | What this repository is | [`README.md`](README.md) |
 | The layout, the gate, the development host | [`CONTRIBUTING.md`](CONTRIBUTING.md), "What does each directory hold?", "Run the gate" and "Run the development host and the dashboard" |
 | **How to write a domain and a contract** | [`packages/ehos_contract/docs/contract.md`](packages/ehos_contract/docs/contract.md) |
