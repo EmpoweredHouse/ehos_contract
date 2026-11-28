@@ -774,6 +774,32 @@ defmodule EhosContract.Auth.ManifestTest do
                """
     end
 
+    # A model given as a map has not been through D11, which builds the name under the domain's.
+    test "refuses a publication under another application's name" do
+      books = Model.fetch(EventBooks)
+
+      books = %{
+        books
+        | publishes:
+            Enum.map(books.publishes, fn
+              %{name: :entry_flagged} = publication ->
+                %{publication | as: "billing.entry_flagged.v2"}
+
+              publication ->
+                publication
+            end)
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 event billing.entry_flagged.v2 is not under ledger, the application this manifest is of\
+               """
+    end
+
     # Two contracts given as maps, not compiled together, can publish one name.
     test "refuses an event published twice" do
       books = Model.fetch(EventBooks)

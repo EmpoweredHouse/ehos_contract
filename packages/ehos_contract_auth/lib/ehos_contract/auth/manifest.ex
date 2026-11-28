@@ -715,7 +715,7 @@ defmodule EhosContract.Auth.Manifest do
       too_many("publications", publishes, @max_events) ++
         too_many("subscriptions", subscribes, @max_events) ++
         published_twice(publishes) ++
-        Enum.flat_map(publishes, &publication_reasons/1) ++
+        Enum.flat_map(publishes, &publication_reasons(&1, application)) ++
         Enum.flat_map(subscribes, &subscription_reasons(&1, application))
 
     if reasons != [] do
@@ -733,8 +733,16 @@ defmodule EhosContract.Auth.Manifest do
         do: "event #{name} is published #{count} times; EHOS takes each name once"
   end
 
-  defp publication_reasons(%{"name" => name, "fields" => fields}) do
-    long_name(name) ++
+  defp publication_reasons(%{"name" => name, "fields" => fields}, application) do
+    # D11 builds a compiled publication's name under the domain's name; a model given as a map
+    # has not been through it, and EHOS takes a publication under the application's name only.
+    foreign =
+      if String.starts_with?(name, application <> "."),
+        do: [],
+        else: ["event #{name} is not under #{application}, the application this manifest is of"]
+
+    foreign ++
+      long_name(name) ++
       too_many("fields of #{name}", fields, @max_fields) ++
       Enum.flat_map(fields, fn %{"name" => field, "type" => type} ->
         too_long("field #{field} of #{name}", field, @max_field_name) ++
