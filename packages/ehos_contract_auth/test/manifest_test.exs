@@ -717,6 +717,28 @@ defmodule EhosContract.Auth.ManifestTest do
                """
     end
 
+    # `subscribe {:dispatch_rig, :order_placed, 1}` compiles; no application has that name in EHOS.
+    test "refuses a subscription to a publisher whose name EHOS takes for no application" do
+      books = Model.fetch(EventBooks)
+
+      books = %{
+        books
+        | consumes:
+            books.consumes ++
+              [%{kind: :published, from: "dispatch_rig.order_placed.v1", as: :placed, fields: []}],
+          policies: books.policies ++ [%{hd(books.policies) | name: :take, handles: [:placed]}]
+      }
+
+      error =
+        assert_raise ArgumentError, fn -> Manifest.build(@file_v1, [EventLedger], [books]) end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 subscription dispatch_rig.order_placed.v1 is under dispatch_rig, which is not a name EHOS takes for an application\
+               """
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)

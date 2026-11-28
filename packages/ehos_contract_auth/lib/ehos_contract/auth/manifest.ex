@@ -725,8 +725,18 @@ defmodule EhosContract.Auth.Manifest do
         do: ["subscription #{name} is under ehos, which publishes no event"],
         else: []
 
+    # The engine's namespace takes `_`; a publisher is an application, whose name EHOS's rule holds.
+    publisher =
+      if namespace == "ehos" or application?(namespace),
+        do: [],
+        else: [
+          "subscription #{name} is under #{namespace}, which is not a name EHOS takes for an " <>
+            "application"
+        ]
+
     long_name(name) ++
-      own ++ platform ++ too_many("inboxes that take #{name}", consumers, @max_consumers)
+      own ++
+      platform ++ publisher ++ too_many("inboxes that take #{name}", consumers, @max_consumers)
   end
 
   defp long_name(name), do: too_long("event #{name}", name, @max_event_name)
