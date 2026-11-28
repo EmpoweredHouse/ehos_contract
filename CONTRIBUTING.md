@@ -373,15 +373,18 @@ follows the same procedure in this repository and EHOS's others. In this reposit
 The repository works without any of this: `CLAUDE.md` and the skills in `.claude/skills/` are read by any
 Claude Code session opened here, and nothing the repository configures asks for a plugin or blocks a command.
 
-The maintainers add three things on their own machines, in `.claude/settings.local.json`, which git ignores:
+The maintainers add four things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
-- the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
-  with EHOS's other repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`,
-  `elixir`, and `voice` and `diagrams` for text a person reads and its diagrams;
+- the `ehos-core` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the method every EHOS
+  repository and application shares: `plan`, which starts a stage, and `retro`, which closes a programme
+  ("From an idea to `main`");
+- the `ehos-dev` plugin, from the same marketplace, which carries the procedures shared with EHOS's other
+  repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`, `elixir`, and `voice` and
+  `diagrams` for text a person reads and its diagrams;
 - the `diagram-design` plugin, from the same marketplace at one commit, which `diagrams` lays a diagram out with;
 - a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
 
-All three are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
+All four are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
 one who has one merges its keys in by hand, since Claude Code keeps its "always allow" rules in that file:
 
 ```bash
@@ -390,18 +393,19 @@ cp -n .claude/settings.team.json .claude/settings.local.json
 
 Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
 
-ehos-tools is private, so the plugin needs a GitHub credential that can read it. On a machine without an SSH key,
-set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugin is
-taken by moving the `ref` in that file. A maintainer who copied the file before merges the new `ref` in by hand,
-as above. Claude Code applies a `ref` only when it adds the marketplace: a machine that has the marketplace keeps the
+ehos-tools is private, so the plugins need a GitHub credential that can read it. On a machine without an SSH key,
+set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugins is
+taken by moving the `ref` in that file: `ehos-core` has no tag of its own there, and comes with the `ehos-dev` tag
+the `ref` names. A maintainer who copied the file before merges the new `ref` in by hand, as above. Claude Code applies a `ref` only when it adds the marketplace: a machine that has the marketplace keeps the
 tag it added it at, and its sessions keep loading that tag. To move a machine to the new tag:
 
 1. In a directory outside every checkout, run `claude plugin marketplace remove ehos-tools`. In a checkout, this
    command also deletes the marketplace from the checkout's settings.
 2. Run `claude plugin marketplace add <repo>#<ref>`, with the `repo` and `ref` that `settings.team.json` gives.
-3. In each worktree, run `claude plugin install ehos-dev@ehos-tools --scope local` and
+3. In each worktree, run `claude plugin install ehos-core@ehos-tools --scope local`,
+   `claude plugin install ehos-dev@ehos-tools --scope local` and
    `claude plugin install diagram-design@ehos-tools --scope local`.
-4. Restart Claude Code. `claude plugin list` then shows the new version of `ehos-dev`.
+4. Restart Claude Code. `claude plugin list` then shows the new versions of `ehos-core` and `ehos-dev`.
 
 A maintainer who also has `diagram-design` from its own marketplace disables that copy, or a session may use another
 version.
