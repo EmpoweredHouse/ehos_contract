@@ -30,8 +30,7 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 ### Changed
 
 - **Breaking:** the engine is required at `~> 0.19.0`, the release that builds the name of a
-  published event, so a host moves the packages together. Nothing else in this
-  package changed.
+  published event, so a host moves the packages together. Nothing else in this package changed.
 
 ## [0.14.0] - 2026-11-27
 

@@ -6,16 +6,20 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ☐ not started · ◐ in progress · ☑ in `main` · ✕ dropped
 
-## Where things stand (27 November 2026)
+## Where things stand (28 November 2026)
 
 - **Released:** v0.19.0, the name of a published event built by the library from the domain, the
   publication and its version, with each publication's fields kept in `ehos_contract.lock` (#697),
   and the manifest that names the events an application publishes and subscribes to, in
   `ehos.manifest/v10` (#702): the engine 0.19.0 and `ehos_contract_auth` 0.20.0;
   `ehos_contract_web` 0.15.0 only requires the engine, so a host moves the three packages together.
-  A host that publishes or subscribes acts: it removes `as:` from each `publish`, writes each
-  `subscribe` as `{namespace, publication, version}`, commits `ehos_contract.lock` again, and
-  deploys to an EHOS that reads `ehos.manifest/v10`. The graph renderer stays at 0.12.0. The plugin
+  A host that publishes or subscribes acts, as the engine's 0.19.0 section says: it removes `as:`
+  from each `publish`, writes each `subscribe` as `{namespace, publication, version}`, runs
+  `mix ehos_contract.schema` and commits `ehos_contract.lock`, and deploys to an EHOS that reads
+  `ehos.manifest/v10`, which no EHOS release does yet. A name of more than three segments changes:
+  the publisher and its subscribers move together, and the old relay publishes what it holds
+  before the rename is deployed. `mix ehos_contract.manifest` refuses a project whose contracts of
+  a second domain publish or take in an event: they move to their own application's image. The graph renderer stays at 0.12.0. The plugin
   `ehos-contract` is at 0.17.0. Applications install them from git, at
   `EmpoweredHouse/ehos_contract`. The pull request after the tag moves each released package to its
   next patch's `-dev`.
