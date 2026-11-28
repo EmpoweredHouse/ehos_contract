@@ -80,12 +80,12 @@ EHOS's repositories alike).
 The `ehos-dev:pull-request` skill writes the description and opens the pull request. This section
 gives the rules that are this repository's own.
 
-`.claude/settings.team.json` pins a tag of `ehos-dev` that has the skill. Claude Code does not
-read that file: it reads the maintainer's copy in `.claude/settings.local.json`, one per worktree,
-and the user's own settings (`CONTRIBUTING.md`, "Working with Claude Code"). If the session does
-not have the skill, tell the user. Name the `ref` that each of these files gives, if it is older
-than the tag in `settings.team.json`. The maintainer moves the machine to that tag, as
-`CONTRIBUTING.md`, "Working with Claude Code", says. In a run with no user, stop and report it.
+`.claude/settings.team.json` pins a tag of `ehos-dev` that has the skill, and `ehos-core` comes with
+that tag. Claude Code does not read that file: it reads the maintainer's copy in
+`.claude/settings.local.json`, one per worktree, and the user's own settings (`CONTRIBUTING.md`,
+"Working with Claude Code"). If the session does not have the skill, tell the user. Name the `ref`
+that each of these files gives, if it is older than the tag in `settings.team.json`. The maintainer
+moves the machine to that tag, as `CONTRIBUTING.md`, "Working with Claude Code", says. In a run with no user, stop and report it.
 
 The skill says that its review gate refuses `--head`, `--repo`, `GH_REPO` and a commit in the same
 command. This repository's hook refuses none of them. It ignores the flags, and it reads `HEAD`
@@ -104,6 +104,12 @@ before a commit in the same command runs. Do not use these flags or their short 
   its meaning: "a reaction to another context's event that leaves delivery out (X10)".
 - **How it was tested**, under "Automated", gives the gate, `mix check` in `sandbox/`, with its own
   exit code.
+- **A change to a procedure** changes how work is planned, reviewed, described or looked back on. It
+  is a move of the `ref` in `.claude/settings.team.json`, or a change to this file, to
+  `.claude/skills/review-pr/`, to `.github/ISSUE_TEMPLATE/stage.md`, to
+  `.github/pull_request_template.md`, or to `CONTRIBUTING.md`, "From an idea to `main`". Until the benchmark
+  of procedures that ehos-tools plans holds cases for the procedure, "How it was tested" has the line
+  `No benchmark exists yet. The two reviews and the user judge this change.`
 - **No sections of its own** beyond the template's.
 
 This repository has no CI check that reads "Review". Fill it all the same.

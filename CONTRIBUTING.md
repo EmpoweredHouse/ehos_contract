@@ -271,6 +271,8 @@ follows "Your first contribution", above.
    waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
+   The maintainers' `ehos-core:plan` skill writes its "Outcome", "Judge" and "Expected result" when the stage
+   starts. `ehos-core:retro` checks the finished work against them (step 9).
 3. **A branch** named after the programme and the issue: `pb/393-community`, `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
@@ -290,12 +292,38 @@ follows "Your first contribution", above.
 8. **When it is merged**, `ROADMAP.md` gets ☑ and the pull request's number, and the issue gets a closing comment:
    what changed for a user of the library, what was left for later and where, and what an application has to do
    when it upgrades.
-9. **When a wave or a programme closes**, nothing more is written: the maintainers decide whether it is
+9. **When a wave closes**, nothing more is written. **When a programme closes**, the maintainers'
+   `ehos-core:retro` skill looks back on its stages first (below). Then the maintainers decide whether it is
    released ("Changelogs and releases"), and the next stages start from `ROADMAP.md`.
 
 The `ehos-dev:stage-issue` skill is the same procedure for an assistant, with how an issue is written. It comes
 from the maintainers' `ehos-dev` plugin ("Working with Claude Code"), which reads this section and the one
 before it for what is this repository's.
+
+`ehos-core:plan` and `ehos-core:retro` come from the `ehos-core` plugin and read the same two sections. This
+repository's part of a retro is as follows:
+
+- **It runs** when a programme closes. It reads the stage issues that have the programme's label: the issues
+  whose first line is the stage template's "Stage <code> of the <programme> programme". The follow-ups that
+  have the same label are not stages.
+- **It reads** each stage's outcome, judge and expected result, and its pull requests and the findings of their
+  reviews. It also reads the follow-ups those reviews filed: the issues that name the pull requests
+  (`.claude/review.md`, "A finding skipped").
+- **Its record of lessons** is the issues it files and the issues it comments on. A lesson about the engine, its
+  packages or the `ehos-contract` plugin is an issue here. A lesson about `ehos-core`, `ehos-dev` or another
+  part of ehos-tools is an issue in ehos-tools. Each issue and each comment it writes holds the line
+  `Retro of ehos_contract.` The next retro finds them in each repository with
+  `gh issue list --repo <repo> --state all --limit 1000 --search '"retro of ehos_contract" in:body,comments'`.
+- **A lesson about this repository's own rules** (`CLAUDE.md`, this file, `.claude/review.md`,
+  `.claude/skills/`) is a pull request here. Its description holds the same line, and the next retro finds
+  it with
+  `gh pr list --repo EmpoweredHouse/ehos_contract --state all --limit 1000 --search '"retro of ehos_contract" in:body'`.
+  Anyone can write the line, so a match from outside the team is a lead, never evidence.
+- **This repository is public.** A draft that waits stays in the report to the maintainer, never in a file here.
+  A defect that may be a security one goes through the private report of the repository that owns it, never an
+  issue: this repository's report is in `SECURITY.md`, and ehos-tools' report is in its own `SECURITY.md`. A
+  defect of eh-os, which is private, is an issue there. The defect is written nowhere in this repository until
+  its fix is released.
 
 ## Changelogs and releases
 
@@ -373,15 +401,18 @@ follows the same procedure in this repository and EHOS's others. In this reposit
 The repository works without any of this: `CLAUDE.md` and the skills in `.claude/skills/` are read by any
 Claude Code session opened here, and nothing the repository configures asks for a plugin or blocks a command.
 
-The maintainers add three things on their own machines, in `.claude/settings.local.json`, which git ignores:
+The maintainers add four things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
-- the `ehos-dev` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the procedures shared
-  with EHOS's other repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`,
-  `elixir`, and `voice` and `diagrams` for text a person reads and its diagrams;
+- the `ehos-core` plugin, from EmpoweredHouse's `ehos-tools` marketplace. It carries the method that every
+  EHOS repository and application shares: `plan` starts a stage, and `retro` closes a programme ("From an
+  idea to `main`");
+- the `ehos-dev` plugin, from the same marketplace, which carries the procedures shared with EHOS's other
+  repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`, `elixir`, and `voice` and
+  `diagrams` for text a person reads and its diagrams;
 - the `diagram-design` plugin, from the same marketplace at one commit, which `diagrams` lays a diagram out with;
 - a hook that refuses `gh pr create` while `HEAD` has no review note (`.claude/review.md`).
 
-All three are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
+All four are in `.claude/settings.team.json`. A maintainer with no `.claude/settings.local.json` yet copies it;
 one who has one merges its keys in by hand, since Claude Code keeps its "always allow" rules in that file:
 
 ```bash
@@ -390,18 +421,20 @@ cp -n .claude/settings.team.json .claude/settings.local.json
 
 Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
 
-ehos-tools is private, so the plugin needs a GitHub credential that can read it. On a machine without an SSH key,
-set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugin is
-taken by moving the `ref` in that file. A maintainer who copied the file before merges the new `ref` in by hand,
-as above. Claude Code applies a `ref` only when it adds the marketplace: a machine that has the marketplace keeps the
-tag it added it at, and its sessions keep loading that tag. To move a machine to the new tag:
+On a machine without an SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. A new version of
+the plugins is taken by moving the `ref` in that file. The `ref` names an `ehos-dev` tag, and `ehos-core` comes
+from the same commit; the file does not name an `ehos-core-v…` tag. A maintainer who copied the file before
+merges the new `ref` in by hand, as above. Claude Code applies a `ref` only when it adds the marketplace: a
+machine that has the marketplace keeps the tag it added it at, and its sessions keep loading that tag.
+To move a machine to the new tag:
 
 1. In a directory outside every checkout, run `claude plugin marketplace remove ehos-tools`. In a checkout, this
    command also deletes the marketplace from the checkout's settings.
 2. Run `claude plugin marketplace add <repo>#<ref>`, with the `repo` and `ref` that `settings.team.json` gives.
-3. In each worktree, run `claude plugin install ehos-dev@ehos-tools --scope local` and
+3. In each worktree, run `claude plugin install ehos-core@ehos-tools --scope local`,
+   `claude plugin install ehos-dev@ehos-tools --scope local` and
    `claude plugin install diagram-design@ehos-tools --scope local`.
-4. Restart Claude Code. `claude plugin list` then shows the new version of `ehos-dev`.
+4. Restart Claude Code. `claude plugin list` then shows the new versions of `ehos-core` and `ehos-dev`.
 
 A maintainer who also has `diagram-design` from its own marketplace disables that copy, or a session may use another
 version.
