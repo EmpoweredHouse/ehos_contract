@@ -304,22 +304,23 @@ before it for what is this repository's.
 repository's part of a retro is as follows:
 
 - **It runs** when a programme closes. It reads the stage issues that have the programme's label: the issues
-  opened from the stage template. The follow-ups that have the same label are not stages.
+  whose first line is the stage template's "Stage <code> of the <programme> programme". The follow-ups that
+  have the same label are not stages.
 - **It reads** each stage's outcome, judge and expected result, and its pull requests and the findings of their
   reviews. It also reads the follow-ups those reviews filed: the issues that name the pull requests
   (`.claude/review.md`, "A finding skipped").
 - **Its record of lessons** is the issues it files and the issues it comments on. A lesson about the engine, its
   packages or the `ehos-contract` plugin is an issue here. A lesson about `ehos-core`, `ehos-dev` or another
-  part of ehos-tools is an issue in ehos-tools, and its first line says that it comes from `ehos_contract`.
-  The next retro finds them in each repository with
-  `gh issue list --repo <repo> --state all --search 'ehos_contract in:body label:lesson'`. Where a
-  repository has no `lesson` label, the search takes `"Lesson:" in:title` in its place.
+  part of ehos-tools is an issue in ehos-tools. Each issue and each comment it writes ends with the line
+  `Retro of ehos_contract.` The next retro finds them in each repository with
+  `gh issue list --repo <repo> --state all --search '"retro of ehos_contract" in:body,comments'`.
 - **A lesson about this repository's own rules** (`CLAUDE.md`, this file, `.claude/review.md`,
   `.claude/skills/`) is a pull request here.
 - **This repository is public.** A draft that waits stays in the report to the maintainer, never in a file here.
   A defect that may be a security one goes through the private report of the repository that owns it, never an
-  issue: this repository's report is in `SECURITY.md`, and ehos-tools' report is in its own `SECURITY.md`. The
-  defect is written nowhere in this repository until its fix is released.
+  issue: this repository's report is in `SECURITY.md`, and ehos-tools' report is in its own `SECURITY.md`. A
+  defect of eh-os, which is private, is an issue there. The defect is written nowhere in this repository until
+  its fix is released.
 
 ## Changelogs and releases
 
@@ -417,7 +418,7 @@ cp -n .claude/settings.team.json .claude/settings.local.json
 
 Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
 
-ehos-tools is public. On a machine without an SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. A new version of
+On a machine without an SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. A new version of
 the plugins is taken by moving the `ref` in that file. The `ref` names an `ehos-dev` tag, and `ehos-core` comes
 from the same commit; the file does not name an `ehos-core-v…` tag. A maintainer who copied the file before
 merges the new `ref` in by hand, as above. Claude Code applies a `ref` only when it adds the marketplace: a

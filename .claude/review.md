@@ -84,8 +84,8 @@ gives the rules that are this repository's own.
 that tag. Claude Code does not read that file: it reads the maintainer's copy in
 `.claude/settings.local.json`, one per worktree, and the user's own settings (`CONTRIBUTING.md`,
 "Working with Claude Code"). If the session does not have the skill, tell the user. Name the `ref`
-that each of these files gives, if it is older than the tag in `settings.team.json`. The maintainer moves the machine to that tag, as
-`CONTRIBUTING.md`, "Working with Claude Code", says. In a run with no user, stop and report it.
+that each of these files gives, if it is older than the tag in `settings.team.json`. The maintainer
+moves the machine to that tag, as `CONTRIBUTING.md`, "Working with Claude Code", says. In a run with no user, stop and report it.
 
 The skill says that its review gate refuses `--head`, `--repo`, `GH_REPO` and a commit in the same
 command. This repository's hook refuses none of them. It ignores the flags, and it reads `HEAD`
@@ -107,9 +107,8 @@ before a commit in the same command runs. Do not use these flags or their short 
 - **A change to a procedure** changes how work is planned, reviewed, described or looked back on. It
   is a move of the `ref` in `.claude/settings.team.json`, or a change to this file, to
   `.claude/skills/review-pr/`, or to `CONTRIBUTING.md`, "From an idea to `main`". Until the benchmark
-  that ehos-tools' T-33 describes holds cases for the procedure, "How it was tested" has the line
-  `No benchmark exists yet.`, and the change is judged by the two reviews and the user alone. The line
-  says so.
+  of procedures that ehos-tools plans holds cases for the procedure, "How it was tested" has the line
+  `No benchmark exists yet. The two reviews and the user judge this change.`
 - **No sections of its own** beyond the template's.
 
 This repository has no CI check that reads "Review". Fill it all the same.
