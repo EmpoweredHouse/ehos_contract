@@ -647,7 +647,8 @@ defmodule EhosContract.Auth.Manifest do
       put_present(
         %{"name" => publication.as, "fields" => Enum.sort_by(fields, & &1["name"])},
         "idempotent_on",
-        publication.idempotent_on |> Enum.map(&to_string/1) |> Enum.sort()
+        # D11 holds each to the fields, not to once; EHOS takes each once.
+        publication.idempotent_on |> Enum.uniq() |> Enum.map(&to_string/1) |> Enum.sort()
       )
     end
     |> Enum.sort_by(& &1["name"])

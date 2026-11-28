@@ -684,6 +684,22 @@ defmodule EhosContract.Auth.ManifestTest do
              }
     end
 
+    # The engine takes `idempotent_on: [:entry_id, :entry_id]`; EHOS takes each field once.
+    test "writes a field of idempotent_on once" do
+      books =
+        Map.update!(Model.fetch(EventBooks), :publishes, fn publishes ->
+          Enum.map(publishes, &%{&1 | idempotent_on: &1.idempotent_on ++ &1.idempotent_on})
+        end)
+
+      %{"offers" => %{"publishes" => publishes}} =
+        Manifest.build(@file_v1, [EventLedger], [books])
+
+      assert Enum.map(publishes, &{&1["name"], &1["idempotent_on"]}) == [
+               {"ledger.entry_flagged.v2", nil},
+               {"ledger.entry_recorded.v1", ["entry_id"]}
+             ]
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)
