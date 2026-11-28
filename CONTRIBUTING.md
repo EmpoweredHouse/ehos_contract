@@ -271,8 +271,8 @@ follows "Your first contribution", above.
    waves, or none if it has one, does not get `dd` by default. There are no milestones: the labels list a programme's stages. Its first section, "In short", is for a reader outside the team who may not be technical: no
    module names, codes or file paths. The technical detail that follows has no such limit, except that a rule
    or refusal code stands in parentheses after its meaning, and it names files without line numbers.
-   Its "Outcome", "Judge" and "Expected result" come from the maintainers' `ehos-core:plan` skill, which
-   plans the stage by them; `ehos-core:retro` checks the finished work against them (step 9).
+   The maintainers' `ehos-core:plan` skill writes its "Outcome", "Judge" and "Expected result" when the stage
+   starts. `ehos-core:retro` checks the finished work against them (step 9).
 3. **A branch** named after the programme and the issue: `pb/393-community`, `dd/165-contract-id`.
 4. **Commits** end with `Part of #N`, so `git blame` on any line leads to the issue. Commit messages are in
    English. A code comment that cites the stage cites the issue too: `plan DD, ID1 (#165)`.
@@ -300,19 +300,26 @@ The `ehos-dev:stage-issue` skill is the same procedure for an assistant, with ho
 from the maintainers' `ehos-dev` plugin ("Working with Claude Code"), which reads this section and the one
 before it for what is this repository's.
 
-`ehos-core:plan` and `ehos-core:retro` come from the `ehos-core` plugin and read the same two sections. What is
-this repository's part of a retro:
+`ehos-core:plan` and `ehos-core:retro` come from the `ehos-core` plugin and read the same two sections. This
+repository's part of a retro is as follows:
 
-- **It runs** when a programme closes, over the stages its label lists. It reads each stage's issue, with
-  its outcome, judge and expected result, the pull requests and the findings of their reviews, and the
-  follow-ups they filed: the issues that name those pull requests (`.claude/review.md`, "A finding skipped").
-- **Its record of lessons** is the issues it files. A lesson about the engine, its packages or the
-  `ehos-contract` plugin is an issue here; one about `ehos-core`, `ehos-dev` or another part of ehos-tools is an
-  issue in ehos-tools. A lesson about this repository's own rules (`CLAUDE.md`, this file,
-  `.claude/review.md`, `.claude/skills/`) is a pull request here.
+- **It runs** when a programme closes. It reads the stage issues that have the programme's label: the issues
+  opened from the stage template. The follow-ups that have the same label are not stages.
+- **It reads** each stage's outcome, judge and expected result, and its pull requests and the findings of their
+  reviews. It also reads the follow-ups those reviews filed: the issues that name the pull requests
+  (`.claude/review.md`, "A finding skipped").
+- **Its record of lessons** is the issues it files and the issues it comments on. A lesson about the engine, its
+  packages or the `ehos-contract` plugin is an issue here. A lesson about `ehos-core`, `ehos-dev` or another
+  part of ehos-tools is an issue in ehos-tools, and its first line says that it comes from `ehos_contract`.
+  The next retro finds them in each repository with
+  `gh issue list --repo <repo> --state all --search 'ehos_contract in:body label:lesson'`. Where a
+  repository has no `lesson` label, the search takes `"Lesson:" in:title` in its place.
+- **A lesson about this repository's own rules** (`CLAUDE.md`, this file, `.claude/review.md`,
+  `.claude/skills/`) is a pull request here.
 - **This repository is public.** A draft that waits stays in the report to the maintainer, never in a file here.
-  A defect that may be a security one goes through the private report `SECURITY.md` names, never an issue, and
-  is written nowhere in this repository until its fix is released.
+  A defect that may be a security one goes through the private report of the repository that owns it, never an
+  issue: this repository's report is in `SECURITY.md`, and ehos-tools' report is in its own `SECURITY.md`. The
+  defect is written nowhere in this repository until its fix is released.
 
 ## Changelogs and releases
 
@@ -392,9 +399,9 @@ Claude Code session opened here, and nothing the repository configures asks for 
 
 The maintainers add four things on their own machines, in `.claude/settings.local.json`, which git ignores:
 
-- the `ehos-core` plugin, from EmpoweredHouse's private `ehos-tools` marketplace, which carries the method every EHOS
-  repository and application shares: `plan`, which starts a stage, and `retro`, which closes a programme
-  ("From an idea to `main`");
+- the `ehos-core` plugin, from EmpoweredHouse's `ehos-tools` marketplace. It carries the method that every
+  EHOS repository and application shares: `plan` starts a stage, and `retro` closes a programme ("From an
+  idea to `main`");
 - the `ehos-dev` plugin, from the same marketplace, which carries the procedures shared with EHOS's other
   repositories, among them `pre-pr-review`, `pull-request`, `stage-issue`, `release`, `elixir`, and `voice` and
   `diagrams` for text a person reads and its diagrams;
@@ -410,11 +417,12 @@ cp -n .claude/settings.team.json .claude/settings.local.json
 
 Git does not carry an ignored file into a new worktree, so a worktree needs its own copy.
 
-ehos-tools is private, so the plugins need a GitHub credential that can read it. On a machine without an SSH key,
-set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` and store one with `gh auth setup-git`. A new version of the plugins is
-taken by moving the `ref` in that file: `ehos-core` has no tag of its own there, and comes with the `ehos-dev` tag
-the `ref` names. A maintainer who copied the file before merges the new `ref` in by hand, as above. Claude Code applies a `ref` only when it adds the marketplace: a machine that has the marketplace keeps the
-tag it added it at, and its sessions keep loading that tag. To move a machine to the new tag:
+ehos-tools is public. On a machine without an SSH key, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`. A new version of
+the plugins is taken by moving the `ref` in that file. The `ref` names an `ehos-dev` tag, and `ehos-core` comes
+from the same commit; the file does not name an `ehos-core-v…` tag. A maintainer who copied the file before
+merges the new `ref` in by hand, as above. Claude Code applies a `ref` only when it adds the marketplace: a
+machine that has the marketplace keeps the tag it added it at, and its sessions keep loading that tag.
+To move a machine to the new tag:
 
 1. In a directory outside every checkout, run `claude plugin marketplace remove ehos-tools`. In a checkout, this
    command also deletes the marketplace from the checkout's settings.

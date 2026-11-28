@@ -33,7 +33,8 @@ of tasks.
 ## Judge
 
 The check that shows the outcome, which anyone can start: a test, `mix check`, a task and its output, a page. If
-none exists yet, the first part of the work builds it.
+none exists yet, the first part of the work builds it. If none can exist, say so, and name what a maintainer
+checks instead.
 
 ## Expected result
 
