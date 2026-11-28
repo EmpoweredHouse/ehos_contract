@@ -48,6 +48,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-28
+
 ### Changed
 
 - **Breaking:** **Moves a verdict:** the library builds the name of a published event:

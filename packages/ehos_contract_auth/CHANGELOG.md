@@ -24,17 +24,31 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-28
+
 ### Added
 
 - `mix ehos_contract.manifest` writes the events the contracts publish, with their fields, into
   `offers.publishes`, and the events of other applications that a policy handles, with the inboxes
   that take them, into `needs.subscribes`. A manifest with either is `ehos.manifest/v10`, which
-  EHOS accepts from 0.32.0; one with neither keeps the version it had (#702).
+  only an EHOS that reads it deploys; no EHOS release reads it yet. A manifest with neither keeps
+  the version it had (#702).
+- `mix ehos_contract.manifest` refuses, with what to change, what EHOS would refuse of those
+  events: more than 100 publications or subscriptions, more than 100 fields in an event or 20
+  inboxes for one, an event's or an inbox's name or a type past 255 characters, a field's name past
+  63, a type that is not printable ASCII, and a subscription to an event of the application itself,
+  under `ehos`, or of a publisher whose name is no application's. The manifest page lists each
+  (#702).
 - **Breaking:** `mix ehos_contract.manifest` refuses a project whose contracts of a domain other
   than the application's publish an event, or subscribe to one that a policy handles. The image
   runs their relays and inboxes, and the manifest names the events of one application. Build those
   contracts into the image of their own application, or take their `publish` and `subscribe` out
   (#702).
+
+### Changed
+
+- **Breaking:** the engine is required at `~> 0.19.0`, the release that builds the name of a
+  published event, so a host moves the packages together.
 
 ## [0.19.0] - 2026-11-27
 
