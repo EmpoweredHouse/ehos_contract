@@ -237,7 +237,7 @@ The task raises, and tells what to change, in these cases:
 - a contract subscribes to an event of its own application, or to an event under `ehos`;
 - a contract subscribes to an event of a publisher whose name is not a name that EHOS takes for an
   application;
-- an event is published two times, or under the name of another application;
+- an event is published two times, or its name is not `<application>.<name>.v<n>`;
 - the type of a field has a character that is not printable ASCII;
 - a contract of another domain in the project publishes an event, or subscribes to one that a
   policy handles. The image runs

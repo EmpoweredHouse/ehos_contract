@@ -99,7 +99,8 @@ defmodule EhosContract.Auth.Manifest do
   command, query, recording or role's actor is past 63 characters or has an empty label,
   when no human holds any capability, when an actor's `may_grant:` names an actor that holds
   none and so is no role, when the events the contracts publish and subscribe to are past
-  what EHOS takes, or when a contract of another domain publishes or subscribes to one.
+  what EHOS takes or not under the application's name, or when a contract of another domain
+  publishes or subscribes to one.
   """
   @spec build(map(), [module() | map()], [module() | map()]) :: map()
   def build(%{"schema" => ehos_yaml} = file, domains, contracts) do
@@ -634,6 +635,7 @@ defmodule EhosContract.Auth.Manifest do
   @max_event_name 255
   @max_field_name 63
   @max_type 255
+  @event_tail ~r/\A(\.[a-z][a-z0-9_]*)+\.v[1-9][0-9]*\z/
   # EHOS's rule for a type: printable ASCII, no space at either end. The engine takes any atom as an
   # enum's member, so a type can break it.
   @type_text ~r/\A[!-~](?:[ -~]*[!-~])?\z/
@@ -737,9 +739,12 @@ defmodule EhosContract.Auth.Manifest do
     # D11 builds a compiled publication's name under the domain's name; a model given as a map
     # has not been through it, and EHOS takes a publication under the application's name only.
     foreign =
-      if String.starts_with?(name, application <> "."),
+      if published_name?(name, application),
         do: [],
-        else: ["event #{name} is not under #{application}, the application this manifest is of"]
+        else: [
+          "event #{name} is not #{application}.<name>.v<n>: EHOS takes a publication under " <>
+            "its application's name, in lowercase segments, the last a version"
+        ]
 
     foreign ++
       long_name(name) ++
@@ -779,6 +784,14 @@ defmodule EhosContract.Auth.Manifest do
       publisher ++
       too_many("inboxes that take #{name}", consumers, @max_consumers) ++
       Enum.flat_map(consumers, &too_long("inbox #{&1}", &1, @max_consumer))
+  end
+
+  # EHOS's rule for a publication's name: the application, dotted snake_case segments, a version.
+  defp published_name?(name, application) do
+    case String.split(name, application <> ".", parts: 2) do
+      ["", tail] -> "." <> tail =~ @event_tail
+      _other -> false
+    end
   end
 
   defp long_name(name), do: too_long("event #{name}", name, @max_event_name)
