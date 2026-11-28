@@ -762,6 +762,24 @@ defmodule EhosContract.Auth.ManifestTest do
                """
     end
 
+    # Two contracts given as maps, not compiled together, can publish one name.
+    test "refuses an event published twice" do
+      books = Model.fetch(EventBooks)
+      [recorded] = Enum.filter(books.publishes, &(&1.name == :entry_recorded))
+      audit = %{Model.fetch(EventAudit) | publishes: [recorded], events: books.events}
+
+      error =
+        assert_raise ArgumentError, fn ->
+          Manifest.build(@file_v1, [EventLedger], [books, audit])
+        end
+
+      assert error.message ==
+               """
+               EHOS would refuse the events the contracts publish and subscribe to:
+                 event ledger.entry_recorded.v1 is published 2 times; EHOS takes each name once\
+               """
+    end
+
     test "refuses what EHOS would refuse, each named, rather than at deploy" do
       long = String.duplicate("a", 250)
       books = Model.fetch(EventBooks)

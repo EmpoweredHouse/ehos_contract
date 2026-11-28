@@ -693,6 +693,7 @@ defmodule EhosContract.Auth.Manifest do
     reasons =
       too_many("publications", publishes, @max_events) ++
         too_many("subscriptions", subscribes, @max_events) ++
+        published_twice(publishes) ++
         Enum.flat_map(publishes, &publication_reasons/1) ++
         Enum.flat_map(subscribes, &subscription_reasons(&1, application))
 
@@ -701,6 +702,14 @@ defmodule EhosContract.Auth.Manifest do
             "EHOS would refuse the events the contracts publish and subscribe to:\n" <>
               Enum.map_join(reasons, "\n", &"  #{&1}")
     end
+  end
+
+  # X7 refuses a name two contracts publish, in a compiled project; a model given as a map has not
+  # been through it, and EHOS takes each name once.
+  defp published_twice(publishes) do
+    for {name, count} <- Enum.frequencies_by(publishes, & &1["name"]),
+        count > 1,
+        do: "event #{name} is published #{count} times; EHOS takes each name once"
   end
 
   defp publication_reasons(%{"name" => name, "fields" => fields}) do
