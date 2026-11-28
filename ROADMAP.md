@@ -8,15 +8,17 @@ with the options they beat, its review and its pull requests; this file holds on
 
 ## Where things stand (27 November 2026)
 
-- **Released:** v0.18.0, the time of a test's drain, given with `at:` or by the host's clock for
-  tests (#691), a misspelt name of that setting refused at start (#692), and a query's param that a
-  query string cannot carry refused at compile (#618): the engine 0.18.0; `ehos_contract_auth`
-  0.19.0 and `ehos_contract_web` 0.14.0 only require it, so a host moves the three packages
-  together. A host acts on nothing else, unless one of two refusals applies to it. A query with
-  such a param no longer compiles. A key that looks like a misspelling of `EhosContract.Testing`
-  stops the engine at start. The graph renderer stays at 0.12.0. The plugin `ehos-contract` is at
-  0.16.1. Applications install them from git, at `EmpoweredHouse/ehos_contract`. The pull request
-  after the tag moves each released package to its next patch's `-dev`.
+- **Released:** v0.19.0, the name of a published event built by the library from the domain, the
+  publication and its version, with each publication's fields kept in `ehos_contract.lock` (#697),
+  and the manifest that names the events an application publishes and subscribes to, in
+  `ehos.manifest/v10` (#702): the engine 0.19.0 and `ehos_contract_auth` 0.20.0;
+  `ehos_contract_web` 0.15.0 only requires the engine, so a host moves the three packages together.
+  A host that publishes or subscribes acts: it removes `as:` from each `publish`, writes each
+  `subscribe` as `{namespace, publication, version}`, commits `ehos_contract.lock` again, and
+  deploys to an EHOS that reads `ehos.manifest/v10`. The graph renderer stays at 0.12.0. The plugin
+  `ehos-contract` is at 0.17.0. Applications install them from git, at
+  `EmpoweredHouse/ehos_contract`. The pull request after the tag moves each released package to its
+  next patch's `-dev`.
 - **Public since 26 November 2026.** Its GitHub settings are made: private vulnerability reporting, secret
   scanning with push protection, Dependabot, Discussions, and a protected `main` (#678).
 - **Now:** the rest of the publication programme, which makes the packages installable from Hex. PB6 is in

@@ -24,6 +24,8 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-28
+
 ### Added
 
 - `mix ehos_contract.manifest` writes the events the contracts publish, with their fields, into
@@ -35,6 +37,11 @@ their release procedure, and pushing the tag publishes it (`.github/workflows/re
   runs their relays and inboxes, and the manifest names the events of one application. Build those
   contracts into the image of their own application, or take their `publish` and `subscribe` out
   (#702).
+
+### Changed
+
+- **Breaking:** the engine is required at `~> 0.19.0`, the release that builds the name of a
+  published event, so a host moves the packages together.
 
 ## [0.19.0] - 2026-11-27
 
