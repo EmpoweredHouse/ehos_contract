@@ -241,7 +241,7 @@ defmodule EhosContract.SchemaVersionTest do
       newer = newer!(BusRig.Orders, :placed, {"order:o-9", 0})
 
       assert {:applied, 1} = Subscription.step(Repo, Implementations.consumer(relay))
-      assert_received {:published, ["bus_rig_shop.order.placed.v1"]}
+      assert_received {:published, ["bus_rig_shop.order_placed.v1"]}
 
       assert {:waiting, position} = Subscription.step(Repo, Implementations.consumer(relay))
       assert position == newer.position

@@ -71,7 +71,6 @@ defmodule EhosContract.Auth.ApplicationNameTest do
     end
 
     publish(:order_placed,
-      as: "my-shop.order.placed.v1",
       from: :order_placed,
       fields: [:order_id]
     )
@@ -88,7 +87,6 @@ defmodule EhosContract.Auth.ApplicationNameTest do
     end
 
     publish(:payment_taken,
-      as: "my-shop.payment.taken.v1",
       from: :payment_taken,
       fields: [:payment_id]
     )
@@ -194,7 +192,7 @@ defmodule EhosContract.Auth.ApplicationNameTest do
 
     assert error.message =~
              "the domain my_shop (#{inspect(ShopDomain)}): " <>
-               "#{inspect(ShopPayments)} publishes my-shop.payment.taken.v1"
+               "#{inspect(ShopPayments)} publishes my_shop.payment_taken.v1"
 
     refute error.message =~ inspect(ShopOrders)
   end

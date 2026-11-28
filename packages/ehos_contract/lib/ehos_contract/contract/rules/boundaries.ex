@@ -22,24 +22,27 @@ defmodule EhosContract.Contract.Rules.Boundaries do
   # - `from:` is an event of this contract, and `fields:` are some of its fields,
   #   none of them personal: a copy on a broker cannot be crypto-shredded (v2 §14).
   # - `idempotent_on:` names fields among `fields:`.
-  # - `as:` is a versioned name, dotted lowercase segments ending in `.v<n>`, and two
-  #   publications do not share one. The first segment is the application's namespace,
-  #   the domain's `name:`, and may also hold a dash, not at either end: EHOS names an
-  #   application with a DNS label, so `my_shop`'s domain is `:"my-shop"` there
-  #   (`"my-shop.entry.recorded.v1"`). The other segments are snake_case. The namespace
-  #   keeps the underscore the pattern always allowed, so a domain named `:dispatch_rig`
-  #   still publishes. The domain's `name:` is held to the same segment by the domain
+  # - The library builds the published name (#697), `<namespace>.<publication>.v<n>`
+  #   (`EhosContract.Contract.Published`), and a contract that still writes `as:` is
+  #   refused with the line to write. The name is held to the form it always had, so a
+  #   publication's name is snake_case, and two publications do not share one. The
+  #   namespace is the application's, the domain's `name:`, and may also hold a dash, not
+  #   at either end: EHOS names an application with a DNS label, so `my_shop`'s domain is
+  #   `:"my-shop"` there (`"my-shop.entry_recorded.v1"`). The namespace keeps the
+  #   underscore the pattern always allowed, so a domain named `:dispatch_rig` still
+  #   publishes. The domain's `name:` is held to the same segment by the domain
   #   (`EhosContract.Domain.Rules`), so the namespace is never more than one.
   # - A contract has an `id:` (plan DD, ID1; required from ID3), the application's namespace, then one or more
   #   dotted snake_case segments, none of them a version — `"lending.circulation"` — of at
   #   most #{@id_bytes} bytes: it names the contract to readers outside the code, prefixes
   #   its event types (`"<id>.<event>"`), and will prefix its rows' keys, where neither `:`
   #   nor `|` may stand.
-  # - `subscribe "<name>"` names such a versioned name, gives it a local name with
-  #   `as:`, and lists the fields it reads.
+  # - `subscribe {namespace, publication, version}` names a published event by the parts
+  #   its name is built from, gives it a local name with `as:`, and lists the fields it
+  #   reads. A name written as a string is refused with the key to write (#697).
   #
   # **D12, another application's event is a policy's.** An event received through
-  # `subscribe "<name>"` arrives in an inbox and never enters this log
+  # `subscribe` arrives in an inbox and never enters this log
   # (`EhosContract.Inbox`), so only a policy takes it: a read model is rebuilt from the
   # log, an effect's job and a process manager read theirs from it, and none of them
   # would ever see it. One that reacts to such an event takes what a policy's command
@@ -51,6 +54,7 @@ defmodule EhosContract.Contract.Rules.Boundaries do
   @moduledoc false
 
   alias EhosContract.DslRules
+  alias EhosContract.Contract.Published
   alias EhosContract.Contract.Rules
 
   # A version segment, as `@versioned` ends a publication's name: no segment of a
@@ -192,13 +196,14 @@ defmodule EhosContract.Contract.Rules.Boundaries do
 
   defp publish(publish, events, identity, unit_of) do
     where = "D11: publication #{inspect(publish.name)}"
+    named = written(publish) ++ built_name(where, publish)
 
     case Map.fetch(events, publish.from) do
       :error ->
         [
           {"#{where} is built from #{inspect(publish.from)}, which is not an event of this contract",
            publish}
-        ] ++ name(where, publish.as, publish)
+        ] ++ named
 
       {:ok, event} ->
         injected = Map.get(identity, Map.fetch!(unit_of, event.name), [])
@@ -229,9 +234,60 @@ defmodule EhosContract.Contract.Rules.Boundaries do
             {"#{where} is idempotent on #{inspect(field)}, which it does not carry", publish}
           end
 
-        empty ++ unknown ++ personal ++ idempotent ++ name(where, publish.as, publish)
+        empty ++ unknown ++ personal ++ idempotent ++ named
     end
   end
+
+  # #697: the name is built, and `as:` is what a contract wrote before.
+  defp written(%{as: nil}), do: []
+
+  defp written(publish) do
+    [
+      {"D11: publish #{inspect(publish.name)} names itself with as: #{inspect(publish.as)}; the " <>
+         "library builds the name from the domain's name:, the publication's name and its " <>
+         "version: (#{inspect(publish.published_as)} now). Remove as:" <> rename(publish),
+       publish}
+    ]
+  end
+
+  defp rename(publish) do
+    case parts(publish.as) do
+      {namespace, publication, version} ->
+        ", and write `publish #{inspect(String.to_atom(publication))}, version: #{version}` " <>
+          "for the name nearest the one written, " <>
+          "#{inspect("#{namespace}.#{publication}.v#{version}")}; its subscribers move to it" <>
+          relay(publish.name, publication)
+
+      nil ->
+        ""
+    end
+  end
+
+  # A relay is keyed by the declaration's name, so only a new one starts at the head.
+  defp relay(name, publication) do
+    if Atom.to_string(name) == publication,
+      do: "",
+      else:
+        ". A renamed publication's relay starts at the head of the log, so let the old " <>
+          "relay publish what it holds before you deploy the rename"
+  end
+
+  @doc false
+  # A name written before #697, `<namespace>.<segments>.v<n>`, as the parts it is built
+  # from today: the segments joined with underscores. `nil` for any other text.
+  @spec parts(term()) :: {String.t(), String.t(), String.t()} | nil
+  def parts(name) do
+    with true <- versioned?(name),
+         [namespace | rest] = String.split(name, "."),
+         {segments, ["v" <> version]} <- Enum.split(rest, -1) do
+      {namespace, Enum.join(segments, "_"), version}
+    else
+      _ -> nil
+    end
+  end
+
+  defp built_name(_where, %{published_as: nil}), do: []
+  defp built_name(where, publish), do: name(where, publish.published_as, publish)
 
   @doc false
   # Plan DD, ID1: D11 of the contract's `id:` (`Rules.contract_id/1`), which stands
@@ -274,13 +330,14 @@ defmodule EhosContract.Contract.Rules.Boundaries do
   end
 
   defp shared_names(publishes) do
-    for p <- DslRules.duplicates(publishes, & &1.as) do
-      {"D11: publication #{inspect(p.name)} is named #{inspect(p.as)}, like an earlier one", p}
+    for p <- DslRules.duplicates(publishes, & &1.published_as), p.published_as != nil do
+      {"D11: publication #{inspect(p.name)} is named #{inspect(p.published_as)}, like an " <>
+         "earlier one", p}
     end
   end
 
   defp published(consumes) do
-    where = "D11: subscribe #{inspect(consumes.from)}"
+    where = "D11: subscribe #{inspect(consumes.key || consumes.from)}"
 
     as =
       if is_atom(consumes.as) and consumes.as != nil,
@@ -292,7 +349,38 @@ defmodule EhosContract.Contract.Rules.Boundaries do
         do: [{"#{where} lists no fields; declare the ones this contract reads", consumes}],
         else: []
 
-    as ++ fields ++ name(where, consumes.from, consumes)
+    as ++ fields ++ key(where, consumes)
+  end
+
+  # #697: the parts a publisher's library builds the name from, each of the form it has
+  # there; a string is what a contract wrote before.
+  defp key(where, %{key: nil, from: from} = consumes) do
+    written =
+      case parts(from) do
+        {namespace, publication, version} ->
+          ": write `subscribe #{Published.key_source("#{namespace}.#{publication}.v#{version}")}`" <>
+            ", which names #{inspect("#{namespace}.#{publication}.v#{version}")}"
+
+        nil ->
+          ""
+      end
+
+    [
+      {"#{where} names the published event as a string; name it by its parts, " <>
+         "{namespace, publication, version}, from which the library builds the name" <> written,
+       consumes}
+    ]
+  end
+
+  defp key(where, %{key: {namespace, publication, _version}} = consumes) do
+    if namespace not in [nil, true, false] and DslRules.namespace?(Atom.to_string(namespace)) and
+         DslRules.name?(publication),
+       do: [],
+       else: [
+         {"#{where} is not a published event's key: the publisher's namespace, which may hold " <>
+            "a dash but not at either end, its publication's snake_case name and a version, " <>
+            "like {:\"my-shop\", :order_placed, 1}", consumes}
+       ]
   end
 
   defp name(where, name, declaration) do
@@ -301,7 +389,7 @@ defmodule EhosContract.Contract.Rules.Boundaries do
       else: [
         {"#{where}: #{inspect(name)} is not a versioned name: the application's namespace, " <>
            "which may hold a dash but not at either end, then dotted snake_case segments, ending " <>
-           "in .v<n>, like \"my-shop.order.placed.v1\"", declaration}
+           "in .v<n>, like \"my-shop.order_placed.v1\"", declaration}
       ]
   end
 

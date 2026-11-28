@@ -9,7 +9,8 @@ defmodule EhosContract.Bus.Message do
     under a new id has the same values, and its message has the same key. The id
     stands in for it when the publication declares no such fields, or one of them is
     `nil`, which identifies nothing;
-  - `name` — the versioned name the `publish` declares, `"billing.invoice.issued.v1"`;
+  - `name` — the published name the library builds from the domain's `name:`, the
+    `publish`'s name and its `version:`, `"billing.invoice_issued.v1"`;
   - `correlation_id` — the source event's, which the subscriber's events carry on, so a
     run across two applications can be assembled;
   - `payload` — the declared `fields` of the source event and nothing else, as JSON

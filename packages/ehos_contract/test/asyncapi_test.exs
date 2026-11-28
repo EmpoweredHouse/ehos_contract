@@ -38,7 +38,6 @@ defmodule EhosContract.AsyncAPITest do
     end
 
     publish :transfer_completed,
-      as: "dispatch_rig.transfer.completed.v1",
       from: :completed,
       fields: [:transfer_id, :branch_id, :amount],
       idempotent_on: [:transfer_id]
@@ -58,13 +57,11 @@ defmodule EhosContract.AsyncAPITest do
     end
 
     publish :foo1,
-      as: "dispatch_rig.foo1.v1",
       from: :first,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
 
     publish :foo_1,
-      as: "dispatch_rig.foo_1.v1",
       from: :second,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
@@ -86,13 +83,11 @@ defmodule EhosContract.AsyncAPITest do
     end
 
     publish :foo_1,
-      as: "dispatch_rig.foo_1.v1",
       from: :second,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
 
     publish :foo1,
-      as: "dispatch_rig.foo1.v1",
       from: :first,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
@@ -112,13 +107,12 @@ defmodule EhosContract.AsyncAPITest do
     end
 
     publish :foo1,
-      as: "dispatch_rig.foo1.v1",
       from: :first,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
 
     publish :foo_1,
-      as: "dispatch_rig.foo_1.v2",
+      version: 2,
       from: :second,
       fields: [:probe_id],
       idempotent_on: [:probe_id]
@@ -130,10 +124,10 @@ defmodule EhosContract.AsyncAPITest do
 
       assert %{
                "transfer_completed" => %{
-                 "address" => "dispatch_rig.transfer.completed.v1",
+                 "address" => "dispatch_rig.transfer_completed.v1",
                  "messages" => %{
-                   "dispatch_rig.transfer.completed.v1" => %{
-                     "$ref" => "#/components/messages/dispatch_rig.transfer.completed.v1"
+                   "dispatch_rig.transfer_completed.v1" => %{
+                     "$ref" => "#/components/messages/dispatch_rig.transfer_completed.v1"
                    }
                  }
                }
@@ -146,16 +140,16 @@ defmodule EhosContract.AsyncAPITest do
                  "messages" => [
                    %{
                      "$ref" =>
-                       "#/channels/transfer_completed/messages/dispatch_rig.transfer.completed.v1"
+                       "#/channels/transfer_completed/messages/dispatch_rig.transfer_completed.v1"
                    }
                  ]
                }
              } = document["operations"]
 
-      assert %{"dispatch_rig.transfer.completed.v1" => message} =
+      assert %{"dispatch_rig.transfer_completed.v1" => message} =
                document["components"]["messages"]
 
-      assert message["name"] == "dispatch_rig.transfer.completed.v1"
+      assert message["name"] == "dispatch_rig.transfer_completed.v1"
       assert message["x-ehos-contract-source-event"] == "completed"
       assert message["x-ehos-contract-idempotent-on"] == ["transfer_id"]
       refute message["name"] == "completed"
@@ -164,7 +158,7 @@ defmodule EhosContract.AsyncAPITest do
     test "carries only selected fields as a closed JSON Schema object" do
       payload =
         EhosContract.AsyncAPI.document(Published)["components"]["messages"][
-          "dispatch_rig.transfer.completed.v1"
+          "dispatch_rig.transfer_completed.v1"
         ]["payload"]
 
       assert payload["required"] == ["amount", "branch_id", "transfer_id"]

@@ -40,8 +40,9 @@ defmodule EhosContract.Contract.Links.Domain do
   #   in a local event it consults, typed by a domain value, is of one resting on `:id`,
   #   since only such a field tags an appended event, and the boundary finds what it
   #   consults by its tags.
-  # - **D11.** A `publish` is named under the application's namespace, the domain's
-  #   `name:`: `"billing.invoice.issued.v1"` in the domain `:billing`.
+  # - **D11.** A contract's `id:`, and so every name it publishes (#697), is under the
+  #   application's namespace, the domain's `name:`: `"billing.invoice_issued.v1"` in the
+  #   domain `:billing`.
   # - **P6**, the part that needs the domain (#472): a read model's key field typed by a
   #   domain value is of one that is one value, not made of fields or a list; and no two
   #   contracts keep read models in one table.
@@ -711,27 +712,17 @@ defmodule EhosContract.Contract.Links.Domain do
       for c <- Rules.commands(d), c.scope != nil, do: {"command", c, c.fields}
   end
 
-  defp namespaces(%{declarations: d, domain: domain} = c) do
+  # A publication's name is built under the contract's id (#697), so holding the id to
+  # the namespace holds every name the contract publishes.
+  defp namespaces(%{domain: domain} = c) do
     prefix = "#{domain.name}."
 
-    published =
-      for publish <- d.publishes,
-          is_binary(publish.as),
-          not String.starts_with?(publish.as, prefix) do
-        {"D11: publish #{inspect(publish.name)} is named #{inspect(publish.as)}, outside the " <>
-           "application's namespace #{inspect(prefix)}, the name: of #{inspect(domain.module)}",
-         Links.at(publish)}
-      end
-
-    # Plan DD, ID1: the contract's own name, under the same namespace.
-    named =
-      for %{value: id, at: at} <- [c.id],
-          not String.starts_with?(id, prefix) do
-        {"D11: the contract's id: #{inspect(id)} is outside the application's namespace " <>
-           "#{inspect(prefix)}, the name: of #{inspect(domain.module)}", at}
-      end
-
-    published ++ named
+    # Plan DD, ID1: the contract's own name, under the application's namespace.
+    for %{value: id, at: at} <- [c.id],
+        not String.starts_with?(id, prefix) do
+      {"D11: the contract's id: #{inspect(id)} is outside the application's namespace " <>
+         "#{inspect(prefix)}, the name: of #{inspect(domain.module)}", at}
+    end
   end
 
   defp suggest(name, names, declare \\ "it declares") do

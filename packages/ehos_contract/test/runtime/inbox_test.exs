@@ -40,7 +40,7 @@ defmodule EhosContract.InboxTest do
   @clerk Actor.credential("u-1", ["bus_rig_shop.place_order"])
   @inbox "bus_rig_warehouse.stock:inbox:order_placed"
   @relay "bus_rig_shop.orders:relay:order_placed"
-  @name "bus_rig_shop.order.placed.v1"
+  @name "bus_rig_shop.order_placed.v1"
 
   defp inbox, do: Enum.find(Implementations.inboxes(), &(&1.key == @inbox))
 
@@ -75,7 +75,7 @@ defmodule EhosContract.InboxTest do
 
   test "consuming a published event asks for <name>.subscribe, the application's, no role's" do
     assert EhosContract.Model.capabilities(BusRig.Stock) == %{
-             "bus_rig_shop.order.placed.subscribe" => %{
+             "bus_rig_shop.order_placed.subscribe" => %{
                kind: :subscribe,
                name: :order_placed,
                roles: [],

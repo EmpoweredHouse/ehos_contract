@@ -16,14 +16,15 @@ An integration event: the one way an event leaves the application.
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `name` | `atom` | yes |  | The publication's name. |
+| `name` | `atom` | yes |  | The publication's name, unique in the application. The published name is the domain's `name:`, this name and the version, like `"my-shop.entry_recorded.v1"`. |
 
 **Options**
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `as` | `String.t` | yes |  | The versioned name, under the domain's `name:`, like `"my-shop.entry.recorded.v1"`; only that first segment may hold a dash. |
 | `from` | `atom` | yes |  | The local event it is built from. |
 | `fields` | `atom \| list(atom)` | yes |  | The fields of that event it carries. |
+| `version` | `pos_integer` |  | `1` | The version of what it carries. Raise it to remove a field or change its type; `mix ehos_contract.schema` refuses either at the same version. |
+| `as` | `any` |  |  | Removed: the library builds the name. A contract that names it does not compile. |
 | `idempotent_on` | `atom \| list(atom)` |  | `[]` | The fields that make two deliveries the same event. |
 

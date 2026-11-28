@@ -16,7 +16,7 @@ Another application's published event, taken into an inbox by a policy, with the
 
 | Name | Type | Required | Default | Docs |
 |------|------|----------|---------|------|
-| `from` | `String.t` | yes |  | The published name, versioned as `publish as:` is, like `"my-shop.entry.recorded.v1"`. |
+| `from` | `{atom, atom, pos_integer} \| String.t` | yes |  | The published event, by the publisher's namespace, its publication and its version, like `{:"my-shop", :entry_recorded, 1}`, for `"my-shop.entry_recorded.v1"`. A name written as a string does not compile, and the message gives the key to write. |
 
 **Options**
 

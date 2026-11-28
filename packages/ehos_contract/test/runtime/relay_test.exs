@@ -54,7 +54,7 @@ defmodule EhosContract.RelayTest do
 
   @clerk Actor.credential("u-1", ["bus_rig_shop.place_order", "bus_rig_shop.cancel_order"])
   @relay "bus_rig_shop.orders:relay:order_placed"
-  @name "bus_rig_shop.order.placed.v1"
+  @name "bus_rig_shop.order_placed.v1"
 
   setup do
     previous = Application.get_env(:ehos_contract, :bus)

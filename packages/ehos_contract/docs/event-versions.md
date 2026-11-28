@@ -194,7 +194,8 @@ decide.
 
 A compile sees only the declaration of today. It cannot tell a field added to version 1 from
 version 1 as it always was. `ehos_contract.lock` keeps that record: the fields of each event, by
-its type in the log and its version, as a row holds them.
+its type in the log and its version, as a row holds them. It also keeps the fields of each
+publication ([What does a publication promise?](#what-does-a-publication-promise)).
 
 1. Run the task, and commit the file:
 
@@ -235,6 +236,7 @@ order of the fields changes nothing.
 - The steps from a recorded version to the declared version do not cover what changed.
 - The file records a version newer than the declared version.
 - The file records an event that no contract declares now.
+- A publication changed in a way that its subscribers do not read.
 - The file is behind the contracts.
 
 The lock holds the steps of a raised version to what changed from each earlier version in the file.
@@ -263,12 +265,54 @@ The message looks like this:
     `mix ehos_contract.schema --forget shop.orders.order_placed`
 ```
 
+<a id="what-does-a-publication-promise"></a>
+
+## What does a publication promise?
+
+A subscriber in another application reads the fields of a publication under its published name,
+such as `billing.invoice_issued.v1`. The `version:` of the `publish` is the last part of that name.
+The lock records the fields of each publication at its version, beside the events.
+
+- **Add a field.** Keep the version. A subscriber does not read a field that it does not declare.
+  The lock records the new field in place.
+- **Remove a field, or change its type, whether it can be absent, or the subject that it
+  identifies.** Raise `version:`.
+  The publication then goes out under a new name, such as `billing.invoice_issued.v2`. Each
+  subscriber moves to the new name. The lock refuses the change at the same version.
+- **Lower the version.** The lock refuses it, because the subscribers of the recorded version
+  would receive nothing.
+- **Rename or remove the publication, or rename the domain.** The published name changes. The lock
+  refuses it, because the subscribers of the old name would receive nothing. The relay of a
+  renamed publication starts at the head of the log. Let the old relay publish what it holds
+  before you deploy the rename. When no application
+  subscribes to the old name, run `mix ehos_contract.schema --forget <name>`, with the name
+  without its version:
+
+  ```bash
+  mix ehos_contract.schema --forget billing.invoice_issued
+  ```
+
+The message for a field removed at the same version looks like this:
+
+```
+** (Mix) ehos_contract.lock and the contracts disagree:
+
+  * billing.invoice_issued.v1: total was removed, and a subscriber of billing.invoice_issued.v1 may
+    read it. Raise version: to 2, which publishes billing.invoice_issued.v2, or keep the field as it
+    was
+```
+
+The version of a publication is not the `schema_version` of its event. The relay sends each row
+in the current shape of the event, so the fields of a publication change only when its `fields:`
+or the event changes.
+
 ## What can go wrong
 
 **A version that no log holds rows of.** For example, you added a version on a branch that you
 never deployed. `mix ehos_contract.schema --forget TYPE` drops the versions of the event from the
 declared version up, and records what is declared. For an event that no contract declares, it
-drops each version. Do not use it for a version that a log holds rows of.
+drops each version. Do not use it for a version that a log holds rows of. For a publication, it
+drops the entry of the publication.
 
 **A seal goes to the subscribers.** A `publish` cannot name a personal field
 ([`D11`](refusals.md#refusals-d)). But rows written while a field was personal hold its value

@@ -33,7 +33,7 @@ defmodule EhosContract.Contract.Build do
   use Spark.Dsl.Transformer
 
   alias EhosContract.Digest
-  alias EhosContract.Contract.{Dsl, Rules}
+  alias EhosContract.Contract.{Dsl, Published, Rules}
   alias Spark.Dsl.Transformer
 
   @impl true
@@ -81,7 +81,7 @@ defmodule EhosContract.Contract.Build do
         entities |> of(Dsl.Query) |> Enum.map(&(&1 |> plain() |> without_empty(:constraints))),
       domain_services: entities |> of(Dsl.DomainService) |> Enum.map(&plain/1),
       consumes: entities |> of(Dsl.Consumes) |> Enum.map(&consumes/1),
-      publishes: entities |> of(Dsl.Publish) |> Enum.map(&plain/1),
+      publishes: entities |> of(Dsl.Publish) |> Enum.map(&publication(&1, prefix)),
       scenarios: entities |> of(Dsl.Scenario) |> Enum.map(&scenario(&1, declarations))
     }
 
@@ -327,6 +327,15 @@ defmodule EhosContract.Contract.Build do
     |> without_empty(:invariants)
   end
 
+  # #697: the name the library builds, under the key `as` the model has always had it in,
+  # so a reader of the model sees one name; the version is in it.
+  defp publication(%Dsl.Publish{} = publish, id) do
+    publish
+    |> plain()
+    |> Map.drop([:published_as, :version])
+    |> Map.put(:as, Published.name(id, publish.name, publish.version))
+  end
+
   # Two words, one struct (plan N2): `consumes` a sibling contract's events, by module,
   # or `subscribe` to another application's published event, by name, with the fields
   # this contract reads.
@@ -490,7 +499,7 @@ defmodule EhosContract.Contract.Build do
   end
 
   # One declaration per consumed event, under the name it has in this contract: a
-  # sibling's event under its rename, a published event under its `as:`.
+  # sibling's event under its rename, a published event under its `as:`, the name a `subscribe` gives it.
   defp consumed(consumes) do
     Enum.flat_map(consumes, fn
       %{kind: :published} = published ->

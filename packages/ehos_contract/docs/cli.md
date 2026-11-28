@@ -463,11 +463,12 @@ key that it used:
 
 ## mix ehos_contract.schema
 
-Records the fields of each event, and refuses a change that old rows do not read
+Records the fields of each event and publication, and refuses a change that breaks them
 
 Keeps `ehos_contract.lock`, the record of the fields of each event for each
-`schema_version`. It refuses a change that old rows do not read, and a new version
-whose step does not cover what changed.
+`schema_version`, and of each publication at its `version:`. It refuses a change that
+old rows do not read, a new version whose step does not cover what changed, and a
+change to a publication that its subscribers do not read.
 
 The log keeps each event that it recorded. It reads each event again, with the
 declaration of today, when it rebuilds a unit or a list. A row does not read if it
@@ -482,6 +483,7 @@ This task finds the change where you write the code.
     mix ehos_contract.schema                  # record what is new
     mix ehos_contract.schema --check          # fail if anything is new or changed
     mix ehos_contract.schema --forget TYPE    # drop what no log holds rows of, and record again
+    mix ehos_contract.schema --forget NAME    # drop a publication no application subscribes to
 
 The task reads each contract of the applications that `config :ehos_contract,
 applications:` names, as `mix ehos_contract.check` does. If they hold no contract,
@@ -492,20 +494,30 @@ pull request, a change to it shows the fields that changed.
 ### What it records
 
 The file has an entry for each event type, by its name in the log, and for each
-version. The entry gives the fields as a row holds them:
+version. The entry gives the fields as a row holds them. It also has an entry for
+each publication, by its published name without the version, with the fields that the
+publication carries at its version:
 
     %{
-      "shop.orders.order_placed" => %{
-        1 => [
-          customer_id: [type: :id, subject: :customer],
-          note: [type: :string, optional: true, personal: :customer_id],
-          order_id: [type: :id],
-          total: [
-            type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+      events: %{
+        "shop.orders.order_placed" => %{
+          1 => [
+            customer_id: [type: :id, subject: :customer],
+            note: [type: :string, optional: true, personal: :customer_id],
+            order_id: [type: :id],
+            total: [
+              type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+            ]
           ]
-        ]
+        }
+      },
+      publications: %{
+        "shop.order_placed" => %{1 => [customer_id: [type: :id], order_id: [type: :id]]}
       }
     }
+
+A file written before it recorded publications holds the events alone. The task reads
+it, and writes both sections the next time it writes the file.
 
 For each field, the entry gives:
 
@@ -567,6 +579,13 @@ The task refuses, and writes nothing, in these cases:
 - The file holds a version newer than the declared one, whose rows do not read.
 - The file holds an event that no contract declares now, because it was renamed or
   removed. Its rows do not read either.
+- A publication removes a field, or changes the type of a field or whether it can be
+  absent, at the version that the file holds. Raise its `version:`. An added field
+  needs no new version.
+- A publication declares a lower version than the file holds.
+- The file holds a publication that no contract declares now, because the
+  publication or its domain was renamed, or it was removed. Its subscribers receive
+  nothing.
 
 No step carries a change of personal data or of tags. The rows already sealed or
 tagged keep what they were written with. Declare a new event instead.
@@ -578,6 +597,10 @@ after it. For an event that no contract declares, it drops each version. Then it
 records what is declared. Use it only when no log holds rows of what it drops.
 Example: a version that you added on a branch that was never deployed. You can give
 `--forget` more than one time.
+
+`--forget NAME`, with the published name without its version, such as
+`shop.order_placed`, drops the publication, and records what is declared. Use it only
+when no application subscribes to what it drops.
 
 `--check` writes nothing. It fails if the task would change the file, or would refuse.
 It also fails if the file does not exist. It does not take `--forget`. Run it beside

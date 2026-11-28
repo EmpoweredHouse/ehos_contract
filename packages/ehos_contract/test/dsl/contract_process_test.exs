@@ -84,7 +84,7 @@ defmodule EhosContract.ContractProcessTest do
     test "a boundary cannot take it in" do
       message =
         refuse_contract("ReceivedInLog", """
-          subscribe "scheduling.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe {:scheduling, :visit_closed, 1}, as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 

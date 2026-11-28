@@ -41,6 +41,14 @@ defmodule EhosContract.SchemaLockTest do
   defp lock(fields, version \\ 1, values \\ values()),
     do: %{@type_name => %{version => SchemaLock.fields(fields, values)}}
 
+  @published "shop.order_placed"
+
+  defp published(fields \\ [order_id: [type: :id], total: [type: :integer]], version \\ 1),
+    do: %{@published => %{version => fields}}
+
+  # The file holding `events`, and `publications` (#697).
+  defp file(events, publications \\ %{}), do: %{events: events, publications: publications}
+
   defp replace(fields, name, by),
     do: Enum.map(fields, &if(&1.name == name, do: by, else: &1))
 
@@ -162,7 +170,7 @@ defmodule EhosContract.SchemaLockTest do
 
       marked = %{@type_name => %{1 => kept}}
       assert SchemaLock.merge(marked, lock(without)) == {:ok, marked}
-      assert SchemaLock.decode(SchemaLock.encode(marked)) == {:ok, marked}
+      assert SchemaLock.decode(SchemaLock.encode(file(marked))) == {:ok, file(marked)}
 
       again = fn note -> replace(fields(), :note, note) end
 
@@ -638,11 +646,37 @@ defmodule EhosContract.SchemaLockTest do
 
   describe "the file" do
     test "reads back what it writes, one field a line" do
-      text = SchemaLock.encode(lock(fields()))
+      text = SchemaLock.encode(file(lock(fields()), published()))
 
-      assert text =~ ~r/^      customer_id: \[type: :id, subject: :customer\],$/m
-      assert SchemaLock.decode(text) == {:ok, lock(fields())}
-      assert SchemaLock.decode(SchemaLock.encode(%{})) == {:ok, %{}}
+      assert text =~ ~r/^        customer_id: \[type: :id, subject: :customer\],$/m
+      assert SchemaLock.decode(text) == {:ok, file(lock(fields()), published())}
+      assert SchemaLock.decode(SchemaLock.encode(file(%{}))) == {:ok, file(%{})}
+    end
+
+    # #697: a merge resolved by hand keeps both sides of a raised version.
+    test "refuses a publication at no version or at two, or under a name it cannot have" do
+      for publications <- [
+            ~s|%{"shop.order_placed" => %{}}|,
+            ~s|%{"shop.order_placed" => %{1 => [], 2 => []}}|,
+            ~s|%{"shop.order.placed" => %{1 => []}}|,
+            ~s|%{"shop.order_placed\\nrun this" => %{1 => []}}|
+          ] do
+        assert SchemaLock.decode("%{events: %{}, publications: #{publications}}") ==
+                 {:error, "its publications are not a map of names to one version each"}
+      end
+
+      for name <- ["x.order_placed", "my-shop.order_placed"] do
+        assert {:ok, %{publications: %{^name => %{1 => []}}}} =
+                 SchemaLock.decode(~s|%{events: %{}, publications: %{"#{name}" => %{1 => []}}}|)
+      end
+    end
+
+    # #697: a file written before publications were recorded holds the events alone.
+    test "reads a file of events alone as one with no publication" do
+      text = ~s|%{"#{@type_name}" => %{1 => [order_id: [type: :id]]}}|
+
+      assert SchemaLock.decode(text) ==
+               {:ok, file(%{@type_name => %{1 => [order_id: [type: :id]]}})}
     end
 
     test "refuses a key or a field given twice, and text that is not UTF-8" do
@@ -689,7 +723,7 @@ defmodule EhosContract.SchemaLockTest do
       ]}}
       """
 
-      assert SchemaLock.decode(shuffled) == {:ok, lock(fields())}
+      assert SchemaLock.decode(shuffled) == {:ok, file(lock(fields()))}
     end
 
     test "refuses what is not a literal, and never runs it" do
@@ -732,7 +766,9 @@ defmodule EhosContract.SchemaLockTest do
       end
 
       assert Schema.lock(path, lock(fields()), []) =~ "recorded #{@type_name} at 1"
-      assert Schema.lock(path, lock(fields()), check: true) =~ "holds every event's fields"
+
+      assert Schema.lock(path, lock(fields()), check: true) =~
+               "holds the fields of every event and publication"
 
       raised = lock(fields() ++ [field(:courier, :string)], 2)
 
@@ -755,7 +791,7 @@ defmodule EhosContract.SchemaLockTest do
 
     test "--forget records the event again, and drops one no contract declares", %{path: path} do
       gone = %{"shop.orders.order_lost" => %{1 => [order_id: [type: :id]]}}
-      File.write!(path, SchemaLock.encode(Map.merge(gone, lock(fields()))))
+      File.write!(path, SchemaLock.encode(file(Map.merge(gone, lock(fields())))))
       changed = lock(fields() ++ [field(:courier, :string)])
 
       assert_raise Mix.Error, ~r/no contract of the applications read/, fn ->
@@ -770,7 +806,7 @@ defmodule EhosContract.SchemaLockTest do
         )
 
       assert said =~ "recorded #{@type_name} at 1; forgot shop.orders.order_lost at 1"
-      assert SchemaLock.decode(File.read!(path)) == {:ok, changed}
+      assert SchemaLock.decode(File.read!(path)) == {:ok, file(changed)}
 
       assert_raise Mix.Error, ~r/--forget shop.orders.nothing/, fn ->
         Schema.lock(path, changed, forget: "shop.orders.nothing")
@@ -784,14 +820,16 @@ defmodule EhosContract.SchemaLockTest do
 
       assert Schema.lock(path, edited, forget: @type_name) =~ "recorded #{@type_name} at 2"
 
-      assert {:ok, %{@type_name => %{1 => one, 2 => two}}} = SchemaLock.decode(File.read!(path))
+      assert {:ok, %{events: %{@type_name => %{1 => one, 2 => two}}}} =
+               SchemaLock.decode(File.read!(path))
+
       assert one == lock(fields())[@type_name][1]
       assert two == edited[@type_name][2]
     end
 
     test "says it wrote a lock with no event in it", %{path: path} do
       assert Schema.lock(path, %{}, []) =~ "no contract declares an event"
-      assert SchemaLock.decode(File.read!(path)) == {:ok, %{}}
+      assert SchemaLock.decode(File.read!(path)) == {:ok, file(%{})}
     end
 
     test "leaves the old file, and no temporary one, when it cannot write", %{path: path} do
@@ -815,6 +853,26 @@ defmodule EhosContract.SchemaLockTest do
       assert_raise Mix.Error, ~r/cannot be read: line 1/, fn ->
         Schema.lock(path, lock(fields()), [])
       end
+    end
+
+    # #697
+    test "records a publication, refuses it gone, and --forget drops it", %{path: path} do
+      assert Schema.lock(path, %{}, publications: published()) =~
+               "recorded shop.order_placed.v1"
+
+      assert Schema.lock(path, %{}, publications: published(), check: true) =~
+               "holds the fields of every event and publication"
+
+      assert_raise Mix.Error, ~r/does not record shop.order_placed.v2/, fn ->
+        Schema.lock(path, %{}, publications: published([order_id: [type: :id]], 2), check: true)
+      end
+
+      assert_raise Mix.Error, ~r/shop.order_placed.v1: the lock records it as published/, fn ->
+        Schema.lock(path, %{}, [])
+      end
+
+      assert Schema.lock(path, %{}, forget: @published) =~ "forgot shop.order_placed.v1"
+      assert SchemaLock.decode(File.read!(path)) == {:ok, file(%{})}
     end
   end
 end

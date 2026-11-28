@@ -15,6 +15,8 @@ defmodule EhosContract.Contract.Rules.Consumes do
   # declaration to write instead (plan N2).
   @moduledoc false
 
+  alias EhosContract.Contract.Published
+  alias EhosContract.Contract.Rules.Boundaries
   alias EhosContract.DslRules
 
   @doc false
@@ -23,7 +25,7 @@ defmodule EhosContract.Contract.Rules.Consumes do
     named =
       for %{from: from, via: :consumes} = consumes <- declarations.consumes, is_binary(from) do
         {"K1: consumes #{inspect(from)} names another application's published event, which is " <>
-           "subscribed to: subscribe #{inspect(from)}, as: :name_here, with the fields it reads",
+           "subscribed to: subscribe #{key(from)}, as: :name_here, with the fields it reads",
          consumes}
       end
 
@@ -74,5 +76,16 @@ defmodule EhosContract.Contract.Rules.Consumes do
         ]
 
     itself ++ none ++ renames ++ fields
+  end
+
+  # The key a subscriber writes for a name as it was written before #697.
+  defp key(from) do
+    case Boundaries.parts(from) do
+      {namespace, publication, version} ->
+        Published.key_source("#{namespace}.#{publication}.v#{version}")
+
+      nil ->
+        "{namespace, publication, version}"
+    end
   end
 end

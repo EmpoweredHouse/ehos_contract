@@ -201,15 +201,15 @@ defmodule EhosContract.ContractBoundariesTest do
       message =
         refuse_contract("PublishWrong", """
         #{@unit}
-          publish :visit_lost, as: "clinic.visit.lost.v1", from: :visit_lost, fields: [:visit_id]
+          publish :visit_lost, from: :visit_lost, fields: [:visit_id]
 
           publish :visit_closed,
-            as: "clinic.visit.closed.v1",
             from: :visit_closed,
             fields: [:visit_id, :total, :patient_name],
             idempotent_on: [:clinic_id]
 
-          publish :visit_closed_again, as: "clinic.visit.closed.v1", from: :visit_closed, fields: []
+          publish :visit_closed, version: 2, from: :visit_closed, fields: []
+          publish :visit_closed, from: :visit_closed, fields: [:visit_id]
         """)
 
       assert message =~
@@ -227,71 +227,72 @@ defmodule EhosContract.ContractBoundariesTest do
       assert message =~
                "D11: publication :visit_closed is idempotent on :clinic_id, which it does not carry"
 
-      assert message =~
-               "D11: publication :visit_closed_again carries no fields (publish_wrong.ex:29)"
+      assert message =~ "D11: publication :visit_closed carries no fields (publish_wrong.ex:28)"
 
       assert message =~
-               ~s|D11: publication :visit_closed_again is named "clinic.visit.closed.v1", like an | <>
-                 "earlier one"
+               ~s|D11: publication :visit_closed is named "clinic.visit_closed.v1", like an | <>
+                 "earlier one (publish_wrong.ex:29)"
     end
 
-    test "a name that is not versioned is refused" do
+    # #697: the name is built, and the form before is refused with the line to write.
+    test "a name written with as: is refused, with the publish that builds the nearest one" do
       message =
-        refuse_contract("PublishUnversioned", """
+        refuse_contract("PublishNamed", """
         #{@unit}
-          publish :visit_closed, as: "Clinic/VisitClosed", from: :visit_closed, fields: [:visit_id]
+          publish :visit_closed, as: "clinic.visit.closed.v2", from: :visit_closed, fields: [:visit_id]
+          publish :visit_ended, as: "Clinic/VisitClosed", from: :visit_closed, fields: [:visit_id]
+          publish :closing, as: "clinic.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
         """)
 
       assert message =~
-               ~s|D11: publication :visit_closed: "Clinic/VisitClosed" is not a versioned name: | <>
+               ~s|D11: publish :visit_closed names itself with as: "clinic.visit.closed.v2"; the | <>
+                 "library builds the name from the domain's name:, the publication's name and its " <>
+                 ~s|version: ("clinic.visit_closed.v1" now). Remove as:, and write `publish | <>
+                 ":visit_closed, version: 2` for the name nearest the one written, " <>
+                 ~s|"clinic.visit_closed.v2"; its subscribers move to it (publish_named.ex:21)|
+
+      assert message =~
+               ~s|D11: publish :visit_ended names itself with as: "Clinic/VisitClosed"; the | <>
+                 "library builds the name from the domain's name:, the publication's name and its " <>
+                 ~s|version: ("clinic.visit_ended.v1" now). Remove as: (publish_named.ex:22)|
+
+      assert message =~
+               ~s|write `publish :visit_closed, version: 1` for the name nearest the one written, | <>
+                 ~s|"clinic.visit_closed.v1"; its subscribers move to it. A renamed | <>
+                 "publication's relay starts at the head of the log, so let the old relay " <>
+                 "publish what it holds before you deploy the rename (publish_named.ex:23)"
+    end
+
+    test "a publication whose name is not snake_case builds no published name" do
+      message =
+        refuse_contract("PublishUnversioned", """
+        #{@unit}
+          publish :visitClosed, from: :visit_closed, fields: [:visit_id]
+        """)
+
+      assert message =~
+               ~s|D11: publication :visitClosed: "clinic.visitClosed.v1" is not a versioned name: | <>
                  "the application's namespace, which may hold a dash but not at either end, then " <>
                  "dotted snake_case segments, ending in .v<n>"
     end
 
-    test "a name ending in a newline is refused" do
-      message =
-        refuse_contract("PublishNewline", """
-        #{@unit}
-          publish :visit_closed, as: "clinic.visit.closed.v1\\n", from: :visit_closed, fields: [:visit_id]
-        """)
-
-      assert message =~
-               ~s|D11: publication :visit_closed: "clinic.visit.closed.v1\\n" is not a versioned name|
-    end
-
-    test "a dash only inside the namespace, the first segment" do
-      message =
-        refuse_contract("PublishDashed", """
-        #{@unit}
-          publish :leading, as: "-shop.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
-          publish :trailing, as: "shop-.visit.closed.v1", from: :visit_closed, fields: [:visit_id]
-          publish :inner, as: "my-shop.visit-closed.v1", from: :visit_closed, fields: [:visit_id]
-        """)
-
-      for {name, as} <- [
-            leading: "-shop.visit.closed.v1",
-            trailing: "shop-.visit.closed.v1",
-            inner: "my-shop.visit-closed.v1"
-          ] do
-        assert message =~ ~s|D11: publication #{inspect(name)}: "#{as}" is not a versioned name|
-      end
-    end
-
     test "control: an application's namespace with a dash, as EHOS names one (#50)" do
-      assert %{publishes: [%{as: "my-shop.visit.closed.v1"}]} =
-               compile_contract("PublishDashedRight", """
-               #{@unit}
-                 publish :visit_closed, as: "my-shop.visit.closed.v1",
-                   from: :visit_closed,
-                   fields: [:visit_id]
-               """)
+      assert %{publishes: [%{as: "my-shop.visit_closed.v1"}]} =
+               compile_contract(
+                 "PublishDashedRight",
+                 """
+                 #{@unit}
+                   publish :visit_closed, from: :visit_closed, fields: [:visit_id]
+                 """,
+                 id: "my-shop.visits"
+               )
     end
 
     test "control: v2 §16's publication compiles, identity among its fields" do
       assert %{publishes: [publish], digests: %{"publish:visit_closed" => _}} =
                compile_contract("PublishRight", """
                #{@unit}
-                 publish :visit_closed, as: "clinic.visit.closed.v1",
+                 publish :visit_closed, version: 3,
                    from: :visit_closed,
                    fields: [:visit_id, :closed_at],
                    idempotent_on: [:visit_id]
@@ -299,7 +300,7 @@ defmodule EhosContract.ContractBoundariesTest do
 
       assert publish == %{
                name: :visit_closed,
-               as: "clinic.visit.closed.v1",
+               as: "clinic.visit_closed.v3",
                from: :visit_closed,
                fields: [:visit_id, :closed_at],
                idempotent_on: [:visit_id]
@@ -307,29 +308,58 @@ defmodule EhosContract.ContractBoundariesTest do
     end
   end
 
-  describe "D11: another application's event is subscribed to by name" do
-    test "without a local name, without fields, or with a bare name" do
+  describe "D11: another application's event is subscribed to by its key" do
+    test "without a local name, without fields, or with a key of the wrong form" do
       message =
         refuse_contract("ConsumesByNameWrong", """
-          subscribe "clinic.visit.closed.v1" do
+          subscribe {:clinic, :visit_closed, 1} do
             field :visit_id, :id
           end
 
-          subscribe "clinic.visit.opened.v1", as: :visit_opened
-          subscribe "visit_moved", as: :visit_moved
+          subscribe {:clinic, :visit_opened, 1}, as: :visit_opened
+          subscribe {:"shop-", :visit_moved, 1}, as: :visit_moved
+          subscribe {:clinic, :visitMoved, 1}, as: :visit_moved_again
+          subscribe {nil, :visit_held, 1}, as: :visit_held
 
         #{@unit}
         """)
 
       assert message =~
-               ~s|D11: subscribe "clinic.visit.closed.v1" needs as: the name the event has in this | <>
-                 "contract (consumes_by_name_wrong.ex:4)"
+               "D11: subscribe {:clinic, :visit_closed, 1} needs as: the name the event has in " <>
+                 "this contract (consumes_by_name_wrong.ex:4)"
 
       assert message =~
-               ~s|D11: subscribe "clinic.visit.opened.v1" lists no fields; declare the ones this | <>
+               "D11: subscribe {:clinic, :visit_opened, 1} lists no fields; declare the ones this " <>
                  "contract reads (consumes_by_name_wrong.ex:8)"
 
-      assert message =~ ~s|D11: subscribe "visit_moved": "visit_moved" is not a versioned name|
+      for key <- [
+            ~s|{:"shop-", :visit_moved, 1}|,
+            "{:clinic, :visitMoved, 1}",
+            "{nil, :visit_held, 1}"
+          ] do
+        assert message =~
+                 "D11: subscribe #{key} is not a published event's key: the publisher's " <>
+                   "namespace, which may hold a dash but not at either end, its publication's " <>
+                   ~s|snake_case name and a version, like {:"my-shop", :order_placed, 1}|
+      end
+    end
+
+    # #697: the form before is refused with the key to write.
+    test "a name written as a string is refused, with the key that names it" do
+      message =
+        refuse_contract("ConsumesByString", """
+          subscribe "clinic.visit.closed.v1", as: :visit_closed_elsewhere do
+            field :visit_id, :id
+          end
+
+        #{@unit}
+        """)
+
+      assert message =~
+               ~s|D11: subscribe "clinic.visit.closed.v1" names the published event as a string; | <>
+                 "name it by its parts, {namespace, publication, version}, from which the library " <>
+                 "builds the name: write `subscribe {:clinic, :visit_closed, 1}`, which names " <>
+                 ~s|"clinic.visit_closed.v1" (consumes_by_string.ex:4)|
     end
 
     # Plan N2: one word per mechanism. A published name is subscribed to, never consumed.
@@ -345,44 +375,30 @@ defmodule EhosContract.ContractBoundariesTest do
 
       assert message =~
                ~s|K1: consumes "clinic.visit.closed.v1" names another application's published | <>
-                 ~s|event, which is subscribed to: subscribe "clinic.visit.closed.v1", as: | <>
+                 "event, which is subscribed to: subscribe {:clinic, :visit_closed, 1}, as: " <>
                  ":name_here, with the fields it reads (consumes_a_name.ex:4)"
 
       # The old form is refused once, here, not again by D11 as a subscription.
       refute message =~ "D11:"
     end
 
-    test "a dash only inside the namespace, as in a publication" do
-      message =
-        refuse_contract("ConsumesDashedWrong", """
-          subscribe "shop-.visit.closed.v1", as: :visit_closed_elsewhere do
-            field :visit_id, :id
-          end
-
-        #{@unit}
-        """)
-
-      assert message =~
-               ~s|D11: subscribe "shop-.visit.closed.v1": "shop-.visit.closed.v1" is not a|
-    end
-
     test "control: another application's event, named under a namespace with a dash" do
       model =
         compile_contract("ConsumesDashedRight", """
-          subscribe "my-shop.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe {:"my-shop", :visit_closed, 2}, as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 
         #{@unit}
         """)
 
-      assert [%{kind: :published, from: "my-shop.visit.closed.v1"}] = model.consumes
+      assert [%{kind: :published, from: "my-shop.visit_closed.v2"}] = model.consumes
     end
 
     test "control: v2 §16's subscriber, with a policy on the consumed event" do
       model =
         compile_contract("ConsumesByNameRight", """
-          subscribe "clinic.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe {:clinic, :visit_closed, 1}, as: :visit_closed_elsewhere do
             field :visit_id, :id
             field :closed_at, :timestamp
           end
@@ -394,7 +410,7 @@ defmodule EhosContract.ContractBoundariesTest do
         """)
 
       assert [
-               %{kind: :published, from: "clinic.visit.closed.v1", as: :visit_closed_elsewhere} =
+               %{kind: :published, from: "clinic.visit_closed.v1", as: :visit_closed_elsewhere} =
                  c
              ] =
                model.consumes
@@ -408,7 +424,7 @@ defmodule EhosContract.ContractBoundariesTest do
     test "a read model, an effect or a process manager taking one" do
       message =
         refuse_contract("ReceivedTakenWrong", """
-          subscribe "clinic.visit.closed.v1", as: :visit_closed_elsewhere do
+          subscribe {:clinic, :visit_closed, 1}, as: :visit_closed_elsewhere do
             field :visit_id, :id
           end
 

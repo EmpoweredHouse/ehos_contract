@@ -59,11 +59,18 @@ defmodule EhosContract.SchemaLock do
   # The order `field/2` writes a field's keys in.
   @keys %{type: 0, optional: 1, personal: 2, subject: 3, removed: 4}
 
+  @typedoc """
+  The file: the events, and each publication's fields at its version, by its name
+  without the version (#697).
+  """
+  @type file :: %{events: t(), publications: t()}
+
   @header """
   # The fields of every event, by its type in the log and its schema_version, as the log
-  # stores them. Written by `mix ehos_contract.schema` and checked by its `--check`: a
-  # version's fields change in place only where rows written with them still read with
-  # today's declaration. Commit this file.
+  # stores them, and of every publication, by its name and version. Written by
+  # `mix ehos_contract.schema` and checked by its `--check`: a version's fields change in
+  # place only where rows written with them still read with today's declaration, and a
+  # publication drops or changes a field only at a higher version. Commit this file.
   """
 
   @doc false
@@ -493,9 +500,14 @@ defmodule EhosContract.SchemaLock do
   end
 
   @doc false
-  # The lock as the file holds it: an Elixir literal, one field a line, sorted.
-  @spec encode(t()) :: String.t()
-  def encode(lock) do
+  # The file as it is written: an Elixir literal, one field a line, sorted.
+  @spec encode(file()) :: String.t()
+  def encode(%{events: events, publications: publications}) do
+    body = "%{events: #{section(events)}, publications: #{section(publications)}}"
+    @header <> IO.iodata_to_binary(Code.format_string!(body)) <> "\n"
+  end
+
+  defp section(lock) do
     types =
       for {type, versions} <- Enum.sort(lock) do
         entries =
@@ -507,8 +519,7 @@ defmodule EhosContract.SchemaLock do
         "#{inspect(type)} => %{\n#{Enum.join(entries, ",\n")}\n}"
       end
 
-    body = if types == [], do: "%{}", else: "%{\n#{Enum.join(types, ",\n")}\n}"
-    @header <> IO.iodata_to_binary(Code.format_string!(body)) <> "\n"
+    if types == [], do: "%{}", else: "%{\n#{Enum.join(types, ",\n")}\n}"
   end
 
   defp pair(name, field),
@@ -519,14 +530,27 @@ defmodule EhosContract.SchemaLock do
   @doc false
   # The lock in `text`, read as a literal and never evaluated as code; refused, with why,
   # when it is not one or not a lock's shape.
-  @spec decode(String.t()) :: {:ok, t()} | {:error, String.t()}
+  # A file written before publications were recorded (#697) is the events alone.
+  @spec decode(String.t()) :: {:ok, file()} | {:error, String.t()}
   def decode(text) do
     with {:ok, quoted} <- quoted(text),
-         {:ok, lock} <- literal(quoted),
-         true <- lock?(lock) || {:error, "it is not a map of event types to versions"} do
-      {:ok, Map.new(lock, fn {type, versions} -> {type, Map.new(versions, &normal/1)} end)}
+         {:ok, literal} <- literal(quoted),
+         {:ok, events, publications} = sections(literal),
+         true <- lock?(events) || {:error, "it is not a map of event types to versions"},
+         true <-
+           publications?(publications) ||
+             {:error, "its publications are not a map of names to one version each"} do
+      {:ok, %{events: normal_lock(events), publications: normal_lock(publications)}}
     end
   end
+
+  defp sections(%{events: events, publications: publications} = file) when map_size(file) == 2,
+    do: {:ok, events, publications}
+
+  defp sections(literal), do: {:ok, literal, %{}}
+
+  defp normal_lock(lock),
+    do: Map.new(lock, fn {type, versions} -> {type, Map.new(versions, &normal/1)} end)
 
   # The value `quoted` writes, built here from maps, lists, tuples, atoms, numbers and
   # strings alone. `Code.eval_quoted/1` is not asked even for a literal: a struct is one,
@@ -574,6 +598,28 @@ defmodule EhosContract.SchemaLock do
 
   defp format_error({prefix, suffix}), do: "#{prefix}#{suffix}"
   defp format_error(message), do: message
+
+  # A publication is recorded at the one version declared, under a name the library builds
+  # (#697): a merge resolved by hand can leave two versions, which no merge reads.
+  defp publications?(publications) do
+    lock?(publications) and
+      Enum.all?(publications, fn {name, versions} ->
+        published_name?(name) and map_size(versions) == 1
+      end)
+  end
+
+  # The namespace and the publication, as the rules hold a domain's name and a
+  # publication's.
+  defp published_name?(name) do
+    case String.split(name, ".") do
+      [namespace, publication] ->
+        EhosContract.DslRules.namespace?(namespace) and
+          EhosContract.DslRules.snake_case?(publication)
+
+      _other ->
+        false
+    end
+  end
 
   # A map written with a `__struct__` key is a struct to `Enum`, and a lock is none.
   defp lock?(lock) do

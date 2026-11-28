@@ -14,7 +14,7 @@ defmodule EhosContract.ContractGenerateTest do
   @body """
     consumes EhosContract.Fixtures.Booking, [:visit_booked, :visit_moved], as: [visit_moved: :rebooked]
 
-    subscribe "clinic.visit.closed.v1", as: :visit_closed do
+    subscribe {:clinic, :visit_closed, 1}, as: :visit_closed do
       field :visit_id, :id
       field :closed_at, :timestamp
       field :note, :string, optional: true

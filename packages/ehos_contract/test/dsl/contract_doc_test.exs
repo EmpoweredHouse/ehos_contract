@@ -11,7 +11,7 @@ defmodule EhosContract.ContractDocTest do
   alias EhosContract.Contract.Doc
 
   @body """
-    subscribe "clinic.visit.arrived.v1", as: :arrived do
+    subscribe {:clinic, :visit_arrived, 1}, as: :arrived do
       field :visit_id, :id
     end
 
@@ -187,7 +187,7 @@ defmodule EhosContract.ContractDocTest do
   test "a policy's callback: the event, where it comes from, what it issues, each rule's rung",
        %{model: model} do
     assert Doc.callback(model, :policy, :remind_on_arrival, :arrived) == """
-           Reacts to `arrived` (received from another application as `clinic.visit.arrived.v1`), for policy `remind_on_arrival` — "Remind on arrival" (source: S-03).
+           Reacts to `arrived` (received from another application as `clinic.visit_arrived.v1`), for policy `remind_on_arrival` — "Remind on arrival" (source: S-03).
 
            May issue:
            - `remind` — "Reminder"

@@ -266,7 +266,7 @@ defmodule EhosContract.ProcessLinksTest do
       scheduling = "ProcInboundScheduling"
 
       extra = """
-        subscribe "other.visit.moved.v1", as: :visit_moved do
+        subscribe {:other, :visit_moved, 1}, as: :visit_moved do
           field :visit_id, :id
         end
       """

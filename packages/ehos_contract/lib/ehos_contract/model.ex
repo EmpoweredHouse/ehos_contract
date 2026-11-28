@@ -93,12 +93,12 @@ defmodule EhosContract.Model do
 
   **One more, which is the application's: `<name>.subscribe`** for each event it
   subscribes to from another application and a policy handles (D11), under the
-  publisher's name without its version — `subscribe "billing.invoice.issued.v1"` asks for
-  `billing.invoice.issued.subscribe` — with the event's name in the contract and no
+  publisher's name without its version — `subscribe {:billing, :invoice_issued, 1}` asks
+  for `billing.invoice_issued.subscribe` — with the event's name in the contract and no
   roles: EHOS grants it to the application per environment, never to a person, and
   the transport delivers by the grant. Nothing in this engine asks for it.
 
-      %{"billing.invoice.issued.subscribe" =>
+      %{"billing.invoice_issued.subscribe" =>
           %{kind: :subscribe, name: :invoice_issued, roles: [], scope: nil}}
 
   Derived from the declarations, never written down. The domain's name is read from

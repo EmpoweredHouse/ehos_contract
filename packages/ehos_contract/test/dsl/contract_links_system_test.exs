@@ -56,6 +56,48 @@ defmodule EhosContract.ContractLinksSystemTest do
     {"#{Macro.underscore(name)}.ex", source}
   end
 
+  # #697: a published name is built from the namespace and the publication's name.
+  describe "X7: a publication's name is the application's" do
+    test "two contracts publishing one name, at any version" do
+      publish = fn version ->
+        "  publish :case_done, version: #{version}, from: :done, fields: [:case_id]"
+      end
+
+      violations =
+        links([
+          unit_contract("SysPubA", unit: :pub_a, command: :close_a, extra: publish.(1)),
+          unit_contract("SysPubB", unit: :pub_b, command: :close_b, extra: publish.(2))
+        ])
+
+      assert assert_linked(
+               violations,
+               "X7: publication :case_done of #{inspect(@fixtures)}.SysPubB",
+               "sys_pub_b.ex",
+               9
+             ) =~
+               "is also published by #{inspect(@fixtures)}.SysPubA (sys_pub_a.ex:9), as " <>
+                 ~s|"clinic.case_done.v1"; a published name is built from the namespace and the | <>
+                 ~s|publication's name, "clinic.case_done", so it is unique in the application|
+
+      assert length(violations) == 1
+    end
+
+    test "control: two publications of two names" do
+      assert links([
+               unit_contract("SysPubC",
+                 unit: :pub_c,
+                 command: :close_c,
+                 extra: "  publish :case_closed, from: :done, fields: [:case_id]"
+               ),
+               unit_contract("SysPubD",
+                 unit: :pub_d,
+                 command: :close_d,
+                 extra: "  publish :case_done, from: :done, fields: [:case_id]"
+               )
+             ]) == []
+    end
+  end
+
   describe "D14: a command, query or recorded event name is the domain's" do
     test "a command of one name in two contracts, and a query named like a command" do
       query = """

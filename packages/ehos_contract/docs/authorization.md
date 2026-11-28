@@ -99,7 +99,7 @@ grant it, also not by mistake. A `:system` actor of the application reaches it w
 
 **The application has one more capability for each subscribed event that a policy takes:**
 `<published name>.subscribe`. The published name loses its version. `subscribe
-"billing.invoice.issued.v1"` gives `billing.invoice.issued.subscribe`. This capability has no role,
+{:billing, :invoice_issued, 1}` gives `billing.invoice_issued.subscribe`. This capability has no role,
 so no person has it. The engine does not check it.
 
 A capability is `<domain>.<name>`. So the name of a command, a query or a recorded event is unique

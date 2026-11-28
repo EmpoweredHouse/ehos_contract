@@ -229,7 +229,10 @@ defmodule EhosContract.PagesTest do
 
     till = %{till | publishes: [publication]}
     page = Pages.render(ValueRig.Domain, [till])["till/till/index.md"]
-    assert page =~ "- `paid`, published as `till.paid.v1`, from [`paid_in`](events/paid_in.md)"
+
+    assert page =~
+             "- `paid`, published as `till.paid.v1`, which a subscriber names " <>
+               "`{:till, :paid, 1}`, from [`paid_in`](events/paid_in.md)"
 
     branch = EhosContract.Model.fetch(DispatchRig.Branch)
     [consumed] = branch.consumes

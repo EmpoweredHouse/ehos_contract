@@ -295,7 +295,7 @@ defmodule EhosContract.ContractLinksContextMapTest do
       mapped(name, :catalogue, publish)
     end
 
-    @publish ~s(publish :item_listed, as: "catalogue.item.listed.v1", from: :acted_x13_list_ok, ) <>
+    @publish ~s(publish :item_listed, from: :acted_x13_list_ok, ) <>
                "fields: [:visit_id], idempotent_on: [:visit_id]"
 
     test "consuming an event the upstream contract does not publish" do

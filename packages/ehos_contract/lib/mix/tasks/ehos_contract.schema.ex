@@ -1,10 +1,11 @@
 defmodule Mix.Tasks.EhosContract.Schema do
-  @shortdoc "Records the fields of each event, and refuses a change that old rows do not read"
+  @shortdoc "Records the fields of each event and publication, and refuses a change that breaks them"
 
   @moduledoc """
   Keeps `ehos_contract.lock`, the record of the fields of each event for each
-  `schema_version`. It refuses a change that old rows do not read, and a new version
-  whose step does not cover what changed.
+  `schema_version`, and of each publication at its `version:`. It refuses a change that
+  old rows do not read, a new version whose step does not cover what changed, and a
+  change to a publication that its subscribers do not read.
 
   The log keeps each event that it recorded. It reads each event again, with the
   declaration of today, when it rebuilds a unit or a list. A row does not read if it
@@ -19,6 +20,7 @@ defmodule Mix.Tasks.EhosContract.Schema do
       mix ehos_contract.schema                  # record what is new
       mix ehos_contract.schema --check          # fail if anything is new or changed
       mix ehos_contract.schema --forget TYPE    # drop what no log holds rows of, and record again
+      mix ehos_contract.schema --forget NAME    # drop a publication no application subscribes to
 
   The task reads each contract of the applications that `config :ehos_contract,
   applications:` names, as `mix ehos_contract.check` does. If they hold no contract,
@@ -29,20 +31,30 @@ defmodule Mix.Tasks.EhosContract.Schema do
   ## What it records
 
   The file has an entry for each event type, by its name in the log, and for each
-  version. The entry gives the fields as a row holds them:
+  version. The entry gives the fields as a row holds them. It also has an entry for
+  each publication, by its published name without the version, with the fields that the
+  publication carries at its version:
 
       %{
-        "shop.orders.order_placed" => %{
-          1 => [
-            customer_id: [type: :id, subject: :customer],
-            note: [type: :string, optional: true, personal: :customer_id],
-            order_id: [type: :id],
-            total: [
-              type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+        events: %{
+          "shop.orders.order_placed" => %{
+            1 => [
+              customer_id: [type: :id, subject: :customer],
+              note: [type: :string, optional: true, personal: :customer_id],
+              order_id: [type: :id],
+              total: [
+                type: {:fields, [amount: [type: :decimal], currency: [type: {:enum, [:eur, :pln]}]]}
+              ]
             ]
-          ]
+          }
+        },
+        publications: %{
+          "shop.order_placed" => %{1 => [customer_id: [type: :id], order_id: [type: :id]]}
         }
       }
+
+  A file written before it recorded publications holds the events alone. The task reads
+  it, and writes both sections the next time it writes the file.
 
   For each field, the entry gives:
 
@@ -104,6 +116,13 @@ defmodule Mix.Tasks.EhosContract.Schema do
   - The file holds a version newer than the declared one, whose rows do not read.
   - The file holds an event that no contract declares now, because it was renamed or
     removed. Its rows do not read either.
+  - A publication removes a field, or changes the type of a field or whether it can be
+    absent, at the version that the file holds. Raise its `version:`. An added field
+    needs no new version.
+  - A publication declares a lower version than the file holds.
+  - The file holds a publication that no contract declares now, because the
+    publication or its domain was renamed, or it was removed. Its subscribers receive
+    nothing.
 
   No step carries a change of personal data or of tags. The rows already sealed or
   tagged keep what they were written with. Declare a new event instead.
@@ -116,6 +135,10 @@ defmodule Mix.Tasks.EhosContract.Schema do
   Example: a version that you added on a branch that was never deployed. You can give
   `--forget` more than one time.
 
+  `--forget NAME`, with the published name without its version, such as
+  `shop.order_placed`, drops the publication, and records what is declared. Use it only
+  when no application subscribes to what it drops.
+
   `--check` writes nothing. It fails if the task would change the file, or would refuse.
   It also fails if the file does not exist. It does not take `--forget`. Run it beside
   `mix ehos_contract.check`.
@@ -125,6 +148,7 @@ defmodule Mix.Tasks.EhosContract.Schema do
   use Mix.Task
 
   alias EhosContract.SchemaLock
+  alias EhosContract.SchemaLock.Publications
 
   @file_name "ehos_contract.lock"
 
@@ -150,9 +174,12 @@ defmodule Mix.Tasks.EhosContract.Schema do
     contracts = EhosContract.Registry.contracts()
     declared = SchemaLock.declared(contracts)
 
-    Mix.shell().info(
-      lock(path(), declared, Keyword.put(opts, :steps, SchemaLock.steps(contracts)))
-    )
+    opts =
+      opts
+      |> Keyword.put(:steps, SchemaLock.steps(contracts))
+      |> Keyword.put(:publications, Publications.declared(contracts))
+
+    Mix.shell().info(lock(path(), declared, opts))
   end
 
   # Beside `mix.lock`, wherever the project keeps it.
@@ -161,34 +188,33 @@ defmodule Mix.Tasks.EhosContract.Schema do
     Path.join(Path.dirname(Path.expand(lockfile)), @file_name)
   end
 
-  # What the task does with the file at `path` and the entries `declared`, with each
-  # event's `:steps` in `opts`: the line it prints, or `Mix.raise/1` with why. Called by
-  # this task and its tests.
+  # What the task does with the file at `path`, the events `declared`, each event's
+  # `:steps` and the `:publications` declared in `opts`: the line it prints, or
+  # `Mix.raise/1` with why. Called by this task and its tests.
   @doc false
   @spec lock(Path.t(), SchemaLock.t(), keyword()) :: String.t()
   def lock(path, declared, opts) do
     {found, kept} = read!(path)
     name = Path.relative_to_cwd(path)
+    published = Keyword.get(opts, :publications, %{})
 
     forgotten =
       for type <- opts |> Keyword.get_values(:forget) |> Enum.uniq(), reduce: kept do
-        lock ->
-          unless Map.has_key?(lock, type) or Map.has_key?(declared, type),
-            do: Mix.raise("--forget #{type}: no event of that type is in #{name} or declared")
-
-          from = declared |> Map.get(type, %{1 => []}) |> Map.keys() |> Enum.min()
-          SchemaLock.forget(lock, type, from)
+        lock -> forget(lock, type, declared, published, name)
       end
 
+    events = SchemaLock.merge(forgotten.events, declared, Keyword.get(opts, :steps, %{}))
+    publications = Publications.merge(forgotten.publications, published)
+
     merged =
-      case SchemaLock.merge(forgotten, declared, Keyword.get(opts, :steps, %{})) do
-        {:ok, merged} -> merged
-        {:error, problems} -> Mix.raise(refusal(name, problems))
+      case {events, publications} do
+        {{:ok, events}, {:ok, publications}} -> %{events: events, publications: publications}
+        _refused -> Mix.raise(refusal(name, problems(events) ++ problems(publications)))
       end
 
     cond do
       found and merged == kept ->
-        "#{name} holds every event's fields"
+        "#{name} holds the fields of every event and publication"
 
       opts[:check] && not found ->
         Mix.raise("#{name} does not exist: run `mix ehos_contract.schema` and commit it")
@@ -208,6 +234,27 @@ defmodule Mix.Tasks.EhosContract.Schema do
         end
     end
   end
+
+  # A publication's entry is its name without the version (#697), which no event type is:
+  # an event's type has the contract's id, of two segments at least, before its name.
+  defp forget(lock, type, declared, published, name) do
+    cond do
+      Map.has_key?(lock.publications, type) or Map.has_key?(published, type) ->
+        %{lock | publications: Publications.forget(lock.publications, type)}
+
+      Map.has_key?(lock.events, type) or Map.has_key?(declared, type) ->
+        from = declared |> Map.get(type, %{1 => []}) |> Map.keys() |> Enum.min()
+        %{lock | events: SchemaLock.forget(lock.events, type, from)}
+
+      true ->
+        Mix.raise(
+          "--forget #{type}: no event or publication of that name is in #{name} or declared"
+        )
+    end
+  end
+
+  defp problems({:ok, _merged}), do: []
+  defp problems({:error, problems}), do: problems
 
   # Beside it and renamed over it, so that a write cut short leaves the old file.
   defp write!(path, text) do
@@ -235,7 +282,7 @@ defmodule Mix.Tasks.EhosContract.Schema do
         end
 
       {:error, :enoent} ->
-        {false, %{}}
+        {false, %{events: %{}, publications: %{}}}
 
       {:error, reason} ->
         Mix.raise("#{Path.relative_to_cwd(path)} cannot be read: #{:file.format_error(reason)}")
@@ -250,9 +297,11 @@ defmodule Mix.Tasks.EhosContract.Schema do
   defp summary(kept, merged) do
     recorded = recorded(kept, merged)
 
+    present = index(merged)
+
     dropped =
       for {type, version, _fields} <- entries(kept),
-          not has?(merged, type, version),
+          not Map.has_key?(present, {type, version}),
           do: {type, version}
 
     Enum.reject(
@@ -263,24 +312,36 @@ defmodule Mix.Tasks.EhosContract.Schema do
 
   # The versions `merged` holds and `kept` does not hold alike, as the person reads them.
   defp recorded(kept, merged) do
+    kept = index(kept)
+
     listed(
       for {type, version, fields} <- entries(merged),
-          get_in(kept, [type, version]) != fields,
+          Map.get(kept, {type, version}) != fields,
           do: {type, version}
     )
   end
 
-  defp entries(lock),
+  # Every entry of a file, an event's by its type and a publication's by its name, as
+  # it is published.
+  defp entries(file),
     do:
       for(
-        {type, versions} <- Enum.sort(lock),
+        {type, versions} <- Enum.sort(file.events),
         {version, fields} <- Enum.sort(versions),
         do: {type, version, fields}
-      )
+      ) ++
+        for(
+          {name, versions} <- Enum.sort(file.publications),
+          {version, fields} <- versions,
+          do: {Publications.published(name, version), :published, fields}
+        )
 
-  defp has?(lock, type, version), do: Map.has_key?(Map.get(lock, type, %{}), version)
+  defp index(file), do: Map.new(entries(file), fn {type, v, fields} -> {{type, v}, fields} end)
 
   defp listed([]), do: nil
   defp listed(versions) when length(versions) > 5, do: "#{length(versions)} event versions"
-  defp listed(versions), do: Enum.map_join(versions, ", ", fn {type, v} -> "#{type} at #{v}" end)
+  defp listed(versions), do: Enum.map_join(versions, ", ", &version/1)
+
+  defp version({published, :published}), do: published
+  defp version({type, version}), do: "#{type} at #{version}"
 end

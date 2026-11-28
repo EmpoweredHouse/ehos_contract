@@ -7,7 +7,8 @@ defmodule EhosContract.Contract.Links.System do
   #   no reader could tell apart. It may equal a contract's `id:`: that one prefixes
   #   event types, which are never a run's key.
   #   So is a contract's `id:` (plan DD, ID1), which prefixes every event type the
-  #   contract records (`"<id>.<event>"`, from ID3).
+  #   contract records (`"<id>.<event>"`, from ID3). So is a publication's name
+  #   (#697), which the published name is built from with the namespace.
   # - **X8.** A declaration that code implements — a unit, a policy, an effect, a
   #   process manager, a read model, a query — has at most one implementation, since
   #   dispatch and scenarios have to know which one runs.
@@ -24,7 +25,9 @@ defmodule EhosContract.Contract.Links.System do
   @doc false
   @spec check(map()) :: [Links.violation()]
   def check(system),
-    do: processes(system) ++ ids(system) ++ capabilities(system) ++ implementations(system)
+    do:
+      processes(system) ++
+        ids(system) ++ publications(system) ++ capabilities(system) ++ implementations(system)
 
   defp processes(system) do
     # Sorted by module, and the later is refused.
@@ -49,6 +52,26 @@ defmodule EhosContract.Contract.Links.System do
       {"X7: the id: #{inspect(id)} of #{inspect(module)} is also the id: of #{inspect(first)} " <>
          "(#{Links.place(first_at)}); a contract's id prefixes its event types, so it is " <>
          "unique in the application", at}
+    end
+  end
+
+  # #697: a published name is built from the namespace and the publication's name, so
+  # two contracts that publish one name, at any version, would publish one event; two
+  # in one contract are D11's, at compile time.
+  defp publications(system) do
+    named =
+      for c <- system.contracts,
+          p <- c.declarations.publishes,
+          p.published_as != nil,
+          do: {String.replace(p.published_as, ~r/\.v[0-9]+\z/, ""), c.module, p}
+
+    for {name, {module, publish}, {first, first_publish}} <- collisions(named),
+        module != first do
+      {"X7: publication #{inspect(publish.name)} of #{inspect(module)} is also published by " <>
+         "#{inspect(first)} (#{Links.place(Links.at(first_publish))}), as " <>
+         "#{inspect(first_publish.published_as)}; a published name is built from the " <>
+         "namespace and the publication's name, #{inspect(name)}, so it is unique in the " <>
+         "application", Links.at(publish)}
     end
   end
 

@@ -43,7 +43,6 @@ defmodule UpcastRig.Demands do
   end
 
   publish :demand_opened,
-    as: "upcast_rig.demand.opened.v1",
     from: :demand_opened,
     fields: [:demand_id, :demand_reason, :priority]
 end
