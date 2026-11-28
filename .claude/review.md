@@ -106,7 +106,8 @@ before a commit in the same command runs. Do not use these flags or their short 
   exit code.
 - **A change to a procedure** changes how work is planned, reviewed, described or looked back on. It
   is a move of the `ref` in `.claude/settings.team.json`, or a change to this file, to
-  `.claude/skills/review-pr/`, or to `CONTRIBUTING.md`, "From an idea to `main`". Until the benchmark
+  `.claude/skills/review-pr/`, to `.github/ISSUE_TEMPLATE/stage.md`, to
+  `.github/pull_request_template.md`, or to `CONTRIBUTING.md`, "From an idea to `main`". Until the benchmark
   of procedures that ehos-tools plans holds cases for the procedure, "How it was tested" has the line
   `No benchmark exists yet. The two reviews and the user judge this change.`
 - **No sections of its own** beyond the template's.

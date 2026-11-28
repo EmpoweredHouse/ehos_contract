@@ -313,9 +313,10 @@ repository's part of a retro is as follows:
   packages or the `ehos-contract` plugin is an issue here. A lesson about `ehos-core`, `ehos-dev` or another
   part of ehos-tools is an issue in ehos-tools. Each issue and each comment it writes ends with the line
   `Retro of ehos_contract.` The next retro finds them in each repository with
-  `gh issue list --repo <repo> --state all --search '"retro of ehos_contract" in:body,comments'`.
+  `gh issue list --repo <repo> --state all --limit 1000 --search '"retro of ehos_contract" in:body,comments'`.
 - **A lesson about this repository's own rules** (`CLAUDE.md`, this file, `.claude/review.md`,
-  `.claude/skills/`) is a pull request here.
+  `.claude/skills/`) is a pull request here. Its description ends with the same line, and the next retro
+  finds it with `gh pr list --state all --limit 1000 --search '"retro of ehos_contract" in:body'`.
 - **This repository is public.** A draft that waits stays in the report to the maintainer, never in a file here.
   A defect that may be a security one goes through the private report of the repository that owns it, never an
   issue: this repository's report is in `SECURITY.md`, and ehos-tools' report is in its own `SECURITY.md`. A
